@@ -7,33 +7,77 @@ namespace Smt
 
 open Lean.Elab
 open Lean.Elab.Tactic
+open Lean.Meta
 open Smt.Solver
 open Smt.Util
 
-syntax "check_sat" : tactic
+def queryToString (commands : List String) : String :=
+  String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
 
-/-- `check_sat` Converts the current goal into an SMT query and checks if it is satisfiable. -/
-@[tactic tacticCheck_sat] def evalCheckSat : Tactic := fun stx => do
+/-- `smt` converts the current goal into an SMT query and checks if it is
+satisfiable. By default, `smt` generates the minimum valid query needed to
+assert the goal. However, that is not usually enough:
+```lean
+def th1 (p q : Prop) (hp : p) (f : p → q) : q := by
+  smt
+```
+For the theorem above, the `smt` generates the query below:
+```smt2
+(declare-const q Bool)
+(assert (not q))
+(check-sat)
+```
+which is not enough to prove the theorem. To pass more hypothesis to the solver,
+use `smt [h₁, h₂,..., hₙ]` syntax:
+
+```lean
+def th2 (p q : Prop) (hp : p) (f : p → q) : q := by
+  smt [hp, f]
+```
+This time, `smt` generates the query below:
+```smt2
+(declare-const p Bool)
+(declare-const q Bool)
+(assert p)
+(assert (=> p q))
+(assert (not q))
+(check-sat)
+```
+-/
+syntax (name := smt) "smt" ("[" ident,+,? "]")? : tactic
+
+def parseTactic : Lean.Syntax → TacticM (List Lean.Expr)
+  | `(tactic| smt)       => []
+  | `(tactic| smt [$[$hs],*]) => hs.toList.mapM (fun h => elabTerm h none)
+  | _                    => throwUnsupportedSyntax
+
+@[tactic smt] def evalSmt : Tactic := fun stx => do
+  -- 1. Get the current main goal.
   let goal ← Tactic.getMainTarget
-  -- Create a mapping from the free vars in the goal to their infos
-  -- (i.e., user-friendly names and types).
-  let mut fvars := getFVars goal
-  fvars := List.eraseDups fvars
-  let temp := List.mapM Lean.Meta.getFVarLocalDecl fvars
-  let localDecls ← temp
-  let ctx : Util.Context := {
-    bvars := []
-    fvars := List.foldr (fun (v, d) m => m.insert v d) Std.mkHashMap (List.zip fvars localDecls)
-  }
-  -- Declare those free vars as constants uninterpreted functions.
+  -- 2. Get the free vars in the goal and the ones passed to the tactic.
+  let mut hs := getFVars goal
+  hs := hs ++ (← parseTactic stx)
+  hs := hs.eraseDups
+  hs ← fixedPoint getAllTypeFVars hs
+  -- 3. If those free variables are hypothesis, assert them. Otherwise, declare those free vars
+  --    as symbolic constants/uninterpreted functions.
   let mut solver := Solver.mk []
-  for (v, d) in List.zip fvars localDecls do
-    solver := solver.declareConst (ctx.fvars.find! v).userName.toString (← exprToTerm' ctx d.type)
+  for h in hs do
+    let n ← match h with
+      | Lean.Expr.fvar id .. => (← Lean.Meta.getLocalDecl id).userName.toString
+      | Lean.Expr.const n .. => n.toString
+      | _                    => throwUnsupportedSyntax
+    -- logInfo m!"{v.fvarId!.name} {n}"
+    let t ← Lean.Meta.inferType h
+    let s ← exprToTerm' t
+    solver := if (← Lean.Meta.inferType t).isProp then solver.assert s else match s with
+      | Term.Const .. => solver.declareConst n s
+      | _             => solver.declareFun n s
   -- Assert the goal.
-  solver := solver.assert (← exprToTerm' ctx (Lean.mkNot goal))
-  let query := String.intercalate "\n" ("(check-sat)\n" :: solver.commands).reverse
-  -- Run the solver.
+  solver := solver.assert (← exprToTerm' (Lean.mkNot goal))
+  let query := queryToString solver.commands
+  -- Run the solver and print the result.
   let res ← solver.checkSat
-  logInfo m!"goal: {goal}\n\nquery:\n{query}\nresult: {res}\nexpr ast: {exprToString goal}"
+  logInfo m!"goal: {goal}\n\nquery:\n{query}\nresult: {res}"
 
 end Smt
