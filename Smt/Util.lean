@@ -31,17 +31,13 @@ partial def fixedPoint [BEq α] (f : List α → MetaM (List α)) (x : List α) 
   let x' := (← f x).eraseDups
   if x'.length == x.length then x else fixedPoint f x'
 
-/-- Context data-structure for `exprToTerm` function. -/
-structure Context where
-  bvars : List (Name × Expr)                   -- The current list of bound variables (and their type).
-  fvars : Std.HashMap Lean.Expr Lean.LocalDecl -- A mapping from for free variables to their infos.
-
 /-- Converts the given constant into the corresponding SMT constant/function symbol. -/
 def knownSymbols : Std.HashMap String String :=
   List.foldr (fun (k, v) m => m.insert k v) Std.HashMap.empty
   [
     ("And", "and"),
     ("Eq" , "="),
+    ("Ne", "distinct"),
     ("False", "false"),
     ("Iff", "="),
     ("Not", "not"),
@@ -87,12 +83,7 @@ partial def exprToTerm' : Lean.Expr → Lean.MetaM Term
   | const n _ _ => Symbol (match (knownSymbols.find? n.toString) with | some n => n | none => n.toString)
   | sort l _ => Symbol (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
   | e@(forallE n s b _) => do
-    -- If the type of `s` is prop, then this `forallE` is actually an implication.
-    if (← Lean.Meta.inferType s).isProp then
-      App (App (Symbol "=>") (← exprToTerm' s)) (← exprToTerm' b)
-    -- If this is not an implication, look-ahead and see if the final return type is of type Prop.
-    -- If it is, then this is a forall (probably... maybe)
-    else if e.isArrow then
+    if e.isArrow then
       Lean.Meta.forallTelescope e fun ss s => do
         let ss ← ss.mapM Lean.Meta.inferType
         ss.foldrM (fun d c => do Arrow (← exprToTerm' d) (← c)) (← exprToTerm' s)

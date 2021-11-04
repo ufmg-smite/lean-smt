@@ -11,30 +11,32 @@ open Lean.Meta
 open Smt.Solver
 open Smt.Util
 
+initialize
+  Lean.registerTraceClass `Smt.debug
+
 def queryToString (commands : List String) : String :=
   String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
 
 /-- `smt` converts the current goal into an SMT query and checks if it is
-satisfiable. By default, `smt` generates the minimum valid query needed to
-assert the goal. However, that is not usually enough:
+satisfiable. By default, `smt` generates the minimum valid SMT query needed to
+assert the goal. However, that is not always enough:
 ```lean
-def th1 (p q : Prop) (hp : p) (f : p → q) : q := by
+def modus_ponens (p q : Prop) (hp : p) (f : p → q) : q := by
   smt
 ```
-For the theorem above, the `smt` generates the query below:
+For the theorem above, `smt` generates the query below:
 ```smt2
 (declare-const q Bool)
 (assert (not q))
 (check-sat)
 ```
-which is not enough to prove the theorem. To pass more hypothesis to the solver,
-use `smt [h₁, h₂,..., hₙ]` syntax:
-
+which is missing the hypotheses `hp` `f` required to prove the theorem. To pass
+hypotheses to the solver, use `smt [h₁, h₂, ..., hₙ]` syntax:
 ```lean
-def th2 (p q : Prop) (hp : p) (f : p → q) : q := by
+def modus_ponens (p q : Prop) (hp : p) (f : p → q) : q := by
   smt [hp, f]
 ```
-This time, `smt` generates the query below:
+The tactic then generates the query below:
 ```smt2
 (declare-const p Bool)
 (declare-const q Bool)
@@ -69,12 +71,12 @@ def parseTactic : Lean.Syntax → TacticM (List Lean.Expr)
       | _                    => throwUnsupportedSyntax
     -- logInfo m!"{v.fvarId!.name} {n}"
     let t ← Lean.Meta.inferType h
-    let s ← exprToTerm' t
+    let s ← exprToTerm t
     solver := if (← Lean.Meta.inferType t).isProp then solver.assert s else match s with
-      | Term.Const .. => solver.declareConst n s
+      | Term.Symbol .. => solver.declareConst n s
       | _             => solver.declareFun n s
   -- Assert the goal.
-  solver := solver.assert (← exprToTerm' (Lean.mkNot goal))
+  solver := solver.assert (← exprToTerm (Lean.mkNot goal))
   let query := queryToString solver.commands
   -- Run the solver and print the result.
   let res ← solver.checkSat

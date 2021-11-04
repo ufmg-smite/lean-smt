@@ -20,7 +20,7 @@ def declareConst (solver : Solver) (id : String) (s : Term) : Solver :=
 def declareFun (solver : Solver) (id : String) (s : Term) : Solver :=
   ⟨("(declare-fun " ++ id ++ " " ++ s.toString ++ ")") :: solver.commands⟩
 
-/-- Define a function with name `id`, parameters `ps`, co-domin `s`,
+/-- Define a function with name `id`, parameters `ps`, co-domain `s`,
     and body `t` -/
 def defineFun (solver : Solver) (id : String) (ps : List (String × Term)) (s : Term) (t : Term) : Solver :=
   ⟨("(define-fun " ++ id ++ " (" ++ paramsToString ps ++ ") " ++ s.toString ++ " "
