@@ -1,0 +1,11 @@
+goal: f p q = f q p
+
+query:
+(declare-fun f (Bool Bool) Bool)
+(declare-const p Bool)
+(declare-const q Bool)
+(assert (not (= (f p q) (f q p))))
+(check-sat)
+
+result: sat
+Test/Prop/Comm.lean:5:2: warning: declaration uses 'sorry'

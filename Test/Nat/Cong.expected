@@ -1,0 +1,13 @@
+goal: x = y → f x = f y
+
+query:
+(define-sort Nat () Int)
+(declare-const x Nat)
+(assert (>= x 0))
+(declare-const y Nat)
+(assert (>= y 0))
+(declare-fun f (Nat) Nat)
+(assert (not (=> (= x y) (= (f x) (f y)))))
+(check-sat)
+
+result: unsat

@@ -1,0 +1,10 @@
+goal: (p || q) = true → (!p || r) = true → (q || r) = true
+
+query:
+(declare-const p Bool)
+(declare-const q Bool)
+(declare-const r Bool)
+(assert (not (=> (= (or p q) true) (=> (= (or (not p) r) true) (= (or q r) true)))))
+(check-sat)
+
+result: unsat

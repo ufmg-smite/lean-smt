@@ -1,38 +1,14 @@
 import Lean
+import Smt.Term
+import Smt.Util
 
-namespace Smt.Preprocess
+namespace Smt.Transformer
 
 open Lean
 open Lean.Expr
+open Smt.Term
+open Smt.Util
 open Std
-
-/-- Prints the given expression in AST format. -/
-def exprToString : Expr → String
-  | bvar id _         => "(BVAR " ++ ⟨Nat.toDigits 10 id⟩ ++ ")"
-  | fvar id _         => "(FVAR " ++ id.name.toString ++ ")"
-  | mvar id _         => "(MVAR " ++ id.name.toString ++ ")"
-  | sort l _          => "(SORT " ++ l.format.pretty ++ ")"
-  | const id _ _      => "(CONST " ++ id.toString ++ ")"
-  | app f x _         => "(APP " ++ exprToString f ++ " " ++ exprToString x
-                                 ++ ")"
-  | lam id s e _      => "(LAM " ++ id.toString ++ " " ++ exprToString s
-                                 ++ " " ++ exprToString e ++ ")"
-  | forallE id s e _  => "(FORALL " ++ id.toString ++ " " ++ exprToString s
-                                    ++ " " ++ exprToString e ++ ")"
-  | letE id s e e' _  => "(LET " ++ id.toString ++ " " ++ exprToString s
-                                 ++ " " ++ exprToString e ++ " "
-                                 ++ exprToString e ++ ")"
-  | lit l _           => "(LIT " ++ literalToString l ++ ")"
-  | mdata m e _       => "(MDATA " ++ mdataToString m ++ " " ++ exprToString e
-                                   ++ ")"
-  | proj s i e _      => "(PROJ" ++ s.toString ++ " " ++ ⟨Nat.toDigits 10 i⟩
-                                 ++ " " ++ exprToString e ++ ")"
-  where
-    literalToString : Literal → String
-      | Literal.natVal v => ⟨Nat.toDigits 10 v⟩
-      | Literal.strVal v => v
-    mdataToString : Lean.MData → String
-      | _ => ""
 
 /-- Inserts entries in second hashmap into the first one. -/
 def Std.HashMap.insertAll [BEq α] [Hashable α] :
@@ -65,7 +41,7 @@ partial def markTypeArgs (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
     -- Returns the whether or not we should add `e` to the argument list
     -- (i.e., skip implicit sort arguments).
     hasValidSort (e : Expr) : MetaM Bool := do
-      let type ← Lean.Meta.inferType e
+      let type ← Meta.inferType e
       match type with
       | sort l ..  => l.isZero
       | forallE .. => false    -- All arguments must be first order.
@@ -154,8 +130,10 @@ partial def markImps (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
         ++ (← Meta.withLocalDecl n d.binderInfo t
             (fun x => markImps' (xs.push x) b))
       | e@(forallE n t b d) =>
-        if e.isArrow && (← Meta.inferType (t.instantiate xs)).isProp then
-          (← markImps' xs b).insert e (mkApp2 imp t b)
+        if (e.instantiate xs).isArrow ∧
+           (← Meta.inferType (t.instantiate xs)).isProp then
+          ((← markImps' xs t) ++
+            (← markImps' xs b)).insert e (mkApp2 imp t (b.lowerLooseBVars 1 1))
         else (← markImps' xs t)
           ++ (← Meta.withLocalDecl n d.binderInfo t
                (fun x => markImps' (xs.push x) b))
@@ -165,6 +143,35 @@ partial def markImps (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
       | proj s i e d        => markImps' xs e
       | e                   => HashMap.empty
     imp := mkConst (Name.mkSimple "Imp")
+
+partial def markNatForalls (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
+  markImps' #[] e
+  where
+    markImps' xs e := do match e with
+      | app f e d           => (← markImps' xs f) ++ (← markImps' xs e)
+      | lam n t b d         => (← markImps' xs t)
+        ++ (← Meta.withLocalDecl n d.binderInfo t
+            (fun x => markImps' (xs.push x) b))
+      | e@(forallE n t@(const `Nat ..) b d) =>
+        if ¬(e.instantiate xs).isArrow then
+          (← markImps' xs t).insert e (mkForall n d.binderInfo t (imp b))
+            ++ (← Meta.withLocalDecl n d.binderInfo t
+                (fun x => markImps' (xs.push x) b))
+        else (← markImps' xs t)
+          ++ (← Meta.withLocalDecl n d.binderInfo t
+               (fun x => markImps' (xs.push x) b))
+      | e@(forallE n t b d) => (← markImps' xs t)
+          ++ (← Meta.withLocalDecl n d.binderInfo t
+               (fun x => markImps' (xs.push x) b))
+      | letE n t v b d      => (← markImps' xs t) ++ (← markImps' xs v)
+        ++ (← Meta.withLetDecl n t v (fun x => markImps' (xs.push x) b))
+      | mdata m e s         => markImps' xs e
+      | proj s i e d        => markImps' xs e
+      | e                   => HashMap.empty
+    imp e := mkApp2 (mkConst `Imp) (mkApp2 (mkConst `GE.ge)
+                                           (mkBVar 0)
+                                           (mkLit (Literal.natVal 0)))
+                    e
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
@@ -178,11 +185,10 @@ partial def markImps (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
     exprs. -/
 partial def replaceMarked (e : Expr) (es : HashMap Expr (Option Expr)) :
                           MetaM (Option Expr) := do match es.find? e with
-  | some e' =>
-    match e' with
+  | some e' => match e' with
     | none    => none                -- Remove `e`.
     | some e' => replaceMarked e' es -- Replace `e` with `e'` and process `e'`.
-  | none   => do match e with
+  | none    => match e with
     | app f e d       => match ← replaceMarked f es, ← replaceMarked e es with
        -- Replace `(APP f e)` with `(APP f' e')`.
       | some f', some e' => mkApp f' e'
@@ -192,12 +198,12 @@ partial def replaceMarked (e : Expr) (es : HashMap Expr (Option Expr)) :
       | some f', none    => f'
        -- Remove `(APP f e)`.
       | none   , none    => none
-    | lam n t b d     => match ← replaceMarked t es, ← replaceMarked b es with
-      | some t, some b => mkLambda n d.binderInfo t b
-      | _     , _      => none
-    | forallE n t b d => match ← replaceMarked t es, ← replaceMarked b es with
-      | some t, some b => mkForall n d.binderInfo t b
-      | _     , _      => none
+    | lam n t b d     => match ← replaceMarked b es with
+      | none   => none
+      | some b => mkLambda n d.binderInfo t b
+    | forallE n t b d => match ← replaceMarked b es with
+      | some b => mkForall n d.binderInfo t b
+      | _      => none
     | letE n t v b d  => match ← replaceMarked t es,
                                ← replaceMarked v es,
                                ← replaceMarked b es with
@@ -220,7 +226,7 @@ def List.toString (es : List (Expr × (Option Expr))) := s!"[" ++ String.interca
 /-- Pre-processes `e` and returns the resulting expr. -/
 def preprocessExpr (e : Expr) : MetaM Expr := do
   -- Print the `e` before the preprocessing step.
-  trace[Smt.debug] "Before: {exprToString e}"
+  trace[Smt.debug.transform] "Before: {exprToString e}"
   let mut es ← HashMap.empty
   -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
   -- replacement. Note that each pass is passed the original expr `e` as an
@@ -228,11 +234,11 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
   for pass in passes do
     es := es ++ (← pass e)
   -- Print the exprs marked for removal/replacement.
-  trace[Smt.debug] "marked: {es.toList.toString}"
+  trace[Smt.debug.transform] "marked: {es.toList.toString}"
   -- Make the replacements and print the result.
   match ← replaceMarked e es with
     | none   => panic! "Error: Something went wrong..."
-    | some e => trace[Smt.debug] "After: {exprToString e}"; e
+    | some e => trace[Smt.debug.transform] "After: {exprToString e}"; e
   where
     -- The passes to run through `e`.
     passes : List (Expr → MetaM (HashMap Expr (Option Expr))) :=
@@ -240,6 +246,36 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markInstArgs,
      markNatCons,
      markNatLiterals,
-     markImps]
+     markImps,
+     markNatForalls]
 
-end Smt.Preprocess
+/-- Converts a Lean expression into an SMT term. -/
+partial def exprToTerm (e : Expr) : MetaM Term := do
+  let e ← preprocessExpr e
+  exprToTerm' e
+  where
+    exprToTerm' : Expr → MetaM Term
+      | fvar id _ => do
+        let n := (← Meta.getLocalDecl id).userName.toString
+        Symbol n
+      | const n .. => Symbol (match (knownConsts.find? n.toString) with
+        | some n => n
+        | none => n.toString)
+      | sort l _ => Symbol
+        (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
+      | e@(forallE n s b _) => do
+        if e.isArrow then
+          Meta.forallTelescope e fun ss s => do
+            let ss ← ss.mapM Meta.inferType
+            ss.foldrM (fun d c => do Arrow (← exprToTerm' d) (← c))
+                      (← exprToTerm' s)
+        else
+          Forall n.toString (← exprToTerm' s) <|
+            ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
+      | app f t d         => do App (← exprToTerm' f) (← exprToTerm' t)
+      | lit l d => Literal (match l with
+        | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
+        | Literal.strVal s => s)
+      | e => panic! "Unimplemented: " ++ exprToString e
+
+end Smt.Transformer

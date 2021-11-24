@@ -1,0 +1,8 @@
+goal: p = true → p = true
+
+query:
+(declare-const p Bool)
+(assert (not (=> (= p true) (= p true))))
+(check-sat)
+
+result: unsat

@@ -42,5 +42,11 @@ partial def toString : Term → String
       | App f t => t :: appToList f
       | s       => [s]
 
+instance : ToString Term where
+  toString := toString
+
+instance : Std.ToFormat Term where
+  format := Std.Format.text ∘ toString
+
 end Term
 end Smt

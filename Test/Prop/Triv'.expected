@@ -1,0 +1,7 @@
+goal: ∀ (p : Prop), p → p
+
+query:
+(assert (not (forall ((p Bool)) (=> p p))))
+(check-sat)
+
+result: unsat

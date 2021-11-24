@@ -1,0 +1,10 @@
+goal: p ∨ q → ¬p ∨ r → q ∨ r
+
+query:
+(declare-const p Bool)
+(declare-const q Bool)
+(declare-const r Bool)
+(assert (not (=> (or p q) (=> (or (not p) r) (or q r)))))
+(check-sat)
+
+result: unsat

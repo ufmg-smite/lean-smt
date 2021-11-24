@@ -1,0 +1,10 @@
+goal: p = q → f p = f q
+
+query:
+(declare-const p Bool)
+(declare-const q Bool)
+(declare-fun f (Bool) Bool)
+(assert (not (=> (= p q) (= (f p) (f q)))))
+(check-sat)
+
+result: unsat

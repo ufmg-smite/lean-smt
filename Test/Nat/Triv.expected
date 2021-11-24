@@ -1,0 +1,7 @@
+goal: Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero
+
+query:
+(assert (not (= (+ 0 (+ 0 1)) (+ 0 1))))
+(check-sat)
+
+result: unsat

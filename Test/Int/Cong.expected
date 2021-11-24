@@ -1,0 +1,10 @@
+goal: x = y → f x = f y
+
+query:
+(declare-const x Int)
+(declare-const y Int)
+(declare-fun f (Int) Int)
+(assert (not (=> (= x y) (= (f x) (f y)))))
+(check-sat)
+
+result: unsat
