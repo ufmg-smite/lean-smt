@@ -1,0 +1,9 @@
+goal: ∀ (x : Nat), x ≠ 0
+
+query:
+(define-sort Nat () Int)
+(assert (not (forall ((x Nat)) (=> (>= x 0) (distinct x 0)))))
+(check-sat)
+
+result: sat
+Test/Nat/NeqZero.lean:5:2: warning: declaration uses 'sorry'

@@ -1,4 +1,3 @@
 import Smt.Solver
-import Smt.Tactics
+import Smt.Tactic
 import Smt.Term
-import Smt.Util

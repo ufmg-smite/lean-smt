@@ -1,0 +1,7 @@
+goal: ¬False
+
+query:
+(assert (not (not false)))
+(check-sat)
+
+result: unsat

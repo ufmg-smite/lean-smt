@@ -1,0 +1,11 @@
+goal: q = true
+
+query:
+(declare-const q Bool)
+(assert (not (= q true)))
+(declare-const p Bool)
+(assert (= p true))
+(assert (=> (= p true) (= q true)))
+(check-sat)
+
+result: unsat

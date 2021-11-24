@@ -1,0 +1,7 @@
+goal: 0 + 1 = 1
+
+query:
+(assert (not (= (+ 0 1) 1)))
+(check-sat)
+
+result: unsat
