@@ -10,6 +10,11 @@ inductive Term where
   deriving Inhabited
 
 namespace Term
+
+infixl:20  " • " => App
+prefix:21 " ` " => Symbol
+prefix:21 " `` " => Literal
+
 /-- SMT-LIBv2 quoting for symbols. -/
 def quoteSymbol (s : String) : String :=
   -- This is the set of SMT-LIBv2 permitted characters in "simple" (non-quoted)

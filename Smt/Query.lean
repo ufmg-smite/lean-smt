@@ -32,7 +32,7 @@ partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
             if ¬(g.contains fv) then
               g ← buildDependencyGraph' [fv] g
             g := g.addEdge e fv ()
-          let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
+          let ucs := Util.getUnkownConsts (Prod.fst (← Transformer.preprocessExpr et))
           for uc in ucs do
             if ¬(g.contains uc) then
               g := g.addVertex uc
@@ -51,7 +51,8 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
     return
   let t ← inferType e
   trace[Smt.debug.query] "t: {t}"
-  let s ← Transformer.exprToTerm t
+  let (s, defs) ← Transformer.exprToTerm t
+  solver := ⟨ solver.commands ++ defs ⟩
   trace[Smt.debug.query] "s: {s}"
   let n ← match e with
   | fvar id .. => (← Lean.Meta.getLocalDecl id).userName.toString

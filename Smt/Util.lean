@@ -73,7 +73,8 @@ def knownConsts : Std.HashMap String String :=
     ("HMod.hMod", "mod"),
     ("Nat.min", "min"),
     ("Nat.zero", "0"),
-    ("GE.ge", ">=")
+    ("GE.ge", ">="),
+    ("natMinus", "natMinus")
   ]
 
 /-- Returns all unknown constants in the given expression. -/
