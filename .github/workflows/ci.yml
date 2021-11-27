@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        shell: ${{ matrix.shell || 'sh' }}
+        shell: ${{ matrix.shell || 'sh'  }}
     strategy:
       matrix:
         include:
