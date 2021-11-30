@@ -17,13 +17,6 @@ namespace Solver
 
 variable (solver : Solver)
 
-def genDefineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term)
-  : String :=
-    s!"(define-fun {id} ({paramsToString ps}) {s} {t})"
-    where
-      paramsToString (ps : List (String × Term)) : String :=
-        String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))
-
 /-- Set the SMT query logic to `l`. -/
 def setLogic (l : String) : Solver :=
   ⟨s!"(set-logic {l})" :: solver.commands⟩
@@ -50,7 +43,10 @@ def declareFun (id : String) (s : Term) : Solver :=
     and body `t`. -/
 def defineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
   Solver :=
-  ⟨genDefineFun id ps s t :: solver.commands⟩
+  ⟨s!"(define-fun {id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
+  where
+    paramsToString (ps : List (String × Term)) : String :=
+      String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))
 
 /-- Assert that proposition `t` is true. -/
 def assert (t : Term) : Solver :=

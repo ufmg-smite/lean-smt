@@ -175,27 +175,24 @@ partial def markNatForalls (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
                                            (mkLit (Literal.natVal 0)))
                     e
 
-def markMinus (e : Expr) : MetaM (HashMap Expr (Option Expr) × List String) :=
+def markMinus (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
   do match e with
   | app (app sub@(const n ..) x ..) y _ =>
       if n.toString = "HSub.hSub" && haveNatType x && haveNatType y
-      then return (HashMap.empty.insert sub (some natMinus), [defNatMinus])
-      else joinAnswers (← markMinus x) (← markMinus y)
-  | app f e _           => joinAnswers (← markMinus f) (← markMinus e)
+      then (HashMap.empty.insert sub (some natMinus))
+      else (← markMinus x) ++ (← markMinus y)
+  | app f e _           => (← markMinus f) ++ (← markMinus e)
   | lam _ _ b _         => markMinus b
   | mdata _ e _         => markMinus e
   | proj _ _ e _        => markMinus e
-  | letE _ _ v b _      => joinAnswers (← markMinus v) (← markMinus b)
-  | forallE _ t b _     => joinAnswers (← markMinus t) (← markMinus b)
-  | _                   => (HashMap.empty, [])
+  | letE _ _ v b _      => (← markMinus v) ++ (← markMinus b)
+  | forallE _ t b _     => (← markMinus t) ++ (← markMinus b)
+  | _                   => HashMap.empty
   where
     haveNatType (e : Expr) : Bool :=
       match e with
         | const n .. => n.toString = "Nat"
         | _ => false
-    joinAnswers r1 r2 :=
-      match (r1, r2) with
-      | ((hm1, defs1), (hm2, defs2)) => (hm1 ++ hm2, defs1 ++ defs2)
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
@@ -248,7 +245,7 @@ def List.toString (es : List (Expr × (Option Expr))) := s!"[" ++ String.interca
     | (e, o) => s!"({exprToString e},{o.format.pretty})"
 
 /-- Pre-processes `e` and returns the resulting expr. -/
-def preprocessExpr (e : Expr) : MetaM (Expr × List String) := do
+def preprocessExpr (e : Expr) : MetaM Expr := do
   -- Print the `e` before the preprocessing step.
   trace[Smt.debug.transform] "Before: {exprToString e}"
   let mut es ← HashMap.empty
@@ -258,18 +255,12 @@ def preprocessExpr (e : Expr) : MetaM (Expr × List String) := do
   for pass in passes do
     es := es ++ (← pass e)
 
-  let mut extraDefs := []
-  for pass in extendingPasses do
-    let (hm, extraDef) ← pass e
-    es := es ++ hm
-    extraDefs := extraDefs ++ extraDef
-
   -- Print the exprs marked for removal/replacement.
   trace[Smt.debug.transform] "marked: {es.toList.toString}"
   -- Make the replacements and print the result.
   match ← replaceMarked e es with
     | none   => panic! "Error: Something went wrong..."
-    | some e => trace[Smt.debug.transform] "After: {exprToString e}"; (e, extraDefs)
+    | some e => trace[Smt.debug.transform] "After: {exprToString e}"; e
   where
     -- The passes to run through `e`.
     passes : List (Expr → MetaM (HashMap Expr (Option Expr))) :=
@@ -278,16 +269,13 @@ def preprocessExpr (e : Expr) : MetaM (Expr × List String) := do
      markNatCons,
      markNatLiterals,
      markImps,
-     markNatForalls]
-    -- passes that may require new definitions
-    extendingPasses :
-      List (Expr → MetaM (HashMap Expr (Option Expr) × List String)) :=
-        [markMinus]
+     markNatForalls,
+     markMinus]
 
 /-- Converts a Lean expression into an SMT term. -/
-partial def exprToTerm (e : Expr) : MetaM (Term × List String) := do
-  let (e, defs) ← preprocessExpr e
-  (← exprToTerm' e, defs)
+partial def exprToTerm (e : Expr) : MetaM Term := do
+  let e ← preprocessExpr e
+  exprToTerm' e
   where
     exprToTerm' : Expr → MetaM Term
       | fvar id _ => do

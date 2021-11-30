@@ -1,15 +1,12 @@
 import Lean
 import Smt.Query
 import Smt.Solver
-import Smt.Constants
 
 namespace Smt
 
 open Lean
 open Lean.Elab
 open Lean.Elab.Tactic
-
-open Smt.Constants
 
 initialize
   Lean.registerTraceClass `Smt.debug
@@ -84,7 +81,6 @@ def parseTactic : Syntax → TacticM (List Expr)
   hs := hs.eraseDups
   -- 3. Generate the SMT query.
   let mut solver := Solver.mk []
-  - solver := (defNatMinus solver)
   solver ← Query.generateQuery hs solver
   let query := queryToString solver.commands
   -- 4. Run the solver.

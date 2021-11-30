@@ -10,10 +10,10 @@ open Smt.Term
 open Smt.Solver
 open Lean
 
-def natMinus : Expr := mkConst (Name.mkSimple "natMinus")
+def natMinus : Expr := mkConst (Name.mkSimple "Nat.sub")
 
-def defNatMinus : String :=
-   genDefineFun "natMinus" [("x", `"Int"), ("y", `"Int")] (`"Int") $
+def defNatMinus (s : Solver) : Solver :=
+   defineFun s "natMinus" [("x", `"Int"), ("y", `"Int")] (`"Int") $
     `"ite" • (`"<" • `"x" • `"y") • ``"0" • (`"-" • `"x" • `"y")
 
 end Constants
