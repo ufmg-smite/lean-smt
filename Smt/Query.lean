@@ -2,6 +2,7 @@ import Lean
 import Smt.Graph
 import Smt.Solver
 import Smt.Transformer
+import Smt.Constants
 
 namespace Smt.Query
 
@@ -11,6 +12,7 @@ open Lean.Meta
 open Smt
 open Smt.Solver
 open Smt.Term
+open Smt.Constants
 open Std
 
 partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
@@ -48,6 +50,9 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   trace[Smt.debug.query] "e: {e}"
   if let (const `Nat ..) := e then
     set (defineSort solver "Nat" [] (Symbol "Int"))
+    return
+  if toString e = "Nat.sub" then
+    set (defNatSub solver)
     return
   let t ← inferType e
   trace[Smt.debug.query] "t: {t}"

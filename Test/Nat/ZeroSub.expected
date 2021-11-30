@@ -1,0 +1,11 @@
+goal: 0 - x = 0
+
+query:
+(define-fun Nat.sub ((x Int) (y Int)) Int (ite (< x y) 0 (- x y)))
+(define-sort Nat () Int)
+(declare-const x Nat)
+(assert (>= x 0))
+(assert (not (= (Nat.sub 0 x) 0)))
+(check-sat)
+
+result: unsat

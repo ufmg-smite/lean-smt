@@ -1,6 +1,7 @@
 import Lean
 import Smt.Term
 import Smt.Util
+import Smt.Constants
 
 namespace Smt.Transformer
 
@@ -8,6 +9,7 @@ open Lean
 open Lean.Expr
 open Smt.Term
 open Smt.Util
+open Smt.Constants
 open Std
 
 /-- Inserts entries in second hashmap into the first one. -/
@@ -173,6 +175,18 @@ partial def markNatForalls (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
                                            (mkLit (Literal.natVal 0)))
                     e
 
+def markMinus (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
+  do match e with
+  | app (app sub@(const `HSub.hSub ..) (const `Nat ..) ..) (const `Nat ..)  _ =>
+      HashMap.empty.insert sub (some natMinus)
+  | app f e _           => (← markMinus f) ++ (← markMinus e)
+  | lam _ _ b _         => markMinus b
+  | mdata _ e _         => markMinus e
+  | proj _ _ e _        => markMinus e
+  | letE _ _ v b _      => (← markMinus v) ++ (← markMinus b)
+  | forallE _ t b _     => (← markMinus t) ++ (← markMinus b)
+  | _                   => HashMap.empty
+
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
     The order of the replacements is done in a top-down depth-first order. For
@@ -233,6 +247,7 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
   -- input. So, the order of the passes does not matter.
   for pass in passes do
     es := es ++ (← pass e)
+
   -- Print the exprs marked for removal/replacement.
   trace[Smt.debug.transform] "marked: {es.toList.toString}"
   -- Make the replacements and print the result.
@@ -247,7 +262,8 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markNatCons,
      markNatLiterals,
      markImps,
-     markNatForalls]
+     markNatForalls,
+     markMinus]
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
@@ -258,9 +274,9 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
       | fvar id _ => do
         let n := (← Meta.getLocalDecl id).userName.toString
         Symbol n
-      | const n .. => Symbol (match (knownConsts.find? n.toString) with
+      | e@(const n ..) => Symbol (match (knownConsts.find? n.toString) with
         | some n => n
-        | none => n.toString)
+        | none => (toString e))
       | sort l _ => Symbol
         (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
       | e@(forallE n s b _) => do
