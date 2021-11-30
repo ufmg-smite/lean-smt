@@ -51,8 +51,8 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   if let (const `Nat ..) := e then
     set (defineSort solver "Nat" [] (Symbol "Int"))
     return
-  if let (const `natMinus ..) := e then
-    set (defNatMinus solver)
+  if toString e = "Nat.sub" then
+    set (defNatSub solver)
     return
   let t ← inferType e
   trace[Smt.debug.query] "t: {t}"

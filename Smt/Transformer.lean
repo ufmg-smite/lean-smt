@@ -177,10 +177,8 @@ partial def markNatForalls (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
 
 def markMinus (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
   do match e with
-  | app (app sub@(const n ..) x ..) y _ =>
-      if n.toString = "HSub.hSub" && haveNatType x && haveNatType y
-      then (HashMap.empty.insert sub (some natMinus))
-      else (← markMinus x) ++ (← markMinus y)
+  | app (app sub@(const `HSub.hSub ..) (const `Nat ..) ..) (const `Nat ..)  _ =>
+      HashMap.empty.insert sub (some natMinus)
   | app f e _           => (← markMinus f) ++ (← markMinus e)
   | lam _ _ b _         => markMinus b
   | mdata _ e _         => markMinus e
@@ -188,11 +186,6 @@ def markMinus (e : Expr) : MetaM (HashMap Expr (Option Expr)) :=
   | letE _ _ v b _      => (← markMinus v) ++ (← markMinus b)
   | forallE _ t b _     => (← markMinus t) ++ (← markMinus b)
   | _                   => HashMap.empty
-  where
-    haveNatType (e : Expr) : Bool :=
-      match e with
-        | const n .. => n.toString = "Nat"
-        | _ => false
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
@@ -281,9 +274,9 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
       | fvar id _ => do
         let n := (← Meta.getLocalDecl id).userName.toString
         Symbol n
-      | const n .. => Symbol (match (knownConsts.find? n.toString) with
+      | e@(const n ..) => Symbol (match (knownConsts.find? n.toString) with
         | some n => n
-        | none => n.toString)
+        | none => (toString e))
       | sort l _ => Symbol
         (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
       | e@(forallE n s b _) => do
