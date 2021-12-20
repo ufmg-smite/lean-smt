@@ -44,6 +44,20 @@ def getFVars : Expr → List Expr
   | fvar id d       => [fvar id d]
   | _               => []
 
+/-- Returns all meta variables in the given expression. -/
+def getMVars : Expr → List Expr
+  | forallE _ d b _ => getMVars d ++ getMVars b
+  | lam _ d b _     => getMVars d ++ getMVars b
+  | letE _ t v b _  => getMVars t ++ getMVars v ++ getMVars b
+  | app f a _       => getMVars f ++ getMVars a
+  | mdata _ b _     => getMVars b
+  | proj _ _ b _    => getMVars b
+  | mvar id d       => [mvar id d]
+  | _               => []
+
+/-- Does the expression `e` contain meta variables? -/
+def hasMVars (e : Expr) : Bool := !(getMVars e).isEmpty
+
 /-- Converts the given constant into the corresponding SMT constant/function
     symbol. -/
 def knownConsts : Std.HashMap String String :=

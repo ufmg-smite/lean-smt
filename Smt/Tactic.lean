@@ -71,7 +71,7 @@ def parseTactic : Syntax → TacticM (List Expr)
   | `(tactic| smt [$[$hs],*]) => hs.toList.mapM (fun h => elabTerm h none)
   | _                    => throwUnsupportedSyntax
 
-@[tactic smt] def evalSmt : Tactic := fun stx => do
+@[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
   let goalId ← Lean.mkFreshFVarId

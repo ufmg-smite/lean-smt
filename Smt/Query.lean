@@ -29,16 +29,22 @@ partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
           let et ← inferType e
           trace[Smt.debug.query] "et: {et}"
           let fvs := Util.getFVars et
+          trace[Smt.debug.query] "fvs: {fvs}"
           for fv in fvs do
-            trace[Smt.debug.query] "fv: {fv}"
             if ¬(g.contains fv) then
               g ← buildDependencyGraph' [fv] g
             g := g.addEdge e fv ()
           let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
+          trace[Smt.debug.query] "ucs: {ucs}"
           for uc in ucs do
             if ¬(g.contains uc) then
               g := g.addVertex uc
             g := g.addEdge e uc ()
+            if uc.constName? == some `Nat.sub then
+              let nat := mkConst `Nat
+              if ¬(g.contains nat) then
+                g := g.addVertex nat
+              g := g.addEdge uc nat ()
             -- TODO: further process uc
       g
 
@@ -48,13 +54,14 @@ def natAssertBody (n : String) :=
 def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   let mut solver ← get
   trace[Smt.debug.query] "e: {e}"
-  if let (const `Nat ..) := e then
-    set (defineSort solver "Nat" [] (Symbol "Int"))
-    return
-  if toString e = "Nat.sub" then
-    set (defNatSub solver)
-    return
+  match e with
+  | const `Nat ..     => set (defNat solver); return
+  | const `Nat.sub .. => set (defNatSub solver); return
+  | _                 => ()
   let t ← inferType e
+  let mut t ← inferType e
+  if Util.hasMVars t then
+    t ← whnf t
   trace[Smt.debug.query] "t: {t}"
   let s ← Transformer.exprToTerm t
   trace[Smt.debug.query] "s: {s}"

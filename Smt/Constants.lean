@@ -10,10 +10,12 @@ open Smt.Term
 open Smt.Solver
 open Lean
 
-def natMinus : Expr := mkConst (Name.mkSimple "Nat.sub")
+def natMinus : Expr := mkConst `Nat.sub
+
+def defNat (s : Solver) : Solver := defineSort s "Nat" [] (Symbol "Int")
 
 def defNatSub (s : Solver) : Solver :=
-   defineFun s "Nat.sub" [("x", `"Int"), ("y", `"Int")] (`"Int") $
+   defineFun s "Nat.sub" [("x", `"Nat"), ("y", `"Nat")] (`"Nat") $
     `"ite" • (`"<" • `"x" • `"y") • ``"0" • (`"-" • `"x" • `"y")
 
 end Constants
