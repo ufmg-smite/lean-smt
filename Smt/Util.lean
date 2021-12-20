@@ -1,5 +1,13 @@
 import Lean
 
+/-- Returns `true` if `sub` is a substring of `s` and `false` otherwise. -/
+partial def String.isSubStrOf (sub : String) (s : String) : Bool :=
+  loop 0
+  where
+    loop i :=
+    if i + sub.length > s.length then false
+    else String.substrEq sub 0 s i sub.length ∨ loop (i + 1)
+
 namespace Smt.Util
 
 open Lean
@@ -7,31 +15,23 @@ open Lean.Expr
 
 /-- Prints the given expression in AST format. -/
 def exprToString : Expr → String
-  | bvar id _         => "(BVAR " ++ ⟨Nat.toDigits 10 id⟩ ++ ")"
-  | fvar id _         => "(FVAR " ++ id.name.toString ++ ")"
-  | mvar id _         => "(MVAR " ++ id.name.toString ++ ")"
-  | sort l _          => "(SORT " ++ l.format.pretty ++ ")"
-  | const id _ _      => "(CONST " ++ id.toString ++ ")"
-  | app f x _         => "(APP " ++ exprToString f ++ " " ++ exprToString x
-                                 ++ ")"
-  | lam id s e _      => "(LAM " ++ id.toString ++ " " ++ exprToString s
-                                 ++ " " ++ exprToString e ++ ")"
-  | forallE id s e _  => "(FORALL " ++ id.toString ++ " " ++ exprToString s
-                                    ++ " " ++ exprToString e ++ ")"
-  | letE id s e e' _  => "(LET " ++ id.toString ++ " " ++ exprToString s
-                                 ++ " " ++ exprToString e ++ " "
-                                 ++ exprToString e ++ ")"
-  | lit l _           => "(LIT " ++ literalToString l ++ ")"
-  | mdata m e _       => "(MDATA " ++ mdataToString m ++ " " ++ exprToString e
-                                   ++ ")"
-  | proj s i e _      => "(PROJ" ++ s.toString ++ " " ++ ⟨Nat.toDigits 10 i⟩
-                                 ++ " " ++ exprToString e ++ ")"
+  | bvar id _        => s!"(BVAR {id})"
+  | fvar id _        => s!"(FVAR {id.name})"
+  | mvar id _        => s!"(MVAR {id.name})"
+  | sort l _         => s!"(SORT {l})"
+  | const id l _     => s!"(CONST {id} {l})"
+  | app f x _        => s!"(APP {exprToString f} {exprToString x})"
+  | lam id s e _     => s!"(LAM {id} {exprToString s} {exprToString e})"
+  | forallE id s e _ => s!"(FORALL {id} {exprToString s} {exprToString e})"
+  | letE id s v e _  =>
+    s!"(LET {id} {exprToString s} {exprToString v} {exprToString e})"
+  | lit l _          => s!"(LIT {literalToString l})"
+  | mdata m e _      => s!"(MDATA {m} {exprToString e})"
+  | proj s i e _     => s!"(PROJ {s} {i} {exprToString e})"
   where
     literalToString : Literal → String
       | Literal.natVal v => ⟨Nat.toDigits 10 v⟩
       | Literal.strVal v => v
-    mdataToString : MData → String
-      | _ => ""
 
 /-- Returns all free variables in the given expression. -/
 def getFVars : Expr → List Expr
@@ -58,47 +58,42 @@ def getMVars : Expr → List Expr
 /-- Does the expression `e` contain meta variables? -/
 def hasMVars (e : Expr) : Bool := !(getMVars e).isEmpty
 
-/-- Converts the given constant into the corresponding SMT constant/function
-    symbol. -/
-def knownConsts : Std.HashMap String String :=
-  List.foldr (fun (k, v) m => m.insert k v) Std.HashMap.empty
+/-- Set of constants defined by SMT-LIB. -/
+def smtConsts : Std.HashSet String :=
+  List.foldr (fun c s => s.insert c) Std.HashSet.empty
   [
-    ("Eq" , "="),
-    ("Ne", "distinct"),
-    ("Prop", "Bool"),
-    ("True", "true"),
-    ("False", "false"),
-    ("Not", "not"),
-    ("And", "and"),
-    ("Or" , "or"),
-    ("Iff", "="),
-    ("Imp", "=>"),
-    ("Bool.true", "true"),
-    ("Bool.false", "false"),
-    ("not", "not"),
-    ("and", "and"),
-    ("or", "or"),
-    ("BEq.beq", "="),
-    ("Int", "Int"),
-    ("HAdd.hAdd", "+"),
-    ("HSub.hSub", "-"),
-    ("HMul.hMul", "*"),
-    ("HDiv.hDiv", "/"),
-    ("HMod.hMod", "mod"),
-    ("Nat.min", "min"),
-    ("Nat.zero", "0"),
-    ("GE.ge", ">=")
+    "=",
+    "distinct",
+    "Bool",
+    "true",
+    "false",
+    "not",
+    "and",
+    "or",
+    "=>",
+    "Int",
+    "+",
+    "-",
+    "*",
+    "/",
+    "div",
+    "mod",
+    "abs",
+    ">",
+    "<",
+    ">=",
+    "<="
   ]
 
 /-- Returns all unknown constants in the given expression. -/
 def getUnkownConsts : Expr → List Expr
-  | app f e d       => getUnkownConsts f ++ getUnkownConsts e
-  | lam n t b d     => getUnkownConsts t ++ getUnkownConsts b
-  | forallE n t b d => getUnkownConsts t ++ getUnkownConsts b
-  | letE n t v b d  => getUnkownConsts t ++ getUnkownConsts v ++ getUnkownConsts b
-  | mdata m e s     => getUnkownConsts e
-  | proj s i e d    => getUnkownConsts e
-  | e@(const n l d) => if knownConsts.contains n.toString then [] else [e]
-  | e               => []
+  | app f e _       => getUnkownConsts f ++ getUnkownConsts e
+  | lam _ t b _     => getUnkownConsts t ++ getUnkownConsts b
+  | forallE _ t b _ => getUnkownConsts t ++ getUnkownConsts b
+  | letE _ t v b _  => getUnkownConsts t ++ getUnkownConsts v ++ getUnkownConsts b
+  | mdata _ e _     => getUnkownConsts e
+  | proj _ _ e _    => getUnkownConsts e
+  | e@(const ..)    => if smtConsts.contains (toString e) then [] else [e]
+  | _               => []
 
 namespace Smt.Util

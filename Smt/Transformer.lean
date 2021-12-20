@@ -64,8 +64,7 @@ partial def markTypeArgs (e : Expr) : TransformerM Unit :=
 /-- Traverses `e` and marks type class instantiations in apps for removal. For
     example, given `(APP instOfNatNat (LIT 1))`, this method should mark
     `instOfNatNat` for removal and the resulting expr will be `(LIT 1)`. -/
-partial def markInstArgs (e : Expr) : TransformerM Unit :=
-  do match e with
+partial def markInstArgs (e : Expr) : TransformerM Unit := do match e with
   | app f e d       =>
     markInstArgs f
     if ¬isInst e then markInstArgs e else addMark e none
@@ -74,22 +73,22 @@ partial def markInstArgs (e : Expr) : TransformerM Unit :=
   | letE n t v b d  => markInstArgs t; markInstArgs v; markInstArgs b
   | mdata m e s     => markInstArgs e
   | proj s i e d    => markInstArgs e
-  | e               => ()
+  | e               => if isInst e then addMark e none else ()
   where
     -- Checks whether `e` is a type class instantiation.
     -- TODO: Too fragile, replace with better checks.
-    isInst (e : Expr) : Bool := match e with
-    | app (app (const n ..) ..) .. => n.toString.startsWith "inst"
-    | _                            => false
+    isInst (e : Expr) : Bool := 
+    match e with
+    | const n .. => "inst".isSubStrOf n.toString
+    | _          => false
 
 /-- Traverses `e` and marks `Nat` constructors `Nat.zero` and `Nat.succ n` for
     replacement with `0` and `(+ n 1)`. -/
 partial def markNatCons (e : Expr) : TransformerM Unit :=
   do match e with
-  | a@(app (const n ..) e d) =>
+  | a@(app (const `Nat.succ ..) e d) =>
     markNatCons e
-    if n == `Nat.succ then
-      addMark a (mkApp2 (mkConst `HAdd.hAdd) e (mkLit (Literal.natVal 1)))
+    addMark a (plusOne e)
   | app f e d                => markNatCons f; markNatCons e
   | lam n t b d              => markNatCons t; markNatCons b
   | forallE n t b d          => markNatCons t; markNatCons b
@@ -99,6 +98,9 @@ partial def markNatCons (e : Expr) : TransformerM Unit :=
   | e@(const n ..)           => if n == `Nat.zero then
                                   addMark e (mkLit (Literal.natVal 0))
   | e                        => ()
+  where
+    plusOne e :=
+      mkApp2 (mkConst (Name.mkSimple "+")) e (mkLit (Literal.natVal 1))
 
 /-- Traverses `e` and marks type casts of literals to `Nat` for replacement with
     just the literals. For example, given
@@ -148,7 +150,7 @@ partial def markImps (e : Expr) : TransformerM Unit :=
       | mdata m e s         => markImps' xs e
       | proj s i e d        => markImps' xs e
       | e                   => ()
-    imp := mkConst `Imp
+    imp := mkConst (Name.mkSimple "=>")
 
 /-- Traverses `e` and marks quantified expressions over natural numbers for
     replacement with versions that ensure the quantified variables are greater
@@ -178,23 +180,26 @@ partial def markNatForalls (e : Expr) : TransformerM Unit :=
       | mdata m e s         => markImps' xs e
       | proj s i e d        => markImps' xs e
       | e                   => ()
-    imp e := mkApp2 (mkConst `Imp)
-                    (mkApp2 (mkConst `GE.ge)
+    imp e := mkApp2 (mkConst (Name.mkSimple "=>"))
+                    (mkApp2 (mkConst (Name.mkSimple ">="))
                             (mkBVar 0)
                             (mkLit (Literal.natVal 0)))
                     e
 
-def markMinus (e : Expr) : TransformerM Unit :=
-  do match e with
-  | app (app sub@(const `HSub.hSub ..) (const `Nat ..) ..) (const `Nat ..)  _ =>
-      addMark sub (some natMinus)
-  | app f e _           => markMinus f; markMinus e
-  | lam _ _ b _         => markMinus b
-  | mdata _ e _         => markMinus e
-  | proj _ _ e _        => markMinus e
-  | letE _ _ v b _      => markMinus v; markMinus b
-  | forallE _ t b _     => markMinus t; markMinus b
-  | _                   => ()
+/-- Traverses `e` and marks Lean constants for replacement with corresponding
+    SMT-LIB versions. For example, given `"a" < "b"`, this method should mark
+    `<` for replacement with `str.<`. -/
+def markKnownConsts (e : Expr) : TransformerM Unit := do
+  match knownConsts.find? e with
+  | some e' => addMark e e'
+  | none   => match e with
+    | app f e _       => markKnownConsts f; markKnownConsts e
+    | lam _ _ b _     => markKnownConsts b
+    | mdata _ e _     => markKnownConsts e
+    | proj _ _ e _    => markKnownConsts e
+    | letE _ _ v b _  => markKnownConsts v; markKnownConsts b
+    | forallE _ t b _ => markKnownConsts t; markKnownConsts b
+    | _               => ()
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
@@ -249,7 +254,7 @@ def List.toString (es : List (Expr × (Option Expr))) := s!"[" ++ String.interca
 /-- Pre-processes `e` and returns the resulting expr. -/
 def preprocessExpr (e : Expr) : MetaM Expr := do
   -- Print the `e` before the preprocessing step.
-  trace[Smt.debug.transform] "Before: {exprToString e}"
+  trace[Smt.debug.transformer] "Before: {exprToString e}"
   let mut es ← HashMap.empty
   -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
   -- replacement. Note that each pass is passed the original expr `e` as an
@@ -257,11 +262,11 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
   for pass in passes do
     (_, es) ← (pass e).run es
   -- Print the exprs marked for removal/replacement.
-  trace[Smt.debug.transform] "marked: {es.toList.toString}"
+  trace[Smt.debug.transformer] "marked: {es.toList.toString}"
   -- Make the replacements and print the result.
   match ← (replaceMarked e).run es with
     | (none  , _) => panic! "Error: Something went wrong..."
-    | (some e, _) => trace[Smt.debug.transform] "After: {exprToString e}"; e
+    | (some e, _) => trace[Smt.debug.transformer] "After: {exprToString e}"; e
   where
     -- The passes to run through `e`.
     passes : List (Expr → TransformerM Unit) :=
@@ -271,23 +276,22 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markNatLiterals,
      markImps,
      markNatForalls,
-     markMinus]
+     markKnownConsts]
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
   let e ← preprocessExpr e
   exprToTerm' e
   where
-    exprToTerm' : Expr → MetaM Term
-      | fvar id _ => do
+    exprToTerm' (e : Expr) : MetaM Term := do match e with
+      | fvar id _           =>
         let n := (← Meta.getLocalDecl id).userName.toString
         Symbol n
-      | e@(const n ..) => Symbol (match (knownConsts.find? n.toString) with
-        | some n => n
-        | none => (toString e))
-      | sort l _ => Symbol
-        (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
-      | e@(forallE n s b _) => do
+      | e@(const n ..)      => Symbol (toString e)
+      | sort l _ =>
+        Symbol
+          (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
+      | e@(forallE n s b _) =>
         if e.isArrow then
           Meta.forallTelescope e fun ss s => do
             let ss ← ss.mapM Meta.inferType
@@ -296,10 +300,10 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
         else
           Forall n.toString (← exprToTerm' s) <|
             ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
-      | app f t d         => do App (← exprToTerm' f) (← exprToTerm' t)
-      | lit l d => Literal (match l with
+      | app f t _           => App (← exprToTerm' f) (← exprToTerm' t)
+      | lit l _             => Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
         | Literal.strVal s => s)
-      | e => panic! "Unimplemented: " ++ exprToString e
+      | e                   => panic! "Unimplemented: " ++ exprToString e
 
 end Smt.Transformer
