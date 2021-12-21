@@ -34,7 +34,7 @@ def knownConsts : Std.HashMap Expr (Option Expr) :=
     (mkConst `Bool.false, mkConst `false),
     (mkConst `Nat.natAbs, mkConst `abs),
 
-    (mkConst `Neg.neg, mkConst (Name.mkSimple "-")),
+    (mkConst `Neg.neg [levelZero], mkConst (Name.mkSimple "-")),
     (mkConst `HAdd.hAdd levelsZero, mkConst (Name.mkSimple "+")),
     (mkConst `HSub.hSub levelsZero, mkConst (Name.mkSimple "-")),
     (mkConst `HMul.hMul levelsZero, mkConst (Name.mkSimple "*")),

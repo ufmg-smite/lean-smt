@@ -1,0 +1,8 @@
+goal: - -x = x
+
+query:
+(declare-const x Int)
+(assert (not (= (- (- x)) x)))
+(check-sat)
+
+result: unsat
