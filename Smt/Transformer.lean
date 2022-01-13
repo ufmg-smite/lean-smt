@@ -58,7 +58,6 @@ partial def markTypeArgs (e : Expr) : TransformerM Unit :=
       let type ← Meta.inferType e
       match type with
       | sort l ..  => l.isZero
-      | forallE .. => false    -- All arguments must be first order.
       | _          => true
 
 /-- Traverses `e` and marks type class instantiations in apps for removal. For
@@ -300,6 +299,9 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
         else
           Forall n.toString (← exprToTerm' s) <|
             ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
+      | app (const `exists ..) (lam n t b d) _ =>
+        Meta.withLocalDecl n d.binderInfo t fun x => do
+        Exists n.toString (← exprToTerm' t) (← exprToTerm' (b.instantiate #[x]))
       | app f t _           => App (← exprToTerm' f) (← exprToTerm' t)
       | lit l _             => Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩

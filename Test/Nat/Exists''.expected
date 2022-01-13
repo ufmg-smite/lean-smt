@@ -1,0 +1,8 @@
+goal: ∃ x, x ≥ 0
+
+query:
+(define-sort Nat () Int)
+(assert (not (exists ((x Nat)) (>= x 0))))
+(check-sat)
+
+result: unsat

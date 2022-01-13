@@ -29,6 +29,7 @@ def knownConsts : Std.HashMap Expr (Option Expr) :=
     (mkConst `And, mkConst `and),
     (mkConst `Or, mkConst `or),
     (mkConst `Iff, mkConst (Name.mkSimple "=")),
+    (mkConst `Exists [levelOne], mkConst `exists),
     (mkConst `BEq.beq [levelZero], mkConst (Name.mkSimple "=")),
     (mkConst `Bool.true, mkConst `true),
     (mkConst `Bool.false, mkConst `false),

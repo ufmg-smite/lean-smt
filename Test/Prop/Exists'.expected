@@ -1,0 +1,7 @@
+goal: ∃ p, p
+
+query:
+(assert (not (exists ((p Bool)) p)))
+(check-sat)
+
+result: unsat
