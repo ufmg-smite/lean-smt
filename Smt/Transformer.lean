@@ -185,6 +185,17 @@ partial def markNatForalls (e : Expr) : TransformerM Unit :=
                             (mkLit (Literal.natVal 0)))
                     e
 
+def markOfNat (e : Expr) : TransformerM Unit := do match e with
+  | a@(app (const `Int.ofNat ..) e _)  =>
+    addMark a e
+    markOfNat e
+  | app f e _       => markOfNat f; markOfNat e
+  | lam _ _ b _     => markOfNat b
+  | mdata _ e _     => markOfNat e
+  | proj _ _ e _    => markOfNat e
+  | letE _ _ v b _  => markOfNat v; markOfNat b
+  | forallE _ t b _ => markOfNat t; markOfNat b
+  | _               => ()
 /-- Traverses `e` and marks Lean constants for replacement with corresponding
     SMT-LIB versions. For example, given `"a" < "b"`, this method should mark
     `<` for replacement with `str.<`. -/
@@ -275,7 +286,8 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markNatLiterals,
      markImps,
      markNatForalls,
-     markKnownConsts]
+     markKnownConsts,
+     markOfNat]
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
