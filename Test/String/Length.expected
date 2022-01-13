@@ -1,0 +1,7 @@
+goal: String.length "a" = 1
+
+query:
+(assert (not (= (str.len "a") 1)))
+(check-sat)
+
+result: unsat

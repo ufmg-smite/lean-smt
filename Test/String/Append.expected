@@ -1,0 +1,7 @@
+goal: "a" ++ "b" = "ab"
+
+query:
+(assert (not (= (str.++ "a" "b") "ab")))
+(check-sat)
+
+result: unsat

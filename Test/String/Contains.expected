@@ -1,0 +1,8 @@
+goal: String.contains "a" (Char.ofNat 97) = true
+
+query:
+(assert (not (= (str.contains "a" (str.from_code 97)) true)))
+(check-sat)
+
+result: unsat
+Test/String/Contains.lean:5:2: warning: declaration uses 'sorry'

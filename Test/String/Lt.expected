@@ -1,0 +1,7 @@
+goal: "a" < "b"
+
+query:
+(assert (not (str.< "a" "b")))
+(check-sat)
+
+result: unsat
