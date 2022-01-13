@@ -154,8 +154,7 @@ partial def markImps (e : Expr) : TransformerM Unit :=
 /-- Traverses `e` and marks quantified expressions over natural numbers for
     replacement with versions that ensure the quantified variables are greater
     than or equal to 0. For example, given `∀ x : Nat, p(x)`, this method
-    should mark the expr for replacement with `∀ x : Nat, x ≥ 0 → p(x)`.
-    TODO: Do something similar for `∃` when it gets supported. -/
+    should mark the expr for replacement with `∀ x : Nat, x ≥ 0 → p(x)`. -/
 partial def markNatForalls (e : Expr) : TransformerM Unit :=
   markImps' #[] e
   where

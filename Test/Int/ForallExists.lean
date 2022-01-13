@@ -1,6 +1,6 @@
 import Smt
 
-theorem forallExists : ∀ (x : Nat), ∃ (y : Int), x ≤ y := by
+theorem forallExists : ∀ x : Nat, ∃ y : Int, x ≤ y := by
   smt
   intro x
   apply Exists.intro

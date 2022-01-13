@@ -1,7 +1,7 @@
-goal: ∃ p, true = true
+goal: ∃ p, p = true
 
 query:
-(assert (not (exists ((p Bool)) (= true true))))
+(assert (not (exists ((p Bool)) (= p true))))
 (check-sat)
 
 result: unsat
