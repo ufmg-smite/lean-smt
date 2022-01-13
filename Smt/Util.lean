@@ -83,7 +83,15 @@ def smtConsts : Std.HashSet String :=
     ">",
     "<",
     ">=",
-    "<="
+    "<=",
+    "str.<",
+    "str.++",
+    "str.len",
+    "str.replace_all",
+    "str.at",
+    "str.contains",
+    "str.to_code",
+    "str.from_code"
   ]
 
 /-- Returns all unknown constants in the given expression. -/

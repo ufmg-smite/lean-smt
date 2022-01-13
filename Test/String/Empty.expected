@@ -1,0 +1,7 @@
+goal: "" = ""
+
+query:
+(assert (not (= "" "")))
+(check-sat)
+
+result: unsat

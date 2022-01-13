@@ -33,6 +33,8 @@ def knownConsts : Std.HashMap Expr (Option Expr) :=
     (mkConst `BEq.beq [levelZero], mkConst (Name.mkSimple "=")),
     (mkConst `Bool.true, mkConst `true),
     (mkConst `Bool.false, mkConst `false),
+    (mkConst `String.length, mkConst `str.len),
+    (mkConst `String.replace, mkConst `str.replace_all),
 
     (mkConst `Neg.neg [levelZero], mkConst (Name.mkSimple "-")),
     (mkConst `HAdd.hAdd levelsZero, mkConst (Name.mkSimple "+")),
@@ -50,7 +52,13 @@ def knownConsts : Std.HashMap Expr (Option Expr) :=
     (mkApp2 (mkConst `HDiv.hDiv levelsZero) (mkConst `Nat) (mkConst `Nat),
      mkConst `div),
     (mkApp2 (mkConst `HDiv.hDiv levelsZero) (mkConst `Int) (mkConst `Int),
-     mkConst `div)
+     mkConst `div),
+
+    (mkApp (mkConst `LT.lt [levelZero]) (mkConst `String),
+     mkConst (Name.mkSimple "str.<")),
+    ((mkApp2 (mkConst `HAppend.hAppend levelsZero)
+             (mkConst `String) (mkConst `String),
+     mkConst (Name.mkSimple "str.++")))
   ]
   where
     levelsZero := [levelZero, levelZero, levelZero]

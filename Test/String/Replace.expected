@@ -1,0 +1,8 @@
+goal: String.replace "a" "a" "b" = "b"
+
+query:
+(assert (not (= (str.replace_all "a" "a" "b") "b")))
+(check-sat)
+
+result: unsat
+Test/String/Replace.lean:5:2: warning: declaration uses 'sorry'

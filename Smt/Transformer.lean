@@ -185,6 +185,9 @@ partial def markNatForalls (e : Expr) : TransformerM Unit :=
                     e
 
 def markOfNat (e : Expr) : TransformerM Unit := do match e with
+  | a@(app (const `Char.ofNat ..) e _)  =>
+    addMark a e
+    markOfNat e
   | a@(app (const `Int.ofNat ..) e _)  =>
     addMark a e
     markOfNat e
@@ -195,6 +198,33 @@ def markOfNat (e : Expr) : TransformerM Unit := do match e with
   | letE _ _ v b _  => markOfNat v; markOfNat b
   | forallE _ t b _ => markOfNat t; markOfNat b
   | _               => ()
+
+def markStringGetOp (e : Expr) : TransformerM Unit := do match e with
+  | a@(app (app (const `String.getOp ..) f _) e _)  =>
+    addMark a (mkApp (mkConst `str.to_code) (mkApp2 (mkConst `str.at) f e))
+    markStringGetOp f
+    markStringGetOp e
+  | app f e _       => markStringGetOp f; markStringGetOp e
+  | lam _ _ b _     => markStringGetOp b
+  | mdata _ e _     => markStringGetOp e
+  | proj _ _ e _    => markStringGetOp e
+  | letE _ _ v b _  => markStringGetOp v; markStringGetOp b
+  | forallE _ t b _ => markStringGetOp t; markStringGetOp b
+  | _               => ()
+
+def markStringContains (e : Expr) : TransformerM Unit := do match e with
+  | a@(app (app (const `String.contains ..) f _) e _)  =>
+    addMark a (mkApp2 (mkConst `str.contains) f (mkApp (mkConst `str.from_code) e))
+    markStringGetOp f
+    markStringGetOp e
+  | app f e _       => markStringContains f; markStringContains e
+  | lam _ _ b _     => markStringContains b
+  | mdata _ e _     => markStringContains e
+  | proj _ _ e _    => markStringContains e
+  | letE _ _ v b _  => markStringContains v; markStringContains b
+  | forallE _ t b _ => markStringContains t; markStringContains b
+  | _               => ()
+
 /-- Traverses `e` and marks Lean constants for replacement with corresponding
     SMT-LIB versions. For example, given `"a" < "b"`, this method should mark
     `<` for replacement with `str.<`. -/
@@ -286,7 +316,9 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markImps,
      markNatForalls,
      markKnownConsts,
-     markOfNat]
+     markOfNat,
+     markStringGetOp,
+     markStringContains]
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
@@ -316,7 +348,7 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
       | app f t _           => App (← exprToTerm' f) (← exprToTerm' t)
       | lit l _             => Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
-        | Literal.strVal s => s)
+        | Literal.strVal s => s!"\"{s}\"")
       | e                   => panic! "Unimplemented: " ++ exprToString e
 
 end Smt.Transformer
