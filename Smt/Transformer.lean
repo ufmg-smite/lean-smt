@@ -35,29 +35,33 @@ partial def markTypeArgs (e : Expr) : TransformerM Unit :=
   markTypeArgs' #[] e
   where
     markTypeArgs' xs e := do match e with
-      | app f e d       =>
+      | app a@(app (const `Exists ..) ..) e d =>
+        markTypeArgs' xs a
+        markTypeArgs' xs e
+      | app f e d                             =>
         markTypeArgs' xs f
         if ← hasValidSort (e.instantiate xs) then markTypeArgs' xs e
         else addMark e none
-      | lam n t b d     =>
+      | lam n t b d                           =>
         markTypeArgs' xs t
         Meta.withLocalDecl n d.binderInfo t (λ x => markTypeArgs' (xs.push x) b)
-      | forallE n t b d =>
+      | forallE n t b d                       =>
         markTypeArgs' xs t
         Meta.withLocalDecl n d.binderInfo t (λ x => markTypeArgs' (xs.push x) b)
-      | letE n t v b d  =>
+      | letE n t v b d                        =>
         markTypeArgs' xs t
         markTypeArgs' xs v
-        Meta.withLetDecl n t v (fun x => markTypeArgs' (xs.push x) b)
-      | mdata m e s     => markTypeArgs' xs e
-      | proj s i e d    => markTypeArgs' xs e
-      | e               => ()
+        Meta.withLetDecl n t v (λ x => markTypeArgs' (xs.push x) b)
+      | mdata m e s                           => markTypeArgs' xs e
+      | proj s i e d                          => markTypeArgs' xs e
+      | e                                     => ()
     -- Returns the whether or not we should add `e` to the argument list
     -- (i.e., skip implicit sort arguments).
     hasValidSort (e : Expr) : MetaM Bool := do
       let type ← Meta.inferType e
       match type with
       | sort l ..  => l.isZero
+      | forallE .. => false    -- All arguments must be first order.
       | _          => true
 
 /-- Traverses `e` and marks type class instantiations in apps for removal. For

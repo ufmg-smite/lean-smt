@@ -1,10 +1,10 @@
-goal: p = q → f p = f q
+goal: (p == q) = true → (f p == f q) = true
 
 query:
 (declare-const p Bool)
 (declare-const q Bool)
 (declare-fun f (Bool) Bool)
-(assert (not (=> (= p q) (= (f p) (f q)))))
+(assert (not (=> (= (= p q) true) (= (= (f p) (f q)) true))))
 (check-sat)
 
 result: unsat

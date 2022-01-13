@@ -10,8 +10,8 @@ open Lean.Elab.Tactic
 
 initialize
   Lean.registerTraceClass `Smt.debug
-  Lean.registerTraceClass `Smt.debug.transformer
   Lean.registerTraceClass `Smt.debug.query
+  Lean.registerTraceClass `Smt.debug.transformer
 
 instance : Lean.KVMap.Value Kind where
   toDataValue
@@ -53,11 +53,11 @@ def modus_ponens (p q : Prop) (hp : p) (hpq : p → q) : q := by
 ```
 The tactic then generates the query below:
 ```smt2
-(declare-const p Bool)
 (declare-const q Bool)
+(assert (not q))
+(declare-const p Bool)
 (assert p)
 (assert (=> p q))
-(assert (not q))
 (check-sat)
 ```
 -/

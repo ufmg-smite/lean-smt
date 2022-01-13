@@ -34,26 +34,30 @@ def exprToString : Expr → String
       | Literal.strVal v => v
 
 /-- Returns all free variables in the given expression. -/
-def getFVars : Expr → List Expr
-  | forallE _ d b _ => getFVars d ++ getFVars b
-  | lam _ d b _     => getFVars d ++ getFVars b
-  | letE _ t v b _  => getFVars t ++ getFVars v ++ getFVars b
-  | app f a _       => getFVars f ++ getFVars a
-  | mdata _ b _     => getFVars b
-  | proj _ _ b _    => getFVars b
-  | fvar id d       => [fvar id d]
-  | _               => []
+def getFVars (e : Expr) : List Expr := (getFVars' e).eraseDups
+  where
+    getFVars' : Expr → List Expr
+      | forallE _ d b _ => getFVars' d ++ getFVars' b
+      | lam _ d b _     => getFVars' d ++ getFVars' b
+      | letE _ t v b _  => getFVars' t ++ getFVars' v ++ getFVars' b
+      | app f a _       => getFVars' f ++ getFVars' a
+      | mdata _ b _     => getFVars' b
+      | proj _ _ b _    => getFVars' b
+      | fvar id d       => [fvar id d]
+      | _               => []
 
 /-- Returns all meta variables in the given expression. -/
-def getMVars : Expr → List Expr
-  | forallE _ d b _ => getMVars d ++ getMVars b
-  | lam _ d b _     => getMVars d ++ getMVars b
-  | letE _ t v b _  => getMVars t ++ getMVars v ++ getMVars b
-  | app f a _       => getMVars f ++ getMVars a
-  | mdata _ b _     => getMVars b
-  | proj _ _ b _    => getMVars b
-  | mvar id d       => [mvar id d]
-  | _               => []
+def getMVars (e : Expr) : List Expr := (getMVars' e).eraseDups
+  where
+    getMVars' : Expr → List Expr
+      | forallE _ d b _ => getMVars' d ++ getMVars' b
+      | lam _ d b _     => getMVars' d ++ getMVars' b
+      | letE _ t v b _  => getMVars' t ++ getMVars' v ++ getMVars' b
+      | app f a _       => getMVars' f ++ getMVars' a
+      | mdata _ b _     => getMVars' b
+      | proj _ _ b _    => getMVars' b
+      | mvar id d       => [mvar id d]
+      | _               => []
 
 /-- Does the expression `e` contain meta variables? -/
 def hasMVars (e : Expr) : Bool := !(getMVars e).isEmpty
