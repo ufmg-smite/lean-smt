@@ -58,7 +58,6 @@ partial def markTypeArgs (e : Expr) : TransformerM Unit :=
       let type ← Meta.inferType e
       match type with
       | sort l ..  => l.isZero
-      | forallE .. => false    -- All arguments must be first order.
       | _          => true
 
 /-- Traverses `e` and marks type class instantiations in apps for removal. For
@@ -155,8 +154,7 @@ partial def markImps (e : Expr) : TransformerM Unit :=
 /-- Traverses `e` and marks quantified expressions over natural numbers for
     replacement with versions that ensure the quantified variables are greater
     than or equal to 0. For example, given `∀ x : Nat, p(x)`, this method
-    should mark the expr for replacement with `∀ x : Nat, x ≥ 0 → p(x)`.
-    TODO: Do something similar for `∃` when it gets supported. -/
+    should mark the expr for replacement with `∀ x : Nat, x ≥ 0 → p(x)`. -/
 partial def markNatForalls (e : Expr) : TransformerM Unit :=
   markImps' #[] e
   where
@@ -186,6 +184,17 @@ partial def markNatForalls (e : Expr) : TransformerM Unit :=
                             (mkLit (Literal.natVal 0)))
                     e
 
+def markOfNat (e : Expr) : TransformerM Unit := do match e with
+  | a@(app (const `Int.ofNat ..) e _)  =>
+    addMark a e
+    markOfNat e
+  | app f e _       => markOfNat f; markOfNat e
+  | lam _ _ b _     => markOfNat b
+  | mdata _ e _     => markOfNat e
+  | proj _ _ e _    => markOfNat e
+  | letE _ _ v b _  => markOfNat v; markOfNat b
+  | forallE _ t b _ => markOfNat t; markOfNat b
+  | _               => ()
 /-- Traverses `e` and marks Lean constants for replacement with corresponding
     SMT-LIB versions. For example, given `"a" < "b"`, this method should mark
     `<` for replacement with `str.<`. -/
@@ -276,7 +285,8 @@ def preprocessExpr (e : Expr) : MetaM Expr := do
      markNatLiterals,
      markImps,
      markNatForalls,
-     markKnownConsts]
+     markKnownConsts,
+     markOfNat]
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
@@ -300,6 +310,9 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
         else
           Forall n.toString (← exprToTerm' s) <|
             ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
+      | app (const `exists ..) (lam n t b d) _ =>
+        Meta.withLocalDecl n d.binderInfo t fun x => do
+        Exists n.toString (← exprToTerm' t) (← exprToTerm' (b.instantiate #[x]))
       | app f t _           => App (← exprToTerm' f) (← exprToTerm' t)
       | lit l _             => Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩

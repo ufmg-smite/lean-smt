@@ -70,6 +70,7 @@ def smtConsts : Std.HashSet String :=
     "not",
     "and",
     "or",
+    "exists",
     "=>",
     "Int",
     "+",

@@ -1,0 +1,7 @@
+goal: ∃ x, x = 1
+
+query:
+(assert (not (exists ((x Int)) (= x 1))))
+(check-sat)
+
+result: unsat

@@ -7,6 +7,7 @@ inductive Term where
   | Arrow   : Term → Term → Term          -- Function sorts
   | App     : Term → Term → Term          -- Function application
   | Forall  : String → Term → Term → Term -- Forall quantifier
+  | Exists  : String → Term → Term → Term -- Exists quantifier
   deriving Inhabited
 
 namespace Term
@@ -39,6 +40,7 @@ partial def toString : Term → String
     let ts := List.reverse <| appToList (App f t)
     "(" ++ String.intercalate " " (ts.map toString) ++ ")"
   | Forall n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
+  | Exists n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
   where
     arrowToList : Term → List Term
       | Arrow d c => d :: arrowToList c
