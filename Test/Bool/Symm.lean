@@ -1,5 +1,5 @@
 import Smt
 
-theorem symm (p q : Bool) : p = q → q = p := by
+theorem symm (p q : Bool) : p == q → q == p := by
   smt
-  simp_all
+  cases p <;> cases q <;> simp_all

@@ -1,9 +1,9 @@
-goal: p = q → q = p
+goal: (p == q) = true → (q == p) = true
 
 query:
 (declare-const p Bool)
 (declare-const q Bool)
-(assert (not (=> (= p q) (= q p))))
+(assert (not (=> (= (= p q) true) (= (= q p) true))))
 (check-sat)
 
 result: unsat

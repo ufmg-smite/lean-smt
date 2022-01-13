@@ -1,5 +1,5 @@
 import Smt
 
-theorem refl (p : Bool) : p = p := by
+theorem refl (p : Bool) : p == p := by
   smt
-  simp_all
+  cases p <;> simp_all
