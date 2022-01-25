@@ -22,7 +22,7 @@ partial def readAllFiles (dir : FilePath) : IO (Array FilePath) := do
 Run tests.
 
 USAGE:
-  lake run test
+  lake script run test
 
 Run tests.
 -/

@@ -9,9 +9,10 @@ open Lean.Elab
 open Lean.Elab.Tactic
 
 initialize
-  Lean.registerTraceClass `Smt.debug
-  Lean.registerTraceClass `Smt.debug.query
-  Lean.registerTraceClass `Smt.debug.transformer
+  registerTraceClass `Smt.debug
+  registerTraceClass `Smt.debug.attr
+  registerTraceClass `Smt.debug.query
+  registerTraceClass `Smt.debug.transformer
 
 instance : Lean.KVMap.Value Kind where
   toDataValue

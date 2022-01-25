@@ -10,6 +10,10 @@ open Smt.Term
 open Smt.Solver
 open Lean
 
+infixl:20  " • " => App
+prefix:21 " ` " => Symbol
+prefix:21 " `` " => Literal
+
 def defNat (s : Solver) : Solver := defineSort s "Nat" [] (Symbol "Int")
 
 def defNatSub (s : Solver) : Solver :=

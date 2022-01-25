@@ -30,4 +30,4 @@ jobs:
     - name: Build lean-smt
       run: lake build
     - name: Test lean-smt
-      run: lake run test
+      run: lake script run test
