@@ -33,7 +33,7 @@ partial def dfs [Monad m] (f : α → m Unit) : m Unit := do
     dfs' (v : α) : StateM (HashSet α) (m Unit) := do
       let vs ← get
       if vs.contains v then
-        return
+        return (pure ())
       set (vs.insert v)
       match g.neighbors v with
       | none    => return (f v)

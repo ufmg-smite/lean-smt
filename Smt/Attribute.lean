@@ -53,8 +53,8 @@ def registerSmtAttr (attrName : Name) (attrDescr : String)
       trace[Smt.debug.attr]
         s!"transformers: {(smtExt.getState (← getEnv)).toList}"
     erase := fun declName => do
-      let s ← smtExt.getState (← getEnv)
-      let s ← s.erase declName
+      let s := smtExt.getState (← getEnv)
+      let s := s.erase declName
       modifyEnv fun env => smtExt.modifyState env fun _ => s
   }
 
