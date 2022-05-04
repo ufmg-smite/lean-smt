@@ -68,7 +68,7 @@ def queryToString (commands : List String) : String :=
   String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
 
 def parseTactic : Syntax → TacticM (List Expr)
-  | `(tactic| smt)       => []
+  | `(tactic| smt)       => pure []
   | `(tactic| smt [$[$hs],*]) => hs.toList.mapM (fun h => elabTerm h none)
   | _                    => throwUnsupportedSyntax
 

@@ -22,10 +22,10 @@ partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
       MetaM (Graph Expr Unit) := do
       let mut g := g
       for e in es do
+        trace[Smt.debug.query] "e: {e}"
         assert!(e.isConst ∨ e.isFVar)
         if ¬(g.contains e) then
           g := g.addVertex e
-          trace[Smt.debug.query] "e: {e}"
           let et ← inferType e
           trace[Smt.debug.query] "et: {et}"
           let fvs := Util.getFVars et
@@ -40,13 +40,14 @@ partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
             if ¬(g.contains uc) then
               g := g.addVertex uc
             g := g.addEdge e uc ()
+            let nat := mkConst `Nat
+            if ¬(g.contains nat) then
+              g := g.addVertex nat
             if uc.constName? == some `Nat.sub then
-              let nat := mkConst `Nat
-              if ¬(g.contains nat) then
-                g := g.addVertex nat
               g := g.addEdge uc nat ()
+            g := g.addEdge uc nat ()
             -- TODO: further process uc
-      g
+      return g
 
 def natAssertBody (n : String) :=
   App (App (Symbol ">=") (Symbol n)) (Literal "0")
@@ -57,7 +58,7 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   match e with
   | const `Nat ..     => set (defNat solver); return
   | const `Nat.sub .. => set (defNatSub solver); return
-  | _                 => ()
+  | _                 => pure ()
   let t ← inferType e
   let mut t ← inferType e
   if Util.hasMVars t then
@@ -66,8 +67,8 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   let s ← Transformer.exprToTerm t
   trace[Smt.debug.query] "s: {s}"
   let n ← match e with
-  | fvar id .. => (← Lean.Meta.getLocalDecl id).userName.toString
-  | const n .. => n.toString
+  | fvar id .. => pure (← Lean.Meta.getLocalDecl id).userName.toString
+  | const n .. => pure n.toString
   | _          => panic! ""
   let tt ← Lean.Meta.inferType t
   _ ← set (match tt with
@@ -85,6 +86,6 @@ def generateQuery (es : List Expr) (solver : Solver) : MetaM Solver := do
   let g ← buildDependencyGraph es
   trace[Smt.debug.query] "Dependency Graph: {g}"
   let (_, solver) ← StateT.run (g.dfs processVertex) solver
-  solver
+  return solver
 
 end Smt.Query

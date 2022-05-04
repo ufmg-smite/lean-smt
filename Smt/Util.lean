@@ -6,7 +6,7 @@ partial def String.isSubStrOf (sub : String) (s : String) : Bool :=
   where
     loop i :=
     if i + sub.length > s.length then false
-    else String.substrEq sub 0 s i sub.length ∨ loop (i + 1)
+    else String.substrEq sub 0 s ⟨i⟩ sub.length ∨ loop (i + 1)
 
 namespace Smt.Util
 

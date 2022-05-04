@@ -16,7 +16,7 @@ partial def readAllFiles (dir : FilePath) : IO (Array FilePath) := do
       files := (← readAllFiles entry.path) ++ files
     else
       files := files.push entry.path
-  files
+  return files
 
 /--
 Run tests.
@@ -27,7 +27,7 @@ USAGE:
 Run tests.
 -/
 script test (args) do
-  let lean ← match (← Lake.findLeanInstall?) with
+  let lean := match (← Lake.findLeanInstall?) with
     | none   => panic! "Error: could not find lean executable."
     | some i => i.lean
   let files ← readAllFiles (FilePath.mk "Test")

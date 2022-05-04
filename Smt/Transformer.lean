@@ -12,26 +12,26 @@ open Smt.Term
 open Smt.Util
 open Std
 
-/-- Monad for transforming expressions. Keeps track of sub-expressions marked
-    for removal/replacement. -/
-abbrev TransformerM := StateT (HashMap Expr (Option Expr)) MetaM
-
-/-- Type of functions that mark expressions. -/
-abbrev Transformer := Expr → TransformerM Unit
+/-- Type of functions that transform expressions. -/
+abbrev Transformer := Expr → MetaM (Option Expr)
 
 namespace Transformer
 
-/-- Mark `e` for removal (if `e'` is `none`) or replacement with `e'`. -/
-def addMark (e : Expr) (e' : Option Expr) : TransformerM Unit :=
-  get >>= fun map => set (map.insert e e')
+private unsafe def getTransformersUnsafe : MetaM (List Transformer) := do
+  let env ← getEnv
+  let names := (smtExt.getState env).toList
+  trace[Smt.debug.attr] "Transformers: {names}"
+  let mut transformers := []
+  for name in names do
+    let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
+      env.evalConst Transformer Options.empty name
+    transformers := fn :: transformers
+  return transformers
 
-/-- Is `e` marked for removal/replacement? -/
-def isMarked (e : Expr) : TransformerM Bool :=
-  get >>= fun map => map.contains e
-
-/-- Get `e`'s replacement, if it exists. -/
-def getReplacement! (e : Expr) : TransformerM (Option Expr) :=
-  get >>= fun map => map.find! e
+/-- Returns the list of transformers maintained by `smtExt` in the current
+    Lean environment. -/
+@[implementedBy getTransformersUnsafe]
+constant getTransformers : MetaM (List Transformer)
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
@@ -43,78 +43,75 @@ def getReplacement! (e : Expr) : TransformerM (Option Expr) :=
     is replaced with `(Imp p' q)`. Some replacements and removals may return
     ill-formed exprs for SMT-LIBv2. It's the caller's responsibility to ensure
     that the replacement do not produce ill-formed exprs. -/
-partial def replaceMarked (e : Expr) : TransformerM (Option Expr) := do
-  match ← isMarked e with
-  | true => match ← getReplacement! e with
-    | none    => none             -- Remove `e`.
-    | some e' => replaceMarked e' -- Replace `e` with `e'` and process `e'`.
-  | false    => match e with
-    | app f e d       => match ← replaceMarked f, ← replaceMarked e with
-       -- Replace `(APP f e)` with `(APP f' e')`.
-      | some f', some e' => mkApp f' e'
-       -- Replace `(APP f e)` with `e'`.
-      | none   , some e' => e'
-       -- Replace `(APP f e)` with `f'`.
-      | some f', none    => f'
-       -- Remove `(APP f e)`.
-      | none   , none    => none
-    | lam n t b d     => match ← replaceMarked b with
-      | none   => none
-      | some b => mkLambda n d.binderInfo t b
-    | forallE n t b d => match ← replaceMarked b with
-      | some b => mkForall n d.binderInfo t b
-      | _      => none
-    | letE n t v b d  => match ← replaceMarked t,
-                               ← replaceMarked v,
-                               ← replaceMarked b with
-      | some t, some v, some b => mkLet n t v b
-      | _     , _     , _      => none
-    | mdata m e s     => match ← replaceMarked e with
-      | none => none
-      | some e => mkMData m e
-    | proj s i e d    => match ← replaceMarked e with
-      | none => none
-      | some e => mkProj s i e
-    | e               => e
-
-/-- Print an adjacency list of exprs using AST printer for `Expr`. -/
-def List.toString (es : List (Expr × (Option Expr))) := s!"[" ++ String.intercalate ", " (es.map helper) ++ "]"
+partial def applyTransformations : Transformer := fun e => do
+  let ts ← getTransformers
+  appTransforms' ts e
   where
-    helper : Expr × (Option Expr) → String
-    | (e, o) => s!"({exprToString e},{o.format.pretty})"
-
-private unsafe def getTransformersUnsafe : MetaM (List Transformer) := do
-  let env ← getEnv
-  let names := (smtExt.getState env).toList
-  trace[Smt.debug.attr] "Transformers: {names}"
-  let mut transformers := []
-  for name in names do
-    let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
-      env.evalConst Transformer Options.empty name
-    transformers := fn :: transformers
-  transformers
-
-/-- Returns the list of transformers maintained by `smtExt` in the current
-    Lean environment. -/
-@[implementedBy getTransformersUnsafe]
-constant getTransformers : MetaM (List Transformer)
+    appTransforms' (ts : List Transformer) : Transformer := fun e => do
+      for t in ts do
+        match (← t e) with
+        | none    => trace[Smt.debug.transformer] "({e}, none)"; return none
+        | some e' =>
+          if e' == e then continue
+          else trace[Smt.debug.transformer] "({e}, {e'})"; return e'
+      match e with
+      | app f e _       => match ← appTransforms' ts f,
+                                 ← appTransforms' ts e with
+        -- Remove `(APP f e)`.
+        | none   , none    => pure none
+        -- Replace `(APP f e)` with `e'`.
+        | none   , some e' => pure e'
+        -- Replace `(APP f e)` with `f'`.
+        | some f', none    => pure f'
+        -- Replace `(APP f e)` with `(APP f' e')`.
+        | some f', some e' => pure (mkApp f' e')
+      | lam n t b d     =>
+        let t' ← appTransforms' ts t
+        let b' ← Meta.withLocalDecl n d.binderInfo t (appTransforms'' ts b)
+        match t', b' with
+        | some t', some b' => pure (mkLambda n d.binderInfo t' b')
+        | _      , _       => pure none
+      | forallE n t b d =>
+        let t' ← appTransforms' ts t
+        let b' ← Meta.withLocalDecl n d.binderInfo t (appTransforms'' ts b)
+        match t', b' with
+        | some t', some b' => pure (mkForall n d.binderInfo t' b')
+        | _      , _       => pure none
+      | letE n t v b d  =>
+        let t' ← appTransforms' ts t
+        let v' ← appTransforms' ts v
+        let b' ← Meta.withLetDecl n t v (appTransforms'' ts b)
+        match t', v', b' with
+        | some t', some v' , some b' => pure (mkLet n t' v' b')
+        | _      , _       , _       => pure none
+      | mdata m e s     => match ← appTransforms' ts e with
+        | none => pure none
+        | some e => pure (mkMData m e)
+      | proj s i e d    => match ← appTransforms' ts e with
+        | none => pure none
+        | some e => pure (mkProj s i e)
+      | e               => pure e
+    appTransforms'' ts b x := do
+      let mut b' ← appTransforms' ts (b.instantiate #[x])
+      if let some b'' := b' then
+        b' := some (b''.abstract #[x])
+      return b'
 
 /-- Pre-processes `e` and returns the resulting expr. -/
 def preprocessExpr (e : Expr) : MetaM Expr := do
   -- Print the `e` before the preprocessing step.
-  trace[Smt.debug.transformer] "Before: {exprToString e}"
-  let mut es ← HashMap.empty
+  trace[Smt.debug.transformer] "before: {exprToString e}"
   -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
   -- replacement. Note that each pass is passed the original expr `e` as an
   -- input. So, the order of the passes does not matter.
-  for transformer in (← getTransformers) do
-    (_, es) ← (transformer e).run es
+  trace[Smt.debug.transformer] "marked:"
+  let e' ← applyTransformations e
   -- Print the exprs marked for removal/replacement.
-  trace[Smt.debug.transformer] "marked: {es.toList.toString}"
   -- Make the replacements and print the result.
-  match ← (replaceMarked e).run es with
-    | (none  , _) => panic! "Error: Something went wrong..."
-    | (some e, _) => trace[Smt.debug.transformer] "After: {exprToString e}"; e
+  let (some e') := e'
+    | panic! s!"Error: Something went wrong while transforming {e}"
+  trace[Smt.debug.transformer] "after: {exprToString e'}"
+  return e'
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
@@ -124,25 +121,26 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
     exprToTerm' (e : Expr) : MetaM Term := do match e with
       | fvar id _           =>
         let n := (← Meta.getLocalDecl id).userName.toString
-        Symbol n
-      | e@(const n ..)      => Symbol (toString e)
+        pure (Symbol n)
+      | e@(const n ..)      => pure (Symbol (toString e))
       | sort l _ =>
-        Symbol
+        pure $ Symbol
           (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
       | e@(forallE n s b _) =>
         if e.isArrow then
           Meta.forallTelescope e fun ss s => do
             let ss ← ss.mapM Meta.inferType
-            ss.foldrM (fun d c => do Arrow (← exprToTerm' d) (← c))
+            ss.foldrM (fun d c => do return Arrow (← exprToTerm' d) c)
                       (← exprToTerm' s)
         else
-          Forall n.toString (← exprToTerm' s) <|
+          pure $ Forall n.toString (← exprToTerm' s) <|
             ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
       | app (const `exists ..) (lam n t b d) _ =>
         Meta.withLocalDecl n d.binderInfo t fun x => do
-        Exists n.toString (← exprToTerm' t) (← exprToTerm' (b.instantiate #[x]))
-      | app f t _           => App (← exprToTerm' f) (← exprToTerm' t)
-      | lit l _             => Literal (match l with
+        return Exists n.toString (← exprToTerm' t)
+                                 (← exprToTerm' (b.instantiate #[x]))
+      | app f t _           => pure $ App (← exprToTerm' f) (← exprToTerm' t)
+      | lit l _             => pure $ Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
         | Literal.strVal s => s!"\"{s}\"")
       | e                   => panic! "Unimplemented: " ++ exprToString e
