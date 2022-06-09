@@ -1,4 +1,5 @@
 import Std
+import Lean.Message
 
 section
 
@@ -53,6 +54,20 @@ def formatGraph [ToFormat α] [ToFormat β] : Format :=
 
 instance [ToFormat α] [ToFormat β] : ToFormat (Graph α β) where
   format (g) := Graph.formatGraph g
+
+open Lean in
+def toMessageData [ToMessageData α] [ToMessageData β] : MessageData :=
+  m!"\{{MessageData.group <| .node <| g.vertices.toArray.map formatVertex}}"
+where
+  formatVertex (v : α) : MessageData :=
+    m!"({v}:{formatNeighbors <| g.neighbors v})"
+  formatNeighbors : Option (List α) → MessageData
+    | none    => .nil
+    | some es => .group <| .node <| es.toArray.map ToMessageData.toMessageData
+
+open Lean in
+instance [ToMessageData α] [ToMessageData β] : ToMessageData (Graph α β) where
+  toMessageData g := toMessageData g
 
 end Graph
 
