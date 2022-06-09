@@ -6,4 +6,3 @@ query:
 (check-sat)
 
 result: unsat
-Test/Int/ForallExists.lean:11:13: warning: unused variable `ih`
