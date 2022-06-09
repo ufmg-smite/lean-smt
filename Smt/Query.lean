@@ -59,7 +59,6 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   | const `Nat ..     => set (defNat solver); return
   | const `Nat.sub .. => set (defNatSub solver); return
   | _                 => pure ()
-  let t ← inferType e
   let mut t ← inferType e
   if Util.hasMVars t then
     t ← whnf t

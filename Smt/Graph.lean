@@ -26,9 +26,8 @@ def weight : Option β := (g.find? v).bind λ es => es.find? u
 partial def dfs [Monad m] (f : α → m Unit) : m Unit := do
   let mut vs : HashSet α := HashSet.empty
   for v in g.vertices do
-    let mut u : m Unit := return
-    (u, vs) := StateT.run (dfs' v) vs
-    _ ← u
+    -- leanprover/lean4#1206
+    (_, vs) := StateT.run (dfs' v) vs
   where
     dfs' (v : α) : StateM (HashSet α) (m Unit) := do
       let vs ← get
