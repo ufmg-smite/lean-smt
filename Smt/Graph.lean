@@ -23,25 +23,22 @@ def addEdge : Graph α β := g.insert v ((g.find! v).insert u e)
 
 def weight : Option β := (g.find? v).bind λ es => es.find? u
 
-partial def dfs [Monad m] (f : α → m Unit) : m Unit := do
-  let mut vs : HashSet α := HashSet.empty
-  for v in g.vertices do
-    -- leanprover/lean4#1206
-    (_, vs) := StateT.run (dfs' v) vs
+partial def dfs [Monad m] (f : α → m Unit) : m Unit :=
+  StateT.run' (s := HashSet.empty) do
+    for v in g.vertices do
+      visitVertex v
   where
-    dfs' (v : α) : StateM (HashSet α) (m Unit) := do
+    visitVertex (v : α) : StateT (HashSet α) m Unit := do
       let vs ← get
       if vs.contains v then
-        return (pure ())
+        return ()
       set (vs.insert v)
       match g.neighbors v with
-      | none    => return (f v)
+      | none    => f v
       | some ns =>
-        let mut us := []
         for u in ns do
-          us := (← dfs' u) :: us
-        us := f v :: us
-        return us.foldrM (λ u _ => u) ()
+          visitVertex u
+        f v
 
 def formatGraph [ToFormat α] [ToFormat β] : Format :=
   Format.text "{" ++ Format.joinSep (g.vertices.map format') ","
