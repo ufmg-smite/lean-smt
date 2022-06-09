@@ -80,11 +80,12 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
       | _      => solver
     | _ => solver)
 
-def generateQuery (es : List Expr) (solver : Solver) : MetaM Solver := do
-  trace[Smt.debug.query] "benchmark FVars: {es}"
-  let g ← buildDependencyGraph es
-  trace[Smt.debug.query] "Dependency Graph: {g}"
-  let (_, solver) ← StateT.run (g.dfs processVertex) solver
-  return solver
+def generateQuery (es : List Expr) (solver : Solver) : MetaM Solver :=
+  traceCtx `Smt.debug.generateQuery do 
+    trace[Smt.debug.query] "benchmark FVars: {es}"
+    let g ← buildDependencyGraph es
+    trace[Smt.debug.query] "Dependency Graph: {g}"
+    let (_, solver) ← StateT.run (g.dfs processVertex) solver
+    return solver
 
 end Smt.Query

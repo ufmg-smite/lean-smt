@@ -105,20 +105,21 @@ partial def applyTransformations : Transformer := fun e => do
       return b'
 
 /-- Pre-processes `e` and returns the resulting expr. -/
-def preprocessExpr (e : Expr) : MetaM Expr := do
-  -- Print the `e` before the preprocessing step.
-  trace[Smt.debug.transformer] "before: {exprToString e}"
-  -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
-  -- replacement. Note that each pass is passed the original expr `e` as an
-  -- input. So, the order of the passes does not matter.
-  trace[Smt.debug.transformer] "marked:"
-  let e' ← applyTransformations e
-  -- Print the exprs marked for removal/replacement.
-  -- Make the replacements and print the result.
-  let (some e') := e'
-    | panic! s!"Error: Something went wrong while transforming {e}"
-  trace[Smt.debug.transformer] "after: {exprToString e'}"
-  return e'
+def preprocessExpr (e : Expr) : MetaM Expr :=
+  traceCtx `Smt.debug.preprocessExpr do
+    -- Print the `e` before the preprocessing step.
+    trace[Smt.debug.transformer] "before: {exprToString e}"
+    -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
+    -- replacement. Note that each pass is passed the original expr `e` as an
+    -- input. So, the order of the passes does not matter.
+    trace[Smt.debug.transformer] "marked:"
+    let e' ← applyTransformations e
+    -- Print the exprs marked for removal/replacement.
+    -- Make the replacements and print the result.
+    let (some e') := e'
+      | panic! s!"Error: Something went wrong while transforming {e}"
+    trace[Smt.debug.transformer] "after: {exprToString e'}"
+    return e'
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
