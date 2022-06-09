@@ -12,7 +12,13 @@ open Smt.Term
 open Smt.Util
 open Std
 
-/-- Type of functions that transform expressions. -/
+/-- A function which transforms expressions in the first-order fragment of Lean.
+We use a sequence of these to encode this fragment into many-sorted first-order logic.
+
+Given `e`, it returns:
+- `none` when `e` should be removed
+- `some e` when `e` should be preserved
+- `some e'` when `e` should be rewritten to `e'` -/
 abbrev Transformer := Expr → MetaM (Option Expr)
 
 namespace Transformer
