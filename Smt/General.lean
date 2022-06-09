@@ -14,7 +14,7 @@ open Smt.Transformer
     resulting expr will be `(App (App Eq p) q)`. -/
 @[Smt] def removeTypeArgs : Transformer
   | e@(app (app (const `Exists ..) ..) ..) => return e
-  | e@(app f e' d)                         => do
+  | e@(app f e' _)                         => do
     if knownConsts.contains e ∨ (← hasValidSort e') then return e
     else applyTransformations f
   | e => return e
@@ -41,8 +41,8 @@ open Smt.Transformer
     example, given `(APP instOfNatNat (LIT 1))`, this method removes
     `instOfNatNat` and the resulting expr will be `(LIT 1)`. -/
 @[Smt] def removeOfNat : Transformer
-  | a@(app (const `Char.ofNat ..) e _) => applyTransformations e
-  | a@(app (const `Int.ofNat ..) e _)  => applyTransformations e
+  | (app (const `Char.ofNat ..) e _) => applyTransformations e
+  | (app (const `Int.ofNat ..) e _)  => applyTransformations e
   | e => return e
 
 /-- Replaces input Lean constants with with corresponding SMT-LIB versions.

@@ -12,7 +12,13 @@ open Smt.Term
 open Smt.Util
 open Std
 
-/-- Type of functions that transform expressions. -/
+/-- A function which transforms expressions in the first-order fragment of Lean.
+We use a sequence of these to encode this fragment into many-sorted first-order logic.
+
+Given `e`, it returns:
+- `none` when `e` should be removed
+- `some e` when `e` should be preserved
+- `some e'` when `e` should be rewritten to `e'` -/
 abbrev Transformer := Expr → MetaM (Option Expr)
 
 namespace Transformer
@@ -25,6 +31,7 @@ private unsafe def getTransformersUnsafe : MetaM (List Transformer) := do
   for name in names do
     let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
       env.evalConst Transformer Options.empty name
+    -- transformers := (fn, name) :: transformers
     transformers := fn :: transformers
   return transformers
 
@@ -50,7 +57,7 @@ partial def applyTransformations : Transformer := fun e => do
     appTransforms' (ts : List Transformer) : Transformer := fun e => do
       for t in ts do
         match (← t e) with
-        | none    => trace[Smt.debug.transformer] "({e}, none)"; return none
+        | none    => trace[Smt.debug.transformer] "({e}, none) "; return none
         | some e' =>
           if e' == e then continue
           else trace[Smt.debug.transformer] "({e}, {e'})"; return e'
@@ -77,17 +84,17 @@ partial def applyTransformations : Transformer := fun e => do
         match t', b' with
         | some t', some b' => pure (mkForall n d.binderInfo t' b')
         | _      , _       => pure none
-      | letE n t v b d  =>
+      | letE n t v b _ =>
         let t' ← appTransforms' ts t
         let v' ← appTransforms' ts v
         let b' ← Meta.withLetDecl n t v (appTransforms'' ts b)
         match t', v', b' with
         | some t', some v' , some b' => pure (mkLet n t' v' b')
         | _      , _       , _       => pure none
-      | mdata m e s     => match ← appTransforms' ts e with
+      | mdata m e _     => match ← appTransforms' ts e with
         | none => pure none
         | some e => pure (mkMData m e)
-      | proj s i e d    => match ← appTransforms' ts e with
+      | proj s i e _    => match ← appTransforms' ts e with
         | none => pure none
         | some e => pure (mkProj s i e)
       | e               => pure e
@@ -98,20 +105,21 @@ partial def applyTransformations : Transformer := fun e => do
       return b'
 
 /-- Pre-processes `e` and returns the resulting expr. -/
-def preprocessExpr (e : Expr) : MetaM Expr := do
-  -- Print the `e` before the preprocessing step.
-  trace[Smt.debug.transformer] "before: {exprToString e}"
-  -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
-  -- replacement. Note that each pass is passed the original expr `e` as an
-  -- input. So, the order of the passes does not matter.
-  trace[Smt.debug.transformer] "marked:"
-  let e' ← applyTransformations e
-  -- Print the exprs marked for removal/replacement.
-  -- Make the replacements and print the result.
-  let (some e') := e'
-    | panic! s!"Error: Something went wrong while transforming {e}"
-  trace[Smt.debug.transformer] "after: {exprToString e'}"
-  return e'
+def preprocessExpr (e : Expr) : MetaM Expr :=
+  traceCtx `Smt.debug.preprocessExpr do
+    -- Print the `e` before the preprocessing step.
+    trace[Smt.debug.transformer] "before: {exprToString e}"
+    -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
+    -- replacement. Note that each pass is passed the original expr `e` as an
+    -- input. So, the order of the passes does not matter.
+    trace[Smt.debug.transformer] "marked:"
+    let e' ← applyTransformations e
+    -- Print the exprs marked for removal/replacement.
+    -- Make the replacements and print the result.
+    let (some e') := e'
+      | panic! s!"Error: Something went wrong while transforming {e}"
+    trace[Smt.debug.transformer] "after: {exprToString e'}"
+    return e'
 
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
@@ -122,11 +130,11 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
       | fvar id _           =>
         let n := (← Meta.getLocalDecl id).userName.toString
         pure (Symbol n)
-      | e@(const n ..)      => pure (Symbol (toString e))
+      | e@(const ..)      => pure (Symbol (toString e))
       | sort l _ =>
         pure $ Symbol
           (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
-      | e@(forallE n s b _) =>
+      | e@(forallE n s ..) =>
         if e.isArrow then
           Meta.forallTelescope e fun ss s => do
             let ss ← ss.mapM Meta.inferType

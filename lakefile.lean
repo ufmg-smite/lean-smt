@@ -26,7 +26,7 @@ USAGE:
 
 Run tests.
 -/
-script test (args) do
+script test do
   let lean := match (← Lake.findLeanInstall?) with
     | none   => panic! "Error: could not find lean executable."
     | some i => i.lean

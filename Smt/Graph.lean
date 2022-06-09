@@ -1,4 +1,5 @@
 import Std
+import Lean.Message
 
 section
 
@@ -23,26 +24,22 @@ def addEdge : Graph α β := g.insert v ((g.find! v).insert u e)
 
 def weight : Option β := (g.find? v).bind λ es => es.find? u
 
-partial def dfs [Monad m] (f : α → m Unit) : m Unit := do
-  let mut vs : HashSet α := HashSet.empty
-  for v in g.vertices do
-    let mut u : m Unit := return
-    (u, vs) := StateT.run (dfs' v) vs
-    _ ← u
+partial def dfs [Monad m] (f : α → m Unit) : m Unit :=
+  StateT.run' (s := HashSet.empty) do
+    for v in g.vertices do
+      visitVertex v
   where
-    dfs' (v : α) : StateM (HashSet α) (m Unit) := do
+    visitVertex (v : α) : StateT (HashSet α) m Unit := do
       let vs ← get
       if vs.contains v then
-        return (pure ())
+        return ()
       set (vs.insert v)
       match g.neighbors v with
-      | none    => return (f v)
+      | none    => f v
       | some ns =>
-        let mut us := []
         for u in ns do
-          us := (← dfs' u) :: us
-        us := f v :: us
-        return us.foldrM (λ u _ => u) ()
+          visitVertex u
+        f v
 
 def formatGraph [ToFormat α] [ToFormat β] : Format :=
   Format.text "{" ++ Format.joinSep (g.vertices.map format') ","
@@ -57,6 +54,20 @@ def formatGraph [ToFormat α] [ToFormat β] : Format :=
 
 instance [ToFormat α] [ToFormat β] : ToFormat (Graph α β) where
   format (g) := Graph.formatGraph g
+
+open Lean in
+def toMessageData [ToMessageData α] [ToMessageData β] : MessageData :=
+  m!"\{{MessageData.group <| .node <| g.vertices.toArray.map formatVertex}}"
+where
+  formatVertex (v : α) : MessageData :=
+    m!"({v}:{formatNeighbors <| g.neighbors v})"
+  formatNeighbors : Option (List α) → MessageData
+    | none    => .nil
+    | some es => .group <| .node <| es.toArray.map ToMessageData.toMessageData
+
+open Lean in
+instance [ToMessageData α] [ToMessageData β] : ToMessageData (Graph α β) where
+  toMessageData g := toMessageData g
 
 end Graph
 
