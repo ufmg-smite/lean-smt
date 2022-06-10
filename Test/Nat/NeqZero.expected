@@ -6,4 +6,4 @@ query:
 (check-sat)
 
 result: sat
-Test/Nat/NeqZero.lean:5:2: warning: declaration uses 'sorry'
+Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'

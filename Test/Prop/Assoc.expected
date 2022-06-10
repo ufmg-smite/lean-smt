@@ -9,4 +9,4 @@ query:
 (check-sat)
 
 result: sat
-Test/Prop/Assoc.lean:6:2: warning: declaration uses 'sorry'
+Test/Prop/Assoc.lean:3:8: warning: declaration uses 'sorry'
