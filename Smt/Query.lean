@@ -13,25 +13,24 @@ open Std
 -- TODO: move all `Nat` hacks in this file to `Nat.lean`.
 
 partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
-  MetaM (Graph Expr Unit) := do
-  let mut g ← buildDependencyGraph' g hs Graph.empty
+  MetaM (Graph Expr Unit) := StateT.run' (s := Graph.empty) do
+  buildDependencyGraph' g hs
   for h in hs do
-    g ← buildDependencyGraph' h hs g
-  return g
+    buildDependencyGraph' h hs
+  get
   where
-    buildDependencyGraph' (e : Expr) (hs : List Expr) (g : Graph Expr Unit) :
-      MetaM (Graph Expr Unit) := do
-      if g.contains e then
-        return g
-      let mut g := g
+    buildDependencyGraph' (e : Expr) (hs : List Expr) :
+       StateT (Graph Expr Unit) MetaM Unit := do
+      if (← get).contains e then
+        return
       assert!(e.isConst ∨ e.isFVar ∨ e.isMVar)
-      g := g.addVertex e
+      set ((← get).addVertex e)
       if e.isConst then
         if e.constName! == `Nat then
-          return g
+          return
         if e.constName! == `Nat.sub then
-          g := g.addEdge e (mkConst `Nat) ()
-          return g
+          set ((← get).addEdge e (mkConst `Nat) ())
+          return
       trace[Smt.debug.query] "e: {e}"
       let et ← inferType e
       trace[Smt.debug.query] "et: {et}"
@@ -42,11 +41,11 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       let cs := fvs ++ ucs
       -- Processes the children.
       for c in cs do
-        g ← buildDependencyGraph' c hs g
-        g := g.addEdge e c ()
+        buildDependencyGraph' c hs
+        set ((← get).addEdge e c ())
       -- If `e` is a function name in the list of hints, unfold it.
       if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
-        return g
+        return
       match ← getUnfoldEqnFor? e.constName! with
       | some eqnThm =>
         let eqnInfo ← getConstInfo eqnThm
@@ -58,10 +57,10 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
         trace[Smt.debug.query] "ducs: {ducs}"
         let dcs := dfvs ++ ducs
         for dc in dcs do
-          g ← buildDependencyGraph' dc hs g
-          g := g.addEdge e dc ()
-      | none   => pure ()
-      return g
+          buildDependencyGraph' dc hs
+          set ((← get).addEdge e dc ())
+      | none        => pure ()
+      return
 
 def sortEndsWithNat : Term → Bool
   | Arrow a b    => sortEndsWithNat b
