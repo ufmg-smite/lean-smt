@@ -35,6 +35,10 @@ def defineSort (id : String) (ss : List Term) (s : Term) : Solver :=
 def declareConst (id : String) (s : Term) : Solver :=
   ⟨s!"(declare-const {id} {s})" :: solver.commands⟩
 
+/-- Define a constant with name `id` sort `s`, and value `v`. -/
+def defineConst (id : String) (s : Term) (v : Term) : Solver :=
+  ⟨s!"(define-const {id} {s} {v})" :: solver.commands⟩
+
 /-- Declare an uninterpreted function with name `id` and sort `s`. -/
 def declareFun (id : String) (s : Term) : Solver :=
   ⟨s!"(declare-fun {id} {s})" :: solver.commands⟩
@@ -44,6 +48,16 @@ def declareFun (id : String) (s : Term) : Solver :=
 def defineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
   Solver :=
   ⟨s!"(define-fun {id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
+  where
+    paramsToString (ps : List (String × Term)) : String :=
+      String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))
+
+/-- Define a recursive function with name `id`, parameters `ps`, co-domain `s`,
+    and body `t`. -/
+def defineFunRec (id : String) (ps : List (String × Term)) (s : Term)
+  (t : Term) :
+  Solver :=
+  ⟨s!"(define-fun-rec {id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
   where
     paramsToString (ps : List (String × Term)) : String :=
       String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))

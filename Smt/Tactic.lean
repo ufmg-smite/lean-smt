@@ -62,7 +62,7 @@ The tactic then generates the query below:
 (check-sat)
 ```
 -/
-syntax (name := smt) "smt" ("[" ident,+,? "]")? : tactic
+syntax (name := smt) "smt" ("[" ident,* "]")? : tactic
 
 def queryToString (commands : List String) : String :=
   String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
@@ -75,14 +75,14 @@ def parseTactic : Syntax → TacticM (List Expr)
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
-  let goalId ← Lean.mkFreshFVarId
-  Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun goal => do
-  -- 2. Get the free vars in the goal and the ones passed to the tactic.
-  let mut hs := goal :: (← parseTactic stx)
+  let goalId ← Lean.mkFreshMVarId
+  Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g => do
+  -- 2. Get the hints passed to the tactic.
+  let mut hs ← parseTactic stx
   hs := hs.eraseDups
   -- 3. Generate the SMT query.
   let mut solver := Solver.mk []
-  solver ← Query.generateQuery hs solver
+  solver ← Query.generateQuery g hs solver
   let query := queryToString solver.commands
   -- 4. Run the solver.
   let kind := Smt.solver.kind.get (← getOptions)
