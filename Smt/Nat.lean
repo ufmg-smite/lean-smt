@@ -16,7 +16,7 @@ open Smt.Transformer
 
 /-- Replaces `Nat` constructors `Nat.zero` and `Nat.succ n` for with `0` and
     `(+ n 1)`. -/
-@[Smt] def replaceCons : Transformer
+@[Smt] def replaceCtr : Transformer
   | const ``Nat.zero ..           => pure $ mkLit (Literal.natVal 0)
   | app (const ``Nat.succ ..) e _ => do match ← applyTransformations e with
     | none    => pure none

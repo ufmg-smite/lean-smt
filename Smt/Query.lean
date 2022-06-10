@@ -24,12 +24,12 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       if (← get).contains e then
         return
       assert!(e.isConst ∨ e.isFVar ∨ e.isMVar)
-      set ((← get).addVertex e)
+      modify (·.addVertex e)
       if e.isConst then
         if e.constName! == `Nat then
           return
         if e.constName! == `Nat.sub then
-          set ((← get).addEdge e (mkConst `Nat) ())
+          modify (·.addEdge e (mkConst `Nat) ())
           return
       trace[Smt.debug.query] "e: {e}"
       let et ← inferType e
@@ -42,7 +42,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       -- Processes the children.
       for c in cs do
         buildDependencyGraph' c hs
-        set ((← get).addEdge e c ())
+        modify (·.addEdge e c ())
       -- If `e` is a function name in the list of hints, unfold it.
       if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
         return
@@ -58,7 +58,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
         let dcs := dfvs ++ ducs
         for dc in dcs do
           buildDependencyGraph' dc hs
-          set ((← get).addEdge e dc ())
+          modify (·.addEdge e dc ())
       | none        => pure ()
       return
 
