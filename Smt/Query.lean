@@ -6,53 +6,114 @@ import Smt.Constants
 
 namespace Smt.Query
 
-open Lean
-open Lean.Expr
-open Lean.Meta
-open Smt
-open Smt.Solver
-open Smt.Term
-open Smt.Constants
+open Lean Expr Meta
+open Constants Solver Term
 open Std
 
-partial def buildDependencyGraph (es : List Expr) : MetaM (Graph Expr Unit) :=
-  buildDependencyGraph' es Graph.empty
+-- TODO: move all `Nat` hacks in this file to `Nat.lean`.
+
+partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
+  MetaM (Graph Expr Unit) := StateT.run' (s := Graph.empty) do
+  buildDependencyGraph' g hs
+  for h in hs do
+    buildDependencyGraph' h hs
+  get
   where
-    buildDependencyGraph' (es : List Expr) (g : Graph Expr Unit) :
-      MetaM (Graph Expr Unit) := do
-      let mut g := g
-      for e in es do
-        trace[Smt.debug.query] "e: {e}"
-        assert!(e.isConst ∨ e.isFVar)
-        if ¬(g.contains e) then
-          g := g.addVertex e
-          let et ← inferType e
-          trace[Smt.debug.query] "et: {et}"
-          let fvs := Util.getFVars et
-          trace[Smt.debug.query] "fvs: {fvs}"
-          for fv in fvs do
-            if ¬(g.contains fv) then
-              g ← buildDependencyGraph' [fv] g
-            g := g.addEdge e fv ()
-          let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
-          trace[Smt.debug.query] "ucs: {ucs}"
-          for uc in ucs do
-            if ¬(g.contains uc) then
-              g := g.addVertex uc
-            g := g.addEdge e uc ()
-            let nat := mkConst `Nat
-            if ¬(g.contains nat) then
-              g := g.addVertex nat
-            if uc.constName? == some `Nat.sub then
-              g := g.addEdge uc nat ()
-            g := g.addEdge uc nat ()
-            -- TODO: further process uc
-      return g
+    buildDependencyGraph' (e : Expr) (hs : List Expr) :
+       StateT (Graph Expr Unit) MetaM Unit := do
+      if (← get).contains e then
+        return
+      assert!(e.isConst ∨ e.isFVar ∨ e.isMVar)
+      modify (·.addVertex e)
+      if e.isConst then
+        if e.constName! == `Nat then
+          return
+        if e.constName! == `Nat.sub then
+          modify (·.addEdge e (mkConst `Nat) ())
+          return
+      trace[Smt.debug.query] "e: {e}"
+      let et ← inferType e
+      trace[Smt.debug.query] "et: {et}"
+      let fvs := Util.getFVars et
+      trace[Smt.debug.query] "fvs: {fvs}"
+      let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
+      trace[Smt.debug.query] "ucs: {ucs}"
+      let cs := fvs ++ ucs
+      -- Processes the children.
+      for c in cs do
+        buildDependencyGraph' c hs
+        modify (·.addEdge e c ())
+      -- If `e` is a function name in the list of hints, unfold it.
+      if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
+        return
+      match ← getUnfoldEqnFor? e.constName! with
+      | some eqnThm =>
+        let eqnInfo ← getConstInfo eqnThm
+        let d := eqnInfo.type
+        trace[Smt.debug.query] "d: {d}"
+        let dfvs := Util.getFVars d
+        trace[Smt.debug.query] "dfvs: {dfvs}"
+        let ducs := Util.getUnkownConsts (← Transformer.preprocessExpr d)
+        trace[Smt.debug.query] "ducs: {ducs}"
+        let dcs := dfvs ++ ducs
+        for dc in dcs do
+          buildDependencyGraph' dc hs
+          modify (·.addEdge e dc ())
+      | none        => pure ()
+      return
 
-def natAssertBody (n : String) :=
-  App (App (Symbol ">=") (Symbol n)) (Literal "0")
+def sortEndsWithNat : Term → Bool
+  | Arrow a b    => sortEndsWithNat b
+  | Symbol "Nat" => true
+  | _            => false
 
-def processVertex (e : Expr) : StateT Solver MetaM Unit := do
+def natAssertBody (t : Term) :=
+  App (App (Symbol ">=") t) (Literal "0")
+
+/-- TODO: refactor to support functions as input (e.g., (Nat → Nat) → Nat). -/
+def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
+  | Arrow i@(Symbol "Nat") t => do
+    let id ← Lean.mkFreshId
+    return (Forall id.toString i
+                   (imp id.toString (← natConstAssert n (id::args) t)))
+  | Arrow a t => do
+    let id ← Lean.mkFreshId
+    return (Forall id.toString a (← natConstAssert n (id::args) t))
+  | t => pure $ natAssertBody (applyList n args)
+  where
+    imp n t := App (App (Symbol "=>") (natAssertBody (Symbol n))) t
+    applyList n : List Name → Term
+      | [] => Symbol n
+      | t :: ts => App (applyList n ts) (Symbol t.toString)
+
+-- TODO: support recursive functions.
+partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
+  let defn : Expr ← Meta.unfoldDefinition e
+  pure (defineFun s id (← params defn) (← type (← Meta.inferType defn)) (← body defn))
+  where
+    id := if let const n .. := e then n.toString else panic! ""
+    params : Expr → MetaM (List (String × Term))
+      | lam n t e _ => do
+        return (n.toString, (← Transformer.exprToTerm t)) :: (← params e)
+      | _ => pure []
+    type : Expr →  MetaM Term
+      | forallE _ _ t _ => type t
+      | t => Transformer.exprToTerm t
+    body : Expr → MetaM Term
+      | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
+      | e => do return ← Transformer.exprToTerm e
+
+partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
+  let defn : Expr ← Meta.unfoldDefinition e
+  pure (defineConst s id (← type (← Meta.inferType defn)) (← body defn))
+  where
+    id := if let const n .. := e then n.toString else panic! ""
+    type := Transformer.exprToTerm
+    body : Expr → MetaM Term
+      | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
+      | e => do return ← Transformer.exprToTerm e
+
+def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   let mut solver ← get
   trace[Smt.debug.query] "e: {e}"
   match e with
@@ -66,26 +127,43 @@ def processVertex (e : Expr) : StateT Solver MetaM Unit := do
   let s ← Transformer.exprToTerm t
   trace[Smt.debug.query] "s: {s}"
   let n ← match e with
-  | fvar id .. => pure (← Lean.Meta.getLocalDecl id).userName.toString
+  | fvar id .. => pure (← getLocalDecl id).userName.toString
   | const n .. => pure n.toString
   | _          => panic! ""
-  let tt ← Lean.Meta.inferType t
-  _ ← set (match tt with
+  trace[Smt.debug.query] "here1"
+  let tt ← inferType t
+  trace[Smt.debug.query] "here2"
+  match tt with
     | sort l ..  => match l.toNat with
-      | some 0 => assert solver s
+      | some 0 => solver := assert solver s
       | some 1 => match t with
-        | forallE ..    => declareFun solver n s
-        | const `Nat .. => assert (declareConst solver n s) (natAssertBody n)
-        | _             => declareConst solver n s
-      | _      => solver
-    | _ => solver)
+        | sort ..       => solver := declareConst solver n s
+        | forallE ..    =>
+          if hs.elem e then
+            solver ← toDefineFun solver e
+          else
+            solver := (declareFun solver n s)
+            if sortEndsWithNat s then
+              solver := assert solver (← natConstAssert n [] s)
+        | const id ..    =>
+          if hs.elem e then
+            solver ← toDefineConst solver e
+          else
+            solver := declareConst solver n s
+            if id == `Nat then
+              solver := assert solver (← natConstAssert n [] s)
+        | _             => pure ()
+      | _      => pure ()
+    | _ => pure ()
+  _ ← set solver
 
-def generateQuery (es : List Expr) (solver : Solver) : MetaM Solver :=
-  traceCtx `Smt.debug.generateQuery do 
-    trace[Smt.debug.query] "benchmark FVars: {es}"
-    let g ← buildDependencyGraph es
+def generateQuery (g : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
+  traceCtx `Smt.debug.generateQuery do
+    trace[Smt.debug.query] "Goal: {g}"
+    trace[Smt.debug.query] "Provided Hints: {hs}"
+    let g ← buildDependencyGraph g hs
     trace[Smt.debug.query] "Dependency Graph: {g}"
-    let (_, solver) ← StateT.run (g.dfs processVertex) solver
+    let (_, solver) ← StateT.run (g.dfs $ processVertex hs) solver
     return solver
 
 end Smt.Query

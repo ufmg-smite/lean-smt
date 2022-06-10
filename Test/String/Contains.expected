@@ -5,4 +5,4 @@ query:
 (check-sat)
 
 result: unsat
-Test/String/Contains.lean:5:2: warning: declaration uses 'sorry'
+Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'
