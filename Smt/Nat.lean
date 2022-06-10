@@ -10,7 +10,7 @@ open Smt.Transformer
 /-- Removes casts of literals to `Nat` in `e`. For example, given
     `(app (app (app (OfNat.ofNat ..) ..) (LIT 0) ..) ..)`, this method removes
     all applications and returns just `(LIT 0)`. -/
-@[Smt] def removeCasts : Transformer
+@[Smt] def removeOfNat : Transformer
   | app (app (app (const ``OfNat.ofNat ..) ..) l ..) .. => pure l
   | e                                                   => pure e
 
