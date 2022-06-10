@@ -151,6 +151,7 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
       | lit l _             => pure $ Literal (match l with
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
         | Literal.strVal s => s!"\"{s}\"")
+      | mdata _ e _         => exprToTerm' e
       | e                   => panic! "Unimplemented: " ++ exprToString e
 
 end Smt.Transformer
