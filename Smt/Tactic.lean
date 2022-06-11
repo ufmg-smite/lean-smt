@@ -9,10 +9,10 @@ open Lean.Elab
 open Lean.Elab.Tactic
 
 initialize
-  registerTraceClass `Smt.debug
-  registerTraceClass `Smt.debug.attr
-  registerTraceClass `Smt.debug.query
-  registerTraceClass `Smt.debug.transformer
+  registerTraceClass `smt.debug
+  registerTraceClass `smt.debug.attr
+  registerTraceClass `smt.debug.query
+  registerTraceClass `smt.debug.transformer
 
 instance : Lean.KVMap.Value Kind where
   toDataValue
@@ -23,12 +23,12 @@ instance : Lean.KVMap.Value Kind where
     | "z3" => Kind.z3
     | _ => none
 
-register_option Smt.solver.kind : Kind := {
+register_option smt.solver.kind : Kind := {
   defValue := Kind.cvc5
   descr := "The solver to use for solving the SMT query."
 }
 
-register_option Smt.solver.path : String := {
+register_option smt.solver.path : String := {
   defValue := "cvc5"
   descr := "The path to the solver used for the solving the SMT query."
 }
@@ -85,8 +85,8 @@ def parseTactic : Syntax → TacticM (List Expr)
   solver ← Query.generateQuery g hs solver
   let query := queryToString solver.commands
   -- 4. Run the solver.
-  let kind := Smt.solver.kind.get (← getOptions)
-  let path := Smt.solver.path.get (← getOptions)
+  let kind := smt.solver.kind.get (← getOptions)
+  let path := smt.solver.path.get (← getOptions)
   -- 5. Print the result.
   let res ← solver.checkSat kind path
   logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"
