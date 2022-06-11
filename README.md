@@ -7,7 +7,7 @@ in its early design/development phase and is not recommended for use.
 `lean-smt` communicates with SMT solvers via the SMT-LIB textual interface.
 Therefore, it requires a supported SMT solver to be installed. Currently,
 `lean-smt` supports two SMT solvers:
-- [`cvc5`](https://cvc5.github.io/) (default).
+- [`cvc5`](https://cvc5.github.io) (default).
 - [`z3`](https://github.com/Z3Prover/z3).
 
 # Usage
