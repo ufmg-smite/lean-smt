@@ -26,17 +26,21 @@ To use the `smt` tactic, you just need to import the `Smt` library:
 ```lean
 import Smt
 
-def modus_ponens (p q : Prop) (hp : p) (hpq : p → q) : q := by
+theorem modus_ponens (p q : Prop) : p → (p → q) → q := by
   smt
+  simp_all
 ```
 For the theorem above, `smt` prints
 ```smt2
-(declare-const q Bool)
-(assert (not q))
+goal: p → (p → q) → q
+
+query:
 (declare-const p Bool)
-(assert p)
-(assert (=> p q))
+(declare-const q Bool)
+(assert (not (=> p (=> (=> p q) q))))
 (check-sat)
+
+result: unsat
 ```
 You can specify the SMT solver to use like so:
 ```lean
