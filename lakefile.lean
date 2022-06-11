@@ -2,9 +2,10 @@ import Lake
 
 open Lake DSL
 
-package smt {
-  defaultFacet := PackageFacet.oleans
-}
+package smt
+
+@[defaultTarget]
+lean_lib Smt
 
 open Std
 open System

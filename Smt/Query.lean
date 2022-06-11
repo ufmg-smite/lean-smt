@@ -63,7 +63,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       return
 
 def sortEndsWithNat : Term → Bool
-  | Arrow a b    => sortEndsWithNat b
+  | Arrow _ t    => sortEndsWithNat t
   | Symbol "Nat" => true
   | _            => false
 
@@ -79,7 +79,7 @@ def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
   | Arrow a t => do
     let id ← Lean.mkFreshId
     return (Forall id.toString a (← natConstAssert n (id::args) t))
-  | t => pure $ natAssertBody (applyList n args)
+  | _ => pure $ natAssertBody (applyList n args)
   where
     imp n t := App (App (Symbol "=>") (natAssertBody (Symbol n))) t
     applyList n : List Name → Term
