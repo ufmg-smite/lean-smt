@@ -52,12 +52,12 @@ def registerSmtAttr (attrName : Name) (attrDescr : String)
     descr := attrDescr
     applicationTime := AttributeApplicationTime.afterTypeChecking
     add   := fun decl stx attrKind => do
-      trace[Smt.debug.attr] s!"attrName: {attrName}, attrDescr: {attrDescr}"
-      trace[Smt.debug.attr] s!"decl: {decl}, stx: {stx}, attrKind: {attrKind}"
+      trace[smt.debug.attr] s!"attrName: {attrName}, attrDescr: {attrDescr}"
+      trace[smt.debug.attr] s!"decl: {decl}, stx: {stx}, attrKind: {attrKind}"
       Attribute.Builtin.ensureNoArgs stx
       validate decl
       setEnv (smtExt.addEntry (← getEnv) decl)
-      trace[Smt.debug.attr]
+      trace[smt.debug.attr]
         s!"transformers: {(smtExt.getState (← getEnv)).toList}"
     erase := fun declName => do
       let s := smtExt.getState (← getEnv)

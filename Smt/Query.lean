@@ -38,13 +38,13 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
         if e.constName! == `Nat.sub then
           modify (·.addEdge e (mkConst `Nat) ())
           return
-      trace[Smt.debug.query] "e: {e}"
+      trace[smt.debug.query] "e: {e}"
       let et ← inferType e
-      trace[Smt.debug.query] "et: {et}"
+      trace[smt.debug.query] "et: {et}"
       let fvs := Util.getFVars et
-      trace[Smt.debug.query] "fvs: {fvs}"
+      trace[smt.debug.query] "fvs: {fvs}"
       let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
-      trace[Smt.debug.query] "ucs: {ucs}"
+      trace[smt.debug.query] "ucs: {ucs}"
       let cs := fvs ++ ucs
       -- Processes the children.
       for c in cs do
@@ -57,11 +57,11 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       | some eqnThm =>
         let eqnInfo ← getConstInfo eqnThm
         let d := eqnInfo.type
-        trace[Smt.debug.query] "d: {d}"
+        trace[smt.debug.query] "d: {d}"
         let dfvs := Util.getFVars d
-        trace[Smt.debug.query] "dfvs: {dfvs}"
+        trace[smt.debug.query] "dfvs: {dfvs}"
         let ducs := Util.getUnkownConsts (← Transformer.preprocessExpr d)
-        trace[Smt.debug.query] "ducs: {ducs}"
+        trace[smt.debug.query] "ducs: {ducs}"
         let dcs := dfvs ++ ducs
         for dc in dcs do
           buildDependencyGraph' dc hs
@@ -122,7 +122,7 @@ partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
 
 def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   let mut solver ← get
-  trace[Smt.debug.query] "e: {e}"
+  trace[smt.debug.query] "e: {e}"
   match e with
   | const `Nat ..     => set (defNat solver); return
   | const `Nat.sub .. => set (defNatSub solver); return
@@ -130,16 +130,16 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   let mut t ← inferType e
   if Util.hasMVars t then
     t ← whnf t
-  trace[Smt.debug.query] "t: {t}"
+  trace[smt.debug.query] "t: {t}"
   let s ← Transformer.exprToTerm t
-  trace[Smt.debug.query] "s: {s}"
+  trace[smt.debug.query] "s: {s}"
   let n ← match e with
   | fvar id .. => pure (← getLocalDecl id).userName.toString
   | const n .. => pure n.toString
   | _          => panic! ""
-  trace[Smt.debug.query] "here1"
+  trace[smt.debug.query] "here1"
   let tt ← inferType t
-  trace[Smt.debug.query] "here2"
+  trace[smt.debug.query] "here2"
   match tt with
     | sort l ..  => match l.toNat with
       | some 0 => solver := assert solver s
@@ -165,11 +165,11 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   _ ← set solver
 
 def generateQuery (g : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
-  traceCtx `Smt.debug.generateQuery do
-    trace[Smt.debug.query] "Goal: {g}"
-    trace[Smt.debug.query] "Provided Hints: {hs}"
+  traceCtx `smt.debug.generateQuery do
+    trace[smt.debug.query] "Goal: {g}"
+    trace[smt.debug.query] "Provided Hints: {hs}"
     let g ← buildDependencyGraph g hs
-    trace[Smt.debug.query] "Dependency Graph: {g}"
+    trace[smt.debug.query] "Dependency Graph: {g}"
     let (_, solver) ← StateT.run (g.dfs $ processVertex hs) solver
     return solver
 
