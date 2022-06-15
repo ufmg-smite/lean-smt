@@ -33,7 +33,7 @@ namespace Transformer
 private unsafe def getTransformersUnsafe : MetaM (List Transformer) := do
   let env ← getEnv
   let names := (smtExt.getState env).toList
-  trace[Smt.debug.attr] "Transformers: {names}"
+  trace[smt.debug.attr] "Transformers: {names}"
   let mut transformers := []
   for name in names do
     let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
@@ -64,10 +64,10 @@ partial def applyTransformations : Transformer := fun e => do
     appTransforms' (ts : List Transformer) : Transformer := fun e => do
       for t in ts do
         match (← t e) with
-        | none    => trace[Smt.debug.transformer] "({e}, none) "; return none
+        | none    => trace[smt.debug.transformer] "({e}, none)"; return none
         | some e' =>
           if e' == e then continue
-          else trace[Smt.debug.transformer] "({e}, {e'})"; return e'
+          else trace[smt.debug.transformer] "({e}, {e'})"; return e'
       match e with
       | app f e _       => match ← appTransforms' ts f,
                                  ← appTransforms' ts e with
@@ -113,19 +113,19 @@ partial def applyTransformations : Transformer := fun e => do
 
 /-- Pre-processes `e` and returns the resulting expr. -/
 def preprocessExpr (e : Expr) : MetaM Expr :=
-  traceCtx `Smt.debug.preprocessExpr do
+  traceCtx `smt.debug.preprocessExpr do
     -- Print the `e` before the preprocessing step.
-    trace[Smt.debug.transformer] "before: {exprToString e}"
+    trace[smt.debug.transformer] "before: {exprToString e}"
     -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
     -- replacement. Note that each pass is passed the original expr `e` as an
     -- input. So, the order of the passes does not matter.
-    trace[Smt.debug.transformer] "marked:"
+    trace[smt.debug.transformer] "marked:"
     let e' ← applyTransformations e
     -- Print the exprs marked for removal/replacement.
     -- Make the replacements and print the result.
     let (some e') := e'
       | panic! s!"Error: Something went wrong while transforming {e}"
-    trace[Smt.debug.transformer] "after: {exprToString e'}"
+    trace[smt.debug.transformer] "after: {exprToString e'}"
     return e'
 
 /-- Converts a Lean expression into an SMT term. -/
