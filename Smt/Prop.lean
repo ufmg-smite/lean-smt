@@ -10,9 +10,22 @@ import Smt.Transformer
 
 namespace Smt.Prop
 
-open Lean
-open Lean.Expr
+open Lean Expr
 open Smt.Transformer
+
+@[Smt] def replaceConst : Transformer
+  | sort (.zero _) _          => pure (mkConst `Bool)
+  | const `True ..            => pure (mkConst `true)
+  | const `False ..           => pure (mkConst `false)
+  | const `Not ..             => pure (mkConst `not)
+  | const `And ..             => pure (mkConst `and)
+  | const `Or ..              => pure (mkConst `or)
+  | const `Iff ..             => pure (mkConst (Name.mkSimple "="))
+  | app (const `Eq ..) ..     => pure (mkConst (Name.mkSimple "="))
+  | app (const `Ne ..) ..     => pure (mkConst `distinct)
+  | app (const `Exists ..) .. => pure (mkConst `exists)
+  | app (const `ite ..) ..    => pure (mkConst `ite)
+  | e                         => pure e
 
 /-- Replaces arrows with `Imp`. For example, given `(FORALL _ p q)`, this
     method returns `(Imp p q)`. The replacement is done at this stage because

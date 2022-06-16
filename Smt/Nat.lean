@@ -10,9 +10,15 @@ import Smt.Transformer
 
 namespace Smt.Nat
 
-open Lean
-open Lean.Expr
+open Lean Expr
 open Smt.Transformer
+
+@[Smt] def replaceConst : Transformer
+  | const `Nat.add ..  => pure (mkConst (Name.mkSimple "+"))
+  | const `Nat.le ..   => pure (mkConst (Name.mkSimple "<="))
+  | app (app (const `GE.ge ..) (const `Nat ..) _) .. =>
+    pure (mkConst (Name.mkSimple ">="))
+  | e                  => pure e
 
 /-- Removes casts of literals to `Nat` in `e`. For example, given
     `(app (app (app (OfNat.ofNat ..) ..) (LIT 0) ..) ..)`, this method removes

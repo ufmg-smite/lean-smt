@@ -7,7 +7,7 @@ query:
 (declare-const y Nat)
 (assert (>= y 0))
 (declare-fun Max (Nat Nat) Nat)
-(assert (forall ((_uniq.203 Nat)) (=> (>= _uniq.203 0) (forall ((_uniq.204 Nat)) (=> (>= _uniq.204 0) (>= (Max _uniq.203 _uniq.204) 0))))))
+(assert (forall ((_uniq.207 Nat)) (=> (>= _uniq.207 0) (forall ((_uniq.208 Nat)) (=> (>= _uniq.208 0) (>= (Max _uniq.207 _uniq.208) 0))))))
 (assert (not (and (<= x (Max x y)) (<= y (Max x y)))))
 (check-sat)
 

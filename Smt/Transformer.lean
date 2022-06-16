@@ -114,8 +114,9 @@ partial def applyTransformations : Transformer := fun e => do
 /-- Pre-processes `e` and returns the resulting expr. -/
 def preprocessExpr (e : Expr) : MetaM Expr :=
   traceCtx `smt.debug.preprocessExpr do
-    -- Print the `e` before the preprocessing step.
-    trace[smt.debug.transformer] "before: {exprToString e}"
+    trace[smt.debug.transformer] "before unfolding projs: {exprToString e}"
+    let e ← Util.unfoldAllProjInsts e
+    trace[smt.debug.transformer] "after unfolding projs: {exprToString e}"
     -- Pass `e` through each pre-processing step to mark sub-exprs for removal or
     -- replacement. Note that each pass is passed the original expr `e` as an
     -- input. So, the order of the passes does not matter.
@@ -138,9 +139,6 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
         let n := (← Meta.getLocalDecl id).userName.toString
         pure (Symbol n)
       | e@(const ..)      => pure (Symbol (toString e))
-      | sort l _ =>
-        pure $ Symbol
-          (if l.isZero then "Bool" else "Sort " ++ ⟨Nat.toDigits 10 l.depth⟩)
       | e@(forallE n s ..) =>
         if e.isArrow then
           Meta.forallTelescope e fun ss s => do
