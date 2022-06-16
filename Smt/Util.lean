@@ -117,7 +117,8 @@ def getUnkownConsts : Expr → List Expr
   | e@(const ..)    => if smtConsts.contains (toString e) then [] else [e]
   | _               => []
 
-/-- Returns an expression equivalent to `e` with all projections unfolded. -/
+/-- Returns an expression equivalent to `e` with all typeclass projections
+    unfolded. -/
 partial def unfoldAllProjInsts (e : Expr) : MetaM Expr := do
   match ← Meta.unfoldProjInst? e with
   | some e => unfoldAllProjInsts e

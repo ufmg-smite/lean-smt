@@ -21,10 +21,6 @@ open Smt.Transformer
   | const `String.append ..  => pure (mkConst (Name.mkSimple "str.++"))
   | e                        => pure e
 
-@[Smt] def removeStringPosMk : Transformer
-  | app (const `String.Pos.mk ..) e _ => applyTransformations e
-  | e                                 => pure e
-
 @[Smt] def replaceStringGetOp : Transformer
   | app (app (const `String.getOp ..) f _) e _ => do
     return match ← applyTransformations f, ← applyTransformations e with
