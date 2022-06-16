@@ -125,7 +125,7 @@ def preprocessExpr (e : Expr) : MetaM Expr :=
     -- Print the exprs marked for removal/replacement.
     -- Make the replacements and print the result.
     let (some e') := e'
-      | panic! s!"Error: Something went wrong while transforming {e}"
+      | throwError "Error: Something went wrong while transforming {e}"
     trace[smt.debug.transformer] "after: {exprToString e'}"
     return e'
 
@@ -157,6 +157,6 @@ partial def exprToTerm (e : Expr) : MetaM Term := do
         | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
         | Literal.strVal s => s!"\"{s}\"")
       | mdata _ e _         => exprToTerm' e
-      | e                   => panic! "Unimplemented: " ++ exprToString e
+      | e                   => throwError "Unimplemented: {exprToString e}"
 
 end Smt.Transformer
