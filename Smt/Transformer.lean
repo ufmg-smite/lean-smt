@@ -45,7 +45,7 @@ private unsafe def getTransformersUnsafe : MetaM (List Transformer) := do
 /-- Returns the list of transformers maintained by `smtExt` in the current
     Lean environment. -/
 @[implementedBy getTransformersUnsafe]
-constant getTransformers : MetaM (List Transformer)
+opaque getTransformers : MetaM (List Transformer)
 
 /-- Traverses `e` and replaces marked sub-exprs with corresponding exprs in `es`
     or removes them if there are no corresponding exprs to replace them with.
