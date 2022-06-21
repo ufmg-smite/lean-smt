@@ -7,10 +7,12 @@ Authors: Wojciech Nawrocki
 
 import Lean.Elab.Tactic
 
+import Smt.Tactic
+
 namespace Lean.Meta
 open Elab Tactic
 
--- TODO(WN): Might want to expose these syntax-less versions in core.
+-- TODO(WN): Might want to expose the `Syntax`-less versions of `Tactic.Rewrite` stuff in core.
 
 def rewriteTarget (e : Expr) (symm : Bool) (config : Rewrite.Config) : TacticM Unit := do
   Term.withSynthesize <| withMainContext do
@@ -25,20 +27,73 @@ def rewriteLocalDecl (e : Expr) (symm : Bool) (fvarId : FVarId) (config : Rewrit
     let replaceResult ← replaceLocalDecl (← getMainGoal) fvarId rwResult.eNew rwResult.eqProof
     replaceMainGoal (replaceResult.mvarId :: rwResult.mvarIds)
 
+/-- Try to rewrite using `pf : _ = _` everywhere except for local declarations matching `skipPred`. -/
+def tryRewriteEverywhere (pf : Expr) (skipPred : LocalDecl → Bool) : TacticM Unit := do
+  Tactic.withMainContext do
+    try Meta.rewriteTarget pf false {}
+    catch _ => pure ()
+    let lctx ← getLCtx
+    for localDecl in lctx do
+      if skipPred localDecl then continue
+      try Meta.rewriteLocalDecl pf false localDecl.fvarId {}
+      catch _ => pure ()
+
 end Lean.Meta
 
 namespace Smt.Concretize
 
 open Lean Elab Meta Tactic
 
-structure State where
-  /-- Stores all concretizations and their equality hypotheses `$eConcrete = $nm`,
-  if already introduced.
+/-- Some crap we need to store while processing the tactic. -/
+structure ConcretizationData where
+  eConcrete : Expr
+  /-- `var.$nm : _` created by `generalize` -/
+  fvVar : FVarId
+  /-- `eqVar.$nm : $eConcrete = var.$nm` created by `generalize` -/
+  fvEqVar : FVarId
+  /-- `eqBody.$nm : var.$nm = $eBody`
 
-  These should not depend on a local context other than let-decls in the goal's. -/
-  concretizations : Std.RBMap Name (Option FVarId × Expr) Name.quickCmp
+  We use this equality to simulate a let-binding since it is not easy to rewrite
+  in a let-binding body. Note that other concretization steps may recursively rewrite
+  in `eBody`. -/
+  fvEqBody : FVarId
+
+def ConcretizationData.create (nm : Name) (eConcrete : Expr) : TacticM ConcretizationData := 
+  liftMetaTacticAux fun mvarId => do
+    let varName := `var ++ nm
+    let eqVarName := `eqVar ++ nm
+    let eqBodyName := `eqBody ++ nm
+
+    let (#[fvVar, fvEqVar], mvarId) ← Meta.generalize mvarId #[{
+        expr := eConcrete
+        xName? := varName
+        hName? := eqVarName
+      }] | throwError "unexpected generalize fvars"
+
+    -- `@f a b` ≡ `(fun x y z w => t) a b` ≡ `fun z w => t[a/x,b/y]`
+    let eBody ← withTransparency TransparencyMode.all <| whnf eConcrete
+    let tpEqBody ← mkEq eConcrete eBody
+    let pfEqBody ← mkEqRefl eConcrete
+    let (fvEqBody, mvarId) ← intro1P (← assert mvarId eqBodyName tpEqBody pfEqBody)
+
+    let ret := { eConcrete, fvVar, fvEqVar, fvEqBody }
+    return (ret, [mvarId])
+
+def ConcretizationData.getBody (conc : ConcretizationData) : TacticM Expr :=
+  withMainContext do
+    let tp ← inferType (mkFVar conc.fvEqBody)
+    let some (_, _, eBody) := tp.eq?
+      | throwError "internal error, expected equality but got {tp}"
+    return eBody
+
+structure State where
+  /-- Stores all concretizations and their equality hypotheses. These should not depend on a local
+  context other than let-decls in the goal's. -/
+  concretizations : Std.RBMap Name ConcretizationData Name.quickCmp
   /-- Cache of concretization names, lookupable by the concretization. -/
   cache : DiscrTree Name
+  /-- In a single iteration of the algorithm, new concretizations found. -/
+  newConcretizations : Std.RBMap Name Expr Name.quickCmp
   /-- In a single iteration of the algorithm, names of concretizations corresponding to all
   polymorphic terms found. These might or might not already have `generalize` hypotheses
   which we introduce lazily. Rewriting with each must make progress on concretizing the goal. -/
@@ -46,8 +101,12 @@ structure State where
 
 abbrev ConcretizeM := StateT State TacticM
 
-def foundConcretizable (nm : Name) : ConcretizeM Unit :=
-  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert nm }
+def withMainContext (x : ConcretizeM α) : ConcretizeM α := do
+  controlAt TacticM fun mapInBase => Tactic.withMainContext (mapInBase x)
+
+def traceLCtx : MetaM Unit := traceCtx `smt.debug.lctx do
+  for localDecl in (← getLCtx) do
+    trace[smt.debug.concretize.lctx] "{localDecl.userName} : {localDecl.type} {if localDecl.isAuxDecl then "(aux)" else ""})"
 
 def getCached? (e : Expr) : ConcretizeM (Option Name) := do
   -- We use `withExtra` as concretizations can be prefixes of the full application.
@@ -59,21 +118,19 @@ def getCached? (e : Expr) : ConcretizeM (Option Name) := do
   trace[smt.debug.concretize.cache] "miss {e}"
   return none
 
-def addConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
+def addNewConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
   let st ← get
   let cache ← st.cache.insert e nm
-  let concretizations := st.concretizations.insert nm (none, e)
-  set { st with cache, concretizations }
+  let newConcretizations := st.newConcretizations.insert nm e
+  set { st with cache, newConcretizations }
 
-def withMainContext (x : ConcretizeM α) : ConcretizeM α := do
-  controlAt TacticM fun mapInBase => Tactic.withMainContext (mapInBase x)
+def foundConcretizable (nm : Name) : ConcretizeM Unit :=
+  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert nm }
 
 def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
-  trace[smt.debug.concretize.app] "visiting {e}"
   if !e.isApp then return .visit e
   e.withApp fun fn args => do
     let .const declName .. := fn | return .visit e
-    -- TODO config for special cases such as this one?
     -- NB: we end up visiting the Eq type argument here which isn't ideal
     if `Eq == declName then return .visit e
     -- HACK: don't traverse typeclass projections. We should have a list of which ones
@@ -93,10 +150,8 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     let mut concreteArgs := #[]
     for (pi, a) in info.paramInfo.zip args do
       let argTp ← inferType a
-      -- TODO what about `Prop` args?
-      -- TODO what about mvars?
       let isConcretizable :=
-        !a.hasLooseBVars ∧ !a.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps)
+        !a.hasLooseBVars ∧ !a.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps ∨ pi.isInstImplicit)
       if isConcretizable then concreteArgs := concreteArgs.push (some a)
       else break
     if concreteArgs.isEmpty then return .visit e
@@ -113,58 +168,64 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
       else return nm
     let nm ← mkFreshUserName nm
 
-    addConcretization nm eConcrete
+    addNewConcretization nm eConcrete
     foundConcretizable nm
 
     -- Even though they may have concretizable subterms, we do not visit children
     -- as they will be taken care of in the next iteration.
     return .done e
 
-def traceLCtx : MetaM Unit :=
-    traceCtx `smt.debug.lctx do
-      for localDecl in (← getLCtx) do
-        trace[smt.debug.concretize.lctx] "{localDecl.userName} : {localDecl.type} {if localDecl.isAuxDecl then "(aux)" else ""})"
+partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
+  modify fun st => { st with
+    newConcretizations := Std.RBMap.empty
+    foundConcretizables := NameSet.empty
+  }
 
-partial def evalConcretize : ConcretizeM Unit := do
-  go (← getMainTarget)
-where go (e : Expr) : ConcretizeM Unit := traceCtx `smt.debug.concretize.go do
-  modify fun st => { st with foundConcretizables := NameSet.empty }
-  let _ ← withMainContext <| Meta.transform e (m := ConcretizeM) (pre := concretizeApp)
+  let goal ← getMainTarget
+  let _ ← withMainContext <| Meta.transform goal (m := ConcretizeM) (pre := concretizeApp)
+
+  for (nm, eConcrete) in (← get).newConcretizations do
+    let conc ← ConcretizationData.create nm eConcrete
+    modify fun st => { st with concretizations := st.concretizations.insert nm conc }
+
   let fcs := (← get).foundConcretizables
   for nm in fcs do
-    let (hypFv?, eConcrete) := (← get).concretizations.find! nm
-    let fvEq ← if let some fv := hypFv? then pure fv else
-      let fvEq ← withMainContext <| liftMetaTacticAux fun mvarId => do
-        -- `$nm : _`
-        -- `eqVar.$nm : $eConcrete = $nm`
-        let eqVarName := nm.modifyBase (`eqVar ++ ·)
-        let (#[_, fvEq], mvarId) ← Meta.generalize mvarId #[{ expr := eConcrete, xName? := nm, hName? := eqVarName }]
-          | throwError "unexpected generalize fvars"
-
-        -- `@f a b` ≡ `(fun x y z w => t) a b` ≡ `fun z w => t[a/x,b/y]`
-        let eBody ← whnf eConcrete
-        -- `eqBody.$nm : $eConcrete = $eBody`
-        let eqBodyName := nm.modifyBase (`eqBody ++ ·)
-        let tpEqBody ← mkEq eConcrete eBody
-        let pfEqBody ← mkEqRefl eConcrete
-        let (_, mvarId) ← intro1P (← assert mvarId eqBodyName tpEqBody pfEqBody)
-        return (fvEq, [mvarId])
-
-      modify fun st => { st with concretizations := st.concretizations.insert nm (fvEq, eConcrete) }
-      pure fvEq
-
-    withMainContext do
-      try Meta.rewriteTarget (mkFVar fvEq) false {}
-      catch _ => pure ()
-      let lctx ← getLCtx
-      for localDecl in lctx do
-        if localDecl.isAuxDecl || (`eqVar).isPrefixOf localDecl.userName then continue
-        try Meta.rewriteLocalDecl (mkFVar fvEq) false localDecl.fvarId {}
-        catch _ => pure ()
+    let some conc := (← get).concretizations.find? nm | throwError "internal error, missing concretization '{nm}'"
+    tryRewriteEverywhere (mkFVar conc.fvEqVar) (fun ld => ld.isAuxDecl || ld.fvarId == conc.fvEqVar || ld.fvarId == conc.fvEqBody)
 
   if !fcs.isEmpty then
-    go (← getMainTarget)
-  return
+    loop
+
+/- Algorithm TODOs(WN):
+- apply `dsimp`
+- `loop`
+  - traverse hyps and not just the goal? maybe just the concretization equality hyps,
+    in case they expose further concretizations?
+  - be more strategic about where to rewrite?
+- `concretizeApp`
+  - heuristics for when to visit and when to skip?
+  - config for what to concretise and what not to?
+  - what about `Prop` args?
+  - what about mvars in args?
+-/
+def evalConcretize : ConcretizeM Unit := do
+  loop
+
+  -- At the end, clear the hypotheses by replacing them with let-bindings.
+  for (nm, conc) in (← get).concretizations do
+    let eBody ← conc.getBody
+    let fvLet ← liftMetaTacticAux fun mvarId => do
+      -- `$concNm := $eBody`
+      let (fv, mvarId) ← intro1P (← define mvarId nm (← inferType eBody) eBody)
+      return (fv, [mvarId])
+
+    withMainContext do
+      -- `var.$concNm = $concNm`
+      let eqTp ← mkEq (mkFVar conc.fvVar) (mkFVar fvLet)
+      let eq ← mkExpectedTypeHint (mkFVar conc.fvEqBody) eqTp
+      tryRewriteEverywhere eq (fun _ => true)
+
+    evalTactic <| ← `(tactic| clear $(mkIdent (`eqBody ++ nm)) $(mkIdent (`eqVar ++ nm)) $(mkIdent (`var ++ nm)))
 
 /-- Recursively finds and replaces concretizations in the goal and the hypotheses.
 
@@ -195,7 +256,20 @@ elab "concretize" : tactic =>
   evalConcretize |>.run' {
     concretizations := Std.RBMap.empty
     cache := DiscrTree.empty
+    newConcretizations := Std.RBMap.empty
     foundConcretizables := NameSet.empty
   }
 
 end Smt.Concretize
+
+def generalAdd [Add α] (a b : α) := a + b
+
+set_option trace.smt.debug true in
+example : @generalAdd Int _ 3 3 = (6 : Int) := by
+  concretize
+  rfl
+
+set_option trace.smt.debug true in
+example : ([1,2,3] : List Int).foldl Int.add 0 = 6 := by
+  concretize
+  rfl
