@@ -117,22 +117,16 @@ def getUnkownConsts : Expr → List Expr
   | e@(const ..)    => if smtConsts.contains (toString e) then [] else [e]
   | _               => []
 
+/-- Like `unfoldProjInst?`, but iterated in case a typeclass projection
+is defined in terms of another. -/
+partial def unfoldProjInsts? (e : Expr) : MetaM (Option Expr) := do
+  let some e' ← Meta.unfoldProjInst? e | return none
+  let some e'' ← unfoldProjInsts? e' | return e'
+  return e''
+
 /-- Returns an expression equivalent to `e` with all typeclass projections
     unfolded. -/
-partial def unfoldAllProjInsts (e : Expr) : MetaM Expr := do
-  match ← Meta.unfoldProjInst? e with
-  | some e => unfoldAllProjInsts e
-  | none   => match e with
-    | app f e _       =>
-      pure (mkApp (← unfoldAllProjInsts f) (← unfoldAllProjInsts e))
-    | lam n t b d     => pure (mkLambda n d.binderInfo t
-      (← Meta.withLocalDecl n d.binderInfo t (fun _ => unfoldAllProjInsts b)))
-    | forallE n t b d => pure (mkForall n d.binderInfo t
-      (← Meta.withLocalDecl n d.binderInfo t (fun _ => unfoldAllProjInsts b)))
-    | letE n t v b _  => pure (mkLet n t (← unfoldAllProjInsts v)
-      (← Meta.withLetDecl n t v (fun _ => unfoldAllProjInsts b)))
-    | mdata m e _     => pure (mkMData m (← unfoldAllProjInsts e))
-    | proj n v e _    => pure (mkProj n v (← unfoldAllProjInsts e))
-    | e               => pure e
+def unfoldAllProjInsts : Expr → MetaM Expr :=
+  Meta.transform (pre := fun e => return (← unfoldProjInsts? e).getD e |> .visit)
 
 namespace Smt.Util
