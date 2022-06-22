@@ -28,15 +28,14 @@ def rewriteLocalDecl (e : Expr) (symm : Bool) (fvarId : FVarId) (config : Rewrit
     replaceMainGoal (replaceResult.mvarId :: rwResult.mvarIds)
     return replaceResult.fvarId
 
-/-- Try to rewrite using `pf : _ = _` everywhere except for local declarations matching `skipPred`. -/
--- TODO delete, it's too blunt ?
-def tryRewriteEverywhere (pf : Expr) (skipPred : LocalDecl → Bool) : TacticM Unit := do
+/-- Try to rewrite using `pf : _ = _` at the goal and local declarations matching `pred`. -/
+def tryRewriteWhen (pf : Expr) (pred : LocalDecl → Bool) : TacticM Unit := do
   Tactic.withMainContext do
     try Meta.rewriteTarget pf false {}
     catch _ => pure ()
     let lctx ← getLCtx
     for localDecl in lctx do
-      if skipPred localDecl then continue
+      if !pred localDecl then continue
       try let _ ← Meta.rewriteLocalDecl pf false localDecl.fvarId {}
       catch _ => pure ()
 
@@ -44,21 +43,6 @@ inductive Location where
   | hyp (nm : Name)
   | goal
   deriving Inhabited, BEq, Repr
-
-def Location.tryRewriteAt (loc : Location) (pf : Expr) : TacticM Unit :=
-  withMainContext do
-    try
-      match loc with
-      | .goal => Meta.rewriteTarget pf false {}
-      | .hyp nm =>
-        if let some localDecl := (← getLCtx).findFromUserName? nm then
-          let _ ← Meta.rewriteLocalDecl pf false localDecl.fvarId { transparency := .all }
-    catch _ => return ()
-
-def Location.dsimpAt (loc : Location) : TacticM Unit :=
-  match loc with
-  | .goal => dsimpLocation {} (.targets #[] true)
-  | .hyp nm => dsimpLocation {} (.targets #[mkIdent nm] false)
 
 def Location.getType (loc : Location) : TacticM Expr :=
   withMainContext do
@@ -68,6 +52,33 @@ def Location.getType (loc : Location) : TacticM Expr :=
       let some localDecl := (← getLCtx).findFromUserName? nm
         | throwError "internal error, unknown hypothesis '{nm}'"
       return localDecl.type
+
+def Location.toTacticLocation : Location → Tactic.Location
+  | .goal => .targets #[] true
+  | .hyp nm => .targets #[mkIdent nm] false
+
+/-- Apply `simp config only [pf]` at the location. Most features are turned
+off in the config, so it is more like `rw` with a bit of extra reduction.
+It tries to match the kind of definitional matching done by `DiscrTree`. -/
+-- TODO(WN): this whole thing is cursed and I have no idea why it works
+def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
+  let simpTheorems ← ({} : SimpTheorems).addConst `eq_self
+  let simpTheorems : SimpTheoremsArray := #[simpTheorems]
+  let simpTheorems ← simpTheorems.addTheorem pf
+  let ctx := {
+    config := {
+      zeta := true
+      beta := false
+      eta := false
+      iota := false
+      proj := false
+      decide := false
+    }
+    simpTheorems
+  }
+  Tactic.simpLocation ctx (loc := loc.toTacticLocation)
+  let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
+  Tactic.dsimpLocation ctx (loc := loc.toTacticLocation)
 
 end Lean.Meta
 
@@ -114,7 +125,7 @@ def ConcretizationData.create (nm : Name) (eConcrete : Expr) : TacticM Concretiz
     let pfEqBody ← mkEqSymm (mkFVar conc.fvEqVar)
     let (_, mvarId) ← intro1P (← assert mvarId conc.nmEqBody tpEqBody pfEqBody)
     return [mvarId]
-  
+
   return conc
 
 def ConcretizationData.getDeclEqBody (conc : ConcretizationData) : TacticM LocalDecl :=
@@ -149,14 +160,10 @@ structure State where
   visitSet : Array Meta.Location
   /-- New concretizations found. -/
   newConcretizations : Std.RBMap Name Expr Name.quickCmp := .empty
-  /-- All the polymorphic terms found, with their concretizations. These might or might not
-  already have `generalize` hypotheses which we introduce lazily. Rewriting with each must
-  make progress on concretizing the goal.
-
-  Note that we store the actual concretizable term rather than just the concretization
-  name because it might be definitionally but not syntactically equal to the concretization
-  body. -/
-  foundConcretizables : Std.HashSet (Name × Expr) := .empty
+  /-- The concretizations of all polymorphic terms we found. These might or might not already
+  have `generalize` hypotheses which we introduce lazily. Rewriting with each must make progress
+  on concretizing the goal. -/
+  foundConcretizables : NameSet := .empty
 
 abbrev ConcretizeM := StateT State <| ReaderT Config TacticM
 
@@ -183,8 +190,8 @@ def addNewConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
   let newConcretizations := st.newConcretizations.insert nm e
   set { st with cache, newConcretizations }
 
-def foundConcretizable (nm : Name) (e : Expr) : ConcretizeM Unit :=
-  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert (nm, e) }
+def foundConcretizable (nm : Name) : ConcretizeM Unit :=
+  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert nm }
 
 def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
   if !e.isApp then return .visit e
@@ -193,16 +200,12 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     if !(← read).concretizeSet.contains declName then return .visit e
 
     -- Hits if an application with the same concretization was seen before.
-    if let some (nm, n) ← getCached? e then
-      -- Note: we may see a cache hit here that is only definitional but not syntactic.
-      -- So we must remember the particular expression in order to rewrite it later.
-      let eParticular ← mkAppOptM' fn (args.shrink (args.size - n) |>.map some)
-      foundConcretizable nm eParticular
+    if let some (nm, _) ← getCached? e then
+      foundConcretizable nm
       return .done e
 
     let info ← getFunInfoNArgs fn args.size
     let mut concreteArgs := #[]
-    let mut particularArgs := #[]
     for (pi, a) in info.paramInfo.zip args do
       let argTp ← inferType a
       -- TODO: This has good results but might be expensive.
@@ -211,7 +214,6 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
         !a'.hasLooseBVars ∧ !a'.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps ∨ pi.isInstImplicit)
       if isConcretizable then
         concreteArgs := concreteArgs.push (some a')
-        particularArgs := particularArgs.push (some a)
       else break
     if concreteArgs.isEmpty then return .visit e
 
@@ -228,8 +230,7 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     -- let nm ← mkFreshUserName nm
 
     addNewConcretization nm eConcrete
-    let eParticular ← mkAppOptM' fn particularArgs
-    foundConcretizable nm eParticular
+    foundConcretizable nm
 
     -- We visit children immediately as concretizing the head partial application `eConcrete`
     -- does not expose new opportunities in the arguments.
@@ -246,9 +247,6 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
     (st.visitSet.back, st')
   trace[smt.debug.concretize.loop] "visit {repr tgt}"
 
-  -- TODO where to dsimp
-  tgt.dsimpAt
-  
   let _ ← withMainContext <| Meta.transform (← tgt.getType) (m := ConcretizeM) (pre := concretizeApp)
 
   for (nm, eConcrete) in (← get).newConcretizations do
@@ -259,13 +257,10 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
     }
 
   let fcs := (← get).foundConcretizables
-  for (nm, ePart) in fcs.toArray do
+  for nm in fcs.toArray do
     let some conc := (← get).concretizations.find? nm
       | throwError "internal error, missing concretization '{nm}'"
-    -- TODO(WN): ahhhh this doesn't work either, unknown fvars from lets in the traversed type
-    -- do we need to manually kabstract? :(
-    trace[smt.debug.trace] "{nm} <= {ePart}"
-    tgt.tryRewriteAt (mkFVar conc.fvEqVar)
+    withMainContext <| tgt.simpRwAt (mkFVar conc.fvEqVar)
 
   loop
 
@@ -279,7 +274,7 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
       generalize $nm.eqVar : $eConcrete = $nm.var
       have $nm.eqBody : $nm.var = dsimp(whnf($eConcrete))
       visitSet ← visitSet + { $nm.eqBody }
-    
+
     for fc in foundConcretizations do
       rewriteAt tgt $nm.eqVar
 
@@ -324,7 +319,7 @@ def evalConcretize : ConcretizeM Unit := do
         let eqTp ← mkEq (mkFVar conc.fvVar) (mkFVar fvLet)
         let declEqBody ← conc.getDeclEqBody
         let eq ← mkExpectedTypeHint declEqBody.toExpr eqTp
-        tryRewriteEverywhere eq fun ld => !((`eqBody).isSuffixOf ld.userName.eraseMacroScopes)
+        tryRewriteWhen eq fun ld => (`eqBody).isSuffixOf ld.userName.eraseMacroScopes
 
       evalTactic <| ← `(tactic| clear $(mkIdent (nm ++ `eqBody)) $(mkIdent (nm ++ `eqVar)) $(mkIdent (nm ++ `var)))
 
@@ -359,7 +354,7 @@ elab "concretize" "[" nms:ident,* "]" : tactic => do
   let concretizeSet := nms.foldl (init := .empty) (NameSet.insert · ·)
   evalConcretize
     |>.run' { visitSet := #[.goal] }
-    |>.run { concretizeSet, rewriteWithLets := false }
+    |>.run { concretizeSet }
 
 end Smt.Concretize
 
@@ -385,7 +380,7 @@ def polyDouble {w : Nat} (x : BitVec w) : BitVec w :=
 
 set_option trace.smt.debug true in
 example (x y : BitVec 2) : polyDouble (polyAdd x y) = polyDouble (polyAdd y x) := by
-  concretize [polyDouble, polyAdd]
+  -- concretize [polyDouble, polyAdd]
   sorry
 
 set_option trace.smt.debug true in
