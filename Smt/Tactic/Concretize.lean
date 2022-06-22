@@ -101,6 +101,7 @@ structure ConcretizationData where
   in a let-binding body. Note that other concretization steps may recursively rewrite
   in `eBody`, so we only remember the name as the `FVarId` might change. -/
   nmEqBody : Name
+  deriving Inhabited
 
 def ConcretizationData.create (nm : Name) (eConcrete : Expr) : TacticM ConcretizationData := do
   let conc ← liftMetaTacticAux fun mvarId => do
@@ -297,31 +298,28 @@ def evalConcretize : ConcretizeM Unit := do
   loop
 
   if !(← read).rewriteWithLets then return
-  -- HACK: When clearing the hypotheses, we rely on the relative ordering of `eqBody hyps to give
-  -- us the right rewriting order. We may have to track dependencies manually if this breaks
-  withMainContext do
-    let mut fvars := #[]
-    for ld in ← withMainContext getLCtx do
-      if (`eqBody).isSuffixOf ld.userName.eraseMacroScopes then
-        fvars := fvars.push ld.fvarId
 
-    for fv in fvars.reverse do
-      let nm := (← getLocalDecl fv).userName.eraseMacroScopes.getPrefix
-      let some conc := (← get).concretizations.find? nm | throwError "internal error, missing concretization '{nm}'"
-      let eBody ← conc.getBody
-      let fvLet ← liftMetaTacticAux fun mvarId => do
-        -- `$concNm := $eBody`
-        let (fv, mvarId) ← intro1P (← define mvarId nm (← inferType eBody) eBody)
-          return (fv, [mvarId])
+  -- Sort and let-bind concretizations in dependency order.
+  let concs ← (← get).concretizations.foldM (init := #[]) fun acc nm conc =>
+    return acc.push (nm, conc, ← conc.getBody)
+  let concs := concs.qsort fun (_, conc₁, _) (_, _, eBody₂) => eBody₂.hasAnyFVar (· == conc₁.fvVar)
 
-      withMainContext do
-        -- `var.$concNm = $concNm`
-        let eqTp ← mkEq (mkFVar conc.fvVar) (mkFVar fvLet)
-        let declEqBody ← conc.getDeclEqBody
-        let eq ← mkExpectedTypeHint declEqBody.toExpr eqTp
-        tryRewriteWhen eq fun ld => (`eqBody).isSuffixOf ld.userName.eraseMacroScopes
+  for (nm, conc, _) in concs do
+    -- Note: we must run this again here because the fvars may have changed.
+    let eBody ← Tactic.withMainContext conc.getBody
+    let fvLet ← liftMetaTacticAux fun mvarId => do
+      -- `$concNm := $eBody`
+      let (fv, mvarId) ← intro1P (← define mvarId nm (← inferType eBody) eBody)
+      return (fv, [mvarId])
 
-      evalTactic <| ← `(tactic| clear $(mkIdent (nm ++ `eqBody)) $(mkIdent (nm ++ `eqVar)) $(mkIdent (nm ++ `var)))
+    withMainContext do
+      -- `var.$concNm = $concNm`
+      let eqTp ← mkEq (mkFVar conc.fvVar) (mkFVar fvLet)
+      let declEqBody ← conc.getDeclEqBody
+      let eq ← mkExpectedTypeHint declEqBody.toExpr eqTp
+      tryRewriteWhen eq fun ld => (`eqBody).isSuffixOf ld.userName.eraseMacroScopes
+
+    evalTactic <| ← `(tactic| clear $(mkIdent (nm ++ `eqBody)) $(mkIdent (nm ++ `eqVar)) $(mkIdent (nm ++ `var)))
 
 /-- Recursively finds and replaces concretizations in the goal and the hypotheses.
 We only concretize applications of the constants passed in as tactic arguments.
@@ -380,7 +378,7 @@ def polyDouble {w : Nat} (x : BitVec w) : BitVec w :=
 
 set_option trace.smt.debug true in
 example (x y : BitVec 2) : polyDouble (polyAdd x y) = polyDouble (polyAdd y x) := by
-  -- concretize [polyDouble, polyAdd]
+  concretize [polyDouble, polyAdd]
   sorry
 
 set_option trace.smt.debug true in
