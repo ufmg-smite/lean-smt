@@ -52,7 +52,7 @@ def Location.tryRewriteAt (loc : Location) (pf : Expr) : TacticM Unit :=
       | .goal => Meta.rewriteTarget pf false {}
       | .hyp nm =>
         if let some localDecl := (← getLCtx).findFromUserName? nm then
-          let _ ← Meta.rewriteLocalDecl pf false localDecl.fvarId {}
+          let _ ← Meta.rewriteLocalDecl pf false localDecl.fvarId { transparency := .all }
     catch _ => return ()
 
 def Location.dsimpAt (loc : Location) : TacticM Unit :=
@@ -129,6 +129,13 @@ def ConcretizationData.getBody (conc : ConcretizationData) : TacticM Expr :=
       | throwError "internal error, expected equality but got {tp}"
     return eBody
 
+structure Config where
+  /-- Set of constant names which should be concretized when found. -/
+  concretizeSet : NameSet
+  /-- Skip the last let-introduction step when `false.` Useful for debugging the internal
+  hypothesis representation. -/
+  rewriteWithLets : Bool := true
+
 structure State where
   /-- Stores all concretizations and their equality hypotheses. These should be well-formed
   in the goal's local context. -/
@@ -142,12 +149,16 @@ structure State where
   visitSet : Array Meta.Location
   /-- New concretizations found. -/
   newConcretizations : Std.RBMap Name Expr Name.quickCmp := .empty
-  /-- Names of concretizations corresponding to all polymorphic terms found. These might or might
-  not already have `generalize` hypotheses which we introduce lazily. Rewriting with each must make
-  progress on concretizing the goal. -/
-  foundConcretizables : NameSet := .empty
+  /-- All the polymorphic terms found, with their concretizations. These might or might not
+  already have `generalize` hypotheses which we introduce lazily. Rewriting with each must
+  make progress on concretizing the goal.
 
-abbrev ConcretizeM := StateT State TacticM
+  Note that we store the actual concretizable term rather than just the concretization
+  name because it might be definitionally but not syntactically equal to the concretization
+  body. -/
+  foundConcretizables : Std.HashSet (Name × Expr) := .empty
+
+abbrev ConcretizeM := StateT State <| ReaderT Config TacticM
 
 def withMainContext (x : ConcretizeM α) : ConcretizeM α := do
   controlAt TacticM fun mapInBase => Tactic.withMainContext (mapInBase x)
@@ -156,13 +167,13 @@ def traceLCtx : TacticM Unit := traceCtx `smt.debug.lctx <| Tactic.withMainConte
   for ld in (← getLCtx) do
     trace[smt.debug.concretize.lctx] "{ld.userName} @ {repr ld.fvarId} : {ld.type} {if ld.isAuxDecl then "(aux)" else ""}"
 
-def getCached? (e : Expr) : ConcretizeM (Option Name) := do
+def getCached? (e : Expr) : ConcretizeM (Option (Name × Nat)) := do
   -- We use `withExtra` as concretizations can be prefixes of the full application.
   let nms ← (←get).cache.getMatchWithExtra e
   if nms.size > 1 then unreachable!
-  if let #[(nm, _)] := nms then
-    trace[smt.debug.concretize.cache] "hit {e} ↦ {nm}"
-    return some nm
+  if let #[(nm, n)] := nms then
+    trace[smt.debug.concretize.cache] "hit {e} ↦ {nm}, left {n} args"
+    return some (nm, n)
   trace[smt.debug.concretize.cache] "miss {e}"
   return none
 
@@ -172,35 +183,35 @@ def addNewConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
   let newConcretizations := st.newConcretizations.insert nm e
   set { st with cache, newConcretizations }
 
-def foundConcretizable (nm : Name) : ConcretizeM Unit :=
-  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert nm }
+def foundConcretizable (nm : Name) (e : Expr) : ConcretizeM Unit :=
+  modify fun st => { st with foundConcretizables := st.foundConcretizables.insert (nm, e) }
 
 def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
   if !e.isApp then return .visit e
   e.withApp fun fn args => do
     let .const declName .. := fn | return .visit e
-    -- NB: we end up visiting the Eq type argument here which isn't ideal
-    if `Eq == declName then return .visit e
-    -- HACK: don't traverse typeclass projections. We should have a list of which ones
-    -- to skip though.
-    if let some { fromClass := true, .. } ← getProjectionFnInfo? declName then
-      return .done e
-    -- HACK: don't traverse types
-    if (← inferType e).isType then
-      return .done e
+    if !(← read).concretizeSet.contains declName then return .visit e
 
     -- Hits if an application with the same concretization was seen before.
-    if let some nm ← getCached? e then
-      foundConcretizable nm
+    if let some (nm, n) ← getCached? e then
+      -- Note: we may see a cache hit here that is only definitional but not syntactic.
+      -- So we must remember the particular expression in order to rewrite it later.
+      let eParticular ← mkAppOptM' fn (args.shrink (args.size - n) |>.map some)
+      foundConcretizable nm eParticular
       return .done e
 
     let info ← getFunInfoNArgs fn args.size
     let mut concreteArgs := #[]
+    let mut particularArgs := #[]
     for (pi, a) in info.paramInfo.zip args do
       let argTp ← inferType a
+      -- TODO: This has good results but might be expensive.
+      let a' := if !pi.isInstImplicit then ← whnf a else a
       let isConcretizable :=
-        !a.hasLooseBVars ∧ !a.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps ∨ pi.isInstImplicit)
-      if isConcretizable then concreteArgs := concreteArgs.push (some a)
+        !a'.hasLooseBVars ∧ !a'.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps ∨ pi.isInstImplicit)
+      if isConcretizable then
+        concreteArgs := concreteArgs.push (some a')
+        particularArgs := particularArgs.push (some a)
       else break
     if concreteArgs.isEmpty then return .visit e
 
@@ -217,7 +228,8 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     -- let nm ← mkFreshUserName nm
 
     addNewConcretization nm eConcrete
-    foundConcretizable nm
+    let eParticular ← mkAppOptM' fn particularArgs
+    foundConcretizable nm eParticular
 
     -- We visit children immediately as concretizing the head partial application `eConcrete`
     -- does not expose new opportunities in the arguments.
@@ -227,12 +239,15 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
   if (← get).visitSet.isEmpty then return
   let tgt ← modifyGet fun st =>
     let st' := { st with
-      newConcretizations := Std.RBMap.empty
-      foundConcretizables := NameSet.empty
+      newConcretizations := .empty
+      foundConcretizables := .empty
       visitSet := st.visitSet.pop
     }
     (st.visitSet.back, st')
   trace[smt.debug.concretize.loop] "visit {repr tgt}"
+
+  -- TODO where to dsimp
+  tgt.dsimpAt
   
   let _ ← withMainContext <| Meta.transform (← tgt.getType) (m := ConcretizeM) (pre := concretizeApp)
 
@@ -244,14 +259,15 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
     }
 
   let fcs := (← get).foundConcretizables
-  for nm in fcs do
+  for (nm, ePart) in fcs.toArray do
     let some conc := (← get).concretizations.find? nm
       | throwError "internal error, missing concretization '{nm}'"
+    -- TODO(WN): ahhhh this doesn't work either, unknown fvars from lets in the traversed type
+    -- do we need to manually kabstract? :(
+    trace[smt.debug.trace] "{nm} <= {ePart}"
     tgt.tryRewriteAt (mkFVar conc.fvEqVar)
-    tgt.dsimpAt
 
-  if !fcs.isEmpty then
-    loop
+  loop
 
 /- Algorithm:
 ```lean
@@ -275,17 +291,17 @@ partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
 
 Algorithm TODOs(WN):
 - `loop`
-  - in case of polymorphic hyps, maybe go inside them and if we find something matching
-    a known concretization then instantiate the whole thing at the concrete args.
+  - support polymorphic theorems and hyps. go inside them and if we find concretizables
+    there, instantiate the whole thing at the concrete args. pass these as list to tactic,
+    perhaps also heuristically choose hyps.
 - `concretizeApp`
-  - heuristics for when to visit and when to skip?
-  - config for what to concretise and what not to?
   - what about `Prop` args?
   - what about mvars in args?
 -/
 def evalConcretize : ConcretizeM Unit := do
   loop
 
+  if !(← read).rewriteWithLets then return
   -- HACK: When clearing the hypotheses, we rely on the relative ordering of `eqBody hyps to give
   -- us the right rewriting order. We may have to track dependencies manually if this breaks
   withMainContext do
@@ -313,6 +329,9 @@ def evalConcretize : ConcretizeM Unit := do
       evalTactic <| ← `(tactic| clear $(mkIdent (nm ++ `eqBody)) $(mkIdent (nm ++ `eqVar)) $(mkIdent (nm ++ `var)))
 
 /-- Recursively finds and replaces concretizations in the goal and the hypotheses.
+We only concretize applications of the constants passed in as tactic arguments.
+
+TODO(WN): heuristics I tried for auto-choosing constants to concretize fail badly. What's a good one?
 
 A *concretization* of a function application `f #[a₁, .., aₙ]` is a new function or constant
 with the longest contiguous prefix of concretizable arguments to `f` fixed. An argument
@@ -321,10 +340,7 @@ is *concretizable* when:
 - it has forward dependencies, or it is a type argument.
 
 TODO(WN):
-- we need to handle concrete arguments bound as let declarations
 - lift "contiguous" requirement?
-- allow concretizing polymorphic lemmas given as parameters to the tactic,
-  or heuristically.
 
 For example, `@List.foldl Nat Bool f` has the concretization
   `List.foldl.Nat.bool : (Nat → Bool → Nat) → Nat → List Bool → Nat`
@@ -338,8 +354,12 @@ The Coq variant is in `snipe`:
 - https://hal.archives-ouvertesfr/hal-03328935/document
 - https://github.com/smtcoq/sniper/blob/af7b0d22f496f8e7a0ee6ca495314d80ea2aa881/theories/elimination_polymorphism.v
 -/
-elab "concretize" : tactic =>
-  evalConcretize |>.run' { visitSet := #[.goal] }
+elab "concretize" "[" nms:ident,* "]" : tactic => do
+  let nms ← (nms : Array Syntax).mapM resolveGlobalConstNoOverloadWithInfo
+  let concretizeSet := nms.foldl (init := .empty) (NameSet.insert · ·)
+  evalConcretize
+    |>.run' { visitSet := #[.goal] }
+    |>.run { concretizeSet, rewriteWithLets := false }
 
 end Smt.Concretize
 
@@ -349,8 +369,8 @@ def generalAdd [Add α] (a b : α) := a + b
 
 set_option trace.smt.debug true in
 example : @generalAdd Int _ 3 3 = (6 : Int) := by
-  concretize
-  rfl
+  concretize [generalAdd]
+  sorry
 
 def BitVec (w : Nat) := Fin (2^w)
 protected def BitVec.zero (w : Nat) : BitVec w :=
@@ -365,13 +385,13 @@ def polyDouble {w : Nat} (x : BitVec w) : BitVec w :=
 
 set_option trace.smt.debug true in
 example (x y : BitVec 2) : polyDouble (polyAdd x y) = polyDouble (polyAdd y x) := by
-  concretize
+  concretize [polyDouble, polyAdd]
   sorry
 
 set_option trace.smt.debug true in
 example : ([1,2,3] : List Int).foldl Int.add 0 = 6 := by
   -- TODO(WN): everything breaks when `whnf` makes no progress on the concretization body
-  concretize
+  -- concretize [List.foldl]
   rfl
 
 end test
