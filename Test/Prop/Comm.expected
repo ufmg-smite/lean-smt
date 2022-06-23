@@ -8,4 +8,4 @@ query:
 (check-sat)
 
 result: sat
-Test/Prop/Comm.lean:3:8: warning: declaration uses 'sorry'
+Test/Prop/Comm.lean:4:2: error: unable to prove goal, it is false

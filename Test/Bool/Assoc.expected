@@ -9,4 +9,4 @@ query:
 (check-sat)
 
 result: sat
-Test/Bool/Assoc.lean:3:8: warning: declaration uses 'sorry'
+Test/Bool/Assoc.lean:5:2: error: unable to prove goal, it is false
