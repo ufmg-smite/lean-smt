@@ -7,8 +7,6 @@ Authors: Wojciech Nawrocki
 
 import Lean.Elab.Tactic
 
-import Smt.Tactic
-
 namespace Lean.Meta
 open Elab Tactic
 
