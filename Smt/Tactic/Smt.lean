@@ -21,25 +21,6 @@ initialize
   registerTraceClass `smt.debug.query
   registerTraceClass `smt.debug.transformer
 
-instance : Lean.KVMap.Value Kind where
-  toDataValue
-    | Kind.cvc5 => "cvc5"
-    | Kind.z3   => "z3"
-  ofDataValue?
-    | "cvc5" => Kind.cvc5
-    | "z3" => Kind.z3
-    | _ => none
-
-register_option smt.solver.kind : Kind := {
-  defValue := Kind.cvc5
-  descr := "The solver to use for solving the SMT query."
-}
-
-register_option smt.solver.path : String := {
-  defValue := "cvc5"
-  descr := "The path to the solver used for the solving the SMT query."
-}
-
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to
 assert the current goal. However, that is not always enough:
@@ -93,7 +74,7 @@ def parseTactic : Syntax → TacticM (List Expr)
   let query := queryToString solver.commands
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get (← getOptions)
+  let path := smt.solver.path.get? (← getOptions) |>.getD (toString kind)
   -- 5. Print the result.
   let res ← solver.checkSat kind path
   logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"

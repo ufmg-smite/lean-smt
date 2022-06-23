@@ -13,7 +13,32 @@ namespace Smt
 inductive Kind where
   | cvc5
   | z3
+  | vampire
   deriving Inhabited
+
+instance : ToString Kind where
+  toString := fun
+    | .cvc5 => "cvc5"
+    | .z3 => "z3"
+    | .vampire => "vampire"
+
+instance : Lean.KVMap.Value Kind where
+  toDataValue k := toString k
+  ofDataValue?
+    | "cvc5"    => Kind.cvc5
+    | "z3"      => Kind.z3
+    | "vampire" => Kind.vampire
+    | _         => none
+
+register_option smt.solver.kind : Kind := {
+  defValue := Kind.cvc5
+  descr := "The solver to use for solving the SMT query."
+}
+
+register_option smt.solver.path : String := {
+  defValue := "cvc5"
+  descr := "The path to the solver used for solving the SMT query."
+}
 
 /-- The data-structure for SMT-LIB based solver. -/
 structure Solver where
@@ -81,13 +106,15 @@ def checkSat (kind : Kind) (path : String) : IO String := do
     stderr := IO.Process.Stdio.piped
     cmd := path
     args := match kind with
-      | Kind.cvc5 => #["-q"]
-      | Kind.z3   => #["-in"]
+      | Kind.cvc5    => #["-q"]
+      | Kind.z3      => #["-in"]
+      | Kind.vampire => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
   }
   let query := String.intercalate
                  "\n" ("(exit)\n" :: "(check-sat)" :: solver.commands).reverse
   proc.stdin.putStr query
-  proc.stdin.flush
+  -- Close stdin to signal EOF to the solver.
+  let (_, proc) ← proc.takeStdin
   _ ← proc.wait
   proc.stdout.readToEnd
 
