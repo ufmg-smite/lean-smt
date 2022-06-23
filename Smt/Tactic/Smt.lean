@@ -6,6 +6,8 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
+
+import Smt.Dsl.Sexp
 import Smt.Query
 import Smt.Solver
 
@@ -78,5 +80,13 @@ def parseTactic : Syntax → TacticM (List Expr)
   -- 5. Print the result.
   let res ← solver.checkSat kind path
   logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"
+  let out ← match Sexp.parse res with
+    | .ok out => pure out
+    | .error e => throwError "cannot parse solver output: {e}"
+  if out.contains sexp!{sat} then
+    throwError "unable to prove goal, it is false"
+    -- TODO ask for countermodel and print
+  else if !out.contains sexp!{unsat} then
+    throwError "unable to prove goal"
 
 end Smt
