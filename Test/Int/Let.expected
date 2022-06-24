@@ -1,0 +1,19 @@
+goal: let y := 10;
+f y = 10
+
+query:
+(declare-fun f (Int) Int)
+(assert (not (let ((y 10)) (= (f y) 10))))
+(assert (= (f 10) 10))
+(check-sat)
+
+result: unsat
+goal: f 10 = 10
+
+query:
+(declare-fun f (Int) Int)
+(assert (not (= (f 10) 10)))
+(assert (let ((y 10)) (= (f y) 10)))
+(check-sat)
+
+result: unsat
