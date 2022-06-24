@@ -181,11 +181,11 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
     | _ => pure ()
   _ ← set solver
 
-def generateQuery (g : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
+def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
   traceCtx `smt.debug.generateQuery do
-    trace[smt.debug.query] "Goal: {g}"
+    trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
-    let g ← buildDependencyGraph g hs
+    let g ← buildDependencyGraph goal hs
     trace[smt.debug.query] "Dependency Graph: {g}"
     let (_, solver) ← StateT.run (g.dfs $ processVertex hs) solver
     return solver
