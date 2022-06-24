@@ -6,4 +6,13 @@ query:
 (check-sat)
 
 result: sat
-Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'
+Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, it is false
+goal: ∀ (x : Nat), x + 1 ≠ 0
+
+query:
+(define-sort Nat () Int)
+(assert (not (forall ((x Nat)) (=> (>= x 0) (distinct (+ x 1) 0)))))
+(check-sat)
+
+result: unsat
+Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'

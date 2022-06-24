@@ -12,6 +12,7 @@ query:
 (check-sat)
 
 result: unknown
+Test/Nat/Max.lean:12:2: error: unable to prove goal
 goal: x ≤ Max x y ∧ y ≤ Max x y
 
 query:
