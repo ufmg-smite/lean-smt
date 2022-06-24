@@ -31,7 +31,8 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
        StateT (Graph Expr Unit) MetaM Unit := do
       if (← get).contains e then
         return
-      assert! e.isConst ∨ e.isFVar ∨ e.isMVar
+      if !(e.isConst ∨ e.isFVar ∨ e.isMVar) then
+        throwError "failed to build graph, unexpected expression{indentD e}\nof kind {e.ctorName}"
       modify (·.addVertex e)
       if e.isConst then
         if e.constName! == `Nat then
@@ -54,7 +55,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       -- If `e` is a function name in the list of hints, unfold it.
       if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
         return
-      match ← getUnfoldEqnFor? e.constName! with
+      match ← getUnfoldEqnFor? e.constName! (nonRec := true) with
       | some eqnThm =>
         let eqnInfo ← getConstInfo eqnThm
         let d := eqnInfo.type

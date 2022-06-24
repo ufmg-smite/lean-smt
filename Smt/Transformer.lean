@@ -111,7 +111,9 @@ partial def applyTransformations : Transformer := fun e => do
         b' := some (b''.abstract #[x])
       return b'
 
-/-- Pre-processes `e` and returns the resulting expr. -/
+/-- Pre-processes `e` by running it through all the registered `Transformer`s.
+The resulting `Expr` may not be well-typed in general, but it should be valid
+for SMT-LIBv2 production in `exprToTerm`. -/
 def preprocessExpr (e : Expr) : MetaM Expr :=
   traceCtx `smt.debug.preprocessExpr do
     trace[smt.debug.transformer] "before unfolding projs: {exprToString e}"
