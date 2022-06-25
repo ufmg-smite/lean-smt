@@ -13,6 +13,3 @@ import Smt.Solver
 import Smt.String
 import Smt.Tactic
 import Smt.Term
-
-import Smt.Reconstruction.Term
-import Smt.Reconstruction.ModusPonens
