@@ -41,26 +41,23 @@ theorem notImplies1 : ∀ {t₁ t₂ : term},
        case h_2 => simp at h'
      case h_2 => exact (False.elim h)
 
-theorem notImplies2 : ∀ {t₁ t₂ : term},
-  followsFrom (not $ implies t₁ t₂) (not t₂) :=
-  by intros t₁ t₂ Γ Δ h
-     simp at *
-     split at h
-     case h_1 _ k h' =>
-       split at h'
-       case h_1 _ k' h'' =>
-         split at h''
-         case h_1 _ k₁ k₂ rt₁ rt₂ =>
-           split
-           case h_1 z q₁ i₂ k₂ h₂ aaaaaaa aaa aa =>
-             rewrite [h₂]
-             have ek : (fun Γ Δ => ¬ k' Γ Δ) = k :=
-               by injection h' with h'; injection h' with _ h'; exact h';
-             have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' :=
-               by injection h'' with h''; injection h'' with _ h''; exact h''
-             rewrite [← ek, ← fe] at h
+/-      simp at * -/
+/-      split at h -/
+/-      case h_1 _ k h' => -/
+/-        split at h' -/
+/-        case h_1 _ k' h'' => -/
+/-          split at h'' -/
+/-          case h_1 _ k₁ k₂ rt₁ rt₂ => -/
+/-            split -/
+/-            case h_1 z q₁ i₂ k₂ h₂ aaaaaaa aaa aa => -/
+/-              rewrite [h₂] -/
+/-              have ek : (fun Γ Δ => ¬ k' Γ Δ) = k := -/
+/-                by injection h' with h'; injection h' with _ h'; exact h'; -/
+/-              have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' := -/
+/-                by injection h'' with h''; injection h'' with _ h''; exact h'' -/
+/-              rewrite [← ek, ← fe] at h -/
              
-           case h_2 _ q₁ q₂ q₃ => admit
+/-            case h_2 _ q₁ q₂ q₃ => admit -/
            /- simp -/
 
            /- rewrite [rt₂] -/
@@ -73,36 +70,39 @@ theorem notImplies2 : ∀ {t₁ t₂ : term},
            /- apply byContradiction -/
 
            /- exact (λ hf => h (λ k₁w => False.elim (hf k₁w))) -/
-         case h_2 => simp at h''
-       case h_2 => simp at h'
-     case h_2 => exact (False.elim h)
-    /- by simp at h -/
-    /-    match r₁: interpTerm t₁, r₂: interpTerm t₂ with -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ => -/
-    /-        simp -/
-    /-        rewrite [r₂] -/
-    /-        show ¬ k₂ Γ Δ -/
-    /-        rewrite [r₁, r₂] at h -/
-    /-        have h₂ : ¬ ((k₁ Γ Δ) → (k₂ Γ Δ)) := h -/
-    /-        match em (k₂ Γ Δ) with -/
-    /-        | Or.inl r  => exact False.elim (h₂ (λ _ => r)) -/
-    /-        | Or.inr r  => exact r -/
-    /-    | some ⟨ atom 0, _ ⟩, _  => rewrite [r₁] at h; simp at h -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 0, _ ⟩  => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.array _ _, _ ⟩       => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.bv _, _ ⟩            => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂) -/
-    /-    | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) -/ 
-    /-    | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) -/ 
-    /-    | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁) -/ 
-    /-    | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁) -/ 
-    /-    | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁) -/ 
-    /-    | some ⟨ sort.dep, _ ⟩, _             => absurdHyp h (r₁) -/
-    /-    | none, _                             => absurdHyp h (r₁) -/
+         /- case h_2 => simp at h'' -/
+       /- case h_2 => simp at h' -/
+     /- case h_2 => exact (False.elim h) -/
+theorem notImplies2 : ∀ {t₁ t₂ : term},
+  followsFrom (not $ implies t₁ t₂) (not t₂) :=
+    by intros t₁ t₂ Γ Δ h
+       simp at h
+       match r₁: interpTerm t₁, r₂: interpTerm t₂ with
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
+           simp
+           rewrite [r₂]
+           show ¬ k₂ Γ Δ
+           rewrite [r₁, r₂] at h
+           have h₂ : ¬ ((k₁ Γ Δ) → (k₂ Γ Δ)) := h
+           match em (k₂ Γ Δ) with
+           | Or.inl r  => exact False.elim (h₂ (λ _ => r))
+           | Or.inr r  => exact r
+       | some ⟨ atom 0, _ ⟩, _  => rewrite [r₁] at h; simp at h
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 0, _ ⟩  => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.array _ _, _ ⟩       => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.bv _, _ ⟩            => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂)
+       | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂)
+       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) 
+       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) 
+       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁) 
+       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁) 
+       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁) 
+       | some ⟨ sort.dep, _ ⟩, _             => absurdHyp h (r₁)
+       | none, _                             => absurdHyp h (r₁)
 
 theorem impliesElim : ∀ {t₁ t₂ : term},
   followsFrom (implies t₁ t₂) (or (not t₁) t₂)

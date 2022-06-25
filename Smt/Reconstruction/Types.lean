@@ -1,5 +1,4 @@
 import Smt.Reconstruction.Term
-/- import Cdclt.Boolean -/
 
 open proof
 open sort
@@ -19,7 +18,8 @@ def interpSort (Δ : SEnvironment) (s : sort) : Type :=
 -- takes the number of a constant and it's type, and returns its value
 def Environment : Type 1 := Nat → (Δ : SEnvironment) → (s : sort) → interpSort Δ s
 
-def Interpretation: Type 1 := Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
+def Interpretation: Type 1 :=
+  Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
 
 end Types
 
