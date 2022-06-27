@@ -70,7 +70,7 @@ def getMVars (e : Expr) : List Expr := (getMVars' e).eraseDups
 def hasMVars (e : Expr) : Bool := !(getMVars e).isEmpty
 
 /-- Count the number of occurances of the constant `c` in `e`. -/
-def Lean.Expr.countConst (e : Expr) (c : Name) : Nat :=
+def countConst (e : Expr) (c : Name) : Nat :=
   let rec visit : Expr → Nat
     | Expr.forallE _ d b _   => visit d + visit b
     | Expr.lam _ d b _       => visit d + visit b
