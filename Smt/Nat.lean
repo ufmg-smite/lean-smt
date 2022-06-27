@@ -2,81 +2,66 @@
 Copyright (c) 2021-2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
-import Smt.Transformer
+import Smt.Translator
 
 namespace Smt.Nat
 
 open Lean Expr
-open Smt.Transformer
+open Smt.Translator
 
-@[Smt] def replaceConst : Transformer
-  | const `Nat.add ..  => pure (mkConst (Name.mkSimple "+"))
-  | const `Nat.mul ..  => pure (mkConst (Name.mkSimple "*"))
-  | const `Nat.div ..  => pure (mkConst (Name.mkSimple "div"))
-  | const `Nat.le ..   => pure (mkConst (Name.mkSimple "<="))
-  | app (app (const `GE.ge ..) (const `Nat ..) _) .. =>
-    pure (mkConst (Name.mkSimple ">="))
-  | e                  => pure e
+@[smtTranslator] def replaceConst : Translator
+  | const `Nat.add ..  => return Term.Symbol "+"
+  | const `Nat.mul ..  => return Term.Symbol "*"
+  | const `Nat.div ..  => return Term.Symbol "div"
+  | const `Nat.le ..   => return Term.Symbol "<="
+  | const `Nat.ge ..   => return Term.Symbol ">="
+  | _                  => return none
+
+@[smtTranslator] def replaceNatLit : Translator
+  | lit (.natVal n) .. => return Term.Literal (toString n)
+  | _                  => return none
 
 /-- Removes casts of literals to `Nat` in `e`. For example, given
     `(app (app (app (OfNat.ofNat ..) ..) (LIT 0) ..) ..)`, this method removes
     all applications and returns just `(LIT 0)`. -/
-@[Smt] def removeOfNat : Transformer
-  | app (app (app (const ``OfNat.ofNat ..) ..) l ..) .. => pure l
-  | e                                                   => pure e
+@[smtTranslator] def removeOfNat : Translator
+  | app (app (app (const ``OfNat.ofNat ..) ..) l ..) .. => applyTranslators! l
+  | _                                                   => return none
 
 /-- Replaces `Nat` constructors `Nat.zero` and `Nat.succ n` for with `0` and
     `(+ n 1)`. -/
-@[Smt] def replaceCtr : Transformer
-  | const ``Nat.zero ..           => pure $ mkLit (Literal.natVal 0)
-  | app (const ``Nat.succ ..) e _ => do match ← applyTransformations e with
-    | none    => pure none
-    | some e' => pure $ plusOne e'
-  | e                             => pure e
-  where
-    plusOne e :=
-      mkApp2 (mkConst (Name.mkSimple "+")) e (mkLit (Literal.natVal 1))
+@[smtTranslator] def replaceCtr : Translator
+  | app (const ``Nat.succ ..) e _ => do
+    let tmE ← applyTranslators! e
+    return Term.mkApp2 (Term.Symbol "+") tmE (Term.Literal "1")
+  | const ``Nat.zero ..           => return Term.Literal "0"
+  | _                             => return none
 
 /-- Removes applications of `Nat.decLe` in `e`.
     TODO: replace by unfolding projections. -/
-@[Smt] def removeDecLe : Transformer
+@[smtTranslator] def removeDecLe : Translator
   | app (app f (app (app (const ``Nat.decLe ..) ..) ..) ..) e .. => do
-    return match ← applyTransformations f, ← applyTransformations e with
-    | none  , none   => none
-    | none  , some e => e
-    | some f, none   => f
-    | some f, some e => mkApp f e
-  | e                                                            =>
-    pure e
+    let tmF ← applyTranslators! f
+    let tmE ← applyTranslators! e
+    return Term.App tmF tmE
+  | _ => return none
 
-/-- Replaces quantified expressions over natural numbers for with versions that
+/- Replaces quantified expressions over natural numbers for with versions that
     ensure the quantified variables are greater than or equal to 0. For
     example, given `∀ x : Nat, p(x)`, this method returns the expr
     `∀ x : Nat, x ≥ 0 → p(x)`. -/
-@[Smt] def replaceForalls : Transformer
+@[smtTranslator] def replaceForalls : Translator
   | e@(forallE n t@(const ``Nat ..) b d) => do
-    -- TODO: replace check with final domain and improve returned result.
-    if ¬e.isArrow then
-      match ← applyTransformations t,
-            ← Meta.withLocalDecl n d.binderInfo t (applyTransformations' b) with
-      | some t', some b' => pure $ mkForall n d.binderInfo t' (imp b')
-      | _      , _       => pure e
-    else return e
-  | e                                   => pure e
-  where
-    applyTransformations' b x := do
-      let mut b' ← applyTransformations (b.instantiate #[x])
-      if let some b'' := b' then
-        b' := some (b''.abstract #[x])
-      return b'
-    imp e := mkApp2 (mkConst (Name.mkSimple "=>"))
-                    (mkApp2 (mkConst (Name.mkSimple ">="))
-                            (mkBVar 0)
-                            (mkLit (Literal.natVal 0)))
-                    e
+    if e.isArrow then return none
+    Meta.withLocalDecl n d.binderInfo t fun x => do
+      let tmB ← applyTranslators! (b.instantiate #[x])
+      let tmGeqZero := Term.mkApp2 (Term.Symbol ">=") (Term.Symbol n.toString) (Term.Literal "0")
+      let tmProp := Term.mkApp2 (Term.Symbol "=>") tmGeqZero tmB
+      return Term.Forall n.toString (Term.Symbol "Int") tmProp
+  | _ => return none
 
 end Smt.Nat

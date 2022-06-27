@@ -9,7 +9,7 @@ import Lean
 import Smt.Constants
 import Smt.Graph
 import Smt.Solver
-import Smt.Transformer
+import Smt.Translator
 import Smt.Util
 
 namespace Smt.Query
@@ -42,10 +42,14 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
           return
       trace[smt.debug.query] "e: {e}"
       let et ← inferType e
+      let et ← instantiateMVars et
       trace[smt.debug.query] "et: {et}"
       let fvs := Util.getFVars et
       trace[smt.debug.query] "fvs: {fvs}"
-      let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
+      -- TODO(WN): we already invoke translation during graph construction,
+      -- we should memoize it to avoid wasted work.
+      let ucs ← Translator.getUnknownConstants et
+      let ucs := ucs.fold (init := []) fun acc nm => mkConst nm :: acc
       trace[smt.debug.query] "ucs: {ucs}"
       let cs := fvs ++ ucs
       -- Processes the children.
@@ -62,7 +66,8 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
         trace[smt.debug.query] "d: {d}"
         let dfvs := Util.getFVars d
         trace[smt.debug.query] "dfvs: {dfvs}"
-        let ducs := Util.getUnkownConsts (← Transformer.preprocessExpr d)
+        let ducs ← Translator.getUnknownConstants et
+        let ducs := ducs.fold (init := []) fun acc nm => mkConst nm :: acc
         trace[smt.debug.query] "ducs: {ducs}"
         let dcs := dfvs ++ ducs
         for dc in dcs do
@@ -115,18 +120,18 @@ partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
     id := if let const n .. := e then n.toString else panic! ""
     params : Expr → MetaM (List (String × Term))
       | forallE n t e _ => do
-        return (n.toString, (← Transformer.exprToTerm t)) :: (← params e)
+        return (n.toString, (← Translator.translateExpr' t)) :: (← params e)
       | _ => pure []
     type : Expr →  MetaM Term
       | forallE _ _ t _ => type t
-      | t => Transformer.exprToTerm t
+      | t => Translator.translateExpr' t
     /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
         this function instantiates all occurances of `x₁ ⬝⬝⬝ xₙ` in `body` and
         converts the resulting `Expr` into an equivalent SMT `Term`.  -/
     body : Expr → MetaM Term
       | forallE n t b d                          =>
         Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | app (app (app (const `Eq ..) ..) ..) e _ => Transformer.exprToTerm e
+      | app (app (app (const `Eq ..) ..) ..) e _ => Translator.translateExpr' e
       | e                                        =>
         throwError "Error: unexpected equation theorem: {e}"
 
@@ -135,10 +140,10 @@ partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
   pure (defineConst s id (← type (← Meta.inferType defn)) (← body defn))
   where
     id := if let const n .. := e then n.toString else panic! ""
-    type := Transformer.exprToTerm
+    type := Translator.translateExpr'
     body : Expr → MetaM Term
       | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | e => do return ← Transformer.exprToTerm e
+      | e => do return ← Translator.translateExpr' e
 
 def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   let mut solver ← get
@@ -147,11 +152,10 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   | const `Nat ..     => set (defNat solver); return
   | const `Nat.sub .. => set (defNatSub solver); return
   | _                 => pure ()
-  let mut t ← inferType e
-  if Util.hasMVars t then
-    t ← whnf t
+  let t ← inferType e
+  let t ← instantiateMVars t
   trace[smt.debug.query] "t: {t}"
-  let s ← Transformer.exprToTerm t
+  let s ← Translator.translateExpr' t
   trace[smt.debug.query] "s: {s}"
   let n ← match e with
   | fvar id .. => pure (← getLocalDecl id).userName.toString

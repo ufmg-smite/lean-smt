@@ -27,6 +27,15 @@ inductive Term where
 
 namespace Term
 
+def mkApp2 (f a b : Term) : Term :=
+  App (App f a) b
+
+def mkApp3 (f a b c : Term) : Term :=
+  App (App (App f a) b) c
+
+def mkApp4 (f a b c d : Term) : Term :=
+  App (App (App (App f a) b) c) d
+
 /-- SMT-LIBv2 quoting for symbols. -/
 def quoteSymbol (s : String) : String :=
   -- This is the set of SMT-LIBv2 permitted characters in "simple" (non-quoted)

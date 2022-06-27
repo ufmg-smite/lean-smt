@@ -21,7 +21,7 @@ initialize
   registerTraceClass `smt.debug
   registerTraceClass `smt.debug.attr
   registerTraceClass `smt.debug.query
-  registerTraceClass `smt.debug.transformer
+  registerTraceClass `smt.debug.translator
 
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to
