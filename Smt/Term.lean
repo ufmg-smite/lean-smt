@@ -10,17 +10,17 @@ namespace Smt
 /-- The SMT-LIBv2 Term data-structure. -/
 inductive Term where
   | /-- A theory literal -/
-    Literal : String → Term               
+    Literal : String → Term
   | /-- Sort or function symbol -/
-    Symbol  : String → Term               
-  | /-- Function sort -/ 
-    Arrow   : Term → Term → Term          
+    Symbol  : String → Term
+  | /-- Function sort -/
+    Arrow   : Term → Term → Term
   | /-- Function application -/
-    App     : Term → Term → Term          
+    App     : Term → Term → Term
   | /-- Forall quantifier -/
-    Forall  : String → Term → Term → Term 
+    Forall  : String → Term → Term → Term
   | /-- Exists quantifier -/
-    Exists  : String → Term → Term → Term 
+    Exists  : String → Term → Term → Term
   | /-- Let binding -/
     Let     : String → Term → Term → Term
   deriving Inhabited
