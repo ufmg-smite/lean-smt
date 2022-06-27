@@ -7,14 +7,22 @@ Authors: Abdalrhman Mohamed
 
 namespace Smt
 
-/-- The Term data-structure. -/
+/-- The SMT-LIBv2 Term data-structure. -/
 inductive Term where
-  | Literal : String → Term               -- A theory literal
-  | Symbol  : String → Term               -- Sorts and function symbols
-  | Arrow   : Term → Term → Term          -- Function sorts
-  | App     : Term → Term → Term          -- Function application
-  | Forall  : String → Term → Term → Term -- Forall quantifier
-  | Exists  : String → Term → Term → Term -- Exists quantifier
+  | /-- A theory literal -/
+    Literal : String → Term
+  | /-- Sort or function symbol -/
+    Symbol  : String → Term
+  | /-- Function sort -/
+    Arrow   : Term → Term → Term
+  | /-- Function application -/
+    App     : Term → Term → Term
+  | /-- Forall quantifier -/
+    Forall  : String → Term → Term → Term
+  | /-- Exists quantifier -/
+    Exists  : String → Term → Term → Term
+  | /-- Let binding -/
+    Let     : String → Term → Term → Term
   deriving Inhabited
 
 namespace Term
@@ -44,6 +52,7 @@ partial def toString : Term → String
     "(" ++ String.intercalate " " (ts.map toString) ++ ")"
   | Forall n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
   | Exists n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
+  | Let n t b => s!"(let (({quoteSymbol n} {t.toString})) {b.toString})"
   where
     arrowToList : Term → List Term
       | Arrow d c => d :: arrowToList c

@@ -111,7 +111,9 @@ partial def applyTransformations : Transformer := fun e => do
         b' := some (b''.abstract #[x])
       return b'
 
-/-- Pre-processes `e` and returns the resulting expr. -/
+/-- Pre-processes `e` by running it through all the registered `Transformer`s.
+The resulting `Expr` may not be well-typed in general, but it should be valid
+for SMT-LIBv2 production in `exprToTerm`. -/
 def preprocessExpr (e : Expr) : MetaM Expr :=
   traceCtx `smt.debug.preprocessExpr do
     trace[smt.debug.transformer] "before unfolding projs: {exprToString e}"
@@ -132,31 +134,34 @@ def preprocessExpr (e : Expr) : MetaM Expr :=
 /-- Converts a Lean expression into an SMT term. -/
 partial def exprToTerm (e : Expr) : MetaM Term := do
   let e ← preprocessExpr e
-  exprToTerm' e
-  where
-    exprToTerm' (e : Expr) : MetaM Term := do match e with
-      | fvar id _           =>
-        let n := (← Meta.getLocalDecl id).userName.toString
-        pure (Symbol n)
-      | e@(const ..)      => pure (Symbol (toString e))
-      | e@(forallE n s ..) =>
-        if e.isArrow then
-          Meta.forallTelescope e fun ss s => do
-            let ss ← ss.mapM Meta.inferType
-            ss.foldrM (fun d c => do return Arrow (← exprToTerm' d) c)
-                      (← exprToTerm' s)
-        else
-          pure $ Forall n.toString (← exprToTerm' s) <|
-            ← Meta.forallBoundedTelescope e (some 1) (fun _ b => exprToTerm' b)
-      | app (const `exists ..) (lam n t b d) _ =>
-        Meta.withLocalDecl n d.binderInfo t fun x => do
-        return Exists n.toString (← exprToTerm' t)
-                                 (← exprToTerm' (b.instantiate #[x]))
-      | app f t _           => pure $ App (← exprToTerm' f) (← exprToTerm' t)
-      | lit l _             => pure $ Literal (match l with
-        | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
-        | Literal.strVal s => s!"\"{s}\"")
-      | mdata _ e _         => exprToTerm' e
-      | e                   => throwError "Unimplemented: {exprToString e}"
+  go e
+where
+  go (e : Expr) : MetaM Term := do match e with
+    | fvar id _           =>
+      let n := (← Meta.getLocalDecl id).userName.toString
+      pure (Symbol n)
+    | e@(const ..)      => pure (Symbol (toString e))
+    | e@(forallE n s ..) =>
+      if e.isArrow then
+        Meta.forallTelescope e fun ss s => do
+          let ss ← ss.mapM Meta.inferType
+          ss.foldrM (fun d c => do return Arrow (← go d) c)
+                    (← go s)
+      else
+        pure $ Forall n.toString (← go s) <|
+          ← Meta.forallBoundedTelescope e (some 1) (fun _ b => go b)
+    | app (const `exists ..) (lam n t b d) _ =>
+      Meta.withLocalDecl n d.binderInfo t fun x => do
+      return Exists n.toString (← go t)
+                                (← go (b.instantiate #[x]))
+    | app f t _           => pure $ App (← go f) (← go t)
+    | lit l _ => pure $ Literal (match l with
+      | Literal.natVal n => ⟨Nat.toDigits 10 n⟩
+      | Literal.strVal s => s!"\"{s}\"")
+    | letE nm tp val bd _ =>
+      let bd ← Meta.withLetDecl nm tp val (fun x => go <| bd.instantiate #[x])
+      pure $ Let nm.toString (← go val) bd
+    | mdata _ e _         => go e
+    | e                   => throwError "Unimplemented: {exprToString e}"
 
 end Smt.Transformer
