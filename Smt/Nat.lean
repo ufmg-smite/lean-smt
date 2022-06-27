@@ -15,6 +15,8 @@ open Smt.Transformer
 
 @[Smt] def replaceConst : Transformer
   | const `Nat.add ..  => pure (mkConst (Name.mkSimple "+"))
+  | const `Nat.mul ..  => pure (mkConst (Name.mkSimple "*"))
+  | const `Nat.div ..  => pure (mkConst (Name.mkSimple "div"))
   | const `Nat.le ..   => pure (mkConst (Name.mkSimple "<="))
   | app (app (const `GE.ge ..) (const `Nat ..) _) .. =>
     pure (mkConst (Name.mkSimple ">="))

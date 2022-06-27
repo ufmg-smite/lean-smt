@@ -6,10 +6,11 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
 import Lean
+import Smt.Constants
 import Smt.Graph
 import Smt.Solver
 import Smt.Transformer
-import Smt.Constants
+import Smt.Util
 
 namespace Smt.Query
 
@@ -30,7 +31,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
        StateT (Graph Expr Unit) MetaM Unit := do
       if (← get).contains e then
         return
-      assert!(e.isConst ∨ e.isFVar ∨ e.isMVar)
+      assert! e.isConst ∨ e.isFVar ∨ e.isMVar
       modify (·.addVertex e)
       if e.isConst then
         if e.constName! == `Nat then
@@ -93,22 +94,40 @@ def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
       | [] => Symbol n
       | t :: ts => App (applyList n ts) (Symbol t.toString)
 
--- TODO: support recursive functions.
+-- TODO: support mutually recursive functions.
 partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
-  let defn : Expr ← Meta.unfoldDefinition e
-  pure (defineFun s id (← params defn) (← type (← Meta.inferType defn)) (← body defn))
+  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) e.constName!
+    | throwError "failed to retrieve equation theorem"
+  let eqnInfo ← getConstInfo eqnThm
+  let d := eqnInfo.type
+  let mutRecFuns := ConstantInfo.all (← getConstInfo e.constName!)
+  trace[smt.debug.query] "mutually recursive functions with {e}: {mutRecFuns}"
+  -- TODO: Replace by `DefinitionVal.isRec` check when it gets added to Lean
+  -- core.
+  if mutRecFuns.length > 1 then
+    throwError "mutually recursive functions are not yet supported"
+  if Util.countConst d e.constName! > 1 then
+    pure (defineFunRec s id (← params d) (← type (← inferType e)) (← body d))
+  else
+    pure (defineFun s id (← params d) (← type (← inferType e)) (← body d))
   where
     id := if let const n .. := e then n.toString else panic! ""
     params : Expr → MetaM (List (String × Term))
-      | lam n t e _ => do
+      | forallE n t e _ => do
         return (n.toString, (← Transformer.exprToTerm t)) :: (← params e)
       | _ => pure []
     type : Expr →  MetaM Term
       | forallE _ _ t _ => type t
       | t => Transformer.exprToTerm t
+    /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
+        this function instantiates all occurances of `x₁ ⬝⬝⬝ xₙ` in `body` and
+        converts the resulting `Expr` into an equivalent SMT `Term`.  -/
     body : Expr → MetaM Term
-      | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | e => do return ← Transformer.exprToTerm e
+      | forallE n t b d                          =>
+        Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
+      | app (app (app (const `Eq ..) ..) ..) e _ => Transformer.exprToTerm e
+      | e                                        =>
+        throwError "Error: unexpected equation theorem: {e}"
 
 partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
   let defn : Expr ← Meta.unfoldDefinition e
@@ -137,9 +156,7 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   | fvar id .. => pure (← getLocalDecl id).userName.toString
   | const n .. => pure n.toString
   | _          => panic! ""
-  trace[smt.debug.query] "here1"
   let tt ← inferType t
-  trace[smt.debug.query] "here2"
   match tt with
     | sort l ..  => match l.toNat with
       | some 0 => solver := assert solver s
