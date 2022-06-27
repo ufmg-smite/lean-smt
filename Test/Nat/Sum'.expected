@@ -1,0 +1,24 @@
+goal: sum Nat.zero = Nat.zero * (Nat.zero + 1) / 2
+
+query:
+(define-sort Nat () Int)
+(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
+(assert (not (= (sum 0) (div (* 0 (+ 0 1)) 2))))
+(check-sat)
+
+result: unsat
+goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
+
+query:
+(define-sort Nat () Int)
+(declare-const n Nat)
+(assert (>= n 0))
+(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
+(assert (not (= (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2))))
+(assert (= (sum n) (div (* n (+ n 1)) 2)))
+(check-sat)
+
+result: unsat
+Test/Nat/Sum'.lean:5:8: warning: declaration uses 'sorry'
