@@ -102,6 +102,8 @@ partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
   let d := eqnInfo.type
   let mutRecFuns := ConstantInfo.all (← getConstInfo e.constName!)
   trace[smt.debug.query] "mutually recursive functions with {e}: {mutRecFuns}"
+  -- TODO: Replace by `DefinitionVal.isRec` check when it gets added to Lean
+  -- core.
   if mutRecFuns.length > 1 then
     throwError "mutually recursive functions are not yet supported"
   if Util.countConst d e.constName! > 1 then
@@ -117,6 +119,9 @@ partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
     type : Expr →  MetaM Term
       | forallE _ _ t _ => type t
       | t => Transformer.exprToTerm t
+    /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
+        this function instantiates all occurances of `x₁ ⬝⬝⬝ xₙ` in `body` and
+        converts the resulting `Expr` into an equivalent SMT `Term`.  -/
     body : Expr → MetaM Term
       | forallE n t b d                          =>
         Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
