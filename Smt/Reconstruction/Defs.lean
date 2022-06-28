@@ -25,7 +25,6 @@ set_option maxHeartbeats 500000
 | term.or      t₁ t₂ => combineProps (interpTerm t₁) (interpTerm t₂) (λ p₁ p₂ => p₁ ∨ p₂)
 | term.implies t₁ t₂ => combineProps (interpTerm t₁) (interpTerm t₂) (λ p₁ p₂ => p₁ → p₂)
 | term.xor     t₁ t₂ => combineProps (interpTerm t₁) (interpTerm t₂) (λ p₁ p₂ => p₁ ≠ p₂)
-/- | term.eq      t₁ t₂ => combineProps (interpTerm t₁) (interpTerm t₂) (λ p₁ p₂ => p₁ = p₂) -/
 | term.eq      t₁ t₂ => match interpTerm t₁, interpTerm t₂ with
                         | some ⟨ s₁, k₁ ⟩, some ⟨ s₂, k₂ ⟩ =>
                           if r: s₂ = s₁

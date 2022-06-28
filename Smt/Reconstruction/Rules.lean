@@ -33,46 +33,12 @@ theorem notImplies1 : ∀ {t₁ t₂ : term},
            have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' :=
              by injection h'' with h''; injection h'' with _ h''; exact h''
            rewrite [← ek, ← fe] at h
-
            apply byContradiction
-
            exact (λ hf => h (λ k₁w => False.elim (hf k₁w)))
          case h_2 => simp at h''
        case h_2 => simp at h'
      case h_2 => exact (False.elim h)
 
-/-      simp at * -/
-/-      split at h -/
-/-      case h_1 _ k h' => -/
-/-        split at h' -/
-/-        case h_1 _ k' h'' => -/
-/-          split at h'' -/
-/-          case h_1 _ k₁ k₂ rt₁ rt₂ => -/
-/-            split -/
-/-            case h_1 z q₁ i₂ k₂ h₂ aaaaaaa aaa aa => -/
-/-              rewrite [h₂] -/
-/-              have ek : (fun Γ Δ => ¬ k' Γ Δ) = k := -/
-/-                by injection h' with h'; injection h' with _ h'; exact h'; -/
-/-              have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' := -/
-/-                by injection h'' with h''; injection h'' with _ h''; exact h'' -/
-/-              rewrite [← ek, ← fe] at h -/
-             
-/-            case h_2 _ q₁ q₂ q₃ => admit -/
-           /- simp -/
-
-           /- rewrite [rt₂] -/
-           /- have ek : (fun Γ Δ => ¬ k' Γ Δ) = k := -/
-           /-   by injection h' with h'; injection h' with _ h'; exact h'; -/
-           /- have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' := -/
-           /-   by injection h'' with h''; injection h'' with _ h''; exact h'' -/
-           /- rewrite [← ek, ← fe] at h -/
-
-           /- apply byContradiction -/
-
-           /- exact (λ hf => h (λ k₁w => False.elim (hf k₁w))) -/
-         /- case h_2 => simp at h'' -/
-       /- case h_2 => simp at h' -/
-     /- case h_2 => exact (False.elim h) -/
 theorem notImplies2 : ∀ {t₁ t₂ : term},
   followsFrom (not $ implies t₁ t₂) (not t₂) :=
     by intros t₁ t₂ Γ Δ h
@@ -169,7 +135,7 @@ theorem R1 : ∀ {t₁ t₂ : term},
         have ⟨ H, k₁W ⟩: ((¬ (k₁ Γ Δ)) ∨ (k₂ Γ Δ)) ∧ (k₁ Γ Δ) := h
         match em (k₂ Γ Δ) with
         | Or.inl k₂W  => exact k₂W
-        | Or.inr nk₂W => match em (k₁ Γ Δ) with
+        | Or.inr _    => match em (k₁ Γ Δ) with
                          | Or.inl k₁W  => match H with
                                           | Or.inl nk₁W => exact (False.elim (nk₁W k₁W))
                                           | Or.inr k₂W  => exact k₂W
