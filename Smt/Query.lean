@@ -173,14 +173,13 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
             solver := (declareFun solver n s)
             if sortEndsWithNat s then
               solver := assert solver (← natConstAssert n [] s)
-        | const id ..    =>
+        | t =>
           if hs.elem e then
             solver ← toDefineConst solver e
           else
             solver := declareConst solver n s
-            if id == `Nat then
+            if let const `Nat .. := t then
               solver := assert solver (← natConstAssert n [] s)
-        | _             => pure ()
       | _      => pure ()
     | _ => pure ()
   _ ← set solver
