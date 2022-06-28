@@ -27,6 +27,13 @@ open Smt.Transformer
   | app (const `ite ..) ..    => pure (mkConst `ite)
   | e                         => pure e
 
+@[Smt] def replaceDecIte : Transformer
+  | app (app (app (const `ite ..) ..) e _) .. => do
+    return match ← applyTransformations e with
+    | none    => none
+    | some e' => some (mkApp (mkConst `ite) e')
+  | e                         => pure e
+
 /-- Replaces arrows with `Imp`. For example, given `(FORALL _ p q)`, this
     method returns `(Imp p q)`. The replacement is done at this stage because
     `e` is a well-typed Lean term. So, we can ask Lean to infer the type of `p`,

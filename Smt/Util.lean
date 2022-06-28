@@ -69,6 +69,19 @@ def getMVars (e : Expr) : List Expr := (getMVars' e).eraseDups
 /-- Does the expression `e` contain meta variables? -/
 def hasMVars (e : Expr) : Bool := !(getMVars e).isEmpty
 
+/-- Count the number of occurances of the constant `c` in `e`. -/
+def countConst (e : Expr) (c : Name) : Nat :=
+  let rec visit : Expr → Nat
+    | Expr.forallE _ d b _   => visit d + visit b
+    | Expr.lam _ d b _       => visit d + visit b
+    | Expr.mdata _ e _       => visit e
+    | Expr.letE _ t v b _    => visit t + visit v + visit b
+    | Expr.app f a _         => visit f + visit a
+    | Expr.proj _ _ e _      => visit e
+    | Expr.const c' _ _      => if c' == c then 1 else 0
+    | _                      => 0
+  visit e
+
 /-- Set of constants defined by SMT-LIB. -/
 def smtConsts : Std.HashSet String :=
   List.foldr (fun c s => s.insert c) Std.HashSet.empty

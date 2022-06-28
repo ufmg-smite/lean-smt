@@ -6,10 +6,11 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
 import Lean
+import Smt.Constants
 import Smt.Graph
 import Smt.Solver
 import Smt.Transformer
-import Smt.Constants
+import Smt.Util
 
 namespace Smt.Query
 
@@ -30,7 +31,8 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
        StateT (Graph Expr Unit) MetaM Unit := do
       if (← get).contains e then
         return
-      assert!(e.isConst ∨ e.isFVar ∨ e.isMVar)
+      if !(e.isConst ∨ e.isFVar ∨ e.isMVar) then
+        throwError "failed to build graph, unexpected expression{indentD e}\nof kind {e.ctorName}"
       modify (·.addVertex e)
       if e.isConst then
         if e.constName! == `Nat then
@@ -53,7 +55,7 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       -- If `e` is a function name in the list of hints, unfold it.
       if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
         return
-      match ← getUnfoldEqnFor? e.constName! with
+      match ← getUnfoldEqnFor? e.constName! (nonRec := true) with
       | some eqnThm =>
         let eqnInfo ← getConstInfo eqnThm
         let d := eqnInfo.type
@@ -93,22 +95,40 @@ def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
       | [] => Symbol n
       | t :: ts => App (applyList n ts) (Symbol t.toString)
 
--- TODO: support recursive functions.
+-- TODO: support mutually recursive functions.
 partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
-  let defn : Expr ← Meta.unfoldDefinition e
-  pure (defineFun s id (← params defn) (← type (← Meta.inferType defn)) (← body defn))
+  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) e.constName!
+    | throwError "failed to retrieve equation theorem"
+  let eqnInfo ← getConstInfo eqnThm
+  let d := eqnInfo.type
+  let mutRecFuns := ConstantInfo.all (← getConstInfo e.constName!)
+  trace[smt.debug.query] "mutually recursive functions with {e}: {mutRecFuns}"
+  -- TODO: Replace by `DefinitionVal.isRec` check when it gets added to Lean
+  -- core.
+  if mutRecFuns.length > 1 then
+    throwError "mutually recursive functions are not yet supported"
+  if Util.countConst d e.constName! > 1 then
+    pure (defineFunRec s id (← params d) (← type (← inferType e)) (← body d))
+  else
+    pure (defineFun s id (← params d) (← type (← inferType e)) (← body d))
   where
     id := if let const n .. := e then n.toString else panic! ""
     params : Expr → MetaM (List (String × Term))
-      | lam n t e _ => do
+      | forallE n t e _ => do
         return (n.toString, (← Transformer.exprToTerm t)) :: (← params e)
       | _ => pure []
     type : Expr →  MetaM Term
       | forallE _ _ t _ => type t
       | t => Transformer.exprToTerm t
+    /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
+        this function instantiates all occurances of `x₁ ⬝⬝⬝ xₙ` in `body` and
+        converts the resulting `Expr` into an equivalent SMT `Term`.  -/
     body : Expr → MetaM Term
-      | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | e => do return ← Transformer.exprToTerm e
+      | forallE n t b d                          =>
+        Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
+      | app (app (app (const `Eq ..) ..) ..) e _ => Transformer.exprToTerm e
+      | e                                        =>
+        throwError "Error: unexpected equation theorem: {e}"
 
 partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
   let defn : Expr ← Meta.unfoldDefinition e
@@ -137,9 +157,7 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
   | fvar id .. => pure (← getLocalDecl id).userName.toString
   | const n .. => pure n.toString
   | _          => panic! ""
-  trace[smt.debug.query] "here1"
   let tt ← inferType t
-  trace[smt.debug.query] "here2"
   match tt with
     | sort l ..  => match l.toNat with
       | some 0 => solver := assert solver s
@@ -164,11 +182,11 @@ def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
     | _ => pure ()
   _ ← set solver
 
-def generateQuery (g : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
+def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
   traceCtx `smt.debug.generateQuery do
-    trace[smt.debug.query] "Goal: {g}"
+    trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
-    let g ← buildDependencyGraph g hs
+    let g ← buildDependencyGraph goal hs
     trace[smt.debug.query] "Dependency Graph: {g}"
     let (_, solver) ← StateT.run (g.dfs $ processVertex hs) solver
     return solver

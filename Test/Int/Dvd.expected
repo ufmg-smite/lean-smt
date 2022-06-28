@@ -1,0 +1,42 @@
+goal: dvd a c = true
+
+query:
+(declare-const a Int)
+(declare-const b Int)
+(declare-fun dvd (Int Int) Bool)
+(assert (= (dvd a b) true))
+(declare-const c Int)
+(assert (not (= (dvd a c) true)))
+(assert (= (dvd b c) true))
+(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
+(check-sat)
+
+result: unsat
+goal: dvd c e = true
+
+query:
+(declare-const c Int)
+(declare-const d Int)
+(declare-fun dvd (Int Int) Bool)
+(assert (= (dvd c d) true))
+(declare-const e Int)
+(assert (= (dvd d e) true))
+(assert (not (= (dvd c e) true)))
+(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
+(check-sat)
+
+result: unsat
+goal: dvd a e = true
+
+query:
+(declare-const c Int)
+(declare-const a Int)
+(declare-fun dvd (Int Int) Bool)
+(assert (= (dvd a c) true))
+(declare-const e Int)
+(assert (= (dvd c e) true))
+(assert (not (= (dvd a e) true)))
+(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
+(check-sat)
+
+result: unsat

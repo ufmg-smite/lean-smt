@@ -62,7 +62,7 @@ script test do
         env := #[("LEAN_PATH", path.toString)]
       }
       let expected ← IO.FS.readFile expected
-      if out.exitCode ≠ 0 ∨ ¬out.stderr.isEmpty ∨ out.stdout ≠ expected then
+      if ¬out.stderr.isEmpty ∨ out.stdout ≠ expected then
         IO.println s!"Failed: {test}"
         IO.println s!"Stderr:\n{out.stderr}"
         IO.println s!"Stdout:\n{out.stdout}"
