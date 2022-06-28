@@ -16,7 +16,6 @@ namespace Smt.Query
 
 open Lean Expr Meta
 open Constants Solver Term
-open Std
 
 -- TODO: move all `Nat` hacks in this file to `Nat.lean`.
 
@@ -77,28 +76,28 @@ partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
       return
 
 def sortEndsWithNat : Term → Bool
-  | Arrow _ t    => sortEndsWithNat t
-  | Symbol "Nat" => true
-  | _            => false
+  | arrowT _ t    => sortEndsWithNat t
+  | symbolT "Nat" => true
+  | _             => false
 
-def natAssertBody (t : Term) :=
-  App (App (Symbol ">=") t) (Literal "0")
+def natAssertBody (t : Term) : Term :=
+  mkApp2 (symbolT ">=") t (literalT "0")
 
 /-- TODO: refactor to support functions as input (e.g., (Nat → Nat) → Nat). -/
 def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
-  | Arrow i@(Symbol "Nat") t => do
+  | arrowT i@(symbolT "Nat") t => do
     let id ← Lean.mkFreshId
-    return (Forall id.toString i
+    return (forallT id.toString i
                    (imp id.toString (← natConstAssert n (id::args) t)))
-  | Arrow a t => do
+  | arrowT a t => do
     let id ← Lean.mkFreshId
-    return (Forall id.toString a (← natConstAssert n (id::args) t))
+    return (forallT id.toString a (← natConstAssert n (id::args) t))
   | _ => pure $ natAssertBody (applyList n args)
   where
-    imp n t := App (App (Symbol "=>") (natAssertBody (Symbol n))) t
+    imp n t := appT (appT (symbolT "=>") (natAssertBody (symbolT n))) t
     applyList n : List Name → Term
-      | [] => Symbol n
-      | t :: ts => App (applyList n ts) (Symbol t.toString)
+      | [] => symbolT n
+      | t :: ts => appT (applyList n ts) (symbolT t.toString)
 
 -- TODO: support mutually recursive functions.
 partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do

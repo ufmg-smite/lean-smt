@@ -11,19 +11,19 @@ import Smt.Translator
 namespace Smt.Prop
 
 open Lean Expr
-open Smt.Translator
+open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | sort (.zero _) _          => return Term.Symbol "Bool"
-  | const `True ..            => return Term.Symbol "true"
-  | const `False ..           => return Term.Symbol "false"
-  | const `Not ..             => return Term.Symbol "not"
-  | const `And ..             => return Term.Symbol "and"
-  | const `Or ..              => return Term.Symbol "or"
-  | const `Iff ..             => return Term.Symbol "="
-  | app (const `Eq ..) ..     => return Term.Symbol "="
-  | app (const `Ne ..) ..     => return Term.Symbol "distinct"
-  | app (const `ite ..) ..    => return Term.Symbol "ite"
+  | sort (.zero _) _          => return symbolT "Bool"
+  | const `True ..            => return symbolT "true"
+  | const `False ..           => return symbolT "false"
+  | const `Not ..             => return symbolT "not"
+  | const `And ..             => return symbolT "and"
+  | const `Or ..              => return symbolT "or"
+  | const `Iff ..             => return symbolT "="
+  | app (const `Eq ..) ..     => return symbolT "="
+  | app (const `Ne ..) ..     => return symbolT "distinct"
+  | app (const `ite ..) ..    => return symbolT "ite"
   | _                         => return none
 
 @[smtTranslator] def replaceExists : Translator
@@ -32,13 +32,13 @@ open Smt.Translator
     Meta.withLocalDecl n d.binderInfo t fun x => do
       let tmT ← applyTranslators! t
       let tmB ← applyTranslators! (b.instantiate #[x])
-      return Term.Exists n.toString tmT tmB
+      return existsT n.toString tmT tmB
   | _                         => return none
 
 @[smtTranslator] def replaceDecIte : Translator
   | app (app (app (const `ite ..) ..) e _) .. => do
     let tmE ← applyTranslators! e
-    return Term.App (Term.Symbol "ite") tmE
+    return appT (symbolT "ite") tmE
   | _                         => return none
 
 /-- Replaces arrows with `Imp`. For example, given `(FORALL _ p q)`, this
@@ -51,7 +51,7 @@ open Smt.Translator
     if e.isArrow ∧ (← Meta.inferType t).isProp then
       let tmE ← applyTranslators! t
       let tmB ← Meta.withLocalDecl n d.binderInfo t fun x => applyTranslators! (b.instantiate #[x])
-      return Term.App (Term.App (Term.Symbol "=>") tmE) tmB
+      return appT (appT (symbolT "=>") tmE) tmB
     return none
   | _ => return none
 

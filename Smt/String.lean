@@ -11,32 +11,32 @@ import Smt.Translator
 namespace Smt.String
 
 open Lean Expr
-open Smt.Translator
+open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
   | app (const `Char.ofNat ..) e ..    => applyTranslators! e
   | app (const `String.Pos.mk ..) e .. => applyTranslators! e
-  | const `String.replace ..           => return Term.Symbol "str.replace_all"
-  | const `String.length ..            => return Term.Symbol "str.len"
-  | const `String.append ..            => return Term.Symbol "str.++"
+  | const `String.replace ..           => return symbolT "str.replace_all"
+  | const `String.length ..            => return symbolT "str.len"
+  | const `String.append ..            => return symbolT "str.++"
   | _                                  => return none
 
 @[smtTranslator] def replaceStrLit : Translator
-  | lit (.strVal s) .. => return Term.Literal s!"\"{s}\""
+  | lit (.strVal s) .. => return literalT s!"\"{s}\""
   | _                  => return none
 
 @[smtTranslator] def replaceStringGetOp : Translator
   | app (app (const `String.getOp ..) f _) e _ => do
     let tmF ← applyTranslators! f
     let tmE ← applyTranslators! e
-    return Term.App (Term.Symbol "str.to_code") (Term.mkApp2 (Term.Symbol "str.at") tmF tmE)
+    return appT (symbolT "str.to_code") (mkApp2 (symbolT "str.at") tmF tmE)
   | _                                          => return none
 
 @[smtTranslator] def replaceStringContains : Translator
   | app (app (const `String.contains ..) f _) e _ => do
     let tmF ← applyTranslators! f
     let tmE ← applyTranslators! e
-    return Term.mkApp2 (Term.Symbol "str.contains") tmF (Term.App (Term.Symbol "str.from_code") tmE)
+    return mkApp2 (symbolT "str.contains") tmF (appT (symbolT "str.from_code") tmE)
   | _                                             => return none
 
 @[smtTranslator] def replaceStringLt : Translator
@@ -45,7 +45,7 @@ open Smt.Translator
         (app (const `String.data ..) b _) _ => do
     let tmA ← applyTranslators! a
     let tmB ← applyTranslators! b
-    return Term.mkApp2 (Term.Symbol "str.<") tmA tmB
+    return mkApp2 (symbolT "str.<") tmA tmB
   | _                                       => return none
 
 end Smt.String

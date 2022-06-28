@@ -13,12 +13,8 @@ import Smt.Attribute
 
 namespace Smt
 
-open Lean
-open Lean.Expr
-open Smt.Attribute
-open Smt.Term
-open Smt.Util
-open Std
+open Lean Meta Expr
+open Attribute Term
 
 structure TranslationM.State where
   /-- Constants that the translated result depends on. We propagate these upwards during
@@ -80,21 +76,21 @@ partial def applyTranslators? : Translator := fun e => do
       match e with
       | fvar fv _ =>
         let ld ← Meta.getLocalDecl fv
-        return Term.Symbol ld.userName.toString
+        return symbolT ld.userName.toString
       | const nm .. =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
-        return Term.Symbol nm.toString
-      | app f e _       => return Term.App (← applyTranslators! f) (← applyTranslators! e)
+        return symbolT nm.toString
+      | app f e _       => return appT (← applyTranslators! f) (← applyTranslators! e)
       | lam .. => throwError "cannot translate {e}, SMT-LIB does not support lambdas"
       | forallE n t b d =>
         let tmB ← Meta.withLocalDecl n d.binderInfo t (fun x => applyTranslators! <| b.instantiate #[x])
         if !b.hasLooseBVars /- not a dependent arrow -/ then
-          return Term.Arrow (← applyTranslators! t) tmB
+          return arrowT (← applyTranslators! t) tmB
         else
-          return Term.Forall n.toString (← applyTranslators! t) tmB
+          return forallT n.toString (← applyTranslators! t) tmB
       | letE n t v b _ =>
         let tmB ← Meta.withLetDecl n t v (fun x => applyTranslators! <| b.instantiate #[x])
-        return Term.Let n.toString (← applyTranslators! v) tmB
+        return letT n.toString (← applyTranslators! v) tmB
       | mdata _ e _     => go ts e
       | e               => throwError "cannot translate {e}"
 

@@ -11,12 +11,12 @@ import Smt.Translator
 namespace Smt.Int
 
 open Lean Expr
-open Smt.Translator
+open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
   | app (const `Int.ofNat ..) e .. => applyTranslators! e
-  | const `Int.neg ..              => return Term.Symbol "-"
-  | const `Int.le ..               => return Term.Symbol "<="
+  | const `Int.neg ..              => return symbolT "-"
+  | const `Int.le ..               => return symbolT "<="
   | _                              => return none
 
 end Smt.Int

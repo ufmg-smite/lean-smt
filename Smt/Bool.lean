@@ -11,12 +11,12 @@ import Smt.Translator
 namespace Smt.Bool
 
 open Lean Expr
-open Smt.Translator
+open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | const `Bool.true ..                                 => return Term.Symbol "true"
-  | const `Bool.false ..                                => return Term.Symbol "false"
-  | app (app (const `BEq.beq ..) (const `Bool ..) _) .. => return Term.Symbol "="
+  | const `Bool.true ..                                 => return symbolT "true"
+  | const `Bool.false ..                                => return symbolT "false"
+  | app (app (const `BEq.beq ..) (const `Bool ..) _) .. => return symbolT "="
   | _                                                   => return none
 
 @[smtTranslator] def replaceEq : Translator
@@ -25,7 +25,7 @@ open Smt.Translator
                        a _) b _) ..) .. => do
     let tmA ← applyTranslators! a
     let tmB ← applyTranslators! b
-    return Term.mkApp2 (Term.Symbol "=") tmA tmB
+    return Term.mkApp2 (symbolT "=") tmA tmB
   | _                                   => return none
 
 end Smt.Bool

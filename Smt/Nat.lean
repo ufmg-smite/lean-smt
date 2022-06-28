@@ -11,18 +11,18 @@ import Smt.Translator
 namespace Smt.Nat
 
 open Lean Expr
-open Smt.Translator
+open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | const `Nat.add ..  => return Term.Symbol "+"
-  | const `Nat.mul ..  => return Term.Symbol "*"
-  | const `Nat.div ..  => return Term.Symbol "div"
-  | const `Nat.le ..   => return Term.Symbol "<="
-  | const `Nat.ge ..   => return Term.Symbol ">="
+  | const `Nat.add ..  => return symbolT "+"
+  | const `Nat.mul ..  => return symbolT "*"
+  | const `Nat.div ..  => return symbolT "div"
+  | const `Nat.le ..   => return symbolT "<="
+  | const `Nat.ge ..   => return symbolT ">="
   | _                  => return none
 
 @[smtTranslator] def replaceNatLit : Translator
-  | lit (.natVal n) .. => return Term.Literal (toString n)
+  | lit (.natVal n) .. => return literalT (toString n)
   | _                  => return none
 
 /-- Removes casts of literals to `Nat` in `e`. For example, given
@@ -37,8 +37,8 @@ open Smt.Translator
 @[smtTranslator] def replaceCtr : Translator
   | app (const ``Nat.succ ..) e _ => do
     let tmE ← applyTranslators! e
-    return Term.mkApp2 (Term.Symbol "+") tmE (Term.Literal "1")
-  | const ``Nat.zero ..           => return Term.Literal "0"
+    return Term.mkApp2 (symbolT "+") tmE (literalT "1")
+  | const ``Nat.zero ..           => return literalT "0"
   | _                             => return none
 
 /-- Removes applications of `Nat.decLe` in `e`.
@@ -47,7 +47,7 @@ open Smt.Translator
   | app (app f (app (app (const ``Nat.decLe ..) ..) ..) ..) e .. => do
     let tmF ← applyTranslators! f
     let tmE ← applyTranslators! e
-    return Term.App tmF tmE
+    return appT tmF tmE
   | _ => return none
 
 /- Replaces quantified expressions over natural numbers for with versions that
@@ -59,9 +59,9 @@ open Smt.Translator
     if e.isArrow then return none
     Meta.withLocalDecl n d.binderInfo t fun x => do
       let tmB ← applyTranslators! (b.instantiate #[x])
-      let tmGeqZero := Term.mkApp2 (Term.Symbol ">=") (Term.Symbol n.toString) (Term.Literal "0")
-      let tmProp := Term.mkApp2 (Term.Symbol "=>") tmGeqZero tmB
-      return Term.Forall n.toString (Term.Symbol "Int") tmProp
+      let tmGeqZero := Term.mkApp2 (symbolT ">=") (symbolT n.toString) (literalT "0")
+      let tmProp := Term.mkApp2 (symbolT "=>") tmGeqZero tmB
+      return forallT n.toString (symbolT "Int") tmProp
   | _ => return none
 
 end Smt.Nat
