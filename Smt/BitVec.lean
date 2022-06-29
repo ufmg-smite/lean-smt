@@ -7,6 +7,7 @@ Authors: Wojciech Nawrocki
 
 import Lean
 import Smt.Translator
+import Smt.Data.BitVec
 
 namespace Smt.BitVec
 
