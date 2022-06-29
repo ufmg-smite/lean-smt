@@ -21,7 +21,7 @@ namespace Command
 
 open Lean
 open Term
-open scoped Term
+open scoped Term.Notation
 
 def defNat : Command := .defineSort "Nat" [] (`"Int")
 

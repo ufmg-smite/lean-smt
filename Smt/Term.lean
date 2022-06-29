@@ -28,10 +28,15 @@ inductive Term where
   deriving Inhabited
 
 namespace Term
+namespace Notation
 
 scoped infixl:20 " • "  => appT
 scoped prefix:21 " ` "  => symbolT
 scoped prefix:21 " `` " => literalT
+
+end Notation
+
+open scoped Notation
 
 def mkApp2 (f a b : Term) : Term :=
   f • a • b
