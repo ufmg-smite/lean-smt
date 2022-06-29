@@ -17,9 +17,11 @@ open Lean Meta Expr
 open Attribute Term
 
 structure TranslationM.State where
-  /-- Constants that the translated result depends on. We propagate these upwards during
-  translation in order to build a dependency graph. -/
+  /-- Constants that the translated result depends on. We propagate these upwards during translation
+  in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
   depConstants : NameSet := .empty
+  /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants`. -/
+  cache : Std.HashMap Expr (Option (Term × NameSet)) := .empty
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -50,6 +52,24 @@ private unsafe def getTranslatorsUnsafe : MetaM (List (Translator × Name)) := d
 @[implementedBy getTranslatorsUnsafe]
 opaque getTranslators : MetaM (List (Translator × Name))
 
+/-- Return a cached translation of `e` if found, otherwise run `k e` and cache the result. -/
+def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
+  match (← get).cache.find? e with
+  | some (some (tm, deps)) =>
+    modify fun st => { st with depConstants := st.depConstants.union deps }
+    return some tm
+  | some none =>
+    return none
+  | none =>
+    let depConstantsBefore := (← get).depConstants
+    modify fun st => { st with depConstants := .empty }
+    let ret? ← k e
+    modify fun st => { st with
+      depConstants := st.depConstants.union depConstantsBefore
+      cache := st.cache.insert e <| ret?.map ((·, st.depConstants))
+    }
+    return ret?
+
 mutual
 
 /-- Like `applyTranslators?` but must succeed. -/
@@ -61,7 +81,7 @@ partial def applyTranslators! (e : Expr) : TranslationM Term := do
 expression and if one succeeds, its result is returned. Otherwise, `e` is split into subexpressions
 which are then recursively translated and put together into an SMT-LIB term. The traversal proceeds
 in a top-down, depth-first order. -/
-partial def applyTranslators? : Translator := fun e => do
+partial def applyTranslators? : Translator := withCache fun e => do
   let ts ← getTranslators
   go ts e
   where
@@ -98,24 +118,17 @@ end
 
 /-- Processes `e` by running it through all the registered `Translator`s.
 Returns the resulting SMT-LIB term and set of dependencies. -/
-def translateExpr (e : Expr) : MetaM (Term × NameSet) :=
+def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
   traceCtx `smt.debug.translateExpr do
+    modify fun st => { st with depConstants := .empty }
     trace[smt.debug.translator] "before: {e}"
     let e ← Util.unfoldAllProjInsts e
     trace[smt.debug.translator] "after unfolding projs: {e}"
-    let (tm, st) ← applyTranslators! e |>.run {}
+    let tm ← applyTranslators! e
     trace[smt.debug.translator] "translated: {tm}"
-    return (tm, st.depConstants)
+    return (tm, (← get).depConstants)
 
-def translateExpr' (e : Expr) : MetaM Term :=
+def translateExpr' (e : Expr) : TranslationM Term :=
   Prod.fst <$> translateExpr e
-
-def getUnknownConstants (e : Expr) : MetaM NameSet := do
-  let (_, deps) ← translateExpr e
-  let mut ret := NameSet.empty
-  for nm in deps do
-    if !Util.smtConsts.contains nm.toString then
-      ret := ret.insert nm
-  return ret
 
 end Smt.Translator

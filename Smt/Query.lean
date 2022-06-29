@@ -23,7 +23,6 @@ structure QueryBuilderM.State where
   graph : Graph Expr Unit := .empty
   commands : Std.HashMap Expr Command := .empty
 
--- TODO: Add translation cache to TranslationM
 abbrev QueryBuilderM := StateT QueryBuilderM.State TranslationM
 
 namespace QueryBuilderM
