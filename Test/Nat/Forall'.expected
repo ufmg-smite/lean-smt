@@ -1,8 +1,7 @@
 goal: ∀ (x : Nat), x ≥ 0
 
 query:
-(define-sort Nat () Int)
-(assert (not (forall ((x Nat)) (=> (>= x 0) (>= x 0)))))
+(assert (not (forall ((x Int)) (=> (>= x 0) (>= x 0)))))
 (check-sat)
 
 result: unsat

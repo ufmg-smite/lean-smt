@@ -20,7 +20,6 @@ def polyMul (a : BitVec w) (b : BitVec v) : BitVec (w+v) :=
     if b.lsb_get! i then polyAdd acc' a else acc'
   ret
 
-set_option trace.smt.debug true in
 theorem polyMul_comm_8 (x y z w : BitVec 2) : polyAdd (polyMul x y) (polyMul z w) = polyAdd (polyMul w z) (polyMul y x)  := by
   concretize [polyAdd, polyMul]
   smt [polyAdd.«4», polyMul.«2».«2»]

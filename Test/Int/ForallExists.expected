@@ -1,8 +1,7 @@
 goal: ∀ (x : Nat), ∃ y, Int.ofNat x ≤ y
 
 query:
-(define-sort Nat () Int)
-(assert (not (forall ((x Nat)) (=> (>= x 0) (exists ((y Int)) (<= x y))))))
+(assert (not (forall ((x Int)) (=> (>= x 0) (exists ((y Int)) (<= x y))))))
 (check-sat)
 
 result: unsat

@@ -20,8 +20,8 @@ query:
 (declare-fun dvd (Int Int) Bool)
 (assert (= (dvd c d) true))
 (declare-const e Int)
-(assert (= (dvd d e) true))
 (assert (not (= (dvd c e) true)))
+(assert (= (dvd d e) true))
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
 (check-sat)
 
@@ -30,11 +30,11 @@ goal: dvd a e = true
 
 query:
 (declare-const c Int)
-(declare-const a Int)
-(declare-fun dvd (Int Int) Bool)
-(assert (= (dvd a c) true))
 (declare-const e Int)
+(declare-fun dvd (Int Int) Bool)
 (assert (= (dvd c e) true))
+(declare-const a Int)
+(assert (= (dvd a c) true))
 (assert (not (= (dvd a e) true)))
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
 (check-sat)

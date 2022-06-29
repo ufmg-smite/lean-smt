@@ -17,3 +17,13 @@ query:
 (check-sat)
 
 result: unsat
+goal: f z = z
+
+query:
+(declare-fun f (Int) Int)
+(define-fun z () Int 10)
+(assert (not (= (f z) z)))
+(assert (= (f 10) 10))
+(check-sat)
+
+result: unsat
