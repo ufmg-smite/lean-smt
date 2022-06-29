@@ -14,12 +14,14 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | const `Nat.add ..  => return symbolT "+"
-  | const `Nat.mul ..  => return symbolT "*"
-  | const `Nat.div ..  => return symbolT "div"
-  | const `Nat.le ..   => return symbolT "<="
-  | const `Nat.ge ..   => return symbolT ">="
-  | _                  => return none
+  | const `Nat.add ..                                => return symbolT "+"
+  | const `Nat.mul ..                                => return symbolT "*"
+  | const `Nat.div ..                                => return symbolT "div"
+  | const `Nat.le ..                                 => return symbolT "<="
+  | const `Nat.ge ..                                 => return symbolT ">="
+  -- TODO: why is this not removed at unfoldProjInsts ?
+  | app (app (const `GE.ge ..) (const `Nat ..) _) .. => return symbolT ">="
+  | _                                                => return none
 
 @[smtTranslator] def replaceNatLit : Translator
   | lit (.natVal n) .. => return literalT (toString n)
