@@ -66,9 +66,13 @@ def emitCommand (s : Solver) (cmd : Command) : m Solver := do
   | .defineFun nm ps cod tm true  => s := s.defineFunRec nm ps cod tm
   | .defineFun nm ps cod tm false => s := s.defineFun nm ps cod tm
   match cmd with
-  | .declare nm st | .defineFun nm _ st _ _ =>
+  | .declare nm st =>
     if sortEndsWithNat st then
       s := s.assert (← natConstAssert nm [] st)
+  | .defineFun nm ps cod _ _ =>
+    if sortEndsWithNat cod then
+      let tmArrow := ps.foldr (init := cod) fun (_, tp) acc => arrowT tp acc
+      s := s.assert (← natConstAssert nm [] tmArrow)
   | _ => pure ()
   return s
 
