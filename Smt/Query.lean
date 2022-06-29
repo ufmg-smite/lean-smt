@@ -42,11 +42,9 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
 /-- Translate an expression and compute its (non-builtin) dependencies. -/
 def translateAndFindDeps (e : Expr) : QueryBuilderM (Term × List Expr) := do
   let fvs := Util.getFVars e -- TODO: this is in core
-  trace[smt.debug.query] "fvars: {fvs}"
   let (tm, deps) ← Translator.translateExpr e
   let unknownConsts := deps.toList.filterMap fun nm =>
     if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
-  trace[smt.debug.query] "unknown consts: {unknownConsts}"
   return (tm, fvs ++ unknownConsts)
 
 def buildDefineCommand (nm : Name) (tp : Expr) (isRec : Bool) (tmTp : Term) (tmVal : Term)
@@ -58,9 +56,10 @@ def buildDefineCommand (nm : Name) (tp : Expr) (isRec : Bool) (tmTp : Term) (tmV
   | _ =>
     return .defineFun nm.toString [] tmTp tmVal isRec
 where
-  paramsAndCodomain : Expr → QueryBuilderM (List (String × Term) × Term)
-    | forallE n t _ _ => do
-      let (ps, cod) ← paramsAndCodomain t
+  paramsAndCodomain (e : Expr) : QueryBuilderM (List (String × Term) × Term) := do
+    match e with
+    | forallE n t bd _ => do
+      let (ps, cod) ← paramsAndCodomain bd
       return ((n.toString, ← Translator.translateExpr' t) :: ps, cod)
     | t => return ([], ← Translator.translateExpr' t)
 
@@ -74,6 +73,10 @@ partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term 
   let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm | throwError "failed to retrieve equation theorem for {nm}"
   let eqnInfo ← getConstInfo eqnThm
   let (tm, deps) ← body eqnInfo.type
+  -- We have to filter out free variables introduced by `body`.
+  let deps ← deps.filterM fun
+    | fvar id .. => return (← findLocalDecl? id).isSome
+    | _ => return true
   return (tm, deps, Util.countConst eqnInfo.type nm > 1)
 where
   /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
@@ -158,7 +161,9 @@ where
     let (tmTp, deps) ← translateAndFindDeps et
     let deps' ← buildCommand hs e et tmTp
 
-    for e' in deps ++ deps' do
+    let deps := deps ++ deps'
+    trace[smt.debug.query] "deps: {deps}"
+    for e' in deps do
       go e'
       addDependency e e'
 
