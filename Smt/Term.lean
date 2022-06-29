@@ -2,7 +2,7 @@
 Copyright (c) 2021-2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 namespace Smt
@@ -29,14 +29,18 @@ inductive Term where
 
 namespace Term
 
+scoped infixl:20 " • "  => appT
+scoped prefix:21 " ` "  => symbolT
+scoped prefix:21 " `` " => literalT
+
 def mkApp2 (f a b : Term) : Term :=
-  appT (appT f a) b
+  f • a • b
 
 def mkApp3 (f a b c : Term) : Term :=
-  appT (appT (appT f a) b) c
+  f • a • b • c
 
 def mkApp4 (f a b c d : Term) : Term :=
-  appT (appT (appT (appT f a) b) c) d
+  f • a • b • c • d
 
 /-- SMT-LIBv2 quoting for symbols. -/
 def quoteSymbol (s : String) : String :=
