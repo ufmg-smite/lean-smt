@@ -40,12 +40,17 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
   }
 
 /-- Translate an expression and compute its (non-builtin) dependencies. -/
-def translateAndFindDeps (e : Expr) : QueryBuilderM (Term × List Expr) := do
-  let fvs := Util.getFVars e -- TODO: this is in core
+def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × List Expr) := do
   let (tm, deps) ← Translator.translateExpr e
   let unknownConsts := deps.toList.filterMap fun nm =>
     if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
-  return (tm, fvs ++ unknownConsts)
+  if fvarDeps then
+    let st : CollectFVars.State := {}
+    let st := collectFVars st e
+    let fvs := st.fvarIds.toList.map mkFVar
+    return (tm, fvs ++ unknownConsts)
+  else
+    return (tm, unknownConsts)
 
 def buildDefineCommand (nm : Name) (tp : Expr) (isRec : Bool) (tmTp : Term) (tmVal : Term)
     : QueryBuilderM Command :=
@@ -73,10 +78,6 @@ partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term 
   let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm | throwError "failed to retrieve equation theorem for {nm}"
   let eqnInfo ← getConstInfo eqnThm
   let (tm, deps) ← body eqnInfo.type
-  -- We have to filter out free variables introduced by `body`.
-  let deps ← deps.filterM fun
-    | fvar id .. => return (← findLocalDecl? id).isSome
-    | _ => return true
   return (tm, deps, Util.countConst eqnInfo.type nm > 1)
 where
   /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
@@ -84,7 +85,10 @@ where
       converts the resulting `Expr` into an equivalent SMT `Term`.  -/
   body : Expr → QueryBuilderM (Term × List Expr)
     | forallE n t b d => Meta.withLocalDecl n d.binderInfo t fun x => body (b.instantiate #[x])
-    | app (app (app (const `Eq ..) ..) ..) e _ => translateAndFindDeps e
+    | app (app (app (const `Eq ..) ..) ..) e _ =>
+      -- Note that we ignore free variable dependencies here because a constant's body
+      -- can only depend on free variables introduced in this function.
+      translateAndFindDeps (fvarDeps := false) e
     | e => throwError "unexpected equation theorem{indentD e}"
 
 -- Returns a list of additional dependencies

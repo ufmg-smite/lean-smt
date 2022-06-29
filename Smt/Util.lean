@@ -40,19 +40,6 @@ def exprToString : Expr → String
       | Literal.natVal v => ⟨Nat.toDigits 10 v⟩
       | Literal.strVal v => v
 
-/-- Returns all free variables in the given expression. -/
-def getFVars (e : Expr) : List Expr := (getFVars' e).eraseDups
-  where
-    getFVars' : Expr → List Expr
-      | forallE _ d b _ => getFVars' d ++ getFVars' b
-      | lam _ d b _     => getFVars' d ++ getFVars' b
-      | letE _ t v b _  => getFVars' t ++ getFVars' v ++ getFVars' b
-      | app f a _       => getFVars' f ++ getFVars' a
-      | mdata _ b _     => getFVars' b
-      | proj _ _ b _    => getFVars' b
-      | fvar id d       => [fvar id d]
-      | _               => []
-
 /-- Count the number of occurances of the constant `c` in `e`. -/
 def countConst (e : Expr) (c : Name) : Nat :=
   let rec visit : Expr → Nat

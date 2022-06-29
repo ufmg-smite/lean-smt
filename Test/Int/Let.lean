@@ -16,3 +16,11 @@ example (h : f 10 = 10) : f 10 = 10 := by
   rw [this]
   smt [h, z]
   exact h
+
+example (h : f 10 = 10) : f 10 = 10 := by
+  let z : Int := 10
+  let y : Int := z
+  have : 10 = y := rfl
+  rw [this]
+  smt [h, y, z]
+  exact h
