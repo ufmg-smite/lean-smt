@@ -58,9 +58,9 @@ def queryToString (commands : List String) : String :=
   String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
 
 def parseTactic : Syntax → TacticM (List Expr)
-  | `(tactic| smt)       => pure []
-  | `(tactic| smt [$[$hs],*]) => hs.toList.mapM (fun h => elabTerm h none)
-  | _                    => throwUnsupportedSyntax
+  | `(tactic| smt)              => pure []
+  | `(tactic| smt [ $[$hs],* ]) => hs.toList.mapM (fun h => elabTerm h.raw none)
+  | _                           => throwUnsupportedSyntax
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   -- 1. Get the current main goal.
