@@ -24,3 +24,10 @@ example (h : f 10 = 10) : f 10 = 10 := by
   rw [this]
   smt [h, y, z]
   exact h
+
+example (h : f 10 = 10) : f 10 = 10 := by
+  let z (_ : Int) : Int := f 10
+  have : f 10 = z 3 := rfl
+  rw [this]
+  smt [h, z]
+  exact h

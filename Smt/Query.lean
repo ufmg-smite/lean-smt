@@ -39,18 +39,20 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
   }
 
 /-- Translate an expression and compute its (non-builtin) dependencies. -/
-def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × List Expr) := do
+def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × Array Expr) := do
   let (tm, deps) ← Translator.translateExpr e
-  let unknownConsts := deps.toList.filterMap fun nm =>
+  let unknownConsts := deps.toArray.filterMap fun nm =>
     if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
   if fvarDeps then
     let st : CollectFVars.State := {}
     let st := collectFVars st e
-    let fvs := st.fvarIds.toList.map mkFVar
+    let fvs := st.fvarIds.map mkFVar
     return (tm, fvs ++ unknownConsts)
   else
     return (tm, unknownConsts)
 
+/-- Define a constant or function. The body `tmVal` is expected to be fully applied
+to arguments matching the binder names in `tp`. -/
 def buildDefineCommand (nm : Name) (tp : Expr) (isRec : Bool) (tmTp : Term) (tmVal : Term)
     : QueryBuilderM Command :=
   match tp with
@@ -69,7 +71,7 @@ where
 
 -- TODO: support mutually recursive functions.
 /-- Return the translated body, its dependencies, and whether it is recursive. -/
-partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term × List Expr × Bool) := do
+partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term × Array Expr × Bool) := do
   let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
   -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
   if mutRecFuns.length > 1 then
@@ -82,21 +84,25 @@ where
   /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
       this function instantiates all occurrences of `x₁ ⬝⬝⬝ xₙ` in `body` and
       converts the resulting `Expr` into an equivalent SMT `Term`.  -/
-  body : Expr → QueryBuilderM (Term × List Expr)
-    | forallE n t b d => Meta.withLocalDecl n d.binderInfo t fun x => body (b.instantiate #[x])
-    | app (app (app (const `Eq ..) ..) ..) e _ =>
+  body (e :  Expr) : QueryBuilderM (Term × Array Expr) :=
+    Meta.forallTelescopeReducing e fun _ tp => do
+      let some (_, _, e) := tp.eq? | throwError "unexpected equation theorem{indentD e}"
       -- Note that we ignore free variable dependencies here because a constant's body
       -- can only depend on free variables introduced in this function.
       translateAndFindDeps (fvarDeps := false) e
-    | e => throwError "unexpected equation theorem{indentD e}"
 
 -- Returns a list of additional dependencies
-def addDefineCommand (nm : Name) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (List Expr) := do
+def addDefineCommand (nm : Name) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (Array Expr) := do
   match e with
   | fvar id .. =>
     let decl ← getLocalDecl id
     let some val := decl.value? | throwError "trying to define {nm} but it's not a let-declaration"
-    let (tmVal, deps) ← translateAndFindDeps val
+    -- Compute the let-binding body
+    let (tmVal, deps) ← Meta.lambdaTelescope val fun args val =>
+      translateAndFindDeps (val.instantiate args)
+    -- Filter out fvars introduced by the lambda telescope. We cannot just ignore all fvars because
+    -- the body might depend on other local bindings which we then have to translate.
+    let deps ← deps.filterM (fun | fvar id .. => Option.isSome <$> findLocalDecl? id | _ => pure true)
     let cmd ← buildDefineCommand nm tp (val.hasAnyFVar (· == id)) tmTp tmVal
     addCommand e cmd
     return deps
@@ -108,13 +114,13 @@ def addDefineCommand (nm : Name) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBui
   | _          => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
 
 /-- Build the command for `e` and add it to the graph. Return the command's dependencies. -/
-def buildCommand (hs : List Expr) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (List Expr) := do
+def buildCommand (hs : List Expr) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (Array Expr) := do
   let sort l .. ← inferType tp | throwError "sort expected, got{indentD tp}"
 
   -- Is `tp` a `Prop` to assert?
   if l.toNat == some 0 then
     addCommand e <| .assert tmTp
-    return []
+    return #[]
 
   -- Otherwise `e` is a type or value to declare or define.
 
@@ -126,13 +132,13 @@ def buildCommand (hs : List Expr) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBu
   match tp with
     | sort .. =>
       addCommand e <| .declare nm tmTp
-      return []
+      return #[]
     | tp      =>
       if hs.elem e then
         addDefineCommand nm e tp tmTp
       else
         addCommand e <| .declare nm tmTp
-        return []
+        return #[]
 
 /-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges.
 The input `hs` is a list of expressions to define rather than just declare. -/
