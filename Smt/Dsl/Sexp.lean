@@ -22,9 +22,9 @@ def generalIdent : Parser :=
       let s := takeWhile1Fn (fun c => !("(){}[].".contains c) ∧ !c.isWhitespace) "expected generalized identifier" c s
       mkNodeToken `generalIdent startPos c s }
 
-def Lean.Syntax.getGeneralId : Syntax → String
-  | Syntax.node _ `generalIdent args => args[0].getAtomVal!
-  | s => panic! s!"unexpected syntax '{s}'"
+def Lean.TSyntax.getGeneralId : TSyntax `generalIdent → String
+  | ⟨.node _ `generalIdent args⟩ => args[0].getAtomVal!
+  | _ => unreachable!
 
 @[combinatorFormatter generalIdent] def generalIdent.formatter : Formatter := pure ()
 @[combinatorParenthesizer generalIdent] def generalIdent.parenthesizer : Parenthesizer := pure ()
@@ -39,6 +39,10 @@ syntax generalIdent : sexp
 syntax "(" sexp* ")" : sexp
 syntax "(" sexp* "...{" term "}" sexp* ")" : sexp
 syntax "{" term "}" : sexp
+
+-- This coercion is justified by the macro expansions below.
+instance : Coe (Lean.TSyntax `sexp) (Lean.TSyntax `term) where
+  coe a := ⟨a.raw⟩
 
 macro_rules
   | `(sexp| $a:generalIdent) => `(Sexp.atom $(Lean.quote a.getGeneralId))
