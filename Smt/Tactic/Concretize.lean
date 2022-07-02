@@ -60,6 +60,7 @@ off in the config, so it is more like `rw` with a bit of extra reduction.
 It tries to match the kind of definitional matching done by `DiscrTree`. -/
 -- TODO(WN): this whole thing is cursed and I have no idea why it works
 def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
+  trace[smt.debug.concretize.simpRwAt] "rw [{pf}] at {repr loc} : {← loc.getType}"
   let simpTheorems ← ({} : SimpTheorems).addConst `eq_self
   let simpTheorems : SimpTheoremsArray := #[simpTheorems]
   let simpTheorems ← simpTheorems.addTheorem pf
