@@ -10,18 +10,17 @@ open Nat
 namespace Rules
 
 theorem refl : ∀ {t : term} {Γ : Environment} {Δ : SEnvironment},
-  wellTyped t → validWith Γ Δ (eq t t)
-  | t, Γ, Δ, wTt =>
+  validWith Γ Δ (eq t t)
+  | t, Γ, Δ =>
     match r: interpTerm t with
-    | some ⟨ atom 0 , _ ⟩               => by simp; rewrite [r]; exact rfl
-    | some ⟨ atom 1 , _ ⟩               => by simp; rewrite [r]; exact rfl
-    | some ⟨ atom (succ (succ _)) , _ ⟩ => by simp; rewrite [r]; simp; exact rfl
-    | some ⟨ sort.undef, _ ⟩            => by simp; rewrite [r]; exact rfl
-    | some ⟨ sort.array _ _, _ ⟩        => by simp; rewrite [r]; simp; exact rfl
-    | some ⟨ sort.bv _, _ ⟩             => by simp; rewrite [r]; simp; exact rfl
-    | some ⟨ sort.arrow _ _, _ ⟩        => by simp; rewrite [r]; simp; exact rfl
-    | some ⟨ sort.dep, _ ⟩              => by simp; rewrite [r]; exact rfl
-    | none                              => by simp at wTt; rewrite [r] at wTt; exact False.elim wTt
+    | ⟨ atom 0 , _ ⟩               => by simp; rewrite [r]; exact rfl
+    | ⟨ atom 1 , _ ⟩               => by simp; rewrite [r]; exact rfl
+    | ⟨ atom (succ (succ _)) , _ ⟩ => by simp; rewrite [r]; simp; exact rfl
+    | ⟨ sort.undef, _ ⟩            => by simp; rewrite [r]; exact rfl
+    | ⟨ sort.array _ _, _ ⟩        => by simp; rewrite [r]; simp; exact rfl
+    | ⟨ sort.bv _, _ ⟩             => by simp; rewrite [r]; simp; exact rfl
+    | ⟨ sort.arrow _ _, _ ⟩        => by simp; rewrite [r]; simp; exact rfl
+    | ⟨ sort.dep, _ ⟩              => by simp; rewrite [r]; exact rfl
 
 /- theorem symm : ∀ {t₁ t₂ : term}, followsFrom (eq t₁ t₂) (eq t₂ t₁) -/
 /-   | t₁, t₂, Γ, Δ, h => -/

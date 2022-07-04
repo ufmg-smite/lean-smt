@@ -19,7 +19,7 @@ def interpSort (Δ : SEnvironment) (s : sort) : Type :=
 def Environment : Type 1 := Nat → (Δ : SEnvironment) → (s : sort) → interpSort Δ s
 
 def Interpretation: Type 1 :=
-  Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
+  Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s
 
 end Types
 
