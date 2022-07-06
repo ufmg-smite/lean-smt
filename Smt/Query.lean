@@ -59,39 +59,51 @@ def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × 
 
 -- TODO: support mutually recursive functions.
 /-- Translate the body of a constant in the environment. See `translateDefinitionBody`. -/
-partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term × Array Expr × Bool) := do
+partial def translateConstBodyUsingEqnTheorem (nm : Name) (params : Array Expr)
+    : QueryBuilderM (Term × Array Expr × Bool) := do
   let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
   -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
   if mutRecFuns.length > 1 then
     throwError "{nm} is a mutually recursive function, not yet supported"
+  
+  /- Given an equation theorem of the form `∀ x₁ ⬝⬝⬝ xₙ, c x₁ ⬝⬝⬝ xₙ = body`, we first instantiate
+     all occurrences of `x₁ ⬝⬝⬝ xₙ` in `body`. We must then instantiate with the remaining `params`
+     in case the `body` is partly or entirely curried. We then convert the resulting `Expr` into
+     an equivalent SMT `Term`. -/
   let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm | throwError "failed to retrieve equation theorem for {nm}"
   let eqnInfo ← getConstInfo eqnThm
-  let (tm, deps) ← body eqnInfo.type
+  let numXs := countBinders eqnInfo.type
+  let eqn ← instantiateForall eqnInfo.type (params.shrink numXs)
+  let some (_, _, e) := eqn.eq? | throwError "unexpected equation theorem{indentD eqn}"
+  let eBody ← mkAppOptM' e (params.toList.drop numXs |>.map some |>.toArray)
+  -- Note that we ignore free variable dependencies here because a constant's body
+  -- can only depend on free variables introduced as `params`.
+  let (tm, deps) ← translateAndFindDeps eBody (fvarDeps := false)
   return (tm, deps, Util.countConst eqnInfo.type nm > 1)
 where
-  /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
-      this function instantiates all occurrences of `x₁ ⬝⬝⬝ xₙ` in `body` and
-      converts the resulting `Expr` into an equivalent SMT `Term`.  -/
-  body (e :  Expr) : QueryBuilderM (Term × Array Expr) :=
-    Meta.forallTelescopeReducing e fun _ tp => do
-      let some (_, _, e) := tp.eq? | throwError "unexpected equation theorem{indentD e}"
-      -- Note that we ignore free variable dependencies here because a constant's body
-      -- can only depend on free variables introduced in this function.
-      translateAndFindDeps (fvarDeps := false) e
+  countBinders : Expr → Nat
+    | forallE _ _ t _ => 1 + countBinders t
+    | _ => 0
 
-/-- Given a local (`let`) or global (`const`) definition, translate its body *fully applied*
-to fresh variables. For example, given `def foo (x y : Int) : Int := t`, we translate `t[x/x,y/y]`.
+/-- Given a local (`let`) or global (`const`) definition, translate its body applied to `params`.
+We expect `params` to contain enough free variables to make this a ground term. For example, given
+`def foo (x : Int) : Int → Int := t`, we need `params = #[x, y]` and translate `t[x/x] y`.
 Return the translated body, its dependencies, and whether the definition is recursive. -/
-def translateDefinitionBody : Expr → QueryBuilderM (Term × Array Expr × Bool)
+def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term × Array Expr × Bool)
   | e@(fvar id ..) => do
     let decl ← getLocalDecl id
     let some val := decl.value? | throwError "trying to define {e} but it's not a let-declaration"
-    -- Compute the let-binding body
-    let (tmVal, deps) ← Meta.lambdaTelescope val fun args val =>
-      translateAndFindDeps (val.instantiate args)
+    let numXs := countLams val
+    let val ← instantiateLambda val (params.shrink numXs)
+    let val ← mkAppOptM' val (params.toList.drop numXs |>.map some |>.toArray)
+    let (tmVal, deps) ← translateAndFindDeps val
     return (tmVal, deps, val.hasAnyFVar (· == id))
-  | const nm .. => translateConstBodyUsingEqnTheorem nm
+  | const nm .. => translateConstBodyUsingEqnTheorem nm params
   | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
+where
+  countLams : Expr → Nat
+    | lam _ _ t _ => 1 + countLams t
+    | _ => 0
 
 /-- Assuming `e : Sort u` and `u` is constant, return `u`. Otherwise fail. -/
 def getSortLevel (e : Expr) : QueryBuilderM Nat := do
@@ -102,8 +114,8 @@ def getSortLevel (e : Expr) : QueryBuilderM Nat := do
 def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Expr)
     : QueryBuilderM (Array Expr) := do
   -- Translate the body and the parameter types.
-  let (tmVal, deps, isRec) ← translateDefinitionBody e
-  let (tmParams, deps) ← params.foldlM (init := ([], deps)) fun (tmParams, deps) param => do
+  let (tmVal, deps, isRec) ← translateDefinitionBody params e
+  let (tmParams, deps) ← params.foldrM (init := ([], deps)) fun param (tmParams, deps) => do
     let n := (← getFVarLocalDecl param).userName.toString
     let (tm, deps') ← translateAndFindDeps (← inferType param)
     return ((n, tm) :: tmParams, deps ++ deps')
