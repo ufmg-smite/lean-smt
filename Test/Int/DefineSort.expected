@@ -4,7 +4,7 @@ query:
 (define-sort MyInt () Int)
 (declare-const a MyInt)
 (declare-const b MyInt)
-(define-fun MyInt.add ((b MyInt) (a MyInt)) MyInt (+ a b))
+(define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
 

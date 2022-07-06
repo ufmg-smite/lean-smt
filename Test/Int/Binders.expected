@@ -1,0 +1,46 @@
+goal: curryAdd a b = curryAdd b a
+
+query:
+(declare-const a Int)
+(declare-const b Int)
+(define-fun curryAdd ((a._@.Test.Int.Binders._hyg.3 Int) (a._@.Test.Int.Binders._hyg.5 Int)) Int (+ a._@.Test.Int.Binders._hyg.3 a._@.Test.Int.Binders._hyg.5))
+(assert (not (= (curryAdd a b) (curryAdd b a))))
+(check-sat)
+
+result: unsat
+Test/Int/Binders.lean:5:0: warning: declaration uses 'sorry'
+goal: partCurryAdd a b = partCurryAdd b a
+
+query:
+(declare-const a Int)
+(declare-const b Int)
+(define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.34 Int)) Int (+ a a._@.Test.Int.Binders._hyg.34))
+(assert (not (= (partCurryAdd a b) (partCurryAdd b a))))
+(check-sat)
+
+result: unsat
+Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
+goal: partCurryAdd' a b = partCurryAdd' b a
+
+query:
+(define-fun |partCurryAdd'| ((a Int) (n Int)) Int (+ a n))
+(declare-const a Int)
+(declare-const b Int)
+(assert (not (= (|partCurryAdd'| a b) (|partCurryAdd'| b a))))
+(check-sat)
+
+result: unsat
+Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
+Test/Int/Binders.lean:22:28: warning: unused variable `b`
+Test/Int/Binders.lean:22:26: warning: unused variable `a`
+goal: mismatchNamesAdd a b = mismatchNamesAdd b a
+
+query:
+(define-fun mismatchNamesAdd ((a Int) (b Int)) Int (+ a b))
+(declare-const a Int)
+(declare-const b Int)
+(assert (not (= (mismatchNamesAdd a b) (mismatchNamesAdd b a))))
+(check-sat)
+
+result: unsat
+Test/Int/Binders.lean:24:0: warning: declaration uses 'sorry'
