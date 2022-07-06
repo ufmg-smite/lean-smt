@@ -55,7 +55,7 @@ def setLogic (l : String) : Solver :=
 
 /-- Define a sort with name `id` and arity `n`. -/
 def declareSort (id : String) (n : Nat) : Solver :=
-  ⟨s!"(declare-sort {id} {Nat.toDigits 10 n})" :: solver.commands⟩
+  ⟨s!"(declare-sort {id} {n})" :: solver.commands⟩
 
 /-- Define a sort with name `id`. -/
 def defineSort (id : String) (ss : List Term) (s : Term) : Solver :=

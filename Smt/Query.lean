@@ -19,11 +19,16 @@ open Solver Term
 
 -- TODO: move all `Nat` hacks in this file to `Nat.lean`; see also issue #27
 
+structure QueryBuilderM.Config where
+  /-- Expressions to define rather than just declare.
+  Definition bodies are translated recursively. -/
+  toDefine : List Expr := []
+
 structure QueryBuilderM.State where
   graph : Graph Expr Unit := .empty
   commands : Std.HashMap Expr Command := .empty
 
-abbrev QueryBuilderM := StateT QueryBuilderM.State TranslationM
+abbrev QueryBuilderM := ReaderT QueryBuilderM.Config <| StateT QueryBuilderM.State TranslationM
 
 namespace QueryBuilderM
 
@@ -38,7 +43,8 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
     graph := st.graph.addEdge e e' ()
   }
 
-/-- Translate an expression and compute its (non-builtin) dependencies. -/
+/-- Translate an expression and compute its (non-SMT-builtin) dependencies.
+When `fvarDeps = false`, we filter out dependencies on fvars. -/
 def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × Array Expr) := do
   let (tm, deps) ← Translator.translateExpr e
   let unknownConsts := deps.toArray.filterMap fun nm =>
@@ -51,26 +57,8 @@ def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × 
   else
     return (tm, unknownConsts)
 
-/-- Define a constant or function. The body `tmVal` is expected to be fully applied
-to arguments matching the binder names in `tp`. -/
-def buildDefineCommand (nm : Name) (tp : Expr) (isRec : Bool) (tmTp : Term) (tmVal : Term)
-    : QueryBuilderM Command :=
-  match tp with
-  | forallE .. => do
-    let (ps, tmCod) ← paramsAndCodomain tp
-    return .defineFun nm.toString ps tmCod tmVal isRec
-  | _ =>
-    return .defineFun nm.toString [] tmTp tmVal isRec
-where
-  paramsAndCodomain (e : Expr) : QueryBuilderM (List (String × Term) × Term) := do
-    match e with
-    | forallE n t bd _ => do
-      let (ps, cod) ← paramsAndCodomain bd
-      return ((n.toString, ← Translator.translateExpr' t) :: ps, cod)
-    | t => return ([], ← Translator.translateExpr' t)
-
 -- TODO: support mutually recursive functions.
-/-- Return the translated body, its dependencies, and whether it is recursive. -/
+/-- Translate the body of a constant in the environment. See `translateDefinitionBody`. -/
 partial def translateConstBodyUsingEqnTheorem (nm : Name) : QueryBuilderM (Term × Array Expr × Bool) := do
   let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
   -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
@@ -91,60 +79,85 @@ where
       -- can only depend on free variables introduced in this function.
       translateAndFindDeps (fvarDeps := false) e
 
--- Returns a list of additional dependencies
-def addDefineCommand (nm : Name) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (Array Expr) := do
-  match e with
-  | fvar id .. =>
+/-- Given a local (`let`) or global (`const`) definition, translate its body *fully applied*
+to fresh variables. For example, given `def foo (x y : Int) : Int := t`, we translate `t[x/x,y/y]`.
+Return the translated body, its dependencies, and whether the definition is recursive. -/
+def translateDefinitionBody : Expr → QueryBuilderM (Term × Array Expr × Bool)
+  | e@(fvar id ..) => do
     let decl ← getLocalDecl id
-    let some val := decl.value? | throwError "trying to define {nm} but it's not a let-declaration"
+    let some val := decl.value? | throwError "trying to define {e} but it's not a let-declaration"
     -- Compute the let-binding body
     let (tmVal, deps) ← Meta.lambdaTelescope val fun args val =>
       translateAndFindDeps (val.instantiate args)
-    -- Filter out fvars introduced by the lambda telescope. We cannot just ignore all fvars because
-    -- the body might depend on other local bindings which we then have to translate.
-    let deps ← deps.filterM (fun | fvar id .. => Option.isSome <$> findLocalDecl? id | _ => pure true)
-    let cmd ← buildDefineCommand nm tp (val.hasAnyFVar (· == id)) tmTp tmVal
-    addCommand e cmd
-    return deps
-  | const nm .. =>
-    let (tmVal, deps, isRec) ← translateConstBodyUsingEqnTheorem nm
-    let cmd ← buildDefineCommand nm tp isRec tmTp tmVal
-    addCommand e cmd
-    return deps
-  | _          => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
+    return (tmVal, deps, val.hasAnyFVar (· == id))
+  | const nm .. => translateConstBodyUsingEqnTheorem nm
+  | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
 
-/-- Build the command for `e` and add it to the graph. Return the command's dependencies. -/
-def buildCommand (hs : List Expr) (e : Expr) (tp : Expr) (tmTp : Term) : QueryBuilderM (Array Expr) := do
-  let sort l .. ← inferType tp | throwError "sort expected, got{indentD tp}"
+/-- Assuming `e : Sort u` and `u` is constant, return `u`. Otherwise fail. -/
+def getSortLevel (e : Expr) : QueryBuilderM Nat := do
+  let sort l .. ← inferType e | throwError "sort expected, got{indentD e}"
+  let some l := l.toNat | throwError "type{indentD e}\nhas varying universe level {l}"
+  return l
 
-  -- Is `tp` a `Prop` to assert?
-  if l.toNat == some 0 then
-    addCommand e <| .assert tmTp
+def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Expr)
+    : QueryBuilderM (Array Expr) := do
+  -- Translate the body and the parameter types.
+  let (tmVal, deps, isRec) ← translateDefinitionBody e
+  let (tmParams, deps) ← params.foldlM (init := ([], deps)) fun (tmParams, deps) param => do
+    let n := (← getFVarLocalDecl param).userName.toString
+    let (tm, deps') ← translateAndFindDeps (← inferType param)
+    return ((n, tm) :: tmParams, deps ++ deps')
+
+  -- Is `e` a type?
+  if 1 < (← getSortLevel cod) then
+    addCommand e <| .defineSort nm (tmParams.map (·.snd)) tmVal
+    return deps
+  else -- Otherwise it is a function or constant.
+    let (tmCod, deps') ← translateAndFindDeps cod
+    addCommand e <| .defineFun nm tmParams tmCod tmVal isRec
+    return deps ++ deps'
+
+def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod : Expr)
+    : QueryBuilderM (Array Expr) := do
+  if 1 < (← getSortLevel cod) then
+    addCommand e <| .declareSort nm params.size
     return #[]
+  else
+    let (tmTp, deps) ← translateAndFindDeps tp
+    addCommand e <| .declare nm tmTp
+    return deps
 
-  -- Otherwise `e` is a type or value to declare or define.
+/-- Build the command for `e : tp` and add it to the graph. Return the command's dependencies. -/
+def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
+  -- Is `tp` a `Prop` to assert?
+  if let 0 ← getSortLevel tp then
+    let (tmTp, deps) ← translateAndFindDeps tp
+    addCommand e <| .assert tmTp
+    return deps
 
+  trace[smt.debug.query] "{tp} : Sort {← getSortLevel tp}"
+
+  -- Otherwise it is a local/global declaration with name `nm`.
   let nm ← match e with
     | fvar id .. => pure (← getLocalDecl id).userName.toString
     | const n .. => pure n.toString
     | _          => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
-  
-  match tp with
-    | sort .. =>
-      addCommand e <| .declare nm tmTp
-      return #[]
-    | tp      =>
-      if hs.elem e then
-        addDefineCommand nm e tp tmTp
-      else
-        addCommand e <| .declare nm tmTp
-        return #[]
 
-/-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges.
-The input `hs` is a list of expressions to define rather than just declare. -/
-partial def buildDependencyGraph (g : Expr) (hs : List Expr) : QueryBuilderM Unit := do
+  -- Introduce the declaration's parameters and codomain.
+  let deps ← Meta.forallTelescopeReducing tp fun params cod => do
+    -- Should we define the body of `e`?
+    if (← read).toDefine.elem e then addDefineCommandFor nm e params cod
+    -- Otherwise we just declare it.
+    else addDeclareCommandFor nm e tp params cod
+
+  -- Filter out fvars introduced by the forall telescope. We cannot just ignore all fvars because
+  -- the definition might depend on local bindings which we then have to translate.
+  deps.filterM (fun | fvar id .. => Option.isSome <$> findLocalDecl? id | _ => pure true)
+
+/-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges. -/
+partial def buildDependencyGraph (g : Expr) : QueryBuilderM Unit := do
   go g
-  for h in hs do
+  for h in (← read).toDefine do
     go h
 where
   go (e : Expr) : QueryBuilderM Unit := do
@@ -167,10 +180,8 @@ where
       addDependency e (mkConst `Nat)
       return
 
-    let (tmTp, deps) ← translateAndFindDeps et
-    let deps' ← buildCommand hs e et tmTp
+    let deps ← addCommandFor e et
 
-    let deps := deps ++ deps'
     trace[smt.debug.query] "deps: {deps}"
     for e' in deps do
       go e'
@@ -189,7 +200,10 @@ def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solve
   traceCtx `smt.debug.generateQuery do
     trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
-    let ((_, st), _) ← QueryBuilderM.buildDependencyGraph goal hs |>.run {} |>.run {}
+    let ((_, st), _) ← QueryBuilderM.buildDependencyGraph goal
+      |>.run { toDefine := hs : QueryBuilderM.Config }
+      |>.run { : QueryBuilderM.State }
+      |>.run { : TranslationM.State }
     trace[smt.debug.query] "Dependency Graph: {st.graph}"
     let (_, solver) ← StateT.run (st.graph.dfs $ emitVertex st.commands) solver
     return solver

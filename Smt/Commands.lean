@@ -14,6 +14,7 @@ namespace Smt
 inductive Command where
   | assert (tm : Term)
   | declare (nm : String) (st : Term)
+  | declareSort (nm : String) (arity : Nat)
   | defineSort (nm : String) (ps : List Term) (tm : Term)
   | defineFun (nm : String) (ps : List (String × Term)) (cod : Term) (tm : Term) (rec : Bool)
 
@@ -62,6 +63,7 @@ def emitCommand (s : Solver) (cmd : Command) : m Solver := do
   | .assert val                   => s := s.assert val
   | .declare nm st@(arrowT ..)    => s := s.declareFun nm st
   | .declare nm st                => s := s.declareConst nm st
+  | .declareSort nm arity         => s := s.declareSort nm arity
   | .defineSort nm ps tm          => s := s.defineSort nm ps tm
   | .defineFun nm ps cod tm true  => s := s.defineFunRec nm ps cod tm
   | .defineFun nm ps cod tm false => s := s.defineFun nm ps cod tm
