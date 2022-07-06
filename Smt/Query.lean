@@ -57,34 +57,31 @@ def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × 
   else
     return (tm, unknownConsts)
 
--- TODO: support mutually recursive functions.
-/-- Translate the body of a constant in the environment. See `translateDefinitionBody`. -/
-partial def translateConstBodyUsingEqnTheorem (nm : Name) (params : Array Expr)
-    : QueryBuilderM (Term × Array Expr × Bool) := do
-  let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
-  -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
-  if mutRecFuns.length > 1 then
-    throwError "{nm} is a mutually recursive function, not yet supported"
-  
-  /- Given an equation theorem of the form `∀ x₁ ⬝⬝⬝ xₙ, c x₁ ⬝⬝⬝ xₙ = body`, we first instantiate
-     all occurrences of `x₁ ⬝⬝⬝ xₙ` in `body`. We must then instantiate with the remaining `params`
-     in case the `body` is partly or entirely curried. We then convert the resulting `Expr` into
-     an equivalent SMT `Term`. -/
-  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm | throwError "failed to retrieve equation theorem for {nm}"
-  let eqnInfo ← getConstInfo eqnThm
-  let numXs := countBinders eqnInfo.type
-  let eqn ← instantiateForall eqnInfo.type (params.shrink numXs)
-  let some (_, _, e) := eqn.eq? | throwError "unexpected equation theorem{indentD eqn}"
-  let eBody ← mkAppOptM' e (params.toList.drop numXs |>.map some |>.toArray)
-  -- Note that we ignore free variable dependencies here because a constant's body
-  -- can only depend on free variables introduced as `params`.
-  let (tm, deps) ← translateAndFindDeps eBody (fvarDeps := false)
-  return (tm, deps, Util.countConst eqnInfo.type nm > 1)
-where
-  countBinders : Expr → Nat
-    | forallE _ _ t _ => 1 + countBinders t
-    | _ => 0
+/-- Return the body of a constant using its unfold equation theorem. Unlike raw delta-reduction,
+this hides encoding tricks used to prove termination.
 
+Given an equation theorem of the form `∀ x₁ ⬝⬝⬝ xₙ, c x₁ ⬝⬝⬝ xₙ = body`,
+we return `fun x₁ ⬝⬝⬝ xₙ => body`. -/
+def getConstBodyFromEqnTheorem (nm : Name) : MetaM Expr := do
+  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm
+    | throwError "failed to retrieve equation theorem for '{nm}'"
+  let eqnInfo ← getConstInfo eqnThm
+  forallTelescopeReducing eqnInfo.type fun args eqn => do
+    let some (_, _, e) := eqn.eq? | throwError "unexpected equation theorem{indentD eqn}"
+    mkLambdaFVars args e
+
+/-- Given the body `e` of a definition, make its application to `params` reducing *only* top-level
+lambdas. For example, if `def foo (a : Int) : Int → Int := (+) a`, then `e = fun a => (+) a` and
+supposing `params = #[a, b]`, we return `(+) a b`. -/
+def makeFullyAppliedBody (e : Expr) (params : Array Expr) : MetaM Expr := do
+  let numXs := countLams e
+  let e ← instantiateLambda e (params.shrink numXs)
+  mkAppOptM' e (params.toList.drop numXs |>.map some |>.toArray)
+where
+  countLams : Expr → Nat
+    | lam _ _ t _ => 1 + countLams t
+    | _ => 0
+  
 /-- Given a local (`let`) or global (`const`) definition, translate its body applied to `params`.
 We expect `params` to contain enough free variables to make this a ground term. For example, given
 `def foo (x : Int) : Int → Int := t`, we need `params = #[x, y]` and translate `t[x/x] y`.
@@ -93,17 +90,23 @@ def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term
   | e@(fvar id ..) => do
     let decl ← getLocalDecl id
     let some val := decl.value? | throwError "trying to define {e} but it's not a let-declaration"
-    let numXs := countLams val
-    let val ← instantiateLambda val (params.shrink numXs)
-    let val ← mkAppOptM' val (params.toList.drop numXs |>.map some |>.toArray)
+    let val ← makeFullyAppliedBody val params
     let (tmVal, deps) ← translateAndFindDeps val
     return (tmVal, deps, val.hasAnyFVar (· == id))
-  | const nm .. => translateConstBodyUsingEqnTheorem nm params
+  | const nm .. => do
+    let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
+    -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
+    if mutRecFuns.length > 1 then
+      -- TODO: support mutually recursive functions.
+      throwError "{nm} is a mutually recursive function, not yet supported"
+    let val ← getConstBodyFromEqnTheorem nm
+    let val ← makeFullyAppliedBody val params
+    trace[smt.debug.query] "val: {val} ; {nm} times {Util.countConst val nm}"
+    -- Note that we ignore free variable dependencies here because a constant's body
+    -- can only depend on free variables introduced as `params`.
+    let (tm, deps) ← translateAndFindDeps val (fvarDeps := false)
+    return (tm, deps, Util.countConst val nm > 0)
   | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
-where
-  countLams : Expr → Nat
-    | lam _ _ t _ => 1 + countLams t
-    | _ => 0
 
 /-- Assuming `e : Sort u` and `u` is constant, return `u`. Otherwise fail. -/
 def getSortLevel (e : Expr) : QueryBuilderM Nat := do
