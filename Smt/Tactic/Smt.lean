@@ -84,7 +84,7 @@ def parseTactic : Syntax → TacticM (List Expr)
     | .ok out => pure out
     | .error e => throwError "cannot parse solver output: {e}"
   if out.contains sexp!{sat} then
-    throwError "unable to prove goal, it is false"
+    throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
     -- TODO ask for countermodel and print
   else if !out.contains sexp!{unsat} then
     throwError "unable to prove goal"
