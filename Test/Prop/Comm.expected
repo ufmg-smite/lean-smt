@@ -8,4 +8,4 @@ query:
 (check-sat)
 
 result: sat
-Test/Prop/Comm.lean:4:2: error: unable to prove goal, it is false
+Test/Prop/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`

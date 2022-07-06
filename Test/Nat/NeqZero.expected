@@ -6,7 +6,7 @@ query:
 (check-sat)
 
 result: sat
-Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, it is false
+Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
 goal: ∀ (x : Nat), x + 1 ≠ 0
 
 query:
