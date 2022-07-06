@@ -23,6 +23,7 @@ def polyMul (a : BitVec w) (b : BitVec v) : BitVec (w+v) :=
 -- TODO: it's unfortunate that we have to do this kind of "hand reduction" with custom rules.
 -- Could we define everything to reduce as below and then prove all the tail-rec equivalences
 -- for efficiency? Then WHNF could go some way towards the goal.
+-- Actually, we'll use reduction with extensible normal forms.
 
 @[simp]
 theorem List.range_succ (n : Nat) : List.range (n + 1) = List.range n ++ [n] :=
@@ -42,7 +43,7 @@ theorem List.foldr_nil (init : β) (f : α → β → β)
     : List.foldr f init [] = init :=
   sorry
 
-theorem polyMul_comm_8 (x y z w : BitVec 2) : polyAdd (polyMul x y) (polyMul z w) = polyAdd (polyMul w z) (polyMul y x)  := by
+example (x y z w : BitVec 2) : polyAdd (polyMul x y) (polyMul z w) = polyAdd (polyMul w z) (polyMul y x)  := by
   -- What if we could run treat symbols as locally opaque?
   -- The opposite of Carlo's scheme — `opaque foo in t`
   concretize [polyAdd, polyMul, BitVec.zeroShrinxtend, BitVec.lsbGet]
