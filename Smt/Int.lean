@@ -17,6 +17,7 @@ open Translator Term
   | app (const `Int.ofNat ..) e .. => applyTranslators! e
   | const `Int.neg ..              => return symbolT "-"
   | const `Int.le ..               => return symbolT "<="
+  | const `Int.add ..              => return symbolT "+"
   | _                              => return none
 
 end Smt.Int
