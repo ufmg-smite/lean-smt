@@ -119,4 +119,79 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `def) eqn pf).intro1P
     return ((fvVar, fvEq), [mvarId])
 
+/-- Make a new equational definition which specializes an existing one.
+We append the pretty-printed conrete args to the original name and define it.
+We also assert a `$nm.specialization` theorem which can be used to rewrite
+instances of this into their specialization.
+Used for monomorphization. -/
+def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
+  withMainContext do
+    let eqn ← inferType (mkFVar x)
+
+    -- Compute specialized body
+    let newEqn ← instantiateForall eqn args
+    let newLamBody ← getEqnDefLam newEqn
+
+    -- Compute specialization name
+    let ld ← getLocalDecl x
+    let some nm := ld.userName.eraseSuffix? `def | throwError "{mkFVar x} is not an eqn def!"
+    let nm ← args.foldlM (init := nm) fun nm arg => do
+      let txt := toString (← ppExpr arg)
+      -- let txt := txt.replace " " "_"
+      return nm ++ Name.mkSimple txt
+
+    -- Define the specialization
+    let (fvVar, _) ← addEqnDefForLocal nm newLamBody
+
+    -- TODO: these nested withContexts are a bit wonky, can we get a nicer api? `withAddEqnDefForLocal` or something
+    withMainContext do
+      -- Compute the rewrite helper
+      let eqnRw ← forallTelescope newEqn fun fvArgs newEqn => do
+        let some (_, specializedHead, _) := newEqn.eq? | throwNotEqnDef newEqn
+        let rhs ← mkAppOptM' (mkFVar fvVar) (fvArgs.map some)
+        let eqnRw ← mkEq specializedHead rhs
+        mkForallFVars fvArgs eqnRw
+
+      let pf ← mkSorry eqn true
+      let pf ← ensureHasType (some eqn) pf
+
+      liftMetaTacticAux fun mvarId => do
+        let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `specialization) eqnRw pf)
+        return (fvEq, [mvarId])
+
+-- hax for testing
+def specializeEqnDef' (x : FVarId) (argStxs : List (TSyntax `term)) : TacticM FVarId := do
+  let args ← withMainContext <|
+    forallTelescopeReducing (← inferType (mkFVar x)) fun args _ => do
+      let mut ret : Array Expr := #[]
+      for (stx, arg) in argStxs.zip args.toList do
+        let e ← elabTerm stx (some (← inferType arg))
+        ret := ret.push e
+      return ret
+  specializeEqnDef x args
+
+-- Replaces the body of a definition with its translucent reduction where SMT constants are opaque.
+def smtReduceDef (x : FVarId) : TacticM FVarId := do
+  withMainContext do
+    let eqn ← inferType (mkFVar x)
+    let lamBody ← getEqnDefLam eqn
+    trace[smt.debug.reduce] "reduced: {← smtReduce lamBody}"
+    return x
+
+open Lean Meta Elab Tactic in
+elab "extract_def" i:ident : tactic => do
+  let nm ← resolveGlobalConstNoOverloadWithInfo i
+  let _ ← addEqnDefForConst nm
+
+open Lean Meta Elab Tactic in
+elab "specialize_def" i:ident "[" ts:term,* "]" : tactic => do
+  withMainContext do
+    let ld ← getLocalDeclFromUserName i.getId
+    let _ ← specializeEqnDef' ld.fvarId (ts.getElems.toList)
+
+
+-- Potential:
+-- transformEqnDefBody
+-- rewriteByEqnDef
+
 end Smt
