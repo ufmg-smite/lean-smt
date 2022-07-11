@@ -1,0 +1,37 @@
+goal: n % m < m
+
+query:
+(declare-const n Int)
+(declare-const m Int)
+(assert (not (< (mod n m) m)))
+(assert (< 0 m))
+(check-sat)
+
+result: unsat
+Test/Int/Arith.lean:3:0: warning: declaration uses 'sorry'
+goal: (n - m) * k + l = n * k - m * k + l
+
+query:
+(declare-const n Int)
+(declare-const m Int)
+(declare-const k Int)
+(declare-const l Int)
+(assert (not (= (+ (* (- n m) k) l) (+ (- (* n k) (* m k)) l))))
+(check-sat)
+
+result: unsat
+Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
+goal: n + k ≤ m + l
+
+query:
+(declare-const n Int)
+(declare-const m Int)
+(assert (<= n m))
+(declare-const k Int)
+(declare-const l Int)
+(assert (<= k l))
+(assert (not (<= (+ n k) (+ m l))))
+(check-sat)
+
+result: unsat
+Test/Int/Arith.lean:11:0: warning: declaration uses 'sorry'
