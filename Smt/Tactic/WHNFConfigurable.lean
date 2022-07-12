@@ -483,7 +483,9 @@ where
       trace[Meta.whnf] e
       match e with
       | Expr.const ..  => pure e
-      | Expr.letE _ _ v b _ => go <| b.instantiate1 v
+      | Expr.letE _ _ v b _ => do
+        if (← readThe Smt.Config).zeta then go <| b.instantiate1 v
+        else return e
       | Expr.app f ..       =>
         let f := f.getAppFn
         let f' ← go f
@@ -874,6 +876,17 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
             return mkRawNatLit (args[0]!.natLit?.get! + 1)
           else
             return mkAppN f args
+        -- `let`-bindings are normally substituted by WHNF, but they are left alone when `zeta` is off,
+        -- so we must reduce their subterms here.
+        | Expr.letE nm t v b nonDep => do
+          let t' ← visit t
+          let v' ← visit v
+          -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
+          -- Is this correct?
+          let b' ← withLocalDeclD nm t' fun x => do
+            let b' ← visit (b.instantiate1 x)
+            return b'.abstract #[x]
+          return Expr.letE nm t' v' b' nonDep
         | Expr.lam ..        => lambdaTelescope e fun xs b => do mkLambdaFVars xs (← visit b)
         | Expr.forallE ..    => forallTelescope e fun xs b => do mkForallFVars xs (← visit b)
         | Expr.proj n i s .. => return mkProj n i (← visit s)
