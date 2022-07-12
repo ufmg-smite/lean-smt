@@ -489,6 +489,14 @@ where
       | Expr.app f ..       =>
         let f := f.getAppFn
         let f' ← go f
+        if let Expr.letE nm t v b nonDep := f' then
+          if (← read).pushElim then
+            -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
+            -- Is this correct?
+            let res ← Meta.withLocalDeclD nm t fun x => do
+              let b' ← go (e.updateFn (b.instantiate1 x))
+              return Expr.letE nm t v (b'.abstract #[x]) nonDep
+            return res
         if f'.isLambda then
           let revArgs := e.getAppRevArgs
           go <| f'.betaRev revArgs
@@ -511,8 +519,16 @@ where
                 else
                   return e
               | _ => return e
-      | Expr.proj _ i c =>
+      | Expr.proj pNm i c =>
         let c ← if deltaAtProj then whnf c else whnfCore c
+        if let Expr.letE lNm t v b nonDep := c then
+          if (← read).pushElim then
+            -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
+            -- Is this correct?
+            let res ← Meta.withLocalDeclD lNm t fun x => do
+              let b' ← go (Expr.proj pNm i (b.instantiate1 x))
+              return Expr.letE lNm t v (b'.abstract #[x]) nonDep
+            return res
         match (← projectCore? c i) with
         | some e => go e
         | none => return e

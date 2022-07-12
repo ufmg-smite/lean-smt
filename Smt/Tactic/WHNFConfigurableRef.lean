@@ -14,6 +14,12 @@ structure Config where
   Γ ⊢ let x : t := v; b ⤳ let x : t' := v'; b'
   ``` -/
   zeta : Bool := true
+  /-- The WHNF rule
+  ```lean
+  Γ ⊢ ELIM[let x : t := v; b] ⤳ let x : t := v; ELIM[b]
+  ```
+  where `ELIM` is either a function application or a projection. -/
+  pushElim : Bool := false
   beta : Bool := true
   eta  : Bool := true
   iota : Bool := true
