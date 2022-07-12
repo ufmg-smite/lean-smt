@@ -55,7 +55,7 @@ def isAuxDef (constName : Name) : MetaM Bool := do
   let env ← getEnv
   return isAuxRecursor env constName || isNoConfusion env constName
 
-@[inline] private def matchConstAux {α} (e : Expr) (failK : Unit → MetaM α) (k : ConstantInfo → List Level → MetaM α) : MetaM α :=
+@[inline] private def matchConstAux {α} (e : Expr) (failK : Unit → ReductionM α) (k : ConstantInfo → List Level → ReductionM α) : ReductionM α :=
   match e with
   | Expr.const name lvls => do
     let (some cinfo) ← getConst? name | failK ()
@@ -91,7 +91,7 @@ private def getRecRuleFor (recVal : RecursorVal) (major : Expr) : Option Recurso
   | Expr.const fn _ => recVal.rules.find? fun r => r.ctor == fn
   | _               => none
 
-private def toCtorWhenK (recVal : RecursorVal) (major : Expr) : MetaM Expr := do
+private def toCtorWhenK (recVal : RecursorVal) (major : Expr) : ReductionM Expr := do
   let majorType ← inferType major
   let majorType ← instantiateMVars (← whnf majorType)
   let majorTypeI := majorType.getAppFn
@@ -131,7 +131,7 @@ def mkProjFn (ctorVal : ConstructorVal) (us : List Level) (params : Array Expr) 
   \pre `inductName` is `C`.
 
   If `Meta.Config.etaStruct` is `false` or the condition above does not hold, this method just returns `major`. -/
-private def toCtorWhenStructure (inductName : Name) (major : Expr) : MetaM Expr := do
+private def toCtorWhenStructure (inductName : Name) (major : Expr) : ReductionM Expr := do
   unless (← useEtaStruct inductName) do
     return major
   let env ← getEnv
@@ -160,7 +160,9 @@ private def toCtorWhenStructure (inductName : Name) (major : Expr) : MetaM Expr 
     | _ => return major
 
 /-- Auxiliary function for reducing recursor applications. -/
-private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : Array Expr) (failK : Unit → MetaM α) (successK : Expr → MetaM α) : MetaM α :=
+private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : Array Expr)
+    (failK : Unit → ReductionM α) (successK : Expr → ReductionM α)
+    : ReductionM α :=
   let majorIdx := recVal.getMajorIdx
   if h : majorIdx < recArgs.size then do
     let major := recArgs.get ⟨majorIdx, h⟩
@@ -194,8 +196,10 @@ private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : A
    =========================== -/
 
 /-- Auxiliary function for reducing `Quot.lift` and `Quot.ind` applications. -/
-private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : Array Expr) (failK : Unit → MetaM α) (successK : Expr → MetaM α) : MetaM α :=
-  let process (majorPos argPos : Nat) : MetaM α :=
+private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : Array Expr)
+    (failK : Unit → ReductionM α) (successK : Expr → ReductionM α)
+    : ReductionM α :=
+  let process (majorPos argPos : Nat) : ReductionM α :=
     if h : majorPos < recArgs.size then do
       let major := recArgs.get ⟨majorPos, h⟩
       let major ← whnf major
@@ -219,7 +223,7 @@ private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : 
    =========================== -/
 
 mutual
-  private partial def isRecStuck? (recVal : RecursorVal) (recArgs : Array Expr) : MetaM (Option MVarId) :=
+  private partial def isRecStuck? (recVal : RecursorVal) (recArgs : Array Expr) : ReductionM (Option MVarId) :=
     if recVal.k then
       -- TODO: improve this case
       return none
@@ -232,8 +236,8 @@ mutual
       else
         return none
 
-  private partial def isQuotRecStuck? (recVal : QuotVal) (recArgs : Array Expr) : MetaM (Option MVarId) :=
-    let process? (majorPos : Nat) : MetaM (Option MVarId) :=
+  private partial def isQuotRecStuck? (recVal : QuotVal) (recArgs : Array Expr) : ReductionM (Option MVarId) :=
+    let process? (majorPos : Nat) : ReductionM (Option MVarId) :=
       if h : majorPos < recArgs.size then do
         let major := recArgs.get ⟨majorPos, h⟩
         let major ← whnf major
@@ -246,7 +250,7 @@ mutual
     | _             => return none
 
   /-- Return `some (Expr.mvar mvarId)` if metavariable `mvarId` is blocking reduction. -/
-  partial def getStuckMVar? (e : Expr) : MetaM (Option MVarId) := do
+  partial def getStuckMVar? (e : Expr) : ReductionM (Option MVarId) := do
     match e with
     | Expr.mdata _ e  => getStuckMVar? e
     | Expr.proj _ _ e => getStuckMVar? (← whnf e)
@@ -275,7 +279,7 @@ end
    =========================== -/
 
 /-- Auxiliary combinator for handling easy WHNF cases. It takes a function for handling the "hard" cases as an argument -/
-@[specialize] partial def whnfEasyCases (e : Expr) (k : Expr → MetaM Expr) : MetaM Expr := do
+@[specialize] partial def whnfEasyCases (e : Expr) (k : Expr → ReductionM Expr) : ReductionM Expr := do
   match e with
   | Expr.forallE ..    => return e
   | Expr.lam ..        => return e
@@ -312,7 +316,7 @@ end
     successK (← instantiateValueLevelParams c lvls)
 
 @[specialize] private def deltaBetaDefinition (c : ConstantInfo) (lvls : List Level) (revArgs : Array Expr)
-    (failK : Unit → MetaM α) (successK : Expr → MetaM α) (preserveMData := false) : MetaM α := do
+    (failK : Unit → ReductionM α) (successK : Expr → ReductionM α) (preserveMData := false) : ReductionM α := do
   if c.levelParams.length != lvls.length then
     failK ()
   else
@@ -354,7 +358,7 @@ inductive ReduceMatcherResult where
   This solution is also not perfect because the match-expression above will not reduce during type checking when we are not using
   `TransparencyMode.default` or `TransparencyMode.all`.
 -/
-def canUnfoldAtMatcher (cfg : Config) (info : ConstantInfo) : CoreM Bool := do
+def canUnfoldAtMatcher (cfg : Meta.Config) (info : ConstantInfo) : CoreM Bool := do
   match cfg.transparency with
   | TransparencyMode.all     => return true
   | TransparencyMode.default => return true
@@ -379,7 +383,7 @@ def canUnfoldAtMatcher (cfg : Config) (info : ConstantInfo) : CoreM Bool := do
           lazy unfolding at `isDefEq` does not unfold projections.  -/
        || info.name == ``HMod.hMod || info.name == ``Mod.mod
 
-private def whnfMatcher (e : Expr) : MetaM Expr := do
+private def whnfMatcher (e : Expr) : ReductionM Expr := do
   /- When reducing `match` expressions, if the reducibility setting is at `TransparencyMode.reducible`,
      we increase it to `TransparencyMode.instance`. We use the `TransparencyMode.reducible` in many places (e.g., `simp`),
      and this setting prevents us from reducing `match` expressions where the discriminants are terms such as `OfNat.ofNat α n inst`.
@@ -389,10 +393,10 @@ private def whnfMatcher (e : Expr) : MetaM Expr := do
   let mut transparency ← getTransparency
   if transparency == TransparencyMode.reducible then
     transparency := TransparencyMode.instances
-  withTransparency transparency <| withReader (fun ctx => { ctx with canUnfold? := canUnfoldAtMatcher }) do
+  withTransparency transparency <| withTheReader Meta.Context (fun ctx => { ctx with canUnfold? := canUnfoldAtMatcher }) do
     whnf e
 
-def reduceMatcher? (e : Expr) : MetaM ReduceMatcherResult := do
+def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
   match e.getAppFn with
   | Expr.const declName declLevels =>
     let some info ← getMatcherInfo? declName
@@ -429,11 +433,11 @@ private def projectCore? (e : Expr) (i : Nat) : MetaM (Option Expr) := do
     else
       return none
 
-def project? (e : Expr) (i : Nat) : MetaM (Option Expr) := do
+def project? (e : Expr) (i : Nat) : ReductionM (Option Expr) := do
   projectCore? (← whnf e) i
 
 /-- Reduce kernel projection `Expr.proj ..` expression. -/
-def reduceProj? (e : Expr) : MetaM (Option Expr) := do
+def reduceProj? (e : Expr) : ReductionM (Option Expr) := do
   match e with
   | Expr.proj _ i c => project? c i
   | _               => return none
@@ -471,10 +475,10 @@ private def whnfDelayedAssigned? (f' : Expr) (e : Expr) : MetaM (Option Expr) :=
   then delta reduction is used to reduce `s` (i.e., `whnf` is used), otherwise `whnfCore`.
   We only set this flag to `false` when implementing `isDefEq`.
 -/
-partial def whnfCore (e : Expr) (deltaAtProj : Bool := true) : MetaM Expr :=
+partial def whnfCore (e : Expr) (deltaAtProj : Bool := true) : ReductionM Expr :=
   go e
 where
-  go (e : Expr) : MetaM Expr :=
+  go (e : Expr) : ReductionM Expr :=
     whnfEasyCases e fun e => do
       trace[Meta.whnf] e
       match e with
@@ -542,10 +546,10 @@ where
 
   For example, the term `r i j.succ.succ` reduces to the definitionally equal term `i + i * r i j`
 -/
-partial def smartUnfoldingReduce? (e : Expr) : MetaM (Option Expr) :=
+partial def smartUnfoldingReduce? (e : Expr) : ReductionM (Option Expr) :=
   go e |>.run
 where
-  go (e : Expr) : OptionT MetaM Expr := do
+  go (e : Expr) : OptionT ReductionM Expr := do
     match e with
     | Expr.letE n t v b _ => withLetDecl n t (← go v) fun x => do mkLetFVars #[x] (← go (b.instantiate1 x))
     | Expr.lam .. => lambdaTelescope e fun xs b => do mkLambdaFVars xs (← go b)
@@ -558,7 +562,7 @@ where
         return e.updateMData! (← go b)
     | _ => return e
 
-  goMatch (e : Expr) : OptionT MetaM Expr := do
+  goMatch (e : Expr) : OptionT ReductionM Expr := do
     match (← reduceMatcher? e) with
     | ReduceMatcherResult.reduced e =>
       if let some alt := smartUnfoldingMatchAlt? e then
@@ -579,7 +583,7 @@ mutual
   /--
     Auxiliary method for unfolding a class projection.
   -/
-  partial def unfoldProjInst? (e : Expr) : MetaM (Option Expr) := do
+  partial def unfoldProjInst? (e : Expr) : ReductionM (Option Expr) := do
     match e.getAppFn with
     | Expr.const declName .. =>
       match (← getProjectionFnInfo? declName) with
@@ -598,21 +602,21 @@ mutual
     Recall that class instance projections are not marked with `[reducible]` because we want them to be
     in "reducible canonical form".
   -/
-  partial def unfoldProjInstWhenIntances? (e : Expr) : MetaM (Option Expr) := do
+  partial def unfoldProjInstWhenIntances? (e : Expr) : ReductionM (Option Expr) := do
     if (← getTransparency) != TransparencyMode.instances then
       return none
     else
       unfoldProjInst? e
 
   /-- Unfold definition using "smart unfolding" if possible. -/
-  partial def unfoldDefinition? (e : Expr) : MetaM (Option Expr) :=
+  partial def unfoldDefinition? (e : Expr) : ReductionM (Option Expr) :=
     match e with
     | Expr.app f _ =>
       matchConstAux f.getAppFn (fun _ => unfoldProjInstWhenIntances? e) fun fInfo fLvls => do
         if fInfo.levelParams.length != fLvls.length then
           return none
         else
-          let unfoldDefault (_ : Unit) : MetaM (Option Expr) :=
+          let unfoldDefault (_ : Unit) : ReductionM (Option Expr) :=
             if fInfo.hasValue then
               deltaBetaDefinition fInfo fLvls e.getAppRevArgs (fun _ => pure none) (fun e => pure (some e))
             else
@@ -686,11 +690,11 @@ mutual
     | _ => return none
 end
 
-def unfoldDefinition (e : Expr) : MetaM Expr := do
+def unfoldDefinition (e : Expr) : ReductionM Expr := do
   let some e ← unfoldDefinition? e | throwError "failed to unfold definition{indentExpr e}"
   return e
 
-@[specialize] partial def whnfHeadPred (e : Expr) (pred : Expr → MetaM Bool) : MetaM Expr :=
+@[specialize] partial def whnfHeadPred (e : Expr) (pred : Expr → ReductionM Bool) : ReductionM Expr :=
   whnfEasyCases e fun e => do
     let e ← whnfCore e
     if (← pred e) then
@@ -700,7 +704,7 @@ def unfoldDefinition (e : Expr) : MetaM Expr := do
     else
       return e
 
-def whnfUntil (e : Expr) (declName : Name) : MetaM (Option Expr) := do
+def whnfUntil (e : Expr) (declName : Name) : ReductionM (Option Expr) := do
   let e ← whnfHeadPred e (fun e => return !e.isAppOf declName)
   if e.isAppOf declName then
     return e
@@ -708,7 +712,7 @@ def whnfUntil (e : Expr) (declName : Name) : MetaM (Option Expr) := do
     return none
 
 /-- Try to reduce matcher/recursor/quot applications. We say they are all "morally" recursor applications. -/
-def reduceRecMatcher? (e : Expr) : MetaM (Option Expr) := do
+def reduceRecMatcher? (e : Expr) : ReductionM (Option Expr) := do
   if !e.isApp then
     return none
   else match (← reduceMatcher? e) with
@@ -724,11 +728,6 @@ def reduceRecMatcher? (e : Expr) : MetaM (Option Expr) := do
           return none
       | _ => return none
 
-unsafe def reduceBoolNativeUnsafe (constName : Name) : MetaM Bool := evalConstCheck Bool `Bool constName
-unsafe def reduceNatNativeUnsafe (constName : Name) : MetaM Nat := evalConstCheck Nat `Nat constName
-@[implementedBy reduceBoolNativeUnsafe] opaque reduceBoolNative (constName : Name) : MetaM Bool
-@[implementedBy reduceNatNativeUnsafe] opaque reduceNatNative (constName : Name) : MetaM Nat
-
 def reduceNative? (e : Expr) : MetaM (Option Expr) :=
   match e with
   | Expr.app (Expr.const fName _) (Expr.const argName _) =>
@@ -741,29 +740,29 @@ def reduceNative? (e : Expr) : MetaM (Option Expr) :=
   | _ =>
     return none
 
-@[inline] def withNatValue {α} (a : Expr) (k : Nat → MetaM (Option α)) : MetaM (Option α) := do
+@[inline] def withNatValue {α} (a : Expr) (k : Nat → ReductionM (Option α)) : ReductionM (Option α) := do
   let a ← whnf a
   match a with
   | Expr.const `Nat.zero _      => k 0
   | Expr.lit (Literal.natVal v) => k v
   | _                           => return none
 
-def reduceUnaryNatOp (f : Nat → Nat) (a : Expr) : MetaM (Option Expr) :=
+def reduceUnaryNatOp (f : Nat → Nat) (a : Expr) : ReductionM (Option Expr) :=
   withNatValue a fun a =>
   return mkRawNatLit <| f a
 
-def reduceBinNatOp (f : Nat → Nat → Nat) (a b : Expr) : MetaM (Option Expr) :=
+def reduceBinNatOp (f : Nat → Nat → Nat) (a b : Expr) : ReductionM (Option Expr) :=
   withNatValue a fun a =>
   withNatValue b fun b => do
   trace[Meta.isDefEq.whnf.reduceBinOp] "{a} op {b}"
   return mkRawNatLit <| f a b
 
-def reduceBinNatPred (f : Nat → Nat → Bool) (a b : Expr) : MetaM (Option Expr) := do
+def reduceBinNatPred (f : Nat → Nat → Bool) (a b : Expr) : ReductionM (Option Expr) := do
   withNatValue a fun a =>
   withNatValue b fun b =>
   return toExpr <| f a b
 
-def reduceNat? (e : Expr) : MetaM (Option Expr) :=
+def reduceNat? (e : Expr) : ReductionM (Option Expr) :=
   if e.hasFVar || e.hasMVar then
     return none
   else match e with
@@ -815,7 +814,7 @@ private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
     | _                        => unreachable!
   return r
 
-partial def whnfImp (e : Expr) : MetaM Expr :=
+partial def whnfImp (e : Expr) : ReductionM Expr :=
   withIncRecDepth <| whnfEasyCases e fun e => do
     checkMaxHeartbeats "whnf"
     let useCache ← useWHNFCache e
@@ -849,8 +848,8 @@ def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
       | none => pure none
     | _ => pure none
 
-partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : MetaM Expr :=
-  let rec visit (e : Expr) : MonadCacheT Expr Expr MetaM Expr :=
+partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : ReductionM Expr :=
+  let rec visit (e : Expr) : MonadCacheT Expr Expr ReductionM Expr :=
     checkCache e fun _ => Core.withIncRecDepth do
       if (← (pure skipTypes <&&> isType e)) then
         return e
