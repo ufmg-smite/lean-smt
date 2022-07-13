@@ -358,8 +358,12 @@ inductive ReduceMatcherResult where
   This solution is also not perfect because the match-expression above will not reduce during type checking when we are not using
   `TransparencyMode.default` or `TransparencyMode.all`.
 -/
-def canUnfoldAtMatcher (cfg : Meta.Config) (info : ConstantInfo) : CoreM Bool := do
-  match cfg.transparency with
+def canUnfoldAtMatcher
+    (prevUnfoldAt? : Option (Meta.Config → ConstantInfo → CoreM Bool))
+    (cfg : Meta.Config) (info : ConstantInfo) : CoreM Bool := do
+  if let some prevUnfoldAt := prevUnfoldAt? then
+    prevUnfoldAt cfg info
+  else match cfg.transparency with
   | TransparencyMode.all     => return true
   | TransparencyMode.default => return true
   | _ =>
@@ -393,8 +397,9 @@ private def whnfMatcher (e : Expr) : ReductionM Expr := do
   let mut transparency ← getTransparency
   if transparency == TransparencyMode.reducible then
     transparency := TransparencyMode.instances
-  withTransparency transparency <| withTheReader Meta.Context (fun ctx => { ctx with canUnfold? := canUnfoldAtMatcher }) do
-    whnf e
+  withTransparency transparency <|
+    withTheReader Meta.Context (fun ctx => { ctx with canUnfold? := canUnfoldAtMatcher ctx.canUnfold? }) do
+      whnf e
 
 def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
   match e.getAppFn with
@@ -478,9 +483,8 @@ private def whnfDelayedAssigned? (f' : Expr) (e : Expr) : MetaM (Option Expr) :=
 partial def whnfCore (e : Expr) (deltaAtProj : Bool := true) : ReductionM Expr :=
   go e
 where
-  go (e : Expr) : ReductionM Expr :=
+  go (e : Expr) : ReductionM Expr := do
     whnfEasyCases e fun e => do
-      trace[Meta.whnf] e
       match e with
       | Expr.const ..  => pure e
       | Expr.letE _ _ v b _ => do
@@ -490,7 +494,7 @@ where
         let f := f.getAppFn
         let f' ← go f
         if let Expr.letE nm t v b nonDep := f' then
-          if (← read).pushElim then
+          if (← read).letPushElim then
             -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
             -- Is this correct?
             let res ← Meta.withLocalDeclD nm t fun x => do
@@ -498,8 +502,29 @@ where
               return Expr.letE nm t v (b'.abstract #[x]) nonDep
             return res
         if f'.isLambda then
-          let revArgs := e.getAppRevArgs
-          go <| f'.betaRev revArgs
+          -- TODO: broken implementation, doesn't respect dependencies;
+          -- need a withLetDecls combinator
+          -- if (← read).letPullArgs then
+          --   let args := e.getAppArgs
+          --   Meta.forallTelescope (← inferType f') fun xs _ => do
+          --     let declInfos : Array (Name × (Array Expr → ReductionM Expr))
+          --       ← args.zip xs |>.mapM fun (a, x) => do
+          --         let nm ← LocalDecl.userName <$> getFVarLocalDecl x
+          --         return (nm, fun _ => inferType a)
+          --     logInfo m!"args: {args}"
+          --     logInfo m!"xs: {xs}"
+          --     let red ← withLocalDeclsD declInfos fun xs => do
+          --       let b' ← go <| f'.beta xs
+          --       return b'.abstract xs
+          --     logInfo m!"red: {red}"
+          --     let res ← args.zip xs |>.foldrM (init := red) fun (a, x) acc => do
+          --       let nm ← LocalDecl.userName <$> getFVarLocalDecl x
+          --       return Expr.letE nm (← inferType a) a acc false
+          --     logInfo m!"res: {res}"
+          --     return res
+          -- else
+            let revArgs := e.getAppRevArgs
+            go <| f'.betaRev revArgs
         else if let some eNew ← whnfDelayedAssigned? f' e then
           go eNew
         else
@@ -522,7 +547,7 @@ where
       | Expr.proj pNm i c =>
         let c ← if deltaAtProj then whnf c else whnfCore c
         if let Expr.letE lNm t v b nonDep := c then
-          if (← read).pushElim then
+          if (← read).letPushElim then
             -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
             -- Is this correct?
             let res ← Meta.withLocalDeclD lNm t fun x => do
@@ -564,8 +589,16 @@ where
 
   For example, the term `r i j.succ.succ` reduces to the definitionally equal term `i + i * r i j`
 -/
-partial def smartUnfoldingReduce? (e : Expr) : ReductionM (Option Expr) :=
-  go e |>.run
+partial def smartUnfoldingReduce? (e : Expr) : ReductionM (Option Expr) := do
+  trace[Smt.reduce.smartUnfoldingReduce] "{e}"
+  match ← go e |>.run with
+  | some e' => 
+    trace[Smt.reduce.smartUnfoldingReduce] "⤳ {e'}"
+    return some e'
+  | none =>
+    trace[Smt.reduce.smartUnfoldingReduce] "failed."
+    return none
+
 where
   go (e : Expr) : OptionT ReductionM Expr := do
     match e with
@@ -833,10 +866,11 @@ private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
   return r
 
 partial def whnfImp (e : Expr) : ReductionM Expr :=
-  withIncRecDepth <| whnfEasyCases e fun e => do
+  withIncRecDepth <| traceCtx `Smt.reduce.whnf <| whnfEasyCases e fun e => do
     checkMaxHeartbeats "whnf"
+    trace[Smt.reduce.whnf] "{e}"
     let useCache ← useWHNFCache e
-    match (← cached? useCache e) with
+    let e' ← match (← cached? useCache e) with
     | some e' => pure e'
     | none    =>
       let e' ← whnfCore e
@@ -849,6 +883,8 @@ partial def whnfImp (e : Expr) : ReductionM Expr :=
           match (← unfoldDefinition? e') with
           | some e => whnfImp e
           | none   => cache useCache e e'
+    trace[Smt.reduce.whnf] "⤳ {e'}"
+    return e'
 
 /-- If `e` is a projection function that satisfies `p`, then reduce it -/
 def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
@@ -868,14 +904,15 @@ def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
 
 partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : ReductionM Expr :=
   let rec visit (e : Expr) : MonadCacheT Expr Expr ReductionM Expr :=
-    checkCache e fun _ => Core.withIncRecDepth do
+    checkCache e fun _ => Core.withIncRecDepth <| traceCtx `Smt.reduce do
       if (← (pure skipTypes <&&> isType e)) then
         return e
       else if (← (pure skipProofs <&&> isProof e)) then
         return e
       else
+        trace[Smt.reduce] "{e}"
         let e ← whnf e
-        match e with
+        let e' ← match e with
         | Expr.app .. =>
           let f     ← visit e.getAppFn
           let nargs := e.getAppNumArgs
@@ -889,9 +926,9 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
             else
               args ← args.modifyM i visit
           if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isNatLit then
-            return mkRawNatLit (args[0]!.natLit?.get! + 1)
+            pure <| mkRawNatLit (args[0]!.natLit?.get! + 1)
           else
-            return mkAppN f args
+            pure <| mkAppN f args
         -- `let`-bindings are normally substituted by WHNF, but they are left alone when `zeta` is off,
         -- so we must reduce their subterms here.
         | Expr.letE nm t v b nonDep => do
@@ -901,13 +938,21 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
           -- Is this correct?
           let b' ← withLocalDeclD nm t' fun x => do
             let b' ← visit (b.instantiate1 x)
-            return b'.abstract #[x]
-          return Expr.letE nm t' v' b' nonDep
+            pure <| b'.abstract #[x]
+          let e' := Expr.letE nm t' v' b' nonDep
+          pure e'
         | Expr.lam ..        => lambdaTelescope e fun xs b => do mkLambdaFVars xs (← visit b)
         | Expr.forallE ..    => forallTelescope e fun xs b => do mkForallFVars xs (← visit b)
-        | Expr.proj n i s .. => return mkProj n i (← visit s)
-        | _                  => return e
+        | Expr.proj n i s .. => pure <| mkProj n i (← visit s)
+        | _                  => pure e
+        trace[Smt.reduce] "⤳ {e'}"
+        return e'
   visit e |>.run
+
+initialize
+  registerTraceClass `Smt.reduce
+  registerTraceClass `Smt.reduce.whnf
+  registerTraceClass `Smt.reduce.smartUnfoldingReduce
 
 end Smt
 
