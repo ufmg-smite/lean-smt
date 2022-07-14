@@ -94,16 +94,16 @@ partial def applyTranslators? : Translator := withCache fun e => do
 
       -- Then try splitting subexpressions
       match e with
-      | fvar fv _ =>
+      | fvar fv =>
         let ld ← Meta.getLocalDecl fv
         return symbolT ld.userName.toString
-      | const nm .. =>
+      | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
         return symbolT nm.toString
-      | app f e _       => return appT (← applyTranslators! f) (← applyTranslators! e)
+      | app f e => return appT (← applyTranslators! f) (← applyTranslators! e)
       | lam .. => throwError "cannot translate {e}, SMT-LIB does not support lambdas"
-      | forallE n t b d =>
-        let tmB ← Meta.withLocalDecl n d.binderInfo t (fun x => applyTranslators! <| b.instantiate #[x])
+      | forallE n t b bi =>
+        let tmB ← Meta.withLocalDecl n bi t (fun x => applyTranslators! <| b.instantiate #[x])
         if !b.hasLooseBVars /- not a dependent arrow -/ then
           return arrowT (← applyTranslators! t) tmB
         else
@@ -111,8 +111,8 @@ partial def applyTranslators? : Translator := withCache fun e => do
       | letE n t v b _ =>
         let tmB ← Meta.withLetDecl n t v (fun x => applyTranslators! <| b.instantiate #[x])
         return letT n.toString (← applyTranslators! v) tmB
-      | mdata _ e _     => go ts e
-      | e               => throwError "cannot translate {e}"
+      | mdata _ e => go ts e
+      | e         => throwError "cannot translate {e}"
 
 end
 

@@ -52,7 +52,8 @@ def quoteSymbol (s : String) : String :=
   -- This is the set of SMT-LIBv2 permitted characters in "simple" (non-quoted)
   -- symbols.
   let valid := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@$%^&*_-+=<>.?/"
-  if s.any (fun c => ¬valid.contains c) ∨ s.isEmpty ∨ (s[0] ≥ '0' ∧ s[0] ≤ '9') then
+  if s.isEmpty then "||"
+  else if s.any (fun c => ¬valid.contains c) ∨ (s.get 0 ≥ '0' ∧ s.get 0 ≤ '9') then
     -- Must quote the symbol, but it cannot contain | or \, we turn those into
     -- _.
     let s := s.map (fun c => if String.contains "\\|" c then '_' else c)

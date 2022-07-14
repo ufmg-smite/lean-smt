@@ -14,39 +14,39 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | const `Nat.add ..                                => return symbolT "+"
-  | const `Nat.mul ..                                => return symbolT "*"
-  | const `Nat.div ..                                => return symbolT "div"
-  | const `Nat.le ..                                 => return symbolT "<="
-  | const `Nat.ge ..                                 => return symbolT ">="
+  | const `Nat.add _                            => return symbolT "+"
+  | const `Nat.mul _                            => return symbolT "*"
+  | const `Nat.div _                            => return symbolT "div"
+  | const `Nat.le _                             => return symbolT "<="
+  | const `Nat.ge _                             => return symbolT ">="
   -- TODO: why is this not removed at unfoldProjInsts ?
-  | app (app (const `GE.ge ..) (const `Nat ..) _) .. => return symbolT ">="
-  | _                                                => return none
+  | app (app (const `GE.ge _) (const `Nat _)) _ => return symbolT ">="
+  | _                                           => return none
 
 @[smtTranslator] def replaceNatLit : Translator
-  | lit (.natVal n) .. => return literalT (toString n)
-  | _                  => return none
+  | lit (.natVal n) => return literalT (toString n)
+  | _               => return none
 
 /-- Removes casts of literals to `Nat` in `e`. For example, given
-    `(app (app (app (OfNat.ofNat ..) ..) (LIT 0) ..) ..)`, this method removes
+    `(app (app (app (OfNat.ofNat _) _) (LIT 0) _) _)`, this method removes
     all applications and returns just `(LIT 0)`. -/
 @[smtTranslator] def removeOfNat : Translator
-  | app (app (app (const ``OfNat.ofNat ..) ..) l ..) .. => applyTranslators! l
-  | _                                                   => return none
+  | app (app (app (const ``OfNat.ofNat _) _) l) _ => applyTranslators! l
+  | _                                             => return none
 
 /-- Replaces `Nat` constructors `Nat.zero` and `Nat.succ n` for with `0` and
     `(+ n 1)`. -/
 @[smtTranslator] def replaceCtr : Translator
-  | app (const ``Nat.succ ..) e _ => do
+  | app (const ``Nat.succ _) e => do
     let tmE ← applyTranslators! e
     return Term.mkApp2 (symbolT "+") tmE (literalT "1")
-  | const ``Nat.zero ..           => return literalT "0"
-  | _                             => return none
+  | const ``Nat.zero _         => return literalT "0"
+  | _                          => return none
 
 /-- Removes applications of `Nat.decLe` in `e`.
     TODO: replace by unfolding projections. -/
 @[smtTranslator] def removeDecLe : Translator
-  | app (app f (app (app (const ``Nat.decLe ..) ..) ..) ..) e .. => do
+  | app (app f (app (app (const ``Nat.decLe _) _) _)) e => do
     let tmF ← applyTranslators! f
     let tmE ← applyTranslators! e
     return appT tmF tmE
@@ -57,9 +57,9 @@ open Translator Term
     example, given `∀ x : Nat, p(x)`, this method returns the expr
     `∀ x : Nat, x ≥ 0 → p(x)`. -/
 @[smtTranslator] def replaceForalls : Translator
-  | e@(forallE n t@(const ``Nat ..) b d) => do
+  | e@(forallE n t@(const ``Nat _) b bi) => do
     if e.isArrow then return none
-    Meta.withLocalDecl n d.binderInfo t fun x => do
+    Meta.withLocalDecl n bi t fun x => do
       let tmB ← applyTranslators! (b.instantiate #[x])
       let tmGeqZero := Term.mkApp2 (symbolT ">=") (symbolT n.toString) (literalT "0")
       let tmProp := Term.mkApp2 (symbolT "=>") tmGeqZero tmB

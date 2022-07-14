@@ -14,15 +14,15 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | app (const `Int.ofNat ..) e .. => applyTranslators! e
-  | const `Int.add ..              => return symbolT "+"
-  | const `Int.sub ..              => return symbolT "-"
-  | const `Int.neg ..              => return symbolT "-"
-  | const `Int.mul ..              => return symbolT "*"
-  | const `Int.div ..              => return symbolT "div"
-  | const `Int.mod ..              => return symbolT "mod"
-  | const `Int.le ..               => return symbolT "<="
-  | const `Int.lt ..               => return symbolT "<"
-  | _                              => return none
+  | app (const `Int.ofNat _) e => applyTranslators! e
+  | const `Int.add _           => return symbolT "+"
+  | const `Int.sub _           => return symbolT "-"
+  | const `Int.neg _           => return symbolT "-"
+  | const `Int.mul _           => return symbolT "*"
+  | const `Int.div _           => return symbolT "div"
+  | const `Int.mod _           => return symbolT "mod"
+  | const `Int.le _            => return symbolT "<="
+  | const `Int.lt _            => return symbolT "<"
+  | _                          => return none
 
 end Smt.Int

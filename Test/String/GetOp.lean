@@ -1,5 +1,5 @@
 import Smt
 
-theorem index : "a"[0] = 'a' := by
+theorem index : "a".get 0 = 'a' := by
   smt
   rfl

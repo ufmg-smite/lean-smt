@@ -23,7 +23,7 @@ def generalIdent : Parser :=
       mkNodeToken `generalIdent startPos c s }
 
 def Lean.TSyntax.getGeneralId : TSyntax `generalIdent → String
-  | ⟨.node _ `generalIdent args⟩ => args[0].getAtomVal!
+  | ⟨.node _ `generalIdent args⟩ => args[0]!.getAtomVal!
   | _ => unreachable!
 
 @[combinatorFormatter generalIdent] def generalIdent.formatter : Formatter := pure ()
