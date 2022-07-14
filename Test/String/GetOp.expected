@@ -1,4 +1,4 @@
-goal: String.getOp "a" 0 = Char.ofNat 97
+goal: String.get "a" 0 = Char.ofNat 97
 
 query:
 (assert (not (= (str.to_code (str.at "a" 0)) 97)))
