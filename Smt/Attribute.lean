@@ -40,8 +40,8 @@ def validate (n : Name) : AttrM Unit := do
   | some info =>
     match info.type with
     | Expr.const c .. =>
-      if c != (`Smt.Transformer) then throwUnexpectedType `Smt.Transformer n
-    | _               => throwUnexpectedType `Smt.Transformer n
+      if c != `Smt.Translator then throwUnexpectedType `Smt.Translator n
+    | _               => throwUnexpectedType `Smt.Translator n
 
 /-- Registers an SMT attribute with the provided name and description and links
     it against `ext`. -/
@@ -58,14 +58,14 @@ def registerSmtAttr (attrName : Name) (attrDescr : String)
       validate decl
       setEnv (smtExt.addEntry (← getEnv) decl)
       trace[smt.debug.attr]
-        s!"transformers: {(smtExt.getState (← getEnv)).toList}"
+        s!"translators: {(smtExt.getState (← getEnv)).toList}"
     erase := fun declName => do
       let s := smtExt.getState (← getEnv)
       let s := s.erase declName
       modifyEnv fun env => smtExt.modifyState env fun _ => s
   }
 
-initialize registerSmtAttr `Smt
-             "Utilize this function to transform Lean expressions to SMT terms."
+initialize registerSmtAttr `smtTranslator
+             "Utilize this function to translate Lean expressions to SMT terms."
 
 end Smt.Attribute

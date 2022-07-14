@@ -46,6 +46,7 @@ structure Solver where
   deriving Inhabited
 
 namespace Solver
+open Term
 
 variable (solver : Solver)
 
@@ -55,44 +56,44 @@ def setLogic (l : String) : Solver :=
 
 /-- Define a sort with name `id` and arity `n`. -/
 def declareSort (id : String) (n : Nat) : Solver :=
-  ⟨s!"(declare-sort {id} {Nat.toDigits 10 n})" :: solver.commands⟩
+  ⟨s!"(declare-sort {quoteSymbol id} {n})" :: solver.commands⟩
 
 /-- Define a sort with name `id`. -/
 def defineSort (id : String) (ss : List Term) (s : Term) : Solver :=
-  ⟨(s!"(define-sort {id} ({paramsToString ss}) {s})") :: solver.commands⟩
+  ⟨(s!"(define-sort {quoteSymbol id} ({paramsToString ss}) {s})") :: solver.commands⟩
   where
     paramsToString (ss) := String.intercalate " " (ss.map Term.toString)
 
 /-- Declare a symbolic constant with name `id` and sort `s`. -/
 def declareConst (id : String) (s : Term) : Solver :=
-  ⟨s!"(declare-const {id} {s})" :: solver.commands⟩
+  ⟨s!"(declare-const {quoteSymbol id} {s})" :: solver.commands⟩
 
 /-- Define a constant with name `id` sort `s`, and value `v`. -/
 def defineConst (id : String) (s : Term) (v : Term) : Solver :=
-  ⟨s!"(define-const {id} {s} {v})" :: solver.commands⟩
+  ⟨s!"(define-const {quoteSymbol id} {s} {v})" :: solver.commands⟩
 
 /-- Declare an uninterpreted function with name `id` and sort `s`. -/
 def declareFun (id : String) (s : Term) : Solver :=
-  ⟨s!"(declare-fun {id} {s})" :: solver.commands⟩
+  ⟨s!"(declare-fun {quoteSymbol id} {s})" :: solver.commands⟩
 
 /-- Define a function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
 def defineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
   Solver :=
-  ⟨s!"(define-fun {id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
+  ⟨s!"(define-fun {quoteSymbol id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
   where
     paramsToString (ps : List (String × Term)) : String :=
-      String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))
+      String.intercalate " " (ps.map (fun (n, s) => s!"({quoteSymbol n} {s})"))
 
 /-- Define a recursive function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
 def defineFunRec (id : String) (ps : List (String × Term)) (s : Term)
   (t : Term) :
   Solver :=
-  ⟨s!"(define-fun-rec {id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
+  ⟨s!"(define-fun-rec {quoteSymbol id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
   where
     paramsToString (ps : List (String × Term)) : String :=
-      String.intercalate " " (ps.map (fun (n, s) => s!"({n} {s})"))
+      String.intercalate " " (ps.map (fun (n, s) => s!"({quoteSymbol n} {s})"))
 
 /-- Assert that proposition `t` is true. -/
 def assert (t : Term) : Solver :=

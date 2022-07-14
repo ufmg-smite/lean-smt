@@ -2,49 +2,50 @@
 Copyright (c) 2021-2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
-import Smt.Transformer
+import Smt.Translator
 
 namespace Smt.String
 
 open Lean Expr
-open Smt.Transformer
+open Translator Term
 
-@[Smt] def replaceConst : Transformer
-  | const `Char.ofNat ..     => pure none
-  | const `String.Pos.mk ..  => pure none
-  | const `String.replace .. => pure (mkConst `str.replace_all)
-  | const `String.length ..  => pure (mkConst `str.len)
-  | const `String.append ..  => pure (mkConst (Name.mkSimple "str.++"))
-  | e                        => pure e
+@[smtTranslator] def replaceConst : Translator
+  | app (const `Char.ofNat ..) e ..    => applyTranslators! e
+  | app (const `String.Pos.mk ..) e .. => applyTranslators! e
+  | const `String.replace ..           => return symbolT "str.replace_all"
+  | const `String.length ..            => return symbolT "str.len"
+  | const `String.append ..            => return symbolT "str.++"
+  | _                                  => return none
 
-@[Smt] def replaceStringGetOp : Transformer
+@[smtTranslator] def replaceStrLit : Translator
+  | lit (.strVal s) .. => return literalT s!"\"{s}\""
+  | _                  => return none
+
+@[smtTranslator] def replaceStringGetOp : Translator
   | app (app (const `String.getOp ..) f _) e _ => do
-    return match ← applyTransformations f, ← applyTransformations e with
-    | some f', some e' =>
-      mkApp (mkConst `str.to_code) (mkApp2 (mkConst `str.at) f' e')
-    | _      , _       => none
-  | e                                          => pure e
+    let tmF ← applyTranslators! f
+    let tmE ← applyTranslators! e
+    return appT (symbolT "str.to_code") (mkApp2 (symbolT "str.at") tmF tmE)
+  | _                                          => return none
 
-@[Smt] def replaceStringContains : Transformer
+@[smtTranslator] def replaceStringContains : Translator
   | app (app (const `String.contains ..) f _) e _ => do
-    return match ← applyTransformations f, ← applyTransformations e with
-    | some f', some e' =>
-      mkApp2 (mkConst `str.contains) f' (mkApp (mkConst `str.from_code) e')
-    | _      , _       => none
-  | e                                             => pure e
+    let tmF ← applyTranslators! f
+    let tmE ← applyTranslators! e
+    return mkApp2 (symbolT "str.contains") tmF (appT (symbolT "str.from_code") tmE)
+  | _                                             => return none
 
-@[Smt] def replaceStringLt : Transformer
+@[smtTranslator] def replaceStringLt : Translator
   | app (app (app (app (const `List.lt ..) ..) ..)
         (app (const `String.data ..) a _) _)
         (app (const `String.data ..) b _) _ => do
-    return match ← applyTransformations a, ← applyTransformations b with
-    | some a', some b' =>
-      mkApp2 (mkConst (Name.mkSimple "str.<")) a' b'
-    | _      , _       => none
-  | e                                       => pure e
+    let tmA ← applyTranslators! a
+    let tmB ← applyTranslators! b
+    return mkApp2 (symbolT "str.<") tmA tmB
+  | _                                       => return none
 
 end Smt.String

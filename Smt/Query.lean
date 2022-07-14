@@ -6,189 +6,221 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
 import Lean
-import Smt.Constants
+import Smt.Commands
 import Smt.Graph
 import Smt.Solver
-import Smt.Transformer
+import Smt.Translator
 import Smt.Util
 
 namespace Smt.Query
 
 open Lean Expr Meta
-open Constants Solver Term
-open Std
+open Solver Term
 
--- TODO: move all `Nat` hacks in this file to `Nat.lean`.
+-- TODO: move all `Nat` hacks in this file to `Nat.lean`; see also issue #27
 
-partial def buildDependencyGraph (g : Expr) (hs : List Expr) :
-  MetaM (Graph Expr Unit) := StateT.run' (s := Graph.empty) do
-  buildDependencyGraph' g hs
-  for h in hs do
-    buildDependencyGraph' h hs
-  get
-  where
-    buildDependencyGraph' (e : Expr) (hs : List Expr) :
-       StateT (Graph Expr Unit) MetaM Unit := do
-      if (← get).contains e then
-        return
-      if !(e.isConst ∨ e.isFVar ∨ e.isMVar) then
-        throwError "failed to build graph, unexpected expression{indentD e}\nof kind {e.ctorName}"
-      modify (·.addVertex e)
-      if e.isConst then
-        if e.constName! == `Nat then
-          return
-        if e.constName! == `Nat.sub then
-          modify (·.addEdge e (mkConst `Nat) ())
-          return
-      trace[smt.debug.query] "e: {e}"
-      let et ← inferType e
-      trace[smt.debug.query] "et: {et}"
-      let fvs := Util.getFVars et
-      trace[smt.debug.query] "fvs: {fvs}"
-      let ucs := Util.getUnkownConsts (← Transformer.preprocessExpr et)
-      trace[smt.debug.query] "ucs: {ucs}"
-      let cs := fvs ++ ucs
-      -- Processes the children.
-      for c in cs do
-        buildDependencyGraph' c hs
-        modify (·.addEdge e c ())
-      -- If `e` is a function name in the list of hints, unfold it.
-      if ¬(e.isConst ∧ hs.elem e ∧ ¬(← inferType et).isProp) then
-        return
-      match ← getUnfoldEqnFor? e.constName! (nonRec := true) with
-      | some eqnThm =>
-        let eqnInfo ← getConstInfo eqnThm
-        let d := eqnInfo.type
-        trace[smt.debug.query] "d: {d}"
-        let dfvs := Util.getFVars d
-        trace[smt.debug.query] "dfvs: {dfvs}"
-        let ducs := Util.getUnkownConsts (← Transformer.preprocessExpr d)
-        trace[smt.debug.query] "ducs: {ducs}"
-        let dcs := dfvs ++ ducs
-        for dc in dcs do
-          buildDependencyGraph' dc hs
-          modify (·.addEdge e dc ())
-      | none        => pure ()
+structure QueryBuilderM.Config where
+  /-- Expressions to define rather than just declare.
+  Definition bodies are translated recursively. -/
+  toDefine : List Expr := []
+
+structure QueryBuilderM.State where
+  graph : Graph Expr Unit := .empty
+  commands : Std.HashMap Expr Command := .empty
+
+abbrev QueryBuilderM := ReaderT QueryBuilderM.Config <| StateT QueryBuilderM.State TranslationM
+
+namespace QueryBuilderM
+
+def addCommand (e : Expr) (cmd : Command) : QueryBuilderM Unit :=
+  modify fun st => { st with
+    graph := st.graph.addVertex e
+    commands := st.commands.insert e cmd
+  }
+
+def addDependency (e e' : Expr) : QueryBuilderM Unit :=
+  modify fun st => { st with
+    graph := st.graph.addEdge e e' ()
+  }
+
+/-- Translate an expression and compute its (non-SMT-builtin) dependencies.
+When `fvarDeps = false`, we filter out dependencies on fvars. -/
+def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × Array Expr) := do
+  let (tm, deps) ← Translator.translateExpr e
+  let unknownConsts := deps.toArray.filterMap fun nm =>
+    if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
+  if fvarDeps then
+    let st : CollectFVars.State := {}
+    let st := collectFVars st e
+    let fvs := st.fvarIds.map mkFVar
+    return (tm, fvs ++ unknownConsts)
+  else
+    return (tm, unknownConsts)
+
+/-- Return the body of a constant using its unfold equation theorem. Unlike raw delta-reduction,
+this hides encoding tricks used to prove termination.
+
+Given an equation theorem of the form `∀ x₁ ⬝⬝⬝ xₙ, c x₁ ⬝⬝⬝ xₙ = body`,
+we return `fun x₁ ⬝⬝⬝ xₙ => body`. -/
+def getConstBodyFromEqnTheorem (nm : Name) : MetaM Expr := do
+  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) nm
+    | throwError "failed to retrieve equation theorem for '{nm}'"
+  let eqnInfo ← getConstInfo eqnThm
+  forallTelescopeReducing eqnInfo.type fun args eqn => do
+    let some (_, _, e) := eqn.eq? | throwError "unexpected equation theorem{indentD eqn}"
+    mkLambdaFVars args e
+
+/-- Given the body `e` of a definition, make its application to `params` reducing *only* top-level
+lambdas. For example, if `def foo (a : Int) : Int → Int := (+) a`, then `e = fun a => (+) a` and
+supposing `params = #[a, b]`, we return `(+) a b`. -/
+def makeFullyAppliedBody (e : Expr) (params : Array Expr) : MetaM Expr := do
+  let numXs := countLams e
+  let e ← instantiateLambda e (params.shrink numXs)
+  mkAppOptM' e (params.toList.drop numXs |>.map some |>.toArray)
+where
+  countLams : Expr → Nat
+    | lam _ _ t _ => 1 + countLams t
+    | _ => 0
+  
+/-- Given a local (`let`) or global (`const`) definition, translate its body applied to `params`.
+We expect `params` to contain enough free variables to make this a ground term. For example, given
+`def foo (x : Int) : Int → Int := t`, we need `params = #[x, y]` and translate `t[x/x] y`.
+Return the translated body, its dependencies, and whether the definition is recursive. -/
+def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term × Array Expr × Bool)
+  | e@(fvar id ..) => do
+    let decl ← getLocalDecl id
+    let some val := decl.value? | throwError "trying to define {e} but it's not a let-declaration"
+    let val ← makeFullyAppliedBody val params
+    let (tmVal, deps) ← translateAndFindDeps val
+    return (tmVal, deps, val.hasAnyFVar (· == id))
+  | const nm .. => do
+    let mutRecFuns := ConstantInfo.all (← getConstInfo nm)
+    -- TODO: Replace by `DefinitionVal.isRec` check when (if?) it gets added to Lean core.
+    if mutRecFuns.length > 1 then
+      -- TODO: support mutually recursive functions.
+      throwError "{nm} is a mutually recursive function, not yet supported"
+    let val ← getConstBodyFromEqnTheorem nm
+    let val ← makeFullyAppliedBody val params
+    trace[smt.debug.query] "val: {val} ; {nm} times {Util.countConst val nm}"
+    -- Note that we ignore free variable dependencies here because a constant's body
+    -- can only depend on free variables introduced as `params`.
+    let (tm, deps) ← translateAndFindDeps val (fvarDeps := false)
+    return (tm, deps, Util.countConst val nm > 0)
+  | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
+
+/-- Assuming `e : Sort u` and `u` is constant, return `u`. Otherwise fail. -/
+def getSortLevel (e : Expr) : QueryBuilderM Nat := do
+  let sort l .. ← inferType e | throwError "sort expected, got{indentD e}"
+  let some l := l.toNat | throwError "type{indentD e}\nhas varying universe level {l}"
+  return l
+
+def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Expr)
+    : QueryBuilderM (Array Expr) := do
+  -- Translate the body and the parameter types.
+  let (tmVal, deps, isRec) ← translateDefinitionBody params e
+  let (tmParams, deps) ← params.foldrM (init := ([], deps)) fun param (tmParams, deps) => do
+    let n := (← getFVarLocalDecl param).userName.toString
+    let (tm, deps') ← translateAndFindDeps (← inferType param)
+    return ((n, tm) :: tmParams, deps ++ deps')
+
+  -- Is `e` a type?
+  if 1 < (← getSortLevel cod) then
+    addCommand e <| .defineSort nm (tmParams.map (·.snd)) tmVal
+    return deps
+  else -- Otherwise it is a function or constant.
+    let (tmCod, deps') ← translateAndFindDeps cod
+    addCommand e <| .defineFun nm tmParams tmCod tmVal isRec
+    return deps ++ deps'
+
+def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod : Expr)
+    : QueryBuilderM (Array Expr) := do
+  if 1 < (← getSortLevel cod) then
+    addCommand e <| .declareSort nm params.size
+    return #[]
+  else
+    let (tmTp, deps) ← translateAndFindDeps tp
+    addCommand e <| .declare nm tmTp
+    return deps
+
+/-- Build the command for `e : tp` and add it to the graph. Return the command's dependencies. -/
+def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
+  -- Is `tp` a `Prop` to assert?
+  if let 0 ← getSortLevel tp then
+    let (tmTp, deps) ← translateAndFindDeps tp
+    addCommand e <| .assert tmTp
+    return deps
+
+  trace[smt.debug.query] "{tp} : Sort {← getSortLevel tp}"
+
+  -- Otherwise it is a local/global declaration with name `nm`.
+  let nm ← match e with
+    | fvar id .. => pure (← getLocalDecl id).userName.toString
+    | const n .. => pure n.toString
+    | _          => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
+
+  -- Introduce the declaration's parameters and codomain.
+  let deps ← Meta.forallTelescopeReducing tp fun params cod => do
+    -- Should we define the body of `e`?
+    if (← read).toDefine.elem e then addDefineCommandFor nm e params cod
+    -- Otherwise we just declare it.
+    else addDeclareCommandFor nm e tp params cod
+
+  -- Filter out fvars introduced by the forall telescope. We cannot just ignore all fvars because
+  -- the definition might depend on local bindings which we then have to translate.
+  deps.filterM (fun | fvar id .. => Option.isSome <$> findLocalDecl? id | _ => pure true)
+
+/-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges. -/
+partial def buildDependencyGraph (g : Expr) : QueryBuilderM Unit := do
+  go g
+  for h in (← read).toDefine do
+    go h
+where
+  go (e : Expr) : QueryBuilderM Unit := do
+    if (← get).graph.contains e then
+      return
+    if !(e.isConst ∨ e.isFVar ∨ e.isMVar) then
+      throwError "failed to build graph, unexpected expression{indentD e}\nof kind {e.ctorName}"
+
+    let et ← inferType e
+    let et ← instantiateMVars et
+    trace[smt.debug.query] "processing {e} : {et}"
+
+    -- HACK: `Nat` special cases
+    if e matches const `Nat .. then
+      addCommand e Command.defNat
+      return
+    if e matches const `Nat.sub .. then
+      addCommand e Command.defNatSub
+      go (mkConst `Nat)
+      addDependency e (mkConst `Nat)
       return
 
-def sortEndsWithNat : Term → Bool
-  | Arrow _ t    => sortEndsWithNat t
-  | Symbol "Nat" => true
-  | _            => false
+    let deps ← addCommandFor e et
 
-def natAssertBody (t : Term) :=
-  App (App (Symbol ">=") t) (Literal "0")
+    trace[smt.debug.query] "deps: {deps}"
+    for e' in deps do
+      go e'
+      addDependency e e'
 
-/-- TODO: refactor to support functions as input (e.g., (Nat → Nat) → Nat). -/
-def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
-  | Arrow i@(Symbol "Nat") t => do
-    let id ← Lean.mkFreshId
-    return (Forall id.toString i
-                   (imp id.toString (← natConstAssert n (id::args) t)))
-  | Arrow a t => do
-    let id ← Lean.mkFreshId
-    return (Forall id.toString a (← natConstAssert n (id::args) t))
-  | _ => pure $ natAssertBody (applyList n args)
-  where
-    imp n t := App (App (Symbol "=>") (natAssertBody (Symbol n))) t
-    applyList n : List Name → Term
-      | [] => Symbol n
-      | t :: ts => App (applyList n ts) (Symbol t.toString)
+end QueryBuilderM
 
--- TODO: support mutually recursive functions.
-partial def toDefineFun (s : Solver) (e : Expr) : MetaM Solver := do
-  let some eqnThm ← getUnfoldEqnFor? (nonRec := true) e.constName!
-    | throwError "failed to retrieve equation theorem"
-  let eqnInfo ← getConstInfo eqnThm
-  let d := eqnInfo.type
-  let mutRecFuns := ConstantInfo.all (← getConstInfo e.constName!)
-  trace[smt.debug.query] "mutually recursive functions with {e}: {mutRecFuns}"
-  -- TODO: Replace by `DefinitionVal.isRec` check when it gets added to Lean
-  -- core.
-  if mutRecFuns.length > 1 then
-    throwError "mutually recursive functions are not yet supported"
-  if Util.countConst d e.constName! > 1 then
-    pure (defineFunRec s id (← params d) (← type (← inferType e)) (← body d))
-  else
-    pure (defineFun s id (← params d) (← type (← inferType e)) (← body d))
-  where
-    id := if let const n .. := e then n.toString else panic! ""
-    params : Expr → MetaM (List (String × Term))
-      | forallE n t e _ => do
-        return (n.toString, (← Transformer.exprToTerm t)) :: (← params e)
-      | _ => pure []
-    type : Expr →  MetaM Term
-      | forallE _ _ t _ => type t
-      | t => Transformer.exprToTerm t
-    /-- Given an equation theorm of the form `∀ x₁ ⬝⬝⬝ xₙ, n x₁ ⬝⬝⬝ xₙ = body`,
-        this function instantiates all occurances of `x₁ ⬝⬝⬝ xₙ` in `body` and
-        converts the resulting `Expr` into an equivalent SMT `Term`.  -/
-    body : Expr → MetaM Term
-      | forallE n t b d                          =>
-        Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | app (app (app (const `Eq ..) ..) ..) e _ => Transformer.exprToTerm e
-      | e                                        =>
-        throwError "Error: unexpected equation theorem: {e}"
-
-partial def toDefineConst (s : Solver) (e : Expr) : MetaM Solver := do
-  let defn : Expr ← Meta.unfoldDefinition e
-  pure (defineConst s id (← type (← Meta.inferType defn)) (← body defn))
-  where
-    id := if let const n .. := e then n.toString else panic! ""
-    type := Transformer.exprToTerm
-    body : Expr → MetaM Term
-      | lam n t b d => Meta.withLocalDecl n d.binderInfo t (fun x => body (b.instantiate #[x]))
-      | e => do return ← Transformer.exprToTerm e
-
-def processVertex (hs : List Expr) (e : Expr) : StateT Solver MetaM Unit := do
+def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT Solver MetaM Unit := do
   let mut solver ← get
-  trace[smt.debug.query] "e: {e}"
-  match e with
-  | const `Nat ..     => set (defNat solver); return
-  | const `Nat.sub .. => set (defNatSub solver); return
-  | _                 => pure ()
-  let mut t ← inferType e
-  if Util.hasMVars t then
-    t ← whnf t
-  trace[smt.debug.query] "t: {t}"
-  let s ← Transformer.exprToTerm t
-  trace[smt.debug.query] "s: {s}"
-  let n ← match e with
-  | fvar id .. => pure (← getLocalDecl id).userName.toString
-  | const n .. => pure n.toString
-  | _          => panic! ""
-  let tt ← inferType t
-  match tt with
-    | sort l ..  => match l.toNat with
-      | some 0 => solver := assert solver s
-      | some 1 => match t with
-        | sort ..       => solver := declareConst solver n s
-        | forallE ..    =>
-          if hs.elem e then
-            solver ← toDefineFun solver e
-          else
-            solver := (declareFun solver n s)
-            if sortEndsWithNat s then
-              solver := assert solver (← natConstAssert n [] s)
-        | const id ..    =>
-          if hs.elem e then
-            solver ← toDefineConst solver e
-          else
-            solver := declareConst solver n s
-            if id == `Nat then
-              solver := assert solver (← natConstAssert n [] s)
-        | _             => pure ()
-      | _      => pure ()
-    | _ => pure ()
-  _ ← set solver
+  trace[smt.debug.query] "emitting {e}"
+  let some cmd := cmds.find? e | throwError "no command was computed for {e}"
+  solver ← cmd.emitCommand solver
+  set solver
 
 def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
   traceCtx `smt.debug.generateQuery do
     trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
-    let g ← buildDependencyGraph goal hs
-    trace[smt.debug.query] "Dependency Graph: {g}"
-    let (_, solver) ← StateT.run (g.dfs $ processVertex hs) solver
+    let ((_, st), _) ← QueryBuilderM.buildDependencyGraph goal
+      |>.run { toDefine := hs : QueryBuilderM.Config }
+      |>.run { : QueryBuilderM.State }
+      |>.run { : TranslationM.State }
+    trace[smt.debug.query] "Dependency Graph: {st.graph}"
+    let (_, solver) ← StateT.run (st.graph.dfs $ emitVertex st.commands) solver
     return solver
 
 end Smt.Query

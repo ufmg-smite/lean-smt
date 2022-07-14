@@ -7,7 +7,7 @@ query:
 (declare-const y Nat)
 (assert (>= y 0))
 (declare-fun f (Nat) Nat)
-(assert (forall ((_uniq.34 Nat)) (=> (>= _uniq.34 0) (>= (f _uniq.34) 0))))
+(assert (forall ((_uniq.30 Nat)) (=> (>= _uniq.30 0) (>= (f _uniq.30) 0))))
 (assert (not (=> (= x y) (= (f x) (f y)))))
 (check-sat)
 

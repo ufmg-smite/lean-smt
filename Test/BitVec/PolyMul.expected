@@ -1,0 +1,3 @@
+Test/BitVec/PolyMul.lean:25:2: error: cannot translate fun i acc =>
+  if BitVec.lsb_get! b i = true then polyAdd.«4» (BitVec.shiftLeft acc 1) (BitVec.zeroShrinxtend (Nat.add 2 2) a)
+  else BitVec.shiftLeft acc 1, SMT-LIB does not support lambdas

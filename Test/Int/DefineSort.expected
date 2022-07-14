@@ -1,0 +1,12 @@
+goal: MyInt.add a b = MyInt.add b a
+
+query:
+(define-sort MyInt () Int)
+(declare-const a MyInt)
+(declare-const b MyInt)
+(define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
+(assert (not (= (MyInt.add a b) (MyInt.add b a))))
+(check-sat)
+
+result: unsat
+Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'

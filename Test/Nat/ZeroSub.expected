@@ -5,6 +5,7 @@ query:
 (declare-const x Nat)
 (assert (>= x 0))
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(assert (forall ((_uniq.118 Nat)) (=> (>= _uniq.118 0) (forall ((_uniq.119 Nat)) (=> (>= _uniq.119 0) (>= (Nat.sub _uniq.118 _uniq.119) 0))))))
 (assert (not (= (Nat.sub 0 x) 0)))
 (check-sat)
 

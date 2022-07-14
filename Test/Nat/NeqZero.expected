@@ -1,8 +1,7 @@
 goal: ∀ (x : Nat), x ≠ 0
 
 query:
-(define-sort Nat () Int)
-(assert (not (forall ((x Nat)) (=> (>= x 0) (distinct x 0)))))
+(assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
 (check-sat)
 
 result: sat
@@ -10,8 +9,7 @@ Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, either it is false or yo
 goal: ∀ (x : Nat), x + 1 ≠ 0
 
 query:
-(define-sort Nat () Int)
-(assert (not (forall ((x Nat)) (=> (>= x 0) (distinct (+ x 1) 0)))))
+(assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))
 (check-sat)
 
 result: unsat

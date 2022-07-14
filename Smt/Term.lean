@@ -2,30 +2,50 @@
 Copyright (c) 2021-2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 namespace Smt
 
-/-- The SMT-LIBv2 Term data-structure. -/
+/-- The SMT-LIBv2 Term data-structure.
+
+Ctors are postfixed with T to disambiguate from keywords and `Expr`. -/
 inductive Term where
   | /-- A theory literal -/
-    Literal : String → Term
+    literalT : String → Term
   | /-- Sort or function symbol -/
-    Symbol  : String → Term
+    symbolT  : String → Term
   | /-- Function sort -/
-    Arrow   : Term → Term → Term
+    arrowT   : Term → Term → Term
   | /-- Function application -/
-    App     : Term → Term → Term
+    appT     : Term → Term → Term
   | /-- Forall quantifier -/
-    Forall  : String → Term → Term → Term
+    forallT  : String → Term → Term → Term
   | /-- Exists quantifier -/
-    Exists  : String → Term → Term → Term
+    existsT  : String → Term → Term → Term
   | /-- Let binding -/
-    Let     : String → Term → Term → Term
+    letT     : String → Term → Term → Term
   deriving Inhabited
 
 namespace Term
+namespace Notation
+
+scoped infixl:20 " • "  => appT
+scoped prefix:21 " ` "  => symbolT
+scoped prefix:21 " `` " => literalT
+
+end Notation
+
+open scoped Notation
+
+def mkApp2 (f a b : Term) : Term :=
+  f • a • b
+
+def mkApp3 (f a b c : Term) : Term :=
+  f • a • b • c
+
+def mkApp4 (f a b c d : Term) : Term :=
+  f • a • b • c • d
 
 /-- SMT-LIBv2 quoting for symbols. -/
 def quoteSymbol (s : String) : String :=
@@ -41,25 +61,25 @@ def quoteSymbol (s : String) : String :=
 
 /-- Print given `Term` in SMT-LIBv2 format. -/
 partial def toString : Term → String
-  | Literal l    => l             -- do not quote theory literals
-  | Symbol n     => quoteSymbol n
-  | Arrow d c    =>
-    let ss := arrowToList (Arrow d c)
+  | literalT l    => l             -- do not quote theory literals
+  | symbolT n     => quoteSymbol n
+  | t@(arrowT ..) =>
+    let ss := arrowToList t
     "(" ++ String.intercalate " " (ss.init.map toString) ++ ") "
         ++ ss.getLast!.toString
-  | App f t      =>
-    let ts := List.reverse <| appToList (App f t)
+  | t@(appT ..) =>
+    let ts := List.reverse <| appToList t
     "(" ++ String.intercalate " " (ts.map toString) ++ ")"
-  | Forall n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
-  | Exists n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
-  | Let n t b => s!"(let (({quoteSymbol n} {t.toString})) {b.toString})"
+  | forallT n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
+  | existsT n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
+  | letT n t b    => s!"(let (({quoteSymbol n} {t.toString})) {b.toString})"
   where
     arrowToList : Term → List Term
-      | Arrow d c => d :: arrowToList c
-      | s         => [s]
+      | arrowT d c => d :: arrowToList c
+      | s          => [s]
     appToList : Term → List Term
-      | App f t => t :: appToList f
-      | s       => [s]
+      | appT f t => t :: appToList f
+      | s        => [s]
 
 instance : ToString Term where
   toString := toString
