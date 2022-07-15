@@ -24,15 +24,6 @@ structure Config where
   ```
   where `ELIM` is either a function application or a projection. -/
   letPushElim : Bool := false
-  /-- Add the WHNF rule
-  ```lean
-  Γ ⊢ e : α  Γ ⊢ e ⤳ e'
-  -------------------------------
-  Γ ⊢ f e ⤳ let x : α := e'; f x
-  ```
-  which can be combined with `zeta := false` to hoist arguments into let-bindings instead of substitution.
-  When used correctly, this can give us graph-like sharing in the (weak-head) normalized expression. -/
-  letPullArgs : Bool := false
 
 abbrev ReductionM := ReaderT Config MetaM
 

@@ -569,27 +569,6 @@ where
               return Expr.letE nm t v (b'.abstract #[x]) nonDep
             return res
         if f'.isLambda then
-          -- TODO: broken implementation, doesn't respect dependencies;
-          -- need a withLetDecls combinator
-          -- if (← read).letPullArgs then
-          --   let args := e.getAppArgs
-          --   Meta.forallTelescope (← inferType f') fun xs _ => do
-          --     let declInfos : Array (Name × (Array Expr → ReductionM Expr))
-          --       ← args.zip xs |>.mapM fun (a, x) => do
-          --         let nm ← LocalDecl.userName <$> getFVarLocalDecl x
-          --         return (nm, fun _ => inferType a)
-          --     logInfo m!"args: {args}"
-          --     logInfo m!"xs: {xs}"
-          --     let red ← withLocalDeclsD declInfos fun xs => do
-          --       let b' ← go <| f'.beta xs
-          --       return b'.abstract xs
-          --     logInfo m!"red: {red}"
-          --     let res ← args.zip xs |>.foldrM (init := red) fun (a, x) acc => do
-          --       let nm ← LocalDecl.userName <$> getFVarLocalDecl x
-          --       return Expr.letE nm (← inferType a) a acc false
-          --     logInfo m!"res: {res}"
-          --     return res
-          -- else
             let revArgs := e.getAppRevArgs
             go <| f'.betaRev revArgs
         else if let some eNew ← whnfDelayedAssigned? f' e then
