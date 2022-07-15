@@ -18,6 +18,39 @@ import Lean.Util.MonadCache
 
 import Smt.Tactic.WHNFConfigurableRef
 
+namespace Lean.Meta
+
+partial def letTelescopeAbstractingAux (fvars : Array Expr) (abs : Expr → MetaM Expr)
+    (k : Array Expr → Expr → (Expr → MetaM Expr) → MetaM α)
+    : Expr → MetaM α
+  | Expr.letE nm t v b nonDep => do
+    withLocalDeclD nm t fun x =>
+      letTelescopeAbstractingAux
+        (fvars.push x)
+        (fun e' => abs (Expr.letE nm t v (e'.abstract #[x]) nonDep))
+        k
+        (b.instantiate1 x)
+  | Expr.mdata md e@(Expr.letE ..) =>
+    letTelescopeAbstractingAux fvars (fun e' => abs (Expr.mdata md e')) k e
+  | e => k fvars e abs
+
+@[inline] def map3MetaM [MonadControlT MetaM m] [Monad m]
+    (f : forall {α}, (β → γ → δ → MetaM α) → MetaM α)
+    {α} (k : β → γ → δ → m α)
+    : m α :=
+  controlAt MetaM fun runInBase => f fun b c d => runInBase <| k b c d
+
+/-- Like `lambdaTelescope` but just for `let` bindings, and the continuation is given an abstraction
+function which it can use to reintroduce all the surrounding `let` bindings. The `let` bindings are
+defined as `cdecl`s, i.e. their values are not exposed in the local context.
+
+Unlike `lambdaTelescope` followed by `mkLetFVars`, this preserves `mdata` stored on `let` bindings. -/
+def letTelescopeAbstracting [MonadControlT MetaM n] [Monad n] {α : Type} (e : Expr)
+    (k : Array Expr → Expr → (Expr → MetaM Expr) → n α) : n α :=
+  map3MetaM (fun k => letTelescopeAbstractingAux #[] pure k e) k
+
+end Lean.Meta
+
 namespace Smt
 
 open Lean Meta
@@ -162,32 +195,46 @@ private def toCtorWhenStructure (inductName : Name) (major : Expr) : ReductionM 
 /-- Auxiliary function for reducing recursor applications. -/
 private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : Array Expr)
     (failK : Unit → ReductionM α) (successK : Expr → ReductionM α)
-    : ReductionM α :=
+    : ReductionM α := do
   let majorIdx := recVal.getMajorIdx
-  if h : majorIdx < recArgs.size then do
-    let major := recArgs.get ⟨majorIdx, h⟩
-    let mut major ← whnf major
-    if recVal.k then
-      major ← toCtorWhenK recVal major
-    major := toCtorIfLit major
-    major ← toCtorWhenStructure recVal.getInduct major
-    match getRecRuleFor recVal major with
-    | some rule =>
+  trace[Smt.reduce.rec] "{recVal.name} with args (#{majorIdx} major){indentD recArgs}"
+  if h : majorIdx < recArgs.size then
+    let cont (major : Expr) : ReductionM (Option Expr) := do
+      let mut major := major
+      if recVal.k then
+        major ← toCtorWhenK recVal major
+      major := toCtorIfLit major
+      major ← toCtorWhenStructure recVal.getInduct major
+      let some rule := getRecRuleFor recVal major | return none
       let majorArgs := major.getAppArgs
-      if recLvls.length != recVal.levelParams.length then
+      guard (recLvls.length == recVal.levelParams.length)
+      let rhs := rule.rhs.instantiateLevelParams recVal.levelParams recLvls
+      -- Apply parameters, motives and minor premises from recursor application.
+      let rhs := mkAppRange rhs 0 (recVal.numParams+recVal.numMotives+recVal.numMinors) recArgs
+      /- The number of parameters in the constructor is not necessarily
+        equal to the number of parameters in the recursor when we have
+        nested inductive types. -/
+      let nparams := majorArgs.size - rule.nfields
+      let rhs := mkAppRange rhs nparams majorArgs.size majorArgs
+      let rhs := mkAppRange rhs (majorIdx + 1) recArgs.size recArgs
+      return rhs
+
+    let cont' : Option Expr → ReductionM α
+      | some res => do
+        trace[Smt.reduce.rec] "⤳ {res}"
+        successK res
+      | none => do
+        trace[Smt.reduce.rec] "failed."
         failK ()
-      else
-        let rhs := rule.rhs.instantiateLevelParams recVal.levelParams recLvls
-        -- Apply parameters, motives and minor premises from recursor application.
-        let rhs := mkAppRange rhs 0 (recVal.numParams+recVal.numMotives+recVal.numMinors) recArgs
-        /- The number of parameters in the constructor is not necessarily
-           equal to the number of parameters in the recursor when we have
-           nested inductive types. -/
-        let nparams := majorArgs.size - rule.nfields
-        let rhs := mkAppRange rhs nparams majorArgs.size majorArgs
-        let rhs := mkAppRange rhs (majorIdx + 1) recArgs.size recArgs
-        successK rhs
-    | none => failK ()
+
+    let major ← whnf <| recArgs.get ⟨majorIdx, h⟩
+    if (← read).letPushElim then
+      letTelescopeAbstracting major fun _ major abs => do
+        let e' ← cont major
+        let e' ← e'.mapM fun e => abs e
+        cont' e'
+    else
+      cont' (← cont major)
   else
     failK ()
 
@@ -290,7 +337,7 @@ end
   | Expr.const ..      => k e
   | Expr.app ..        => k e
   | Expr.proj ..       => k e
-  | Expr.mdata _ e     => whnfEasyCases e k
+  | Expr.mdata ..      => k e
   | Expr.fvar fvarId   =>
     let decl ← getLocalDecl fvarId
     match decl with
@@ -402,13 +449,17 @@ private def whnfMatcher (e : Expr) : ReductionM Expr := do
       whnf e
 
 def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
+  trace[Smt.reduce.matcher] "{e}"
   match e.getAppFn with
   | Expr.const declName declLevels =>
     let some info ← getMatcherInfo? declName
-      | return ReduceMatcherResult.notMatcher
+      | do
+        trace[Smt.reduce.matcher] "not a matcher."
+        return ReduceMatcherResult.notMatcher
     let args := e.getAppArgs
     let prefixSz := info.numParams + 1 + info.numDiscrs
     if args.size < prefixSz + info.numAlts then
+      trace[Smt.reduce.matcher] "partial app."
       return ReduceMatcherResult.partialApp
     else
       let constInfo ← getConstInfo declName
@@ -417,16 +468,31 @@ def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
       let auxAppType ← inferType auxApp
       forallBoundedTelescope auxAppType info.numAlts fun hs _ => do
         let auxApp ← whnfMatcher (mkAppN auxApp hs)
-        let auxAppFn := auxApp.getAppFn
-        let mut i := prefixSz
-        for h in hs do
-          if auxAppFn == h then
-            let result := mkAppN args[i]! auxApp.getAppArgs
-            let result := mkAppN result args[prefixSz + info.numAlts:args.size]
-            return ReduceMatcherResult.reduced result.headBeta
-          i := i + 1
-        return ReduceMatcherResult.stuck auxApp
-  | _ => pure ReduceMatcherResult.notMatcher
+
+        let cont (auxApp : Expr) : ReductionM ReduceMatcherResult := do
+          let auxAppFn := auxApp.getAppFn
+          let mut i := prefixSz
+          for h in hs do
+            if auxAppFn == h then
+              let result := mkAppN args[i]! auxApp.getAppArgs
+              let result := mkAppN result args[prefixSz + info.numAlts:args.size]
+              let res := result.headBeta
+              trace[Smt.reduce.matcher] "⤳ {res}"
+              return ReduceMatcherResult.reduced res
+            i := i + 1
+          trace[Smt.reduce.matcher] "stuck at {auxApp}"
+          return ReduceMatcherResult.stuck auxApp
+
+        if (← read).letPushElim then
+          letTelescopeAbstracting auxApp fun _ auxApp abs => do
+            match ← cont auxApp with
+            | .reduced e => return .reduced (← abs e)
+            | .stuck e   => return .stuck (← abs e)
+            | res        => return res
+        else cont auxApp
+  | _ => do
+    trace[Smt.reduce.matcher] "not a matcher."
+    return ReduceMatcherResult.notMatcher
 
 private def projectCore? (e : Expr) (i : Nat) : MetaM (Option Expr) := do
   let e := toCtorIfLit e
@@ -483,7 +549,8 @@ private def whnfDelayedAssigned? (f' : Expr) (e : Expr) : MetaM (Option Expr) :=
 partial def whnfCore (e : Expr) (deltaAtProj : Bool := true) : ReductionM Expr :=
   go e
 where
-  go (e : Expr) : ReductionM Expr := do
+  go (e : Expr) : ReductionM Expr := traceCtx `Smt.reduce.whnfCore <| do
+    trace[Smt.reduce.whnfCore] "{e}"
     whnfEasyCases e fun e => do
       match e with
       | Expr.const ..  => pure e
@@ -557,6 +624,18 @@ where
         match (← projectCore? c i) with
         | some e => go e
         | none => return e
+      | Expr.mdata md (Expr.letE nm t v b nonDep) =>
+        let zeta := md.getBool `zeta (← read).zeta
+        if zeta then go <| b.instantiate1 v
+        else
+          -- TODO: `whnfCore` probably shouldn't call `whnf` directly but some examples need this.
+          let t' ← whnf t
+          let v' ← whnf v
+          let b' ← withLocalDeclD nm t' fun x => do
+            let b' ← whnf (b.instantiate1 x)
+            return b'.abstract #[x]
+          return Expr.mdata md (Expr.letE nm t' v' b' nonDep)
+      | Expr.mdata _ e => go e
       | _ => unreachable!
 
 /--
@@ -914,6 +993,8 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         let e ← whnf e
         let e' ← match e with
         | Expr.app .. =>
+          -- This case happens when the application was not substituted by WHNF,
+          -- meaning that it must be stuck.
           let f     ← visit e.getAppFn
           let nargs := e.getAppNumArgs
           let finfo ← getFunInfoNArgs f nargs
@@ -944,6 +1025,17 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         | Expr.lam ..        => lambdaTelescope e fun xs b => do mkLambdaFVars xs (← visit b)
         | Expr.forallE ..    => forallTelescope e fun xs b => do mkForallFVars xs (← visit b)
         | Expr.proj n i s .. => pure <| mkProj n i (← visit s)
+        | Expr.mdata md (Expr.letE nm t v b nonDep) => do
+          -- TODO: this is pretty awkward; what we really want is a positional mdata context, I think
+          let t' ← visit t
+          let v' ← visit v
+          -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
+          -- Is this correct? Maybe we should only use it for `nonDep` binders.
+          let b' ← withLocalDeclD nm t' fun x => do
+            let b' ← visit (b.instantiate1 x)
+            pure <| b'.abstract #[x]
+          let e' := Expr.letE nm t' v' b' nonDep
+          pure <| mkMData md e'
         | _                  => pure e
         trace[Smt.reduce] "⤳ {e'}"
         return e'
@@ -952,6 +1044,9 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
 initialize
   registerTraceClass `Smt.reduce
   registerTraceClass `Smt.reduce.whnf
+  registerTraceClass `Smt.reduce.whnfCore
+  registerTraceClass `Smt.reduce.rec
+  registerTraceClass `Smt.reduce.matcher
   registerTraceClass `Smt.reduce.smartUnfoldingReduce
 
 end Smt
