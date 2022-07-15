@@ -8,6 +8,8 @@ import Lean.Meta.Basic
 import Lean.Elab.Tactic.Basic
 import Lean.Elab.Term
 
+import Smt.Tactic.WHNFSmt
+
 /-! Utilities for handling "equational definitions". An equational definition is an equation
 of the form `∀ x₁ ⋯ xₙ, c x₁ ⋯ xₙ = body[x₁,⋯,xₙ]` in the local context, where `c` is either
 a global constant or a local variable. The LHS should be fully applied so that the equality
@@ -131,6 +133,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
     -- Compute specialized body
     let newEqn ← instantiateForall eqn args
     let newLamBody ← getEqnDefLam newEqn
+    let newLamBody ← smtOpaqueReduce newLamBody
 
     -- Compute specialization name
     let ld ← getLocalDecl x
@@ -159,24 +162,6 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
         let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `specialization) eqnRw pf)
         return (fvEq, [mvarId])
 
--- hax for testing
-def specializeEqnDef' (x : FVarId) (argStxs : List (TSyntax `term)) : TacticM FVarId := do
-  let args ← withMainContext <|
-    forallTelescopeReducing (← inferType (mkFVar x)) fun args _ => do
-      let mut ret : Array Expr := #[]
-      for (stx, arg) in argStxs.zip args.toList do
-        let e ← elabTerm stx (some (← inferType arg))
-        ret := ret.push e
-      return ret
-  specializeEqnDef x args
-
--- Replaces the body of a definition with its translucent reduction where SMT constants are opaque.
-def smtReduceDef (x : FVarId) : TacticM FVarId := do
-  withMainContext do
-    let eqn ← inferType (mkFVar x)
-    let lamBody ← getEqnDefLam eqn
-    trace[smt.debug.reduce] "reduced: {← smtReduce lamBody}"
-    return x
 
 open Lean Meta Elab Tactic in
 elab "extract_def" i:ident : tactic => do
@@ -187,8 +172,13 @@ open Lean Meta Elab Tactic in
 elab "specialize_def" i:ident "[" ts:term,* "]" : tactic => do
   withMainContext do
     let ld ← getLocalDeclFromUserName i.getId
-    let _ ← specializeEqnDef' ld.fvarId (ts.getElems.toList)
-
+    let args ← forallTelescopeReducing (← inferType (mkFVar ld.fvarId)) fun args _ => do
+      let mut ret : Array Expr := #[]
+      for (stx, arg) in ts.getElems.zip args do
+        let e ← elabTerm stx (some (← inferType arg))
+        ret := ret.push e
+      return ret
+    let _ ← specializeEqnDef ld.fvarId args
 
 -- Potential:
 -- transformEqnDefBody
