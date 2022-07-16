@@ -22,12 +22,12 @@ def polyMod (x : BitVec w) (y : BitVec (v+1)) : BitVec v :=
   if y = 0 then 0
   else
     let reduce (a : BitVec (v+1)) : BitVec (v+1) :=
-      if a.lsbGet (v-1) then polyAdd a y else a
+      if a.lsbGet v then polyAdd a y else a
     let_opaque ret : BitVec v := 0
     let_opaque pow : BitVec (v+1) := reduce (BitVec.ofNat (v+1) 1)
     let (ret, _) := List.range w |>.foldl (init := (ret, pow)) fun (ret, pow) i =>
-      let_opaque pow := reduce (pow <<< BitVec.ofNat (v+1) 1)
       let_opaque ret := if x.lsbGet i then polyAdd ret (pow.shrink v) else ret
+      let_opaque pow := reduce (pow <<< BitVec.ofNat (v+1) 1)
       (ret, pow)
     ret
 
@@ -35,6 +35,8 @@ namespace GF256
 
 /-- A field element. NB: it does not have to be reduced. -/
 abbrev elt := BitVec 8
+
+def elt.ofNat : Nat → elt := BitVec.ofNat 8
 
 def irreducible : BitVec 9 := BitVec.ofNat 9 0b100011011
 
@@ -54,20 +56,13 @@ where
 def inverse (x : elt) : elt :=
   pow 254 x
 
-/- false ?! -/
-def reduce (x : BitVec w) : elt := polyMod x irreducible
-#eval pow 256 (BitVec.ofNat 8 0xab) == reduce (BitVec.ofNat 8 0xab)
-#eval pow 1 (BitVec.ofNat 8 0xab)
-#eval mul (BitVec.ofNat 8 1) (BitVec.ofNat 8 0xab)
-#eval reduce (BitVec.ofNat 8 0xab)
-#eval pow 1 (BitVec.ofNat 8 0xab) == reduce (BitVec.ofNat 8 0xab)
-
 set_option trace.smt.debug true in
 -- set_option maxHeartbeats 2000000 in
 -- set_option macRecDepth 2048 in
 set_option trace.Smt.reduce true in
 example (x : elt) : pow 256 x = polyMod x irreducible := by
   extract_def pow
+  -- TODO reduce_def pow.def blocking [mul, pow]
   extract_def mul
   extract_def polyMod
   specialize_def polyMod.def [16, 8]
