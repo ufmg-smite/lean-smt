@@ -122,10 +122,10 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     return ((fvVar, fvEq), [mvarId])
 
 /-- Make a new equational definition which specializes an existing one.
-We append the pretty-printed conrete args to the original name and define it.
-We also assert a `$nm.specialization` theorem which can be used to rewrite
-instances of this into their specialization.
-Used for monomorphization. -/
+We append the pretty-printed concrete args to the original name and define it.
+We also assert `$nm.specialization : ∀ x₁ ⋯ xₙ, $nmSpecialized x₁ ⋯ xₙ = $nm c₁ ⋯ cₖ x₁ ⋯ xₙ`,
+where `c₁ ⋯ cₙ` are the concrete args, which can be used to rewrite occurrences
+into their specialization. This is used for monomorphization. -/
 def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
   withMainContext do
     let eqn ← inferType (mkFVar x)
@@ -144,24 +144,26 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
       return nm ++ Name.mkSimple txt
 
     -- Define the specialization
-    let (fvVar, _) ← addEqnDefForLocal nm newLamBody
+    let (fvVar, fvEq) ← addEqnDefForLocal nm newLamBody
 
     -- TODO: these nested withContexts are a bit wonky, can we get a nicer api? `withAddEqnDefForLocal` or something
     withMainContext do
       -- Compute the rewrite helper
-      let eqnRw ← forallTelescope newEqn fun fvArgs newEqn => do
+      let (eqnRw, pfRw) ← forallTelescope newEqn fun fvArgs newEqn => do
         let some (_, specializedHead, _) := newEqn.eq? | throwNotEqnDef newEqn
         let rhs ← mkAppOptM' (mkFVar fvVar) (fvArgs.map some)
         let eqnRw ← mkEq specializedHead rhs
-        mkForallFVars fvArgs eqnRw
-
-      let pf ← mkSorry eqn true
-      let pf ← ensureHasType (some eqn) pf
+        let pf ← mkAppOptM' (mkFVar fvEq) (fvArgs.map some)
+        let pf ← mkEqSymm pf
+        let eqAbstracted ← mkForallFVars fvArgs eqnRw
+        let pfAbstracted ← mkLambdaFVars fvArgs pf
+        -- TODO: Times out a lot
+        -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+        return (eqAbstracted, pfAbstracted)
 
       liftMetaTacticAux fun mvarId => do
-        let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `specialization) eqnRw pf)
+        let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `specialization) eqnRw pfRw)
         return (fvEq, [mvarId])
-
 
 open Lean Meta Elab Tactic in
 elab "extract_def" i:ident : tactic => do
