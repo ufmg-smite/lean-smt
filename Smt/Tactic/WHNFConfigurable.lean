@@ -559,53 +559,48 @@ where
         else return e
       | Expr.app f ..       =>
         let f := f.getAppFn
-        let f' ← go f
-        if let Expr.letE nm t v b nonDep := f' then
-          if (← read).letPushElim then
-            -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
-            -- Is this correct?
-            let res ← Meta.withLocalDeclD nm t fun x => do
-              let b' ← go (e.updateFn (b.instantiate1 x))
-              return Expr.letE nm t v (b'.abstract #[x]) nonDep
-            return res
-        if f'.isLambda then
-            let revArgs := e.getAppRevArgs
-            -- NOTE(WN): CBV please! Is Lean WHNF not CBV?
-            let revArgs ← revArgs.mapM go
+        let f ← go f
+        -- NOTE(WN): CBV please! Is Lean WHNF not CBV?
+        let revArgs ← e.getAppRevArgs.mapM go
 
-            if (← read).letPushElim then
-              -- A continuation thing which restores all the let-bindings
-              let mut k (acc : Array Expr) : ReductionM Expr :=
-                go <| f'.betaRev acc
+        let mut k (f : Expr) (revArgs : Array Expr) : ReductionM Expr := do
+          let e := mkAppRev f revArgs
+          if f.isLambda then
+            go <| f.betaRev revArgs
+          else if let some eNew ← whnfDelayedAssigned? f e then
+            go eNew
+          else
+            -- Is this just an optimization?
+            -- let e := if f == f' then e else e.updateFn f'
+            match (← reduceMatcher? e) with
+            | ReduceMatcherResult.reduced eNew => go eNew
+            | ReduceMatcherResult.partialApp   => pure e
+            | ReduceMatcherResult.stuck _      => pure e
+            | ReduceMatcherResult.notMatcher   =>
+              matchConstAux f (fun _ => return e) fun cinfo lvls =>
+                match cinfo with
+                | ConstantInfo.recInfo rec    => reduceRec rec lvls revArgs.reverse (fun _ => return e) go
+                | ConstantInfo.quotInfo rec   => reduceQuotRec rec lvls revArgs.reverse (fun _ => return e) go
+                | c@(ConstantInfo.defnInfo _) => do
+                  if (← isAuxDef c.name) then
+                    deltaBetaDefinition c lvls revArgs (fun _ => return e) go
+                  else
+                    return e
+                | _ => return e
 
-              for arg in revArgs.reverse do
-                k := fun acc => do
-                  letTelescopeAbstracting arg fun _ arg absFn => do
-                    let res ← k (acc.push arg)
-                    absFn res
+        if (← read).letPushElim then
+          for arg in revArgs.reverse do
+            k := fun f acc => do
+              letTelescopeAbstracting arg fun _ arg absFn => do
+                let res ← k f (acc.push arg)
+                absFn res
 
-              k #[]
-            else
-              go <| f'.betaRev revArgs
-        else if let some eNew ← whnfDelayedAssigned? f' e then
-          go eNew
+          letTelescopeAbstracting f fun _ f absFn => do
+            let res ← k f #[]
+            absFn res
         else
-          let e := if f == f' then e else e.updateFn f'
-          match (← reduceMatcher? e) with
-          | ReduceMatcherResult.reduced eNew => go eNew
-          | ReduceMatcherResult.partialApp   => pure e
-          | ReduceMatcherResult.stuck _      => pure e
-          | ReduceMatcherResult.notMatcher   =>
-            matchConstAux f' (fun _ => return e) fun cinfo lvls =>
-              match cinfo with
-              | ConstantInfo.recInfo rec    => reduceRec rec lvls e.getAppArgs (fun _ => return e) go
-              | ConstantInfo.quotInfo rec   => reduceQuotRec rec lvls e.getAppArgs (fun _ => return e) go
-              | c@(ConstantInfo.defnInfo _) => do
-                if (← isAuxDef c.name) then
-                  deltaBetaDefinition c lvls e.getAppRevArgs (fun _ => return e) go
-                else
-                  return e
-              | _ => return e
+          k f revArgs
+
       | Expr.proj pNm i c =>
         let c ← if deltaAtProj then whnf c else whnfCore c
         if let Expr.letE lNm t v b nonDep := c then
