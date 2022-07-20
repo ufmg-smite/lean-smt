@@ -85,7 +85,7 @@ def addEqnDefForConst (nm : Name) : TacticM FVarId := do
       -- Abstract the proof into a lambda with a forall type
       let eqAbstracted ← mkForallFVars (args ++ args') eq
       let pfAbstracted ← mkLambdaFVars (args ++ args') pf
-      let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+      -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
       return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
@@ -114,7 +114,7 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     -- Abstract the proof into a lambda with a forall type
     let eqAbstracted ← mkForallFVars args eqn
     let pfAbstracted ← mkLambdaFVars args pf
-    let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+    -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
     return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
@@ -158,7 +158,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
         let eqAbstracted ← mkForallFVars fvArgs eqnRw
         let pfAbstracted ← mkLambdaFVars fvArgs pf
         -- TODO: Times out a lot
-        -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+        --let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
         return (eqAbstracted, pfAbstracted)
 
       liftMetaTacticAux fun mvarId => do
