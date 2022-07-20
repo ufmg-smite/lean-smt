@@ -570,7 +570,23 @@ where
             return res
         if f'.isLambda then
             let revArgs := e.getAppRevArgs
-            go <| f'.betaRev revArgs
+            -- NOTE(WN): CBV please! Is Lean WHNF not CBV?
+            let revArgs ← revArgs.mapM go
+
+            if (← read).letPushElim then
+              -- A continuation thing which restores all the let-bindings
+              let mut k (acc : Array Expr) : ReductionM Expr :=
+                go <| f'.betaRev acc
+
+              for arg in revArgs.reverse do
+                k := fun acc => do
+                  letTelescopeAbstracting arg fun _ arg absFn => do
+                    let res ← k (acc.push arg)
+                    absFn res
+
+              k #[]
+            else
+              go <| f'.betaRev revArgs
         else if let some eNew ← whnfDelayedAssigned? f' e then
           go eNew
         else
