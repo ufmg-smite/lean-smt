@@ -6,63 +6,59 @@ namespace Smt
 
 open Lean
 
+#check HDiv
 /-- Constants which SMT knows about and we thus don't want to unfold. -/
-def opaqueConsts : Std.HashSet Name :=
+def smtConsts : Std.HashSet Name :=
   List.foldr (fun c s => s.insert c) Std.HashSet.empty
   [
-    `Eq.eq,
-    `BEq.beq,
-    `bne,
-    `true,
-    `false,
-    `And.and,
-    `Or.or,
-    `Not.not,
-    `ite,
-    `dite,
-    `Exists.exists,
-    `Add.add,
-    `Sub.sub,
-    `Mul.mul,
-    `Div.div,
-    `Mod.mod,
-    `LE.le,
-    `LT.lt,
-    `GE.ge,
-    `GT.gt,
-    `and,
-    `Xor.xor,
-    `Nat.add,
-    `HMod.hMod,
-    `Not,
-    `HAdd.hAdd,
-    `HXor.hXor,
-    `HShiftLeft.hShiftLeft,
-    `HShiftRight.hShiftRight,
-    `HPow.hPow,
-    `HAppend.hAppend,
-    `HSub.hSub,
+    ``Eq,
+    ``BEq.beq,
+    ``bne,
+    ``true,
+    ``false,
+    ``And,
+    ``Or,
+    ``Not,
+    ``ite,
+    ``dite,
+    ``Exists,
+    ``HAdd.hAdd,
+    ``HSub.hSub,
+    ``HMul.hMul,
+    ``HDiv.hDiv,
+    ``HMod.hMod,
+    ``HPow.hPow,
+    ``HAppend.hAppend,
+    ``HAnd.hAnd,
+    ``HXor.hXor,
+    ``HOr.hOr,
+    ``HShiftLeft.hShiftLeft,
+    ``HShiftRight.hShiftRight,
+    ``LE.le,
+    ``LT.lt,
+    ``GE.ge,
+    ``GT.gt,
+    ``and,
+    ``or,
+    ``not,
     `BitVec,
     `BitVec.zero,
     `BitVec.ofNat,
-    `BitVec.extract,
-    `BitVec.shiftLeft,
-    `BitVec.shiftRight,
-    `BitVec.append,
-    `BitVec.and,
-    `BitVec.or,
-    `BitVec.xor
+    `BitVec.extract
   ]
 
-def opaquePred (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do
-  if opaqueConsts.contains ci.name then return false
+def opaquePred (opaqueConsts : Std.HashSet Name) (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do
+  if smtConsts.contains ci.name || opaqueConsts.contains ci.name then
+    return false
   return true
 
 /-- Runs type-theoretic reduction, but never unfolding SMT builtins and with extra rules
-to produce linearly-sized terms from code containing `let_opaque` bindings. -/
-def smtOpaqueReduce (e : Expr) : MetaM Expr :=
+to let-lift `let-opaque` bindings. This can produce linearly-sized terms in certain cases. 
+
+Constants with names in `opaqueConsts` are also not unfolded. -/
+def smtOpaqueReduce (e : Expr) (opaqueConsts : Std.HashSet Name := {}) : MetaM Expr :=
   withTheReader Meta.Context (fun ctx => { ctx with
-    canUnfold? := some opaquePred
+    canUnfold? := some (opaquePred opaqueConsts)
   }) do Smt.reduce (skipTypes := false) e |>.run {
     letPushElim := true
   }

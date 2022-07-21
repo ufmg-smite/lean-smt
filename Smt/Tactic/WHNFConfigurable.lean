@@ -555,6 +555,7 @@ where
       match e with
       | Expr.const ..  => pure e
       | Expr.letE _ _ v b _ => do
+        -- NOTE(WN): Should core Lean do a `zetaNonDep` check here?
         if (← readThe Smt.Config).zeta then go <| b.instantiate1 v
         else return e
       | Expr.app f ..       =>
@@ -698,6 +699,11 @@ where
         failure
     | _ => failure
 
+def shouldUnfold (ci : ConstantInfo) : ReductionM Bool := do
+  let some canUnfold := (← readThe Meta.Context).canUnfold? | return true
+  let cfg := (← readThe Meta.Context).config
+  canUnfold cfg ci
+
 mutual
 
   /--
@@ -733,6 +739,8 @@ mutual
     match e with
     | Expr.app f _ =>
       matchConstAux f.getAppFn (fun _ => unfoldProjInstWhenIntances? e) fun fInfo fLvls => do
+        -- NOTE(WN): this not being checked might be a Lean bug
+        unless ← shouldUnfold fInfo do return none
         if fInfo.levelParams.length != fLvls.length then
           return none
         else

@@ -126,14 +126,15 @@ We append the pretty-printed concrete args to the original name and define it.
 We also assert `$nm.specialization : ∀ x₁ ⋯ xₙ, $nmSpecialized x₁ ⋯ xₙ = $nm c₁ ⋯ cₖ x₁ ⋯ xₙ`,
 where `c₁ ⋯ cₙ` are the concrete args, which can be used to rewrite occurrences
 into their specialization. This is used for monomorphization. -/
-def specializeEqnDef (x : FVarId) (args : Array Expr) : TacticM FVarId := do
+def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSet Name := {})
+    : TacticM FVarId := do
   withMainContext do
     let eqn ← inferType (mkFVar x)
 
     -- Compute specialized body
     let newEqn ← instantiateForall eqn args
     let newLamBody ← getEqnDefLam newEqn
-    let newLamBody ← smtOpaqueReduce newLamBody
+    let newLamBody ← smtOpaqueReduce newLamBody opaqueConsts
 
     -- Compute specialization name
     let ld ← getLocalDecl x
@@ -170,17 +171,29 @@ elab "extract_def" i:ident : tactic => do
   let nm ← resolveGlobalConstNoOverloadWithInfo i
   let _ ← addEqnDefForConst nm
 
+syntax blockingConsts := "blocking [" ident,* "]"
+syntax (name := specializeDef) "specialize_def" ident "[" term,* "]" optional(blockingConsts) : tactic
+
 open Lean Meta Elab Tactic in
-elab "specialize_def" i:ident "[" ts:term,* "]" : tactic => do
-  withMainContext do
-    let ld ← getLocalDeclFromUserName i.getId
+@[tactic specializeDef] def elabSpecializeDef : Tactic
+  | `(tactic|specialize_def $i [ $ts,* ]) => go i ts {}
+  | `(tactic|specialize_def $i [ $ts,* ] blocking [ $bs,* ]) =>
+      let opaqueConsts := bs.getElems.foldl (init := {})
+        fun cs b => cs.insert b.getId
+      go i ts opaqueConsts
+  | stx => throwError "unexpected syntax {stx}"
+where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) := withMainContext do
+    let nm := i.getId
+    let ld ← getLocalDeclFromUserName (nm ++ `def)
     let args ← forallTelescopeReducing (← inferType (mkFVar ld.fvarId)) fun args _ => do
       let mut ret : Array Expr := #[]
-      for (stx, arg) in ts.getElems.zip args do
+      for (stx, arg) in ts.zip args do
         let e ← elabTerm stx (some (← inferType arg))
         ret := ret.push e
       return ret
-    let _ ← specializeEqnDef ld.fvarId args
+    -- Block the function being specialized from unfolding in recursive definitions
+    let opaqueConsts := opaqueConsts.insert nm
+    let _ ← specializeEqnDef ld.fvarId args opaqueConsts
 
 -- Potential:
 -- transformEqnDefBody

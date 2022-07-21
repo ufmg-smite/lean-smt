@@ -57,20 +57,23 @@ def inverse (x : elt) : elt :=
   pow 254 x
 
 set_option trace.smt.debug true in
--- set_option maxHeartbeats 2000000 in
--- set_option macRecDepth 2048 in
+set_option maxHeartbeats 1000000 in
+-- set_option maxRecDepth 2048 in
 set_option trace.Smt.reduce true in
 example (x : elt) : pow 256 x = polyMod x irreducible := by
   extract_def pow
-  -- TODO reduce_def pow.def blocking [mul, pow]
   extract_def mul
   extract_def polyMod
-  specialize_def polyMod.def [16, 8]
-  specialize_def polyMod.def [8, 8]
+  extract_def polyMul
   save
 
-  extract_def polyMul
-  specialize_def polyMul.def [8, 8]
+  specialize_def polyMod [16, 8]
+  save
+
+  specialize_def polyMod [8, 8]
+  save
+
+  specialize_def polyMul [8, 8]
   save
 
   simp (config := {zeta := false}) only
@@ -84,16 +87,18 @@ example (x : elt) : pow 256 x = polyMod x irreducible := by
     [ polyMod.«8».«8».specialization ]
   save
 
-  -- smt [
-  --   GF256.elt,
-  --   GF256.pow.def,
-  --   GF256.pow.sq,
-  --   GF256.mul.def,
-  --   polyMod.«16».«8».def,
-  --   polyMod.«8».«8».def,
-  --   polyMul.«8».«8».def,
-  --   GF256.irreducible
-  --  ]
+  -- TODO: now projection unfolding is getting in the way >.<
+  smt [
+    GF256.elt,
+    GF256.pow.def,
+    GF256.pow.sq,
+    GF256.mul.def,
+    polyMod.«16».«8».def,
+    polyMod.«8».«8».def,
+    polyMul.«8».«8».def,
+    GF256.irreducible
+   ]
+
   sorry
 
 end GF256
