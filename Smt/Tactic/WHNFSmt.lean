@@ -45,7 +45,13 @@ def opaqueConsts : Std.HashSet Name :=
     `BitVec,
     `BitVec.zero,
     `BitVec.ofNat,
-    `BitVec.extract
+    `BitVec.extract,
+    `BitVec.shiftLeft,
+    `BitVec.shiftRight,
+    `BitVec.append,
+    `BitVec.and,
+    `BitVec.or,
+    `BitVec.xor
   ]
 
 def opaquePred (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do
