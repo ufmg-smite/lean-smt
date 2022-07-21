@@ -560,8 +560,10 @@ where
       | Expr.app f ..       =>
         let f := f.getAppFn
         let f ← go f
-        -- NOTE(WN): CBV please! Is Lean WHNF not CBV?
-        let revArgs ← e.getAppRevArgs.mapM go
+        -- NOTE(WN): We make a significant change to the evaluation order by not only WHNFing
+        -- arguments eagerly, CBV-style, but also doing so with the full procedure rather than
+        -- just `whnfCore` (so that a lack of delta-unfolding does not block let-lifting).
+        let revArgs ← e.getAppRevArgs.mapM whnf
 
         let mut k (f : Expr) (revArgs : Array Expr) : ReductionM Expr := do
           let e := mkAppRev f revArgs

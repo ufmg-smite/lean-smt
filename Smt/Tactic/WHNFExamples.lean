@@ -257,9 +257,8 @@ def foldlSingle (k : Nat) : Nat :=
 ==>
 let acc' := stuck 0 0;
 let acc' := stuck acc' acc';
-let acc' := stuck acc' acc';
 acc' -/
-#reduceTranslucent (config := {letPushElim := true}) foldlSingle 3
+#reduceTranslucent (config := {letPushElim := true}) foldlSingle 2
 
 def foldlMany (k : Nat) : Nat :=
   let (ret, _) := List.range k |>.foldl (init := (0, 0)) fun (acc, aux) _ =>
@@ -269,26 +268,44 @@ def foldlMany (k : Nat) : Nat :=
   ret
 
 -- TODO: We should rename binders, the shadowing is quite confusing
-/- foldlMany 3
+/-
+foldlMany 2
 ==>
 let acc' := stuck 0 0;
 let aux' := stuck 0 0;
 let acc'_1 := stuck aux' aux';
 let aux' := stuck acc' acc';
-let acc' := stuck aux' aux';
-let aux' := stuck acc'_1 acc'_1;
-acc' -/
-#reduceTranslucent (config := {letPushElim := true}) foldlMany 3
-
-/-! TODO: foldr does not produce linear terms -/
+acc'_1
+-/
+#reduceTranslucent (config := {letPushElim := true}) foldlMany 2
 
 def foldrSingle (k : Nat) : Nat :=
   List.range k |>.foldr (init := 0) fun _ acc =>
     let_opaque acc' := stuck acc acc
     acc'
 
-set_option trace.Smt.reduce true in
+/- foldrSingle 2
+==>
+let acc' := stuck 0 0;
+let acc' := stuck acc' acc';
+acc' -/
 #reduceTranslucent (config := {letPushElim := true}) foldrSingle 2
+
+def foldrMany (k : Nat) : Nat :=
+  let (ret, _) := List.range k |>.foldr (init := (0, 0)) fun _ (acc, aux) =>
+    let_opaque acc' := stuck aux aux
+    let_opaque aux' := stuck acc acc
+    (acc', aux')
+  ret
+
+/- foldrMany 2
+==>
+let acc' := stuck 0 0;
+let aux' := stuck 0 0;
+let acc'_1 := stuck aux' aux';
+let aux' := stuck acc' acc';
+acc'_1 -/
+#reduceTranslucent (config := {letPushElim := true}) foldrMany 2
 
 /-! Let-lifting is not a single rule but rather a whole bunch of them.
 
