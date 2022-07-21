@@ -20,7 +20,8 @@ private def elabReduceCmd
       if cfg?.getNumArgs > 0 then evalConfig cfg?[1]
       else pure {}
     let e ← Term.elabTerm t none
-    let e' ← f e |>.run cfg
+    let e ← instantiateMVars e
+    let e' ← f e |>.run cfg |>.run' {}
     logInfo m!"{e}\n==>\n{e'}"
     if check?.isSome then
       if ← isDefEq e e' then
