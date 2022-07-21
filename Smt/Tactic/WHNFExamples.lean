@@ -246,6 +246,50 @@ a
 -/
 #reduceTranslucent (config := {letPushElim := true}) loopManyManual 2
 
+/-! We can confirm that let-lifting also works with various kinds of folds. -/
+
+def foldlSingle (k : Nat) : Nat :=
+  List.range k |>.foldl (init := 0) fun acc _ =>
+    let_opaque acc' := stuck acc acc
+    acc'
+
+/- foldlSingle 3
+==>
+let acc' := stuck 0 0;
+let acc' := stuck acc' acc';
+let acc' := stuck acc' acc';
+acc' -/
+#reduceTranslucent (config := {letPushElim := true}) foldlSingle 3
+
+def foldlMany (k : Nat) : Nat :=
+  let (ret, _) := List.range k |>.foldl (init := (0, 0)) fun (acc, aux) _ =>
+    let_opaque acc' := stuck aux aux
+    let_opaque aux' := stuck acc acc
+    (acc', aux')
+  ret
+
+-- TODO: We should rename binders, the shadowing is quite confusing
+/- foldlMany 3
+==>
+let acc' := stuck 0 0;
+let aux' := stuck 0 0;
+let acc'_1 := stuck aux' aux';
+let aux' := stuck acc' acc';
+let acc' := stuck aux' aux';
+let aux' := stuck acc'_1 acc'_1;
+acc' -/
+#reduceTranslucent (config := {letPushElim := true}) foldlMany 3
+
+/-! TODO: foldr does not produce linear terms -/
+
+def foldrSingle (k : Nat) : Nat :=
+  List.range k |>.foldr (init := 0) fun _ acc =>
+    let_opaque acc' := stuck acc acc
+    acc'
+
+set_option trace.Smt.reduce true in
+#reduceTranslucent (config := {letPushElim := true}) foldrSingle 2
+
 /-! Let-lifting is not a single rule but rather a whole bunch of them.
 
 ```lean
