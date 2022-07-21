@@ -232,17 +232,18 @@ def loopManyManual (k : Nat) : Nat := Id.run
     arg).1 -/
 #reduceTranslucent loopManyManual 1
 
-/-! The issue here is that we do not have let-lifting. Let's try it: -/
+/-! The issue is that we do not have let-lifting. By enabling it, we get a linear expression
+without auxiliary lets. -/
 
--- TODO: well, this is broken again
-
-/- loopManyManual 2
+/-
+loopManyManual 2
 ==>
 let a := stuck 0 0;
 let b := stuck 0 0;
-(let a := stuck a a;
-  let b := stuck b b;
-  (a, b)).1 -/
+let a := stuck a a;
+let b := stuck b b;
+a
+-/
 #reduceTranslucent (config := {letPushElim := true}) loopManyManual 2
 
 /-! Let-lifting is not a single rule but rather a whole bunch of them.

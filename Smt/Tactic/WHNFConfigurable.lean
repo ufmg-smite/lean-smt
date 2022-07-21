@@ -603,26 +603,24 @@ where
 
       | Expr.proj pNm i c =>
         let c ← if deltaAtProj then whnf c else whnfCore c
-        if let Expr.letE lNm t v b nonDep := c then
-          if (← read).letPushElim then
-            -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
-            -- Is this correct?
-            let res ← Meta.withLocalDeclD lNm t fun x => do
-              let b' ← go (Expr.proj pNm i (b.instantiate1 x))
-              return Expr.letE lNm t v (b'.abstract #[x]) nonDep
-            return res
-        match (← projectCore? c i) with
+
+        if (← read).letPushElim then
+        -- if false then
+          letTelescopeAbstracting c fun _ c absFn => do
+            match (← projectCore? c i) with
+            | some e => absFn e
+            | none => absFn (Expr.proj pNm i c)
+        else match (← projectCore? c i) with
         | some e => go e
         | none => return e
       | Expr.mdata md (Expr.letE nm t v b nonDep) =>
         let zeta := md.getBool `zeta (← read).zeta
         if zeta then go <| b.instantiate1 v
         else
-          -- TODO: `whnfCore` probably shouldn't call `whnf` directly but some examples need this.
-          let t' ← whnf t
-          let v' ← whnf v
+          let t' ← go t
+          let v' ← go v
           let b' ← withLocalDeclD nm t' fun x => do
-            let b' ← whnf (b.instantiate1 x)
+            let b' ← go (b.instantiate1 x)
             return b'.abstract #[x]
           return Expr.mdata md (Expr.letE nm t' v' b' nonDep)
       | Expr.mdata _ e => go e
