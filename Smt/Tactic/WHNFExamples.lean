@@ -307,6 +307,44 @@ let aux' := stuck acc' acc';
 acc'_1 -/
 #reduceTranslucent (config := {letPushElim := true}) foldrMany 2
 
+/-! Finally, let-lifting combined with custom syntax allows us to write loops in do-notation. -/
+
+def loopOpaque (k : Nat) : Nat := Id.run do
+  let mut m := 0
+  for _ in List.range k do
+    opaque m := stuck m m
+  return m
+
+/- loopOpaque 2
+==>
+let v := stuck 0 0;
+let v := stuck v v;
+v -/
+#reduceTranslucent (config := {letPushElim := true}) loopOpaque 2
+
+def loopOpaqueMany (k : Nat) : Nat := Id.run do
+  let mut m := 0
+  let mut r := 0
+  for _ in List.range k do
+    opaque m := stuck r r
+    opaque r := stuck m m
+  return m
+
+/- loopOpaqueMany 2
+==>
+let v :=
+  let v := stuck 0 0;
+  let v_1 := stuck 0 0;
+  stuck v_1 v;
+let v_1 := stuck 0 0;
+let v_2 :=
+  let v_2 := stuck v v;
+  let v := stuck v v;
+  stuck v v_2;
+let v := stuck v v;
+v -/
+#reduceTranslucent (config := {letPushElim := true}) loopOpaqueMany 2
+
 /-! Let-lifting is not a single rule but rather a whole bunch of them.
 
 ```lean

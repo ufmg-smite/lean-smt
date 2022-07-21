@@ -71,4 +71,14 @@ but rather persists in the output term. -/
   let e ← elabLetDeclCore stx expectedType? (useLetExpr := true) (elabBodyFirst := false) (usedLetOnly := false)
   return mkMData ({ : MData}.insert `zeta false) e
 
+open Lean.Parser.Term
+syntax "let_opaque " letDecl : doElem
+syntax "opaque" doReassign : doElem
+
+macro_rules
+  | `(doElem| let_opaque $id:ident := $t:term) => do
+    `(doElem| let $id := (let_opaque v := $t; v))
+  | `(doElem| opaque $id:ident := $t:term) => do
+    `(doElem| $id:ident := (let_opaque v := $t; v))
+
 end Smt
