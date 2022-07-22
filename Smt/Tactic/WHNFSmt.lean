@@ -6,7 +6,6 @@ namespace Smt
 
 open Lean
 
-#check HDiv
 /-- Constants which SMT knows about and we thus don't want to unfold. -/
 def smtConsts : Std.HashSet Name :=
   List.foldr (fun c s => s.insert c) Std.HashSet.empty
@@ -47,8 +46,9 @@ def smtConsts : Std.HashSet Name :=
     `BitVec.extract,
     /- Eager WHNF unfolds implicit arguments in a way that interacts badly with the projection
     unfolding in `smt`. For example, `@Xor.xor (BitVec n) (instXorBitVec n)` goes to
-    `@Xor.xor (BitVec n) { val := ... : Fin (2^n) }`. To make projection unfolding work, we prefer
-    `@Xor.xor (BitVec n) BitVec.xor`, so the extra symbols are blocked here. This is not great, maybe:
+    `@Xor.xor (BitVec n) { val := ... : Fin (2^n) }` and then we get `{ .. : Fin (2^n) }`
+    as the instance. To make projection unfolding work, we prefer `@Xor.xor (BitVec n) BitVec.xor`,
+    so the extra symbols are blocked here. This is not great, so maybe:
     - investigate using `explicitOnly` in `whnfCore`?
     - stop unfolding projections in `smt`?
     - something else? -/
