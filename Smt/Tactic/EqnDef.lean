@@ -178,11 +178,16 @@ open Lean Meta Elab Tactic in
 @[tactic specializeDef] def elabSpecializeDef : Tactic
   | `(tactic|specialize_def $i [ $ts,* ]) => go i ts {}
   | `(tactic|specialize_def $i [ $ts,* ] blocking [ $bs,* ]) =>
-      let opaqueConsts := bs.getElems.foldl (init := {})
-        fun cs b => cs.insert b.getId
+    withMainContext do
+      let opaqueConsts ← bs.getElems.foldlM (init := Std.HashSet.empty) fun cs b => do
+        match ← elabTerm b none with
+        | .const nm _ => return cs.insert nm
+        | .fvar fv    => return cs.insert (← getLocalDecl fv).userName
+        | _           => throwError "expected a (local) constant, got{indentD b}"
       go i ts opaqueConsts
   | stx => throwError "unexpected syntax {stx}"
-where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) := withMainContext do
+where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) : TacticM Unit :=
+  withMainContext do
     let nm := i.getId
     let ld ← getLocalDeclFromUserName (eqnDefName nm)
     let args ← forallTelescopeReducing (← inferType (mkFVar ld.fvarId)) fun args _ => do
