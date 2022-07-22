@@ -89,13 +89,13 @@ example (x : elt) : pow 256 x = polyMod x irreducible := by
 
   smt [
     GF256.elt,
-    GF256.pow.def,
+    GF256.irreducible,
+    GF256.mul,
     GF256.pow.sq,
-    GF256.mul.def,
-    polyMod.«16».«8».def,
-    polyMod.«8».«8».def,
-    polyMul.«8».«8».def,
-    GF256.irreducible
+    GF256.pow,
+    polyMod.«16».«8»,
+    polyMod.«8».«8»,
+    polyMul.«8».«8»
    ]
 
   sorry

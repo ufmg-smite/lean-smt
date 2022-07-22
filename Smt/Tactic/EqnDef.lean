@@ -145,7 +145,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
       return nm ++ Name.mkSimple txt
 
     -- Define the specialization
-    let (fvVar, fvEq) ← addEqnDefForLocal nm newLamBody
+    let (fvVar, fvEq) ← addEqnDefWithBody nm newLamBody
 
     -- TODO: these nested withContexts are a bit wonky, can we get a nicer api? `withAddEqnDefForLocal` or something
     withMainContext do
@@ -184,7 +184,7 @@ open Lean Meta Elab Tactic in
   | stx => throwError "unexpected syntax {stx}"
 where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) := withMainContext do
     let nm := i.getId
-    let ld ← getLocalDeclFromUserName (nm ++ `def)
+    let ld ← getLocalDeclFromUserName (eqnDefName nm)
     let args ← forallTelescopeReducing (← inferType (mkFVar ld.fvarId)) fun args _ => do
       let mut ret : Array Expr := #[]
       for (stx, arg) in ts.zip args do
