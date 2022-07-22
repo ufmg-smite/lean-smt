@@ -22,19 +22,18 @@ open Lean.Expr
 
 /-- Prints the given expression in AST format. -/
 def exprToString : Expr → String
-  | bvar id _        => s!"(BVAR {id})"
-  | fvar id _        => s!"(FVAR {id.name})"
-  | mvar id _        => s!"(MVAR {id.name})"
-  | sort l _         => s!"(SORT {l})"
-  | const id l _     => s!"(CONST {id} {l})"
-  | app f x _        => s!"(APP {exprToString f} {exprToString x})"
+  | bvar id          => s!"(BVAR {id})"
+  | fvar id          => s!"(FVAR {id.name})"
+  | mvar id          => s!"(MVAR {id.name})"
+  | sort l           => s!"(SORT {l})"
+  | const id l       => s!"(CONST {id} {l})"
+  | app f x          => s!"(APP {exprToString f} {exprToString x})"
   | lam id s e _     => s!"(LAM {id} {exprToString s} {exprToString e})"
   | forallE id s e _ => s!"(FORALL {id} {exprToString s} {exprToString e})"
-  | letE id s v e _  =>
-    s!"(LET {id} {exprToString s} {exprToString v} {exprToString e})"
-  | lit l _          => s!"(LIT {literalToString l})"
-  | mdata m e _      => s!"(MDATA {m} {exprToString e})"
-  | proj s i e _     => s!"(PROJ {s} {i} {exprToString e})"
+  | letE id s v e _  => s!"(LET {id} {exprToString s} {exprToString v} {exprToString e})"
+  | lit l            => s!"(LIT {literalToString l})"
+  | mdata m e        => s!"(MDATA {m} {exprToString e})"
+  | proj s i e       => s!"(PROJ {s} {i} {exprToString e})"
   where
     literalToString : Literal → String
       | Literal.natVal v => ⟨Nat.toDigits 10 v⟩
@@ -43,14 +42,14 @@ def exprToString : Expr → String
 /-- Count the number of occurances of the constant `c` in `e`. -/
 def countConst (e : Expr) (c : Name) : Nat :=
   let rec visit : Expr → Nat
-    | Expr.forallE _ d b _   => visit d + visit b
-    | Expr.lam _ d b _       => visit d + visit b
-    | Expr.mdata _ e _       => visit e
-    | Expr.letE _ t v b _    => visit t + visit v + visit b
-    | Expr.app f a _         => visit f + visit a
-    | Expr.proj _ _ e _      => visit e
-    | Expr.const c' _ _      => if c' == c then 1 else 0
-    | _                      => 0
+    | Expr.forallE _ d b _  => visit d + visit b
+    | Expr.lam _ d b _      => visit d + visit b
+    | Expr.mdata _ e        => visit e
+    | Expr.letE _ t v b _   => visit t + visit v + visit b
+    | Expr.app f a          => visit f + visit a
+    | Expr.proj _ _ e       => visit e
+    | Expr.const c' _       => if c' == c then 1 else 0
+    | _                     => 0
   visit e
 
 /-- Set of constants defined by SMT-LIB. -/

@@ -14,18 +14,18 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | const `Bool.true ..                                 => return symbolT "true"
-  | const `Bool.false ..                                => return symbolT "false"
-  | app (app (const `BEq.beq ..) (const `Bool ..) _) .. => return symbolT "="
-  | _                                                   => return none
+  | const `Bool.true _                             => return symbolT "true"
+  | const `Bool.false _                            => return symbolT "false"
+  | app (app (const `BEq.beq _) (const `Bool _)) _ => return symbolT "="
+  | _                                              => return none
 
 @[smtTranslator] def replaceEq : Translator
-  | app (app (const `Decidable.decide ..)
-             (app (app (app (const `Eq ..) (const `Bool ..) _)
-                       a _) b _) ..) .. => do
+  | app (app (const `Decidable.decide _)
+             (app (app (app (const `Eq _) (const `Bool _))
+                       a) b)) _ => do
     let tmA ← applyTranslators! a
     let tmB ← applyTranslators! b
     return Term.mkApp2 (symbolT "=") tmA tmB
-  | _                                   => return none
+  | _ => return none
 
 end Smt.Bool
