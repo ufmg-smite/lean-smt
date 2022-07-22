@@ -268,7 +268,6 @@ def foldlMany (k : Nat) : Nat :=
     (acc', aux')
   ret
 
--- TODO: We should rename binders, the shadowing is quite confusing
 /-
 foldlMany 2
 ==>
@@ -321,6 +320,7 @@ def loopOpaque (k : Nat) : Nat := Id.run do
 let v := stuck 0 0;
 let v := stuck v v;
 v -/
+set_option trace.Smt.reduce true in
 #reduceTranslucent (config := {letPushElim := true}) loopOpaque 2
 
 def loopOpaqueMany (k : Nat) : Nat := Id.run do

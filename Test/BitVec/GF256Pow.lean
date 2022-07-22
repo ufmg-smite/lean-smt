@@ -39,6 +39,16 @@ abbrev elt := BitVec 8
 def elt.ofNat : Nat → elt := BitVec.ofNat 8
 
 def irreducible : BitVec 9 := BitVec.ofNat 9 0b100011011
+/-
+GF(2^5)
+Poly    Z3   CVC5  MODEL
+100101  SAT  UNK   BAD
+101001  SAT  UNK   BAD
+101111  SAT  UNK   BAD
+110111
+111011
+111101
+-/
 
 def add (a b : elt) : elt := polyAdd a b
 
@@ -53,12 +63,20 @@ def pow (k : Nat) (x : elt) : elt :=
 where
   sq (x : elt) := mul x x
 
-def inverse (x : elt) : elt :=
-  pow 254 x
+-- def inverse (x : elt) : elt :=
+--   pow 254 x
+
+-- def ctr := BitVec.ofNat 4 0b1010
+-- #eval pow 32 ctr
+-- #eval polyMod ctr irreducible
+
+-- Trying with k ≤ 4 z3 says UNSAT and CVC5 says unsat
+-- With 5 ≤ k z3 says 
 
 set_option trace.smt.debug true in
 set_option maxHeartbeats 1000000 in
 -- set_option maxRecDepth 2048 in
+set_option smt.solver.kind "z3" in
 set_option trace.Smt.reduce true in
 example (x : elt) : pow 256 x = polyMod x irreducible := by
   extract_def pow

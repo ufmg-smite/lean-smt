@@ -20,10 +20,16 @@ import Smt.Tactic.WHNFConfigurableRef
 
 namespace Lean.Meta
 
+/-- Use a fresh name if this one is already in the local context. While Lean seems to handle
+shadowing correctly, external tools don't always do so. -/
+def bumpNameIfUsed (nm : Name) : MetaM Name :=
+  return (← getLCtx).getUnusedName nm
+
 partial def letTelescopeAbstractingAux (fvars : Array Expr) (abs : Expr → MetaM Expr)
     (k : Array Expr → Expr → (Expr → MetaM Expr) → MetaM α)
     : Expr → MetaM α
   | Expr.letE nm t v b nonDep => do
+    let nm ← bumpNameIfUsed nm
     withLocalDeclD nm t fun x =>
       letTelescopeAbstractingAux
         (fvars.push x)
@@ -622,6 +628,7 @@ where
         else
           let t' ← go t
           let v' ← go v
+          let nm ← bumpNameIfUsed nm
           let b' ← withLocalDeclD nm t' fun x => do
             let b' ← go (b.instantiate1 x)
             return b'.abstract #[x]
@@ -778,7 +785,8 @@ mutual
 
                   Remark 2: the match expression reduces reduces to `cons a xs` when the discriminants are `⟨0, h⟩` and `xs`.
 
-                  Remark 3: this check is unnecessary in most cases, but we don't need dependent elimination to trigger the issue                        fixed by this extra check. Here is another example that triggers the issue fixed by this check.
+                  Remark 3: this check is unnecessary in most cases, but we don't need dependent elimination to trigger the issue
+                  fixed by this extra check. Here is another example that triggers the issue fixed by this check.
                   ```
                   def f : Nat → Nat → Nat
                     | 0,   y   => y
@@ -1013,6 +1021,7 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         | Expr.letE nm t v b nonDep => do
           let t' ← visit t
           let v' ← visit v
+          let nm ← bumpNameIfUsed nm
           -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
           -- Is this correct?
           let b' ← withLocalDeclD nm t' fun x => do
@@ -1023,12 +1032,11 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         | Expr.lam ..        => lambdaTelescope e fun xs b => do mkLambdaFVars xs (← visit b)
         | Expr.forallE ..    => forallTelescope e fun xs b => do mkForallFVars xs (← visit b)
         | Expr.proj n i s .. => pure <| mkProj n i (← visit s)
+        -- TODO: this case is pretty awkward; what we really want is a positional mdata context, I think
         | Expr.mdata md (Expr.letE nm t v b nonDep) => do
-          -- TODO: this is pretty awkward; what we really want is a positional mdata context, I think
           let t' ← visit t
           let v' ← visit v
-          -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
-          -- Is this correct? Maybe we should only use it for `nonDep` binders.
+          let nm ← bumpNameIfUsed nm
           let b' ← withLocalDeclD nm t' fun x => do
             let b' ← visit (b.instantiate1 x)
             pure <| b'.abstract #[x]
