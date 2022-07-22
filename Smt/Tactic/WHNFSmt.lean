@@ -44,7 +44,20 @@ def smtConsts : Std.HashSet Name :=
     `BitVec,
     `BitVec.zero,
     `BitVec.ofNat,
-    `BitVec.extract
+    `BitVec.extract,
+    /- Eager WHNF unfolds implicit arguments in a way that interacts badly with the projection
+    unfolding in `smt`. For example, `@Xor.xor (BitVec n) (instXorBitVec n)` goes to
+    `@Xor.xor (BitVec n) { val := ... : Fin (2^n) }`. To make projection unfolding work, we prefer
+    `@Xor.xor (BitVec n) BitVec.xor`, so the extra symbols are blocked here. This is not great, maybe:
+    - investigate using `explicitOnly` in `whnfCore`?
+    - stop unfolding projections in `smt`?
+    - something else? -/
+    `BitVec.append,
+    `BitVec.and,
+    `BitVec.or,
+    `BitVec.xor,
+    `BitVec.shiftLeft,
+    `BitVec.shiftRight
   ]
 
 def opaquePred (opaqueConsts : Std.HashSet Name) (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do

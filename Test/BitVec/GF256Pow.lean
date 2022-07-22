@@ -87,7 +87,6 @@ example (x : elt) : pow 256 x = polyMod x irreducible := by
     [ polyMod.«8».«8».specialization ]
   save
 
-  -- TODO: now projection unfolding is getting in the way >.<
   smt [
     GF256.elt,
     GF256.pow.def,
