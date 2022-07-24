@@ -11,6 +11,7 @@ import Smt.Graph
 import Smt.Solver
 import Smt.Translator
 import Smt.Util
+import Smt.Tactic.EqnDef
 
 namespace Smt.Query
 
@@ -89,7 +90,10 @@ Return the translated body, its dependencies, and whether the definition is recu
 def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term × Array Expr × Bool)
   | e@(fvar id ..) => do
     let decl ← getLocalDecl id
-    let some val := decl.value? | throwError "trying to define {e} but it's not a let-declaration"
+    -- Look for an equational definition before defaulting to the let-body.
+    let val ← getEqnDefLamFor? decl.userName
+    let some val := val <|> decl.value?
+      | throwError "trying to define {e} but it has no equational definition and is not a let-decl"
     let val ← makeFullyAppliedBody val params
     let (tmVal, deps) ← translateAndFindDeps val
     return (tmVal, deps, val.hasAnyFVar (· == id))
@@ -99,12 +103,14 @@ def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term
     if mutRecFuns.length > 1 then
       -- TODO: support mutually recursive functions.
       throwError "{nm} is a mutually recursive function, not yet supported"
-    let val ← getConstBodyFromEqnTheorem nm
+    -- Look for an equational definition before defaulting to Lean's equational theorem.
+    let val ← match (← getEqnDefLamFor? nm) with
+    | some val => pure val
+    | none => getConstBodyFromEqnTheorem nm
     let val ← makeFullyAppliedBody val params
-    trace[smt.debug.query] "val: {val} ; {nm} times {Util.countConst val nm}"
-    -- Note that we ignore free variable dependencies here because a constant's body
-    -- can only depend on free variables introduced as `params`.
-    let (tm, deps) ← translateAndFindDeps val (fvarDeps := false)
+    -- Note that we temporarily store `params` free variables as (incorrect) dependencies,
+    -- but they are filtered out later in `addCommandFor`.
+    let (tm, deps) ← translateAndFindDeps val
     return (tm, deps, Util.countConst val nm > 0)
   | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
 
