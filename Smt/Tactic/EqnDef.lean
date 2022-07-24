@@ -63,7 +63,18 @@ def addEqnDefForConst (nm : Name) : TacticM FVarId := do
   let (eqn, pf) ← forallTelescopeReducing eqnInfo.type fun args eqn => do
     let some (_, lhs, body) := eqn.eq? | throwNotEqnDef eqn
     let pf ← mkAppOptM eqnInfo.name (args.map some)
-    -- In case the definition is curried, apply it fully.
+    /- Consider the curried definition
+    ```lean
+    def baw (a : Int) : Int → Int := Int.add a
+    ```
+    For this, Lean generates the equational theorem
+    ```lean
+    ∀ (a : Int), baw a = Int.add a
+    ```
+    which is transformed by the first `forallTelescope` into `baw a = Int.add a`, an equality
+    at a function type. Since we want equational definitions to be fully applied, we need to apply
+    a second `forallTelescope` on the type of this equality in order to get `baw a b = Int.add a b`,
+    which then gets abstracted into `∀ (a b : Int), baw a b = Int.add a b`. -/
     forallTelescopeReducing (← inferType lhs) fun args' _ => do
       let lhs' ← mkAppOptM' lhs (args'.map some)
       let body' ← mkAppOptM' body (args'.map some)
