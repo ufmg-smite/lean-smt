@@ -17,8 +17,11 @@ open Translator Term
   | const `Nat.add _                            => return symbolT "+"
   | const `Nat.mul _                            => return symbolT "*"
   | const `Nat.div _                            => return symbolT "div"
+  | const `Nat.mod _                            => return symbolT "mod"
   | const `Nat.le _                             => return symbolT "<="
+  | const `Nat.lt _                             => return symbolT "<"
   | const `Nat.ge _                             => return symbolT ">="
+  | const `Nat.gt _                             => return symbolT ">"
   -- TODO: why is this not removed at unfoldProjInsts ?
   | app (app (const `GE.ge _) (const `Nat _)) _ => return symbolT ">="
   | _                                           => return none

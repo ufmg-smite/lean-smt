@@ -22,26 +22,40 @@ open Translator Term
     return mkApp2 (symbolT "_") (symbolT "BitVec") (literalT (toString n))
   | _ => return none
 
-def mkZeroLit (w : Nat) : Term :=
-  literalT <| String.pushn "#b" '0' w
+def mkLit (w : Nat) (n : Nat) : Term :=
+  let bits := Nat.toDigits 2 n |>.take w
+  literalT <| bits.foldl (init := "#b".pushn '0' (w - bits.length)) (·.push ·)
+
+@[smtTranslator] def replaceEq : Translator
+  -- TODO: we should really just support beq/bne across all types uniformly
+  | app (app (const `BEq.beq ..) (app (const `BitVec ..) ..) ..) .. => return symbolT "="
+  | app (app (app (app (const `bne ..) (app (const `BitVec ..) ..) ..) ..) e ..) e' .. =>
+    return appT (symbolT "not") (mkApp2 (symbolT "=") (← applyTranslators! e) (← applyTranslators! e'))
+  | _ => return none
 
 @[smtTranslator] def replaceFun : Translator
-  | app (const `BitVec.xor ..) .. => return symbolT "bvxor"
-  | app (const `BitVec.shiftLeft ..) .. => return symbolT "bvshl"
-  | app (const `BitVec.shiftRight ..) .. => return symbolT "bvlshr"
+  | app (const `BitVec.xor ..) ..             => return symbolT "bvxor"
+  | app (const `BitVec.shiftLeft ..) ..       => return symbolT "bvshl"
+  | app (const `BitVec.shiftRight ..) ..      => return symbolT "bvlshr"
+  | app (app (const `BitVec.append ..) ..) .. => return symbolT "concat"
+  | app (app (app (const `BitVec.extract ..) ..) i ..) j .. => do
+    let some i ← Meta.evalNat (← Meta.whnf i) |>.run
+      | throwError "index literal{indentD i}\nis not constant"
+    let some j ← Meta.evalNat (← Meta.whnf j) |>.run
+      | throwError "index literal{indentD j}\nis not constant"
+    return mkApp3 (symbolT "_") (symbolT "extract") (literalT (toString i)) (literalT (toString j))
   | e@(app (const `BitVec.zero ..) w ..) => do
-    let w ← Meta.whnf w
-    let some w ← Meta.evalNat w |>.run
+    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
       | throwError "bitvector{indentD e}\nhas variable bitwidth"
-    return mkZeroLit w
-  -- | app (app (app (const `BitVec.lsb_get! ..) ..) t _) bit _ => do
-  --   let bit ← Meta.whnf bit
-  --   let some bit ← Meta.evalNat bit
-  --     | throwError "found variable bit access {bit}"
-  --   let bit := mkLit <| .natVal bit
-  --   let extract := mkApp3 (mkConst `_) (mkConst `extract) bit bit
-  --   let some t ← applyTranslators t | return none
-  --   return (mkApp2 (mkConst "=") (mkApp extract t) (mkConst "#b0"))
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkLit w 0
+  | e@(app (app (const `BitVec.ofNat ..) w ..) n ..) => do
+    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
+      | throwError "bitvector{indentD e}\nhas variable bitwidth"
+    let some n ← Meta.evalNat (← Meta.whnf n) |>.run
+      | throwError "nat literal{indentD n}\nis not constant"
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkLit w n
   | _ => return none
 
 end Smt.BitVec

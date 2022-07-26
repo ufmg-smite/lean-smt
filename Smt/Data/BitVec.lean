@@ -20,9 +20,12 @@ TODO(WN): This is planned to go into mathlib4 once we:
 
 def BitVec (w : Nat) := Fin (2^w)
 
+instance : DecidableEq (BitVec w) :=
+  inferInstanceAs (DecidableEq (Fin _))
+
 structure BitVec.Packed where
   width : Nat
-  data  : Fin (2^width)
+  data  : BitVec width
 
 namespace BitVec
 namespace Packed
@@ -45,6 +48,9 @@ instance : Inhabited (BitVec w) := ⟨BitVec.zero w⟩
 instance : OfNat (BitVec w) (nat_lit 0) :=
   ⟨BitVec.zero w⟩
 
+protected def ofNat (w : Nat) (n : Nat) : BitVec w :=
+  Fin.ofNat' n (Nat.pos_pow_of_pos _ <| by decide)
+
 protected def append (x : BitVec w) (y : BitVec v) : BitVec (w+v) :=
   ⟨x.val <<< v ||| y.val, sorry⟩
 
@@ -60,32 +66,39 @@ protected def or (x y : BitVec w) : BitVec w :=
 protected def xor (x y : BitVec w) : BitVec w :=
   ⟨x.val ^^^ y.val, sorry⟩
 
-protected def shiftLeft (x : BitVec w) (n : Nat) : BitVec w :=
-  Fin.ofNat' (x.val <<< n) (Nat.pos_pow_of_pos _ (by decide))
+protected def shiftLeft (x y : BitVec w) : BitVec w :=
+  Fin.ofNat' (x.val <<< y.val) (Nat.pos_pow_of_pos _ (by decide))
 
-protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
-  ⟨x.val >>> n, sorry⟩
+protected def shiftRight (x y : BitVec w) : BitVec w :=
+  ⟨x.val >>> y.val, sorry⟩
 
 instance : AndOp (BitVec w) := ⟨BitVec.and⟩
 instance : OrOp (BitVec w) := ⟨BitVec.or⟩
 instance : Xor (BitVec w) := ⟨BitVec.xor⟩
-instance : HShiftLeft (BitVec w) Nat (BitVec w) := ⟨BitVec.shiftLeft⟩
-instance : HShiftRight (BitVec w) Nat (BitVec w) := ⟨BitVec.shiftRight⟩
+instance : HShiftLeft (BitVec w) (BitVec w) (BitVec w) := ⟨BitVec.shiftLeft⟩
+instance : HShiftRight (BitVec w) (BitVec w) (BitVec w) := ⟨BitVec.shiftRight⟩
 
--- TODO re-express as extract == #b0
-def lsb_get! (x : BitVec m) (i : Nat) : Bool :=
+def extract (i j : Nat) (x : BitVec w) : BitVec (i - j + 1) :=
+  BitVec.ofNat _ (x.val >>> j)
+
+def zeroExtend (v : Nat) (x : BitVec w) (h : w ≤ v) : BitVec v :=
+  have hEq : v - w + w = v := Nat.sub_add_cancel h
+  hEq ▸ ((0 : BitVec (v - w)) ++ x)
+
+-- `prefix` may be a better name
+def shrink (v : Nat) (x : BitVec w) : BitVec v :=
+  if hZero : 0 < v then
+    have hEq : (v - 1 + 0 + 1) = v := by
+      rw [Nat.add_zero]
+      exact Nat.sub_add_cancel hZero
+    hEq ▸ x.extract (v - 1) 0
+  else 0
+
+def lsbGet (x : BitVec w) (i : Nat) : Bool :=
+  x.extract i i != 0
+
+-- TODO prove equiv
+def lsbGet' (x : BitVec m) (i : Nat) : Bool :=
   (x.val &&& (1 <<< i)) ≠ 0
-
--- TODO re-express
-def lsb_set! (x : BitVec m) (i : Nat) (c : Bool) : BitVec m :=
-  if c then
-    x ||| ⟨1 <<< i, sorry⟩
-  else
-    x &&& ⟨((1 <<< m) - 1 - (1 <<< i)), sorry⟩
-
--- TODO how to zero-extend in SMT-LIB?
-def zeroShrinxtend (v : Nat) (x : BitVec w) : BitVec v :=
-  if h : w < v then ⟨x.val, Nat.lt_trans x.isLt sorry⟩
-  else ⟨x.val % (2^v), Nat.mod_lt _ sorry⟩
 
 end BitVec
