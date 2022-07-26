@@ -6,11 +6,10 @@ Authors: Joe Hendrix, Wojciech Nawrocki
 -/
 
 /-!
-We define bitvectors in two variants - indexed and packed. The indexed variant is helpful
-for stating strongly-typed interfaces, whereas the packed one is better for stating some
-properties without the dependent index getting in the way.
-
-TODO(WN): explain why the particular choice of definition
+We define bitvectors. We choose the `Fin` representation over others for its relative efficiency
+(`Nat`s reduce in the kernel via GMP), alignment with `UIntXY` types which are also represented
+with `Fin`, and the fact that bitwise operations on `Fin` are already defined. Some other possible
+representations are `List Bool`, `{ l : List Bool // l.length = w}`, `Fin w → Bool`.
 
 TODO(WN): This is planned to go into mathlib4 once we:
   - prove the various bounds
@@ -23,22 +22,7 @@ def BitVec (w : Nat) := Fin (2^w)
 instance : DecidableEq (BitVec w) :=
   inferInstanceAs (DecidableEq (Fin _))
 
-structure BitVec.Packed where
-  width : Nat
-  data  : BitVec width
-
 namespace BitVec
-namespace Packed
-
-theorem ext {a b : Packed} (hWidth : a.width = b.width)
-    (hData : a.data.val = b.data.val) : a = b := by
-  let ⟨aw, ad, _⟩ := a
-  let ⟨bw, bd, _⟩ := b
-  cases hWidth
-  cases hData
-  rfl
-
-end Packed
 
 protected def zero (w : Nat) : BitVec w :=
   ⟨0, Nat.pos_pow_of_pos _ <| by decide⟩
