@@ -38,26 +38,38 @@ def mkLit (w : Nat) (n : Nat) : Term :=
   | app (const ``BitVec.and _) _            => return symbolT "bvand"
   | app (const ``BitVec.or _) _             => return symbolT "bvor"
   | app (const ``BitVec.xor _) _            => return symbolT "bvxor"
-  | app (const ``BitVec.shiftLeft _) _      => return symbolT "bvshl"
-  | app (const ``BitVec.shiftRight _) _     => return symbolT "bvlshr"
-  | app (app (app (const ``BitVec.extract _) _) i) j => do
-    let some i ← Meta.evalNat (← Meta.whnf i) |>.run
-      | throwError "index literal{indentD i}\nis not constant"
-    let some j ← Meta.evalNat (← Meta.whnf j) |>.run
-      | throwError "index literal{indentD j}\nis not constant"
+  | e@(app (app (app (const ``BitVec.shiftLeft _) w) x) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (mkLit w n)
+  | e@(app (app (app (const ``BitVec.shiftRight _) w) x) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (mkLit w n)
+  | e@(app (app (app (const ``BitVec.extract _) _) i) j) => do
+    let i ← reduceLit i e
+    let j ← reduceLit j e
     return mkApp3 (symbolT "_") (symbolT "extract") (literalT (toString i)) (literalT (toString j))
-  | e@(app (const `BitVec.zero _) w) => do
-    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
-      | throwError "bitvector{indentD e}\nhas variable bitwidth"
+  | e@(app (const ``BitVec.zero _) w) => do
+    let w ← reduceWidth w e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkLit w 0
-  | e@(app (app (const `BitVec.ofNat _) w) n) => do
-    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
-      | throwError "bitvector{indentD e}\nhas variable bitwidth"
-    let some n ← Meta.evalNat (← Meta.whnf n) |>.run
-      | throwError "nat literal{indentD n}\nis not constant"
+  | e@(app (app (const ``BitVec.ofNat _) w) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkLit w n
   | _ => return none
+where
+  reduceWidth (w : Expr) (e : Expr) : TranslationM Nat := do
+    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
+      | throwError "bitvector width{indentD w}\nis not constant in{indentD e}"
+    return w
+  reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
+    let some n ← Meta.evalNat (← Meta.whnf n) |>.run
+      | throwError "literal{indentD n}\nis not constant in{indentD e}"
+    return n
 
 end Smt.BitVec

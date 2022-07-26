@@ -54,9 +54,6 @@ protected def ofNat (w : Nat) (n : Nat) : BitVec w :=
 protected def append (x : BitVec w) (y : BitVec v) : BitVec (w+v) :=
   ⟨x.val <<< v ||| y.val, sorry⟩
 
-instance : HAppend (BitVec w) (BitVec v) (BitVec (w+v)) where
-  hAppend := BitVec.append
-
 protected def and (x y : BitVec w) : BitVec w :=
   ⟨x.val &&& y.val, sorry⟩
 
@@ -66,17 +63,18 @@ protected def or (x y : BitVec w) : BitVec w :=
 protected def xor (x y : BitVec w) : BitVec w :=
   ⟨x.val ^^^ y.val, sorry⟩
 
-protected def shiftLeft (x y : BitVec w) : BitVec w :=
-  Fin.ofNat' (x.val <<< y.val) (Nat.pos_pow_of_pos _ (by decide))
+protected def shiftLeft (x : BitVec w) (n : Nat) : BitVec w :=
+  Fin.ofNat' (x.val <<< n) (Nat.pos_pow_of_pos _ (by decide))
 
-protected def shiftRight (x y : BitVec w) : BitVec w :=
-  ⟨x.val >>> y.val, sorry⟩
+protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
+  ⟨x.val >>> n, sorry⟩
 
+instance : HAppend (BitVec w) (BitVec v) (BitVec (w+v)) := ⟨BitVec.append⟩
 instance : AndOp (BitVec w) := ⟨BitVec.and⟩
 instance : OrOp (BitVec w) := ⟨BitVec.or⟩
 instance : Xor (BitVec w) := ⟨BitVec.xor⟩
-instance : HShiftLeft (BitVec w) (BitVec w) (BitVec w) := ⟨BitVec.shiftLeft⟩
-instance : HShiftRight (BitVec w) (BitVec w) (BitVec w) := ⟨BitVec.shiftRight⟩
+instance : HShiftLeft (BitVec w) Nat (BitVec w) := ⟨BitVec.shiftLeft⟩
+instance : HShiftRight (BitVec w) Nat (BitVec w) := ⟨BitVec.shiftRight⟩
 
 def extract (i j : Nat) (x : BitVec w) : BitVec (i - j + 1) :=
   BitVec.ofNat _ (x.val >>> j)
@@ -88,17 +86,14 @@ def zeroExtend (v : Nat) (x : BitVec w) (h : w ≤ v) : BitVec v :=
 -- `prefix` may be a better name
 def shrink (v : Nat) (x : BitVec w) : BitVec v :=
   if hZero : 0 < v then
-    have hEq : (v - 1 + 0 + 1) = v := by
+    have hEq : v - 1 + 0 + 1 = v := by
       rw [Nat.add_zero]
       exact Nat.sub_add_cancel hZero
     hEq ▸ x.extract (v - 1) 0
   else 0
 
+/-- Return the `i`-th least significant bit. -/
 def lsbGet (x : BitVec w) (i : Nat) : Bool :=
   x.extract i i != 0
-
--- TODO prove equiv
-def lsbGet' (x : BitVec m) (i : Nat) : Bool :=
-  (x.val &&& (1 <<< i)) ≠ 0
 
 end BitVec
