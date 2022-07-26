@@ -331,6 +331,7 @@ def loopOpaqueMany (k : Nat) : Nat := Id.run do
     opaque r := stuck m m
   return m
 
+-- TODO: the value of `m` gets duplicated in each iteration body
 /- loopOpaqueMany 2
 ==>
 let v :=
@@ -345,6 +346,18 @@ let v_2 :=
 let v := stuck v v;
 v -/
 #reduceTranslucent (config := {letPushElim := true}) loopOpaqueMany 2
+
+def loopRangeMany (k : Nat) : Nat := Id.run do
+  let mut m := 0
+  let mut r := 0
+  for _ in [:k] do
+    opaque m := stuck r r
+    opaque r := stuck (stuck m m) m
+  return m
+
+-- TODO: This works here but it does not work when we start blocking `ite`
+-- since the loop implementation for `Range` involves `ite (i ≥ stop)`
+#reduceTranslucent (config := {letPushElim := true}) loopRangeMany 3
 
 /-! Let-lifting is not a single rule but rather a whole bunch of them.
 
