@@ -952,7 +952,7 @@ private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
 
 partial def whnfImp (e : Expr) : ReductionM Expr :=
   withIncRecDepth <| traceCtx `Smt.reduce.whnf <| whnfEasyCases e fun e => do
-    checkMaxHeartbeats "whnf"
+    checkMaxHeartbeats "Smt.whnf"
     trace[Smt.reduce.whnf] "{e}"
     let useCache ← useWHNFCache e
     let e' ← match (← cached? useCache e) with

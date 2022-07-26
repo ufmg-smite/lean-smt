@@ -40,6 +40,8 @@ def elt.ofNat : Nat → elt := BitVec.ofNat 8
 
 def irreducible : BitVec 9 := BitVec.ofNat 9 0b100011011
 /-
+https://demonstrations.wolfram.com/FiniteFieldTables/ has some polynomials
+
 GF(2^5)
 Poly    Z3   CVC5  MODEL
 100101  SAT  UNK   BAD
@@ -73,6 +75,7 @@ where
 -- Trying with k ≤ 4 z3 says UNSAT and CVC5 says unsat
 -- With 5 ≤ k z3 says 
 
+#exit
 set_option trace.smt.debug true in
 set_option maxHeartbeats 1000000 in
 -- set_option maxRecDepth 2048 in
