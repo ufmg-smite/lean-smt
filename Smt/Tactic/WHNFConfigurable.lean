@@ -1020,7 +1020,8 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         -- so we must reduce their subterms here.
         | Expr.letE nm t v b nonDep => do
           let t' ← visit t
-          let v' ← visit v
+          -- Reduce body with the let-bound name in context to avoid name shadowing
+          let v' ← withLocalDeclD nm t <| fun _ => visit v
           let nm ← bumpNameIfUsed nm
           -- TODO: we use an opaque `cdecl` since this case only runs when `zeta` is off anyway.
           -- Is this correct?
@@ -1035,7 +1036,8 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
         -- TODO: this case is pretty awkward; what we really want is a positional mdata context, I think
         | Expr.mdata md (Expr.letE nm t v b nonDep) => do
           let t' ← visit t
-          let v' ← visit v
+          -- Reduce body with the let-bound name in context to avoid name shadowing
+          let v' ← withLocalDeclD nm t <| fun _ => visit v
           let nm ← bumpNameIfUsed nm
           let b' ← withLocalDeclD nm t' fun x => do
             let b' ← visit (b.instantiate1 x)
