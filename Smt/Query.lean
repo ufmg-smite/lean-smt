@@ -89,7 +89,7 @@ We expect `params` to contain enough free variables to make this a ground term. 
 Return the translated body, its dependencies, and whether the definition is recursive. -/
 def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term × Array Expr × Bool)
   | e@(fvar id ..) => do
-    let decl ← getLocalDecl id
+    let decl ← id.getDecl
     -- Look for an equational definition before defaulting to the let-body.
     let val ← getEqnDefLamFor? decl.userName
     let some val := val <|> decl.value?
@@ -160,7 +160,7 @@ def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
 
   -- Otherwise it is a local/global declaration with name `nm`.
   let nm ← match e with
-    | fvar id .. => pure (← getLocalDecl id).userName.toString
+    | fvar id .. => pure (← id.getDecl).userName.toString
     | const n .. => pure n.toString
     | _          => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
 
@@ -173,7 +173,7 @@ def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
 
   -- Filter out fvars introduced by the forall telescope. We cannot just ignore all fvars because
   -- the definition might depend on local bindings which we then have to translate.
-  deps.filterM (fun | fvar id .. => Option.isSome <$> findLocalDecl? id | _ => pure true)
+  deps.filterM (fun | fvar id .. => Option.isSome <$> id.findDecl? | _ => pure true)
 
 /-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges. -/
 partial def buildDependencyGraph (g : Expr) : QueryBuilderM Unit := do
