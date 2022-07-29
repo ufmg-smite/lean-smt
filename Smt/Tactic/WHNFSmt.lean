@@ -87,13 +87,15 @@ but rather persists in the output term. -/
   return mkMData ({ : MData}.insert `zeta false) e
 
 open Lean.Parser.Term
+/-- A `let_opaque` declaration is not eliminated via substitution during WHNFConfigurable normalization,
+but rather persists in the output term. -/
 syntax "let_opaque " letDecl : doElem
+/-- An `opaque` reassignment is not eliminated via substitution during WHNFConfigurable normalization,
+but rather persists in the output term. -/
 syntax "opaque" doReassign : doElem
 
 macro_rules
-  | `(doElem| let_opaque $id:ident := $t:term) => do
-    `(doElem| let $id := (let_opaque v := $t; v))
-  | `(doElem| opaque $id:ident := $t:term) => do
-    `(doElem| $id:ident := (let_opaque v := $t; v))
+  | `(doElem| let_opaque $id:ident := $t:term) => `(doElem| let $id := (let_opaque v := $t; v))
+  | `(doElem| opaque $id:ident := $t:term) => `(doElem| $id:ident := (let_opaque v := $t; v))
 
 end Smt

@@ -85,7 +85,7 @@ def addEqnDefForConst (nm : Name) : TacticM FVarId := do
       -- Abstract the proof into a lambda with a forall type
       let eqAbstracted ← mkForallFVars (args ++ args') eq
       let pfAbstracted ← mkLambdaFVars (args ++ args') pf
-      -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+      let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
       return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
@@ -114,18 +114,20 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     -- Abstract the proof into a lambda with a forall type
     let eqAbstracted ← mkForallFVars args eqn
     let pfAbstracted ← mkLambdaFVars args pf
-    -- let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+    let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
     return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
     let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `def) eqn pf).intro1P
     return ((fvVar, fvEq), [mvarId])
 
-/-- Make a new equational definition which specializes an existing one.
-We append the pretty-printed concrete args to the original name and define it.
-We also assert `$nm.specialization : ∀ x₁ ⋯ xₙ, $nmSpecialized x₁ ⋯ xₙ = $nm c₁ ⋯ cₖ x₁ ⋯ xₙ`,
-where `c₁ ⋯ cₙ` are the concrete args, which can be used to rewrite occurrences
-into their specialization. This is used for monomorphization. -/
+open Lean Meta Elab Tactic in
+/-- Place an equational definition for a constant in the local context. -/
+elab "extract_def" i:ident : tactic => do
+  let nm ← resolveGlobalConstNoOverloadWithInfo i
+  let _ ← addEqnDefForConst nm
+
+/-- Specialize an equational definition via partial evaluation. See `specialize_def`. -/
 def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSet Name := {})
     : TacticM FVarId := do
   withMainContext do
@@ -137,7 +139,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
     let newLamBody ← smtOpaqueReduce newLamBody opaqueConsts
 
     -- Compute specialization name
-    let ld ← getLocalDecl x
+    let ld ← x.getDecl
     let some nm := ld.userName.eraseSuffix? `def | throwError "{mkFVar x} is not an eqn def!"
     let nm ← args.foldlM (init := nm) fun nm arg => do
       let txt := toString (← ppExpr arg)
@@ -158,20 +160,28 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
         let pf ← mkEqSymm pf
         let eqAbstracted ← mkForallFVars fvArgs eqnRw
         let pfAbstracted ← mkLambdaFVars fvArgs pf
-        -- TODO: Times out a lot
+        -- TODO: Typechecking partial evaluations is currently a fundamental performance bottleneck
         --let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
         return (eqAbstracted, pfAbstracted)
 
       liftMetaTacticAux fun mvarId => do
-        let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `specialization) eqnRw pfRw)
+        let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `specialization) eqnRw pfRw).intro1P
         return (fvEq, [mvarId])
 
-open Lean Meta Elab Tactic in
-elab "extract_def" i:ident : tactic => do
-  let nm ← resolveGlobalConstNoOverloadWithInfo i
-  let _ ← addEqnDefForConst nm
-
 syntax blockingConsts := "blocking [" ident,* "]"
+
+/-- `specialize_def foo [arg₁, ⋯, argₙ]` introduces a new equational definition `foo.arg₁.⋯.argₙ`
+whose body is the partial evaluation of `foo arg₁ ⋯ argₙ`. During reduction, all SMT-LIB builtins
+are blocked from unfolding and `let_opaque` bindings are not zeta-eliminated. It also introduces
+a `foo.arg₁.⋯.argₙ.specialization` equation which can be used to rewrite other expressions.
+
+You can block additional constants from unfolding during evaluation using
+`specialize_def foo [arg₁, ⋯, argₙ] blocking [bar₁, bar₂]`.
+
+See `Playground/WHNFExamples.lean` for examples of partially evaluating definitions.
+
+**WARNING**: This is currently extremely slow! On any sizeable expression the evaluator, typechecker,
+or kernel is likely to time out. -/
 syntax (name := specializeDef) "specialize_def" ident "[" term,* "]" optional(blockingConsts) : tactic
 
 open Lean Meta Elab Tactic in
@@ -182,7 +192,7 @@ open Lean Meta Elab Tactic in
       let opaqueConsts ← bs.getElems.foldlM (init := Std.HashSet.empty) fun cs b => do
         match ← elabTerm b none with
         | .const nm _ => return cs.insert nm
-        | .fvar fv    => return cs.insert (← getLocalDecl fv).userName
+        | .fvar fv    => return cs.insert (← fv.getDecl).userName
         | _           => throwError "expected a (local) constant, got{indentD b}"
       go i ts opaqueConsts
   | stx => throwError "unexpected syntax {stx}"
@@ -199,9 +209,5 @@ where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.Hash
     -- Block the function being specialized from unfolding in recursive definitions
     let opaqueConsts := opaqueConsts.insert nm
     let _ ← specializeEqnDef ld.fvarId args opaqueConsts
-
--- Potential:
--- transformEqnDefBody
--- rewriteByEqnDef
 
 end Smt

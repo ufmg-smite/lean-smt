@@ -29,11 +29,11 @@ private def elabReduceCmd
       else
         logError "defeq ❌"
 
-elab "#reduceTranslucent" cfg?:optional("(config := " term ")") check?:optional("checking") t:term : command =>
+elab "#reduceOpaque" cfg?:optional("(config := " term ")") check?:optional("checking") t:term : command =>
   elabReduceCmd Smt.reduce cfg? check? t
 
 /-- Note that the evaluation order is different, so this is not really Lean-WHNF anymore. -/
-elab "#whnfTranslucent" cfg?:optional("(config := " term ")") check?:optional("checking") t:term : command => do
+elab "#whnfOpaque" cfg?:optional("(config := " term ")") check?:optional("checking") t:term : command => do
   elabReduceCmd Smt.whnf cfg? check? t
 
 /-- Simulates a locally opaque definition. -/
@@ -55,7 +55,7 @@ stuck (stuck 0 0) (stuck 0 0) -/
 /- exponentialLoop 3
 ==>
 stuck (stuck (stuck 0 0) (stuck 0 0)) (stuck (stuck 0 0) (stuck 0 0)) -/
-#reduceTranslucent exponentialLoop 3
+#reduceOpaque exponentialLoop 3
 
 /-! With zeta-reduction globally off, we can avoid this issue.
 Examples from fiat-crypto paper. -/
@@ -77,7 +77,7 @@ x ::
   x ::
     let x := stuck 3 6;
     [x] -/
-#reduceTranslucent (config := {zeta := false}) add [1, 2, 3] [4, 5, 6]
+#reduceOpaque (config := {zeta := false}) add [1, 2, 3] [4, 5, 6]
 
 def addCps : num → num → (num → α) → α
   | a::as, b::bs, k =>
@@ -92,7 +92,7 @@ let n := stuck 1 4;
 let n_1 := stuck 2 5;
 let n_2 := stuck 3 6;
 [n, n_1, n_2] -/
-#reduceTranslucent (config := {zeta := false}) addCps [1, 2, 3] [4, 5, 6] (fun l => l)
+#reduceOpaque (config := {zeta := false}) addCps [1, 2, 3] [4, 5, 6] (fun l => l)
 
 /-! However this interacts poorly with macros by keeping around all their auxiliary structure. -/
 
@@ -108,7 +108,7 @@ let m :=
       ForInStep.yield m)
     col m;
 m -/
-#reduceTranslucent (config := {zeta := false}) exponentialLoop 3
+#reduceOpaque (config := {zeta := false}) exponentialLoop 3
 
 /-! Instead, we can introduce a locally opaque let binding and only disable zeta on these.
 Fiat-crypto examples with locally opaque let. -/
@@ -128,7 +128,7 @@ x ::
   x ::
     let x := stuck 3 6;
     [x] -/
-#reduceTranslucent addOpaque [1,2,3] [4,5,6]
+#reduceOpaque addOpaque [1,2,3] [4,5,6]
 
 def addOpaqueCps : num → num → (num → α) → α
   | a::as, b::bs, k =>
@@ -143,7 +143,7 @@ let n := stuck 1 4;
 let n_1 := stuck 2 5;
 let n_2 := stuck 3 6;
 [n, n_1, n_2] -/
-#reduceTranslucent addOpaqueCps [1, 2, 3] [4, 5, 6] (fun l => l)
+#reduceOpaque addOpaqueCps [1, 2, 3] [4, 5, 6] (fun l => l)
 
 /-! With locally opaque let and the right `ForIn` instance, we get CPS for free.
 Note the linear growth of the term and lack of auxiliary macro fluff. -/
@@ -178,7 +178,7 @@ let arg := stuck 0 0;
 let arg := stuck arg arg;
 let arg := stuck arg arg;
 arg -/
-#reduceTranslucent loopCustomForIn 3
+#reduceOpaque loopCustomForIn 3
 
 def loopManyCustomForIn (k : Nat) : Nat := Id.run do
   let mut a := 0
@@ -197,7 +197,7 @@ which gets compiled to a product type. -/
   let arg := { fst := Nat.add arg.1 arg.1, snd := Nat.add arg.2 arg.2 };
   let arg := { fst := Nat.add arg.1 arg.1, snd := Nat.add arg.2 arg.2 };
   arg).1 -/
-#reduceTranslucent loopManyCustomForIn 3
+#reduceOpaque loopManyCustomForIn 3
 
 end -- disable custom ForIn instance
 
@@ -231,7 +231,7 @@ def loopManyManual (k : Nat) : Nat := Id.run
     (fun b => b) fun b =>
     let arg := b;
     arg).1 -/
-#reduceTranslucent loopManyManual 1
+#reduceOpaque loopManyManual 1
 
 /-! The issue is that we do not have let-lifting. By enabling it, we get a linear expression
 without auxiliary lets. -/
@@ -245,7 +245,7 @@ let a := stuck a a;
 let b := stuck b b;
 a
 -/
-#reduceTranslucent (config := {letPushElim := true}) loopManyManual 2
+#reduceOpaque (config := {letPushElim := true}) loopManyManual 2
 
 /-! We can confirm that let-lifting also works with various kinds of folds. -/
 
@@ -259,7 +259,7 @@ def foldlSingle (k : Nat) : Nat :=
 let acc' := stuck 0 0;
 let acc' := stuck acc' acc';
 acc' -/
-#reduceTranslucent (config := {letPushElim := true}) foldlSingle 2
+#reduceOpaque (config := {letPushElim := true}) foldlSingle 2
 
 def foldlMany (k : Nat) : Nat :=
   let (ret, _) := List.range k |>.foldl (init := (0, 0)) fun (acc, aux) _ =>
@@ -277,7 +277,7 @@ let acc'_1 := stuck aux' aux';
 let aux' := stuck acc' acc';
 acc'_1
 -/
-#reduceTranslucent (config := {letPushElim := true}) foldlMany 2
+#reduceOpaque (config := {letPushElim := true}) foldlMany 2
 
 def foldrSingle (k : Nat) : Nat :=
   List.range k |>.foldr (init := 0) fun _ acc =>
@@ -289,7 +289,7 @@ def foldrSingle (k : Nat) : Nat :=
 let acc' := stuck 0 0;
 let acc' := stuck acc' acc';
 acc' -/
-#reduceTranslucent (config := {letPushElim := true}) foldrSingle 2
+#reduceOpaque (config := {letPushElim := true}) foldrSingle 2
 
 def foldrMany (k : Nat) : Nat :=
   let (ret, _) := List.range k |>.foldr (init := (0, 0)) fun _ (acc, aux) =>
@@ -305,7 +305,7 @@ let aux' := stuck 0 0;
 let acc'_1 := stuck aux' aux';
 let aux' := stuck acc' acc';
 acc'_1 -/
-#reduceTranslucent (config := {letPushElim := true}) foldrMany 2
+#reduceOpaque (config := {letPushElim := true}) foldrMany 2
 
 /-! Finally, let-lifting combined with custom syntax allows us to write loops in do-notation. -/
 
@@ -321,7 +321,7 @@ let v := stuck 0 0;
 let v := stuck v v;
 v -/
 set_option trace.Smt.reduce true in
-#reduceTranslucent (config := {letPushElim := true}) loopOpaque 2
+#reduceOpaque (config := {letPushElim := true}) loopOpaque 2
 
 def loopOpaqueMany (k : Nat) : Nat := Id.run do
   let mut m := 0
@@ -345,7 +345,7 @@ let v_2 :=
   stuck v v_2;
 let v := stuck v v;
 v -/
-#reduceTranslucent (config := {letPushElim := true}) loopOpaqueMany 2
+#reduceOpaque (config := {letPushElim := true}) loopOpaqueMany 2
 
 def loopRangeMany (k : Nat) : Nat := Id.run do
   let mut m := 0
@@ -355,9 +355,9 @@ def loopRangeMany (k : Nat) : Nat := Id.run do
     opaque r := stuck (stuck m m) m
   return m
 
--- TODO: This works here but it does not work when we start blocking `ite`
+-- TODO: This works here but it does not work when we start blocking `ite` for SMT-LIB
 -- since the loop implementation for `Range` involves `ite (i ≥ stop)`
-#reduceTranslucent (config := {letPushElim := true}) loopRangeMany 3
+#reduceOpaque (config := {letPushElim := true}) loopRangeMany 3
 
 /-! Let-lifting is not a single rule but rather a whole bunch of them.
 
