@@ -1,7 +1,6 @@
 goal: dvd a (b + c + d) = true
 
 query:
-(set-logic UFLIA)
 (declare-fun dvd (Int Int) Bool)
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
 (declare-const c Int)
