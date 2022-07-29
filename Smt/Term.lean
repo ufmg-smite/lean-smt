@@ -61,16 +61,16 @@ def quoteSymbol (s : String) : String :=
   else s
 
 /-- Print given `Term` in SMT-LIBv2 format. -/
-partial def toString : Term → String
+protected partial def toString : Term → String
   | literalT l    => l             -- do not quote theory literals
   | symbolT n     => quoteSymbol n
   | t@(arrowT ..) =>
     let ss := arrowToList t
-    "(" ++ String.intercalate " " (ss.init.map toString) ++ ") "
+    "(" ++ String.intercalate " " (ss.init.map Term.toString) ++ ") "
         ++ ss.getLast!.toString
   | t@(appT ..) =>
     let ts := List.reverse <| appToList t
-    "(" ++ String.intercalate " " (ts.map toString) ++ ")"
+    "(" ++ String.intercalate " " (ts.map Term.toString) ++ ")"
   | forallT n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
   | existsT n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
   | letT n t b    => s!"(let (({quoteSymbol n} {t.toString})) {b.toString})"
@@ -83,7 +83,7 @@ partial def toString : Term → String
       | s        => [s]
 
 instance : ToString Term where
-  toString := toString
+  toString := Term.toString
 
 instance : Std.ToFormat Term where
   format := Std.Format.text ∘ toString

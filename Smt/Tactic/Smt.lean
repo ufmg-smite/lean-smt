@@ -23,7 +23,8 @@ initialize
   registerTraceClass `smt.debug.query
   registerTraceClass `smt.debug.translator
 
-syntax smtHints := optional("[" ident,* "]")
+syntax smtHints := ("[" ident,* "]")?
+syntax smtTimeout := ("(timeout := " num ")")?
 
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to
@@ -54,13 +55,10 @@ The tactic then generates the query below:
 (check-sat)
 ```
 -/
-syntax (name := smt) "smt" smtHints : tactic
+syntax (name := smt) "smt" smtHints smtTimeout : tactic
 
 /-- Like `smt`, but just shows the query without invoking a solver. -/
 syntax (name := smtShow) "smt_show" smtHints : tactic
-
-def queryToString (commands : List String) : String :=
-  String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
 
 def parseHints : TSyntax `smtHints → TacticM (List Expr)
   | `(smtHints| [ $[$hs],* ]) => hs.toList.mapM (fun h => elabTerm h.raw none)
@@ -82,13 +80,16 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM Solver := do
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
   let solver ← prepareSmtQuery ⟨stx[1]⟩
-  let query := queryToString solver.commands
+  let query := solver.queryToString
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get? (← getOptions) |>.getD (toString kind)
+  let path := smt.solver.path.get? (← getOptions) |>.getD kind.toDefaultPath
   -- Don't run solver if the server cancelled our task
   if (← IO.checkCanceled) then return
-  let res ← solver.checkSat kind path
+  let res ← if let `(smtTimeout| (timeout := $n)) := stx[2] then
+    solver.checkSat kind path (some n.getNat)
+  else
+    solver.checkSat kind path
   -- 5. Print the result.
   logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"
   let out ← match Sexp.parse res with
@@ -103,7 +104,7 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM Solver := do
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
   let solver ← prepareSmtQuery ⟨stx[1]⟩
-  let query := queryToString solver.commands
+  let query := solver.queryToString
   -- 4. Print the query.
   logInfo m!"goal: {goalType}\n\nquery:\n{query}"
 
