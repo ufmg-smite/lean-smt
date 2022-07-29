@@ -2,7 +2,8 @@ import Lake
 
 open Lake DSL
 
-package smt
+package smt where
+  precompileModules := true
 
 @[defaultTarget]
 lean_lib Smt
