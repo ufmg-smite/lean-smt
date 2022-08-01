@@ -10,8 +10,6 @@ def query : SolverM Result := do
 
 def main : IO Unit := do
   let ss ← createFromKind .cvc5 "cvc5"
-  let (res, ss) ← StateT.run query ss
-  _ ← StateT.run exit ss
-  println! "query:\n{ss.commands}\n\nres: {res}"
+  _ ← StateT.run query ss
 
 #eval main

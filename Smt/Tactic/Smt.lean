@@ -14,6 +14,7 @@ import Smt.Solver
 namespace Smt
 
 open Lean Elab Tactic
+open Smt Query Solver
 
 initialize
   registerTraceClass `smt.debug
@@ -76,18 +77,18 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  let query := Solver.setOption "produce-models" "true"
+  let query := setOption "produce-models" "true"
             *> emitCommands (← prepareSmtQuery ⟨stx[1]⟩)
-            *> Solver.checkSat
+            *> checkSat
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
   let path := smt.solver.path.get? (← getOptions)
-  let ss ← Solver.createFromKind kind path
+  let ss ← createFromKind kind path
   let (res, ss) ← (StateT.run query ss : MetaM _)
   -- 5. Print the result.
   logInfo m!"goal: {goalType}\n\nquery:\n{ss.commands.init}\n\nresult: {res}"
   if res = .sat then
-    let (model, _) ← StateT.run Solver.getModel ss
+    let (model, _) ← StateT.run getModel ss
     logInfo m!"\ncounter-model:\n{model}"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   else if res ≠ .unsat then
