@@ -1,0 +1,10 @@
+query:
+(set-logic LIA)
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x y))
+(check-sat)
+(assert (> (+ x 1) y))
+(check-sat)
+
+res: unsat

@@ -1,0 +1,4 @@
+query:
+(check-sat)
+
+res: sat

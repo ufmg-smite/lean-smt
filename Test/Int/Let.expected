@@ -21,7 +21,7 @@ goal: f z = z
 
 query:
 (declare-fun f (Int) Int)
-(define-fun z () Int 10)
+(define-const z Int 10)
 (assert (not (= (f z) z)))
 (assert (= (f 10) 10))
 (check-sat)
@@ -31,8 +31,8 @@ goal: f y = y
 
 query:
 (declare-fun f (Int) Int)
-(define-fun z () Int 10)
-(define-fun y () Int z)
+(define-const z Int 10)
+(define-const y Int z)
 (assert (not (= (f y) y)))
 (assert (= (f 10) 10))
 (check-sat)

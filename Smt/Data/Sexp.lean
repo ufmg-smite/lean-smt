@@ -11,6 +11,9 @@ inductive Sexp where
   | expr : List Sexp → Sexp
   deriving Repr, BEq, Inhabited
 
+class ToSexp (α : Type u) where
+  toSexp : α → Sexp
+
 namespace Sexp
 
 partial def serialize : Sexp → String
@@ -23,21 +26,29 @@ def serializeMany (ss : List Sexp) : String :=
 instance : ToString Sexp :=
   ⟨serialize⟩
 
-partial def parse (s : String) : Except String (List Sexp) :=
-  let tks := tokenize #[] s.toSubstring
+partial def parse (s : String) : Except String (List Sexp) := do
+  let tks ← tokenize #[] s.toSubstring
   parseMany #[] tks.toList |>.map Prod.fst |>.map Array.toList
 where
-  tokenize (stk : Array Substring) (s : Substring) : Array Substring :=
-    if s.isEmpty then stk
-    else
-      let c := s.front
-      if c == ')' || c == '(' then
-        tokenize (stk.push <| s.take 1) (s.drop 1)
-      else if c.isWhitespace then tokenize stk (s.drop 1)
-      else
-        let tk := s.takeWhile fun c => !c.isWhitespace && c != '(' && c != ')'
-        if tk.bsize > 0 then tokenize (stk.push tk) (s.extract ⟨tk.bsize⟩ ⟨s.bsize⟩)
-        else unreachable!
+  tokenize (stk : Array Substring) (s : Substring) : Except String (Array Substring) := do
+    if s.isEmpty then
+      return stk
+    let c := s.front
+    if c == '"' then
+      let s1 := s.drop 1 |>.takeWhile (· ≠ '"')
+      if s1.stopPos = s.stopPos then
+        throw "ending \" missing"
+      let s1 := ⟨s.str, s.startPos, s.next s1.stopPos⟩
+      let s2 := ⟨s.str, s1.stopPos, s.stopPos⟩
+      return (← tokenize (stk.push s1) s2)
+    if c == ')' || c == '(' then
+      return (← tokenize (stk.push <| s.take 1) (s.drop 1))
+    if c.isWhitespace then
+      return (← tokenize stk (s.drop 1))
+    let tk := s.takeWhile fun c => !c.isWhitespace && c != '(' && c != ')'
+    if tk.bsize > 0 then
+      return (← tokenize (stk.push tk) (s.extract ⟨tk.bsize⟩ ⟨s.bsize⟩))
+    unreachable!
 
   parseOne : List Substring → Except String (Sexp × List Substring)
     | tk :: tks => do

@@ -13,9 +13,7 @@ import Smt.Solver
 
 namespace Smt
 
-open Lean
-open Lean.Elab
-open Lean.Elab.Tactic
+open Lean Elab Tactic
 
 initialize
   registerTraceClass `smt.debug
@@ -65,7 +63,7 @@ def parseHints : TSyntax `smtHints → TacticM (List Expr)
   | `(smtHints| ) => return []
   | _ => throwUnsupportedSyntax
 
-def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM Solver := do
+def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
   -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
   let goalId ← Lean.mkFreshMVarId
@@ -74,38 +72,31 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM Solver := do
   let mut hs ← parseHints hints
   hs := hs.eraseDups
   -- 3. Generate the SMT query.
-  let mut solver := Solver.mk []
-  Query.generateQuery g hs solver
+  Query.generateQuery g hs
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  let solver ← prepareSmtQuery ⟨stx[1]⟩
-  let query := solver.queryToString
+  let query := Solver.setOption "produce-models" "true"
+            *> emitCommands (← prepareSmtQuery ⟨stx[1]⟩)
+            *> Solver.checkSat
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get? (← getOptions) |>.getD kind.toDefaultPath
-  -- Don't run solver if the server cancelled our task
-  if (← IO.checkCanceled) then return
-  let res ← if let `(smtTimeout| (timeout := $n)) := stx[2] then
-    solver.checkSat kind path (some n.getNat)
-  else
-    solver.checkSat kind path
+  let path := smt.solver.path.get? (← getOptions)
+  let ss ← Solver.createFromKind kind path
+  let (res, ss) ← (StateT.run query ss : MetaM _)
   -- 5. Print the result.
-  logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"
-  let out ← match Sexp.parse res with
-    | .ok out => pure out
-    | .error e => throwError "cannot parse solver output: {e}"
-  if out.contains sexp!{sat} then
+  logInfo m!"goal: {goalType}\n\nquery:\n{ss.commands.init}\n\nresult: {res}"
+  if res = .sat then
+    let (model, _) ← StateT.run Solver.getModel ss
+    logInfo m!"\ncounter-model:\n{model}"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
-    -- TODO ask for countermodel and print
-  else if !out.contains sexp!{unsat} then
+  else if res ≠ .unsat then
     throwError "unable to prove goal"
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  let solver ← prepareSmtQuery ⟨stx[1]⟩
-  let query := solver.queryToString
+  let query ← prepareSmtQuery ⟨stx[1]⟩
   -- 4. Print the query.
-  logInfo m!"goal: {goalType}\n\nquery:\n{query}"
+  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery query}"
 
 end Smt

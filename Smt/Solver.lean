@@ -6,37 +6,39 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
+import Smt.Commands
+import Smt.Data.Sexp
 import Smt.Term
 
 namespace Smt
 
 inductive Kind where
+  | boolector
   | cvc4
   | cvc5
-  | z3
-  | yices
-  | boolector
   | vampire
-  deriving Inhabited, DecidableEq
+  | yices
+  | z3
+deriving DecidableEq, Inhabited
 
 instance : ToString Kind where
   toString
+    | .boolector => "boolector"
     | .cvc4      => "cvc4"
     | .cvc5      => "cvc5"
-    | .z3        => "z3"
-    | .yices     => "yices"
-    | .boolector => "boolector"
     | .vampire   => "vampire"
+    | .yices     => "yices"
+    | .z3        => "z3"
 
 instance : Lean.KVMap.Value Kind where
   toDataValue k := toString k
   ofDataValue?
+    | "boolector" => Kind.boolector
     | "cvc4"      => Kind.cvc4
     | "cvc5"      => Kind.cvc5
-    | "z3"        => Kind.z3
-    | "yices"     => Kind.yices
-    | "boolector" => Kind.boolector
     | "vampire"   => Kind.vampire
+    | "yices"     => Kind.yices
+    | "z3"        => Kind.z3
     | _           => none
 
 /-- What the binary for a given solver is usually called. -/
@@ -54,100 +56,216 @@ register_option smt.solver.path : String := {
   descr := "The path to the solver used for solving the SMT query."
 }
 
-/-- The data-structure for SMT-LIB based solver. -/
-structure Solver where
-  commands : List String
-  deriving Inhabited
+/-- Result of an SMT query. -/
+inductive Result where
+  | sat     : Result
+  | unsat   : Result
+  | unknown : Result
+deriving DecidableEq
+
+instance : ToString Result where
+  toString : Result → String
+    | .sat     => "sat"
+    | .unsat   => "unsat"
+    | .unknown => "unknown"
+
+/-- The data-structure for the state of the generic SMT-LIB solver. -/
+structure SolverState where
+  commands : List Command
+  proc : IO.Process.Child ⟨.piped, .piped, .piped⟩
+
+variable [Monad m] [MonadLiftT IO m]
+
+abbrev SolverT (m) [Monad m] [MonadLiftT IO m] := StateT SolverState m
+
+abbrev SolverM := SolverT IO
 
 namespace Solver
-open Term
 
-variable (solver : Solver)
+private def addCommand (c : Command) : SolverT m Unit := do
+  let state ← get
+  set { state with commands := c :: state.commands }
+  state.proc.stdin.putStr s!"{c}\n"
+  state.proc.stdin.flush
+
+private def getSexp : SolverT m Sexp := do
+  let state ← get
+  let mut out ← state.proc.stdout.getLine
+  let mut sexp := Sexp.parse out
+  while ¬sexp.toBool do
+    out := out ++ (← state.proc.stdout.getLine)
+    sexp := Sexp.parse out
+  if let .ok [.expr [.atom "error", .atom e]] := sexp then
+    (throw (IO.userError (unquote e)) : IO Unit)
+  return sexp.toOption.get!.head!
+where
+  unquote (s : String) := s.extract ⟨1⟩ ⟨s.length - 1⟩
+
+/-- Create an instance of a generic SMT solver.
+    Note: `args` is only for enabling interactive SMT-LIB interface for solvers. To set other
+          options, use `setOption` command. -/
+def create (path : String) (args : Array String) : IO SolverState := do
+  let proc ← IO.Process.spawn {
+    stdin := .piped
+    stdout := .piped
+    stderr := .piped
+    cmd := path
+    args := args
+  }
+  return ⟨[], proc⟩
+
+/-- Create an instance of a pre-configured SMT solver. -/
+def createFromKind (kind : Kind) (path : Option String) (timeoutSecs? : Option Nat := some 5) :
+  IO SolverState := do
+  let mut args := kindToArgs kind
+  if let some secs := timeoutSecs? then
+    args := args ++ timeoutArgs secs kind
+  create (path.getD (toString kind)) args
+where
+  kindToArgs : Kind → Array String
+    | .boolector => #["--smt2"]
+    | .cvc4      => #["--quiet", "--interactive", "--lang", "smt"]
+    | .cvc5      => #["--quiet", "--interactive", "--lang", "smt"]
+    | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
+    | .yices     => #[]
+    | .z3        => #["-in", "-smt2"]
+  timeoutArgs (secs : Nat): Kind → Array String
+    | .boolector => #["--time", toString secs]
+    | .cvc4      => #["--tlimit", toString (1000*secs)]
+    | .cvc5      => #["--tlimit", toString (1000*secs)]
+    | .vampire   => #["--time_limit", toString secs]
+    | .yices     => #["--timeout", toString secs]
+    | .z3        => #[s!"-T:{secs}"]
 
 /-- Set the SMT query logic to `l`. -/
-def setLogic (l : String) : Solver :=
-  ⟨s!"(set-logic {l})" :: solver.commands⟩
+def setLogic (l : String) : SolverT m Unit := addCommand (.setLogic l)
+
+/-- Set option `k` to value `v`. -/
+def setOption (k : String) (v : String) : SolverT m Unit := addCommand (.setOption k v)
 
 /-- Define a sort with name `id` and arity `n`. -/
-def declareSort (id : String) (n : Nat) : Solver :=
-  ⟨s!"(declare-sort {quoteSymbol id} {n})" :: solver.commands⟩
+def declareSort (id : String) (n : Nat) : SolverT m Unit := addCommand (.declareSort id n)
 
 /-- Define a sort with name `id`. -/
-def defineSort (id : String) (ss : List Term) (s : Term) : Solver :=
-  ⟨(s!"(define-sort {quoteSymbol id} ({paramsToString ss}) {s})") :: solver.commands⟩
-  where
-    paramsToString (ss) := String.intercalate " " (ss.map Term.toString)
+def defineSort (id : String) (ss : List Term) (s : Term) : SolverT m Unit :=
+  addCommand (.defineSort id ss s)
 
 /-- Declare a symbolic constant with name `id` and sort `s`. -/
-def declareConst (id : String) (s : Term) : Solver :=
-  ⟨s!"(declare-const {quoteSymbol id} {s})" :: solver.commands⟩
+def declareConst (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
 
 /-- Define a constant with name `id` sort `s`, and value `v`. -/
-def defineConst (id : String) (s : Term) (v : Term) : Solver :=
-  ⟨s!"(define-const {quoteSymbol id} {s} {v})" :: solver.commands⟩
+def defineConst (id : String) (s : Term) (v : Term) : SolverT m Unit :=
+  addCommand (.defineFun id [] s v false)
 
 /-- Declare an uninterpreted function with name `id` and sort `s`. -/
-def declareFun (id : String) (s : Term) : Solver :=
-  ⟨s!"(declare-fun {quoteSymbol id} {s})" :: solver.commands⟩
+def declareFun (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
 
 /-- Define a function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
 def defineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
-  Solver :=
-  ⟨s!"(define-fun {quoteSymbol id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
-  where
-    paramsToString (ps : List (String × Term)) : String :=
-      String.intercalate " " (ps.map (fun (n, s) => s!"({quoteSymbol n} {s})"))
+  SolverT m Unit := addCommand (.defineFun id ps s t false)
 
 /-- Define a recursive function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
-def defineFunRec (id : String) (ps : List (String × Term)) (s : Term)
-  (t : Term) :
-  Solver :=
-  ⟨s!"(define-fun-rec {quoteSymbol id} ({paramsToString ps}) {s} {t})" :: solver.commands⟩
-  where
-    paramsToString (ps : List (String × Term)) : String :=
-      String.intercalate " " (ps.map (fun (n, s) => s!"({quoteSymbol n} {s})"))
+def defineFunRec (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
+  SolverT m Unit := addCommand (.defineFun id ps s t true)
 
 /-- Assert that proposition `t` is true. -/
-def assert (t : Term) : Solver :=
-  ⟨s!"(assert {t})" :: solver.commands⟩
-
-def queryToString : String :=
-  String.intercalate "\n" ("(check-sat)\n" :: solver.commands).reverse
+def assert (t : Term) : SolverT m Unit := addCommand (.assert t)
 
 /-- Check if the query given so far is satisfiable and return the result. -/
-def checkSat (kind : Kind) (path : String) (timeoutSecs? : Option Nat := some 5) : IO String := do
-  let mut args := match kind with
-    | .cvc4      => #["--quiet", "--lang", "smt"]
-    | .cvc5      => #["--quiet", "--lang", "smt"]
-    | .z3        => #["-in", "-smt2"]
-    | .yices     => #[]
-    | .boolector => #["--smt2"]
-    | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
-  if let some secs := timeoutSecs? then
-    args := args ++ match kind with
-    | .cvc4      => #["--tlimit", toString (secs*1000)]
-    | .cvc5      => #["--tlimit", toString (secs*1000)]
-    | .z3        => #[s!"-T:{secs}"]
-    | .yices     => #["--timeout", toString secs]
-    | .boolector => #["--time", toString secs]
-    | .vampire   => #["--time_limit", toString secs]
-  let proc ← IO.Process.spawn {
-    stdin := IO.Process.Stdio.piped
-    stdout := IO.Process.Stdio.piped
-    stderr := IO.Process.Stdio.piped
-    cmd := path
-    args
-  }
-  let query := solver.queryToString ++ "\n(exit)"
-  proc.stdin.putStr query
+def checkSat : SolverT m Result := do
+  addCommand .checkSat
+  let out ← getSexp
+  let res ← match out with
+    | "sat"     => return .sat
+    | "unsat"   => return .unsat
+    | "unknown" => return .unknown
+    | _ => (throw (IO.userError s!"unexpected solver output: {repr out}") : IO Result)
+  return res
+
+/- TODO: We should probably parse the returned string into `Command`s or `String × Term`s. This is
+   bit tricky because we need to differentiate between literals and (user-defined) symbols. It
+   should be possible, however, because we store a list of all executed commands. -/
+/-- Return the model for a `sat` result. -/
+def getModel : SolverT m String := do
+  addCommand .getModel
+  -- TODO: Replace the lines below with `getSexp` once `Sexp.parse` becomes strict.
+  let state ← get
+  let mut (ops, cps) := (0, 0)
+  let mut res := ""
+  while ops = 0 ∨ ops ≠ cps do
+    let ln ← state.proc.stdout.getLine
+    ops := ops + count '(' ln
+    cps := cps + count ')' ln
+    res := res ++ ln
+  return res
+where
+  count (c : Char) (s : String) : Nat := s.data |>.filter (· = c) |>.length
+
+/-- Check if the query given so far is satisfiable and return the result. -/
+def exit : SolverT m UInt32 := do
+  addCommand .exit
+  let state ← get
   -- Close stdin to signal EOF to the solver.
-  let (_, proc) ← proc.takeStdin
-  _ ← proc.wait
-  let out ← proc.stdout.readToEnd
-  let err ← proc.stderr.readToEnd
-  return s!"{out}{if err.isEmpty then "" else "\n"}{err}"
+  let (_, proc) ← state.proc.takeStdin
+  state.proc.wait
 
 end Solver
+
+def sortEndsWithNat : Term → Bool
+  | .arrowT _ t    => sortEndsWithNat t
+  | .symbolT "Nat" => true
+  | _              => false
+
+def natAssertBody (t : Term) : Term :=
+  .mkApp2 (.symbolT ">=") t (.literalT "0")
+
+open Lean Term in
+/-- TODO: remove this hack once we have a tactic that replaces Nat goals with Int goals. -/
+def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
+  | arrowT i@(symbolT "Nat") t => do
+    let id ← mkFreshId
+    return (forallT id.toString i
+                   (imp id.toString (← natConstAssert n (id::args) t)))
+  | arrowT a t => do
+    let id ← mkFreshId
+    return (forallT id.toString a (← natConstAssert n (id::args) t))
+  | _ => pure $ natAssertBody (applyList n args)
+  where
+    imp n t := appT (appT (symbolT "=>") (natAssertBody (symbolT n))) t
+    applyList n : List Name → Term
+      | [] => symbolT n
+      | t :: ts => appT (applyList n ts) (symbolT t.toString)
+
+open Solver Lean Term in
+def emitCommand (cmd : Command) : SolverT MetaM (Unit) := do
+  match cmd with
+  | .setLogic l                   => setLogic l
+  | .setOption k v                => setOption k v
+  | .assert val                   => assert val
+  | .declare nm st@(.arrowT ..)   => declareFun nm st
+  | .declare nm st                => declareConst nm st
+  | .declareSort nm arity         => declareSort nm arity
+  | .defineSort nm ps tm          => defineSort nm ps tm
+  | .defineFun nm [] cod tm _     => defineConst nm cod tm
+  | .defineFun nm ps cod tm true  => defineFunRec nm ps cod tm
+  | .defineFun nm ps cod tm false => defineFun nm ps cod tm
+  | .checkSat                     => _ ← checkSat
+  | .getModel                     => _ ← getModel
+  | .exit                         => _ ← exit
+  match cmd with
+  | .declare nm st =>
+    if sortEndsWithNat st then
+      let x ← natConstAssert nm [] st
+      assert x
+  | .defineFun nm ps cod _ _ =>
+    if sortEndsWithNat cod then
+      let tmArrow := ps.foldr (init := cod) fun (_, tp) acc => arrowT tp acc
+      assert (← natConstAssert nm [] tmArrow)
+  | _ => pure ()
+  pure ()
+
+def emitCommands := (List.forM · emitCommand)
+
 end Smt

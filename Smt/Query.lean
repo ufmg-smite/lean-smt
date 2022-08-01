@@ -210,14 +210,12 @@ where
 
 end QueryBuilderM
 
-def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT Solver MetaM Unit := do
-  let mut solver ← get
+def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT (List Command) MetaM Unit := do
   trace[smt.debug.query] "emitting {e}"
   let some cmd := cmds.find? e | throwError "no command was computed for {e}"
-  solver ← cmd.emitCommand solver
-  set solver
+  modify (cmd :: ·)
 
-def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solver :=
+def generateQuery (goal : Expr) (hs : List Expr) : MetaM (List Command) :=
   traceCtx `smt.debug.generateQuery do
     trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
@@ -226,7 +224,7 @@ def generateQuery (goal : Expr) (hs : List Expr) (solver : Solver) : MetaM Solve
       |>.run { : QueryBuilderM.State }
       |>.run { : TranslationM.State }
     trace[smt.debug.query] "Dependency Graph: {st.graph}"
-    let (_, solver) ← StateT.run (st.graph.dfs $ emitVertex st.commands) solver
-    return solver
+    let (_, cmds) ← StateT.run (st.graph.dfs $ emitVertex st.commands) []
+    return cmds
 
 end Smt.Query

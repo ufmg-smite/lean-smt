@@ -8,4 +8,11 @@ query:
 (check-sat)
 
 result: sat
+
+counter-model:
+(
+(define-fun f ((_arg_1 Bool) (_arg_2 Bool)) Bool (and _arg_1 (not _arg_2)))
+(define-fun p () Bool false)
+(define-fun q () Bool true)
+)
 Test/Bool/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
