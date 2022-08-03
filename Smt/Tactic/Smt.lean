@@ -86,7 +86,7 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
   let ss ← createFromKind kind path
   let (res, ss) ← (StateT.run query ss : MetaM _)
   -- 5. Print the result.
-  logInfo m!"goal: {goalType}\n\nquery:\n{ss.commands.init}\n\nresult: {res}"
+  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery ss.commands.init}\n\nresult: {res}"
   if res = .sat then
     let (model, _) ← StateT.run getModel ss
     logInfo m!"\ncounter-model:\n{model}"

@@ -239,21 +239,10 @@ def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
       | t :: ts => appT (applyList n ts) (symbolT t.toString)
 
 open Solver Lean Term in
+/-- TODO: This function is the same as `addCommand` but with `Nat` hacks.
+    Remove those hacks.  -/
 def emitCommand (cmd : Command) : SolverT MetaM (Unit) := do
-  match cmd with
-  | .setLogic l                   => setLogic l
-  | .setOption k v                => setOption k v
-  | .assert val                   => assert val
-  | .declare nm st@(.arrowT ..)   => declareFun nm st
-  | .declare nm st                => declareConst nm st
-  | .declareSort nm arity         => declareSort nm arity
-  | .defineSort nm ps tm          => defineSort nm ps tm
-  | .defineFun nm [] cod tm _     => defineConst nm cod tm
-  | .defineFun nm ps cod tm true  => defineFunRec nm ps cod tm
-  | .defineFun nm ps cod tm false => defineFun nm ps cod tm
-  | .checkSat                     => _ ← checkSat
-  | .getModel                     => _ ← getModel
-  | .exit                         => _ ← exit
+  addCommand cmd
   match cmd with
   | .declare nm st =>
     if sortEndsWithNat st then

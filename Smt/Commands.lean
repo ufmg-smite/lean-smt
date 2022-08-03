@@ -42,21 +42,21 @@ open ToSexp in
 protected def toSexp : Command → Sexp
   | .setLogic l                   => sexp!{(set-logic {l})}
   | .setOption k v                => sexp!{(set-option {s!":{k}"} {v})}
-  | .assert val                   => sexp!{(assert {toSexp val})}
+  | .assert val                   => sexp!{(assert {val})}
   | .declare nm st@(arrowT ..)    =>
     let sts := arrowToList st
-    sexp!{(declare-fun {quoteSymbol nm} (...{sts.init.map toSexp}) {toSexp sts.getLast!})}
-  | .declare nm st                => sexp!{(declare-const {quoteSymbol nm} {toSexp st})}
+    sexp!{(declare-fun {quoteSymbol nm} (...{sts.init.map toSexp}) {sts.getLast!})}
+  | .declare nm st                => sexp!{(declare-const {quoteSymbol nm} {st})}
   | .declareSort nm arity         =>
     sexp!{(declare-sort {quoteSymbol nm} {String.mk (Nat.toDigits 10 arity)})}
   | .defineSort nm ps tm          =>
-    sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {toSexp tm})}
+    sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {tm})}
   | .defineFun nm [] cod tm _     =>
-    sexp!{(define-const {quoteSymbol nm} {toSexp cod} {toSexp tm})}
+    sexp!{(define-const {quoteSymbol nm} {cod} { tm})}
   | .defineFun nm ps cod tm false =>
-    sexp!{(define-fun {quoteSymbol nm} {paramsToSexp ps} {toSexp cod} {toSexp tm})}
+    sexp!{(define-fun {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
   | .defineFun nm ps cod tm true  =>
-    sexp!{(define-fun-rec {quoteSymbol nm} {paramsToSexp ps} {toSexp cod} {toSexp tm})}
+    sexp!{(define-fun-rec {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
   | .checkSat                     => sexp!{(check-sat)}
   | .getModel                     => sexp!{(get-model)}
   | .exit                         => sexp!{(exit)}
@@ -64,16 +64,14 @@ where
   arrowToList : Term → List Term
     | arrowT d c => d :: arrowToList c
     | s          => [s]
-  paramToSexp (p : String × Term) : Sexp := sexp!{({quoteSymbol p.fst} {toSexp p.snd})}
+  paramToSexp (p : String × Term) : Sexp := sexp!{({quoteSymbol p.fst} {p.snd})}
   paramsToSexp (ps : List (String × Term)) : Sexp := sexp!{(...{ps.map paramToSexp})}
 
 instance : ToSexp Command := ⟨Command.toSexp⟩
 
 instance : ToString Command := ⟨toString ∘ ToSexp.toSexp⟩
 
-instance : ToString (List Command) := ⟨.intercalate "\n" ∘ (.map toString) ∘ .reverse⟩
-
-instance : ToMessageData (List Command) := ⟨toMessageData ∘ toString⟩
+def cmdsAsQuery : List Command → String := .intercalate "\n" ∘ (.map toString) ∘ .reverse
 
 end Command
 end Smt

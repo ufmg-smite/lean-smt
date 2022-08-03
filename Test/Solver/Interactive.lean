@@ -20,6 +20,6 @@ def main : IO Unit := do
   let ss ← createFromKind .cvc5 "cvc5"
   let (res, ss) ← StateT.run query ss
   _ ← StateT.run exit ss
-  println! "query:\n{ss.commands}\n\nres: {res}"
+  println! "query:\n{Command.cmdsAsQuery ss.commands}\n\nres: {res}"
 
 #eval main
