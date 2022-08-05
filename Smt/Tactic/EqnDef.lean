@@ -147,7 +147,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
       return nm ++ Name.mkSimple txt
 
     -- Define the specialization
-    let (fvVar, fvEq) ← addEqnDefWithBody nm newLamBody
+    let (fvVar, _fvEq) ← addEqnDefWithBody nm newLamBody
 
     -- TODO: these nested withContexts are a bit wonky, can we get a nicer api? `withAddEqnDefForLocal` or something
     withMainContext do
@@ -156,11 +156,12 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
         let some (_, specializedHead, _) := newEqn.eq? | throwNotEqnDef newEqn
         let rhs ← mkAppOptM' (mkFVar fvVar) (fvArgs.map some)
         let eqnRw ← mkEq specializedHead rhs
-        let pf ← mkAppOptM' (mkFVar fvEq) (fvArgs.map some)
-        let pf ← mkEqSymm pf
+        -- TODO: Typechecking partial evaluations is currently a fundamental performance bottleneck
+        let pf ← mkSorry eqnRw false
+        -- let pf ← mkAppOptM' (mkFVar fvEq) (fvArgs.map some)
+        -- let pf ← mkEqSymm pf
         let eqAbstracted ← mkForallFVars fvArgs eqnRw
         let pfAbstracted ← mkLambdaFVars fvArgs pf
-        -- TODO: Typechecking partial evaluations is currently a fundamental performance bottleneck
         --let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
         return (eqAbstracted, pfAbstracted)
 
