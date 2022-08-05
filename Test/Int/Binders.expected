@@ -31,8 +31,6 @@ query:
 
 result: unsat
 Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
-Test/Int/Binders.lean:22:28: warning: unused variable `b`
-Test/Int/Binders.lean:22:26: warning: unused variable `a`
 goal: mismatchNamesAdd a b = mismatchNamesAdd b a
 
 query:
@@ -43,4 +41,4 @@ query:
 (check-sat)
 
 result: unsat
-Test/Int/Binders.lean:24:0: warning: declaration uses 'sorry'
+Test/Int/Binders.lean:25:0: warning: declaration uses 'sorry'
