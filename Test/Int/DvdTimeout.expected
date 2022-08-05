@@ -1,0 +1,18 @@
+goal: dvd a (b + c + d) = true
+
+query:
+(declare-fun dvd (Int Int) Bool)
+(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
+(declare-const c Int)
+(declare-const a Int)
+(assert (= (dvd a c) true))
+(declare-const d Int)
+(declare-const b Int)
+(assert (not (= (dvd a (+ (+ b c) d)) true)))
+(assert (= (dvd a b) true))
+(assert (= (dvd a d) true))
+(check-sat)
+
+result: 
+cvc5 interrupted by timeout.
+Test/Int/DvdTimeout.lean:13:4: error: unable to prove goal

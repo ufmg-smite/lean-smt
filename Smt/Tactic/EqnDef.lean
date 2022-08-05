@@ -87,7 +87,7 @@ def addEqnDefForConst (nm : Name) : TacticM FVarId := do
       return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
-    let (fv, mvarId) ← intro1P (← assert mvarId (nm ++ `def) eqn pf)
+    let (fv, mvarId) ← (← mvarId.assert (nm ++ `def) eqn pf).intro1P
     return (fv, [mvarId])
 
 /-- Given `e : tp`, make a local constant `$nm : tp := e` and add an equational definition
@@ -102,7 +102,7 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     -- TODO: We have to `define` in order for the proofs to go through, but ideally
     -- we would hide the actual `let` body in the goal state as it's already shown
     -- in the equational definition.
-    let (fvVar, mvarId) ← intro1P (← define mvarId nm tp e)
+    let (fvVar, mvarId) ← (← mvarId.define nm tp e).intro1P
     return (fvVar, [mvarId])
   
   let (eqn, pf) ← withMainContext <| lambdaTelescope e fun args body => do
@@ -116,7 +116,7 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     return (eqAbstracted, pfAbstracted)
 
   liftMetaTacticAux fun mvarId => do
-    let (fvEq, mvarId) ← intro1P (← assert mvarId (nm ++ `def) eqn pf)
+    let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `def) eqn pf).intro1P
     return ((fvVar, fvEq), [mvarId])
 
 end Smt

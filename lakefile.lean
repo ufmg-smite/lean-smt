@@ -2,7 +2,8 @@ import Lake
 
 open Lake DSL
 
-package smt
+package smt where
+  precompileModules := true
 
 @[defaultTarget]
 lean_lib Smt
@@ -28,9 +29,7 @@ USAGE:
 Run tests.
 -/
 script test do
-  let lean := match (← Lake.findLeanInstall?) with
-    | none   => panic! "Error: could not find lean executable."
-    | some i => i.lean
+  let lean ← getLean
   let files ← readAllFiles (FilePath.mk "Test")
   let mut tests : Array FilePath := #[]
   let mut expected : Array FilePath := #[]
@@ -43,7 +42,7 @@ script test do
   for t in tests do
     let e := t.withExtension "expected"
     if (expected.contains e) then
-      tasks := (← IO.asTask (runTest lean t e)) :: tasks
+      tasks := (← IO.asTask (runTest lean t e (← readThe Lake.Context))) :: tasks
     else
       IO.println s!"Error: Could not find {e}"
       return 1
@@ -53,13 +52,16 @@ script test do
       return code
   return 0
   where
-    runTest (lean : FilePath) (test : FilePath) (expected : FilePath) : IO UInt32 := do
-      let path :=  Lake.defaultBuildDir.join Lake.defaultOleanDir.toString
+    runTest (lean : FilePath) (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
       IO.println s!"Start : {test}"
+      let leanPath ← getAugmentedLeanPath
+      -- Note: this only works on Unix since it needs the shared library `libSmt`
+      -- to also load its transitive dependencies.
+      let dynlib := (← findModule? `Smt).get!.dynlibFile
       let out ← IO.Process.output {
         cmd := lean.toString
-        args := #[test.toString],
-        env := #[("LEAN_PATH", path.toString)]
+        args := #[s!"--load-dynlib={dynlib}", test.toString],
+        env := #[("LEAN_PATH", leanPath.toString)]
       }
       let expected ← IO.FS.readFile expected
       if ¬out.stderr.isEmpty ∨ out.stdout ≠ expected then

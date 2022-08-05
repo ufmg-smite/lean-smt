@@ -23,6 +23,9 @@ initialize
   registerTraceClass `smt.debug.query
   registerTraceClass `smt.debug.translator
 
+syntax smtHints := ("[" ident,* "]")?
+syntax smtTimeout := ("(timeout := " num ")")?
+
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to
 assert the current goal. However, that is not always enough:
@@ -52,33 +55,42 @@ The tactic then generates the query below:
 (check-sat)
 ```
 -/
-syntax (name := smt) "smt" ("[" ident,* "]")? : tactic
+syntax (name := smt) "smt" smtHints smtTimeout : tactic
 
-def queryToString (commands : List String) : String :=
-  String.intercalate "\n" ("(check-sat)\n" :: commands).reverse
+/-- Like `smt`, but just shows the query without invoking a solver. -/
+syntax (name := smtShow) "smt_show" smtHints : tactic
 
-def parseTactic : Syntax → TacticM (List Expr)
-  | `(tactic| smt)              => pure []
-  | `(tactic| smt [ $[$hs],* ]) => hs.toList.mapM (fun h => elabTerm h.raw none)
-  | _                           => throwUnsupportedSyntax
+def parseHints : TSyntax `smtHints → TacticM (List Expr)
+  | `(smtHints| [ $[$hs],* ]) => hs.toList.mapM (fun h => elabTerm h.raw none)
+  | `(smtHints| ) => return []
+  | _ => throwUnsupportedSyntax
 
-@[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
+def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM Solver := do
   -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
   let goalId ← Lean.mkFreshMVarId
   Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g => do
   -- 2. Get the hints passed to the tactic.
-  let mut hs ← parseTactic stx
+  let mut hs ← parseHints hints
   hs := hs.eraseDups
   -- 3. Generate the SMT query.
   let mut solver := Solver.mk []
-  solver ← Query.generateQuery g hs solver
-  let query := queryToString solver.commands
+  Query.generateQuery g hs solver
+
+@[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
+  let goalType ← Tactic.getMainTarget
+  let solver ← prepareSmtQuery ⟨stx[1]⟩
+  let query := solver.queryToString
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get? (← getOptions) |>.getD (toString kind)
+  let path := smt.solver.path.get? (← getOptions) |>.getD kind.toDefaultPath
+  -- Don't run solver if the server cancelled our task
+  if (← IO.checkCanceled) then return
+  let res ← if let `(smtTimeout| (timeout := $n)) := stx[2] then
+    solver.checkSat kind path (some n.getNat)
+  else
+    solver.checkSat kind path
   -- 5. Print the result.
-  let res ← solver.checkSat kind path
   logInfo m!"goal: {goalType}\n\nquery:\n{query}\nresult: {res}"
   let out ← match Sexp.parse res with
     | .ok out => pure out
@@ -88,5 +100,12 @@ def parseTactic : Syntax → TacticM (List Expr)
     -- TODO ask for countermodel and print
   else if !out.contains sexp!{unsat} then
     throwError "unable to prove goal"
+
+@[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
+  let goalType ← Tactic.getMainTarget
+  let solver ← prepareSmtQuery ⟨stx[1]⟩
+  let query := solver.queryToString
+  -- 4. Print the query.
+  logInfo m!"goal: {goalType}\n\nquery:\n{query}"
 
 end Smt

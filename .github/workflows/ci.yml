@@ -28,6 +28,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Build lean-smt
-      run: lake build
+      run: lake build Smt:shared
     - name: Test lean-smt
       run: lake script run test

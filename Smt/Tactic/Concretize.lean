@@ -14,15 +14,15 @@ open Elab Tactic
 
 def rewriteTarget (e : Expr) (symm : Bool) (config : Rewrite.Config) : TacticM Unit := do
   Term.withSynthesize <| withMainContext do
-    let r ← rewrite (← getMainGoal) (← getMainTarget) e symm (config := config)
-    let mvarId' ← replaceTargetEq (← getMainGoal) r.eNew r.eqProof
+    let r ← (← getMainGoal).rewrite (← getMainTarget) e symm (config := config)
+    let mvarId' ← (← getMainGoal).replaceTargetEq r.eNew r.eqProof
     replaceMainGoal (mvarId' :: r.mvarIds)
 
 def rewriteLocalDecl (e : Expr) (symm : Bool) (fvarId : FVarId) (config : Rewrite.Config) : TacticM FVarId := do
   Term.withSynthesize <| withMainContext do
-    let localDecl ← getLocalDecl fvarId
-    let rwResult ← rewrite (← getMainGoal) localDecl.type e symm (config := config)
-    let replaceResult ← replaceLocalDecl (← getMainGoal) fvarId rwResult.eNew rwResult.eqProof
+    let localDecl ← fvarId.getDecl
+    let rwResult ← (← getMainGoal).rewrite localDecl.type e symm (config := config)
+    let replaceResult ← (← getMainGoal).replaceLocalDecl fvarId rwResult.eNew rwResult.eqProof
     replaceMainGoal (replaceResult.mvarId :: rwResult.mvarIds)
     return replaceResult.fvarId
 
@@ -107,7 +107,7 @@ def ConcretizationData.create (nm : Name) (eConcrete : Expr) : TacticM Concretiz
     let nmEqVar := nm.modifyBase (· ++ `eqVar)
     let nmEqBody := nm.modifyBase (· ++ `eqBody)
 
-    let (#[fvVar, fvEqVar], mvarId) ← Meta.generalize mvarId #[{
+    let (#[fvVar, fvEqVar], mvarId) ← mvarId.generalize #[{
         expr := eConcrete
         xName? := nmVar
         hName? := nmEqVar
@@ -122,7 +122,7 @@ def ConcretizationData.create (nm : Name) (eConcrete : Expr) : TacticM Concretiz
     let eBody ← withTransparency TransparencyMode.all <| whnf eConcrete
     let tpEqBody ← mkEq (mkFVar conc.fvVar) eBody
     let pfEqBody ← mkEqSymm (mkFVar conc.fvEqVar)
-    let (_, mvarId) ← intro1P (← assert mvarId conc.nmEqBody tpEqBody pfEqBody)
+    let (_, mvarId) ← (← mvarId.assert conc.nmEqBody tpEqBody pfEqBody).intro1P
     return [mvarId]
 
   return conc
@@ -307,7 +307,7 @@ def evalConcretize : ConcretizeM Unit := do
     let eBody ← Tactic.withMainContext conc.getBody
     let fvLet ← liftMetaTacticAux fun mvarId => do
       -- `$concNm := $eBody`
-      let (fv, mvarId) ← intro1P (← define mvarId nm (← inferType eBody) eBody)
+      let (fv, mvarId) ← (← mvarId.define nm (← inferType eBody) eBody).intro1P
       return (fv, [mvarId])
 
     withMainContext do
