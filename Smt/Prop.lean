@@ -42,21 +42,21 @@ open Translator Term
     applyTranslators? e
   | _ => return none
 
-def emitIte (cond : Expr) (_inst : Expr) (t : Unit → TranslationM Term) (f : Unit → TranslationM Term)
+def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
     : TranslationM (Option Term) := do
-  return mkApp3 (symbolT "ite") (← applyTranslators! cond) (← t ()) (← f ())
+  return mkApp3 (symbolT "ite") (← applyTranslators! cond) (← t) (← f)
 
 @[smtTranslator] def replaceIte : Translator
   /- @ite : {α : Sort u_1} → (c : Prop) → [h : Decidable c] → α → α → α -/
-  | app (app (app (app (app (const `ite _) _) c) inst) a) b =>
-    emitIte c inst (fun _ => applyTranslators! a) (fun _ => applyTranslators! b)
+  | app (app (app (app (app (const `ite _) _) c) _inst) a) b =>
+    emitIte c (applyTranslators! a) (applyTranslators! b)
   /- @dite : {α : Sort u_1} → (c : Prop) → [h : Decidable c] → (c → α) → (¬c → α) → α -/
-  | app (app (app (app (app (const `dite _) _) c) inst) a) b => do
+  | app (app (app (app (app (const `dite _) _) c) _inst) a) b => do
     -- Note: we assume that the translation of both branches erases any uses
     -- of the condition proposition.
-    emitIte c inst
-      (fun _ => Meta.lambdaTelescope a fun args bd => applyTranslators! (bd.instantiate args))
-      (fun _ => Meta.lambdaTelescope b fun args bd => applyTranslators! (bd.instantiate args))
+    emitIte c
+      (Meta.lambdaTelescope a fun args bd => applyTranslators! (bd.instantiate args))
+      (Meta.lambdaTelescope b fun args bd => applyTranslators! (bd.instantiate args))
   | _ => return none
 
 -- Local `have` proofs are encoded as `let_fun`. Remove them.
