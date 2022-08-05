@@ -51,8 +51,6 @@ protected def toSexp : Command → Sexp
     sexp!{(declare-sort {quoteSymbol nm} {String.mk (Nat.toDigits 10 arity)})}
   | .defineSort nm ps tm          =>
     sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {tm})}
-  | .defineFun nm [] cod tm _     =>
-    sexp!{(define-const {quoteSymbol nm} {cod} { tm})}
   | .defineFun nm ps cod tm false =>
     sexp!{(define-fun {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
   | .defineFun nm ps cod tm true  =>

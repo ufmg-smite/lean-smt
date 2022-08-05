@@ -95,7 +95,7 @@ private def getSexp : SolverT m Sexp := do
   while ¬sexp.toBool do
     out := out ++ (← state.proc.stdout.getLine)
     sexp := Sexp.parse out
-  if let .ok [.expr [.atom "error", .atom e]] := sexp then
+  if let .ok [sexp!{(error {.atom e})}] := sexp then
     (throw (IO.userError (unquote e)) : IO Unit)
   return sexp.toOption.get!.head!
 where
@@ -152,10 +152,6 @@ def defineSort (id : String) (ss : List Term) (s : Term) : SolverT m Unit :=
 
 /-- Declare a symbolic constant with name `id` and sort `s`. -/
 def declareConst (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
-
-/-- Define a constant with name `id` sort `s`, and value `v`. -/
-def defineConst (id : String) (s : Term) (v : Term) : SolverT m Unit :=
-  addCommand (.defineFun id [] s v false)
 
 /-- Declare an uninterpreted function with name `id` and sort `s`. -/
 def declareFun (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
