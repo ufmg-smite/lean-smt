@@ -23,7 +23,6 @@ open Translator Term
   | const `Iff _         => return symbolT "="
   | app (const `Eq _) _  => return symbolT "="
   | app (const `Ne _) _  => return symbolT "distinct"
-  | app (const `ite _) _ => return symbolT "ite"
   | _                    => return none
 
 @[smtTranslator] def replaceExists : Translator
@@ -35,11 +34,42 @@ open Translator Term
       return existsT n.toString tmT tmB
   | _ => return none
 
-@[smtTranslator] def replaceDecIte : Translator
-  | app (app (app (const `ite _) _) e) _ => do
-    let tmE ← applyTranslators! e
-    return appT (symbolT "ite") tmE
+/- @Eq.rec : {α : Sort u_2} →
+  {a : α} → {motive : (a_1 : α) → a = a_1 → Sort u_1} → motive a (_ : a = a) → {a_1 : α} → (t : a = a_1) → motive a_1 t -/
+@[smtTranslator] def replaceEqRec : Translator
+  | app (app (app (app (app (app (const `Eq.rec _) _) _) _) e) _) _ => do
+    trace[smt.debug.replaceEqRec] "found eq_rec body : {e}"
+    applyTranslators? e
   | _ => return none
+
+def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
+    : TranslationM (Option Term) := do
+  return mkApp3 (symbolT "ite") (← applyTranslators! cond) (← t) (← f)
+
+@[smtTranslator] def replaceIte : Translator
+  /- @ite : {α : Sort u_1} → (c : Prop) → [h : Decidable c] → α → α → α -/
+  | app (app (app (app (app (const `ite _) _) c) _inst) a) b =>
+    emitIte c (applyTranslators! a) (applyTranslators! b)
+  /- @dite : {α : Sort u_1} → (c : Prop) → [h : Decidable c] → (c → α) → (¬c → α) → α -/
+  | app (app (app (app (app (const `dite _) _) c) _inst) a) b => do
+    -- Note: we assume that the translation of both branches erases any uses
+    -- of the condition proposition.
+    emitIte c
+      (Meta.lambdaTelescope a fun args bd => applyTranslators! (bd.instantiate args))
+      (Meta.lambdaTelescope b fun args bd => applyTranslators! (bd.instantiate args))
+  | _ => return none
+
+-- Local `have` proofs are encoded as `let_fun`. Remove them.
+@[smtTranslator] def replaceHave : Translator := fun e => do
+  let some e := letFunAnnotation? e | return none
+  if !e.appFn!.isLambda then return none
+  Meta.lambdaTelescope e.appFn! fun args bd => do
+    trace[smt.debug.replacePropLetFun] "found let_fun {e}"
+    let #[arg] := args | return none
+    trace[smt.debug.replacePropLetFun] "arg : {arg}"
+    if !(← Meta.inferType (← Meta.inferType arg)).isProp then return none
+    trace[smt.debug.replacePropLetFun] "translating {bd.instantiate #[arg]}"
+    applyTranslators? (bd.instantiate #[arg])
 
 /-- Replaces arrows with `Imp`. For example, given `(FORALL _ p q)`, this
     method returns `(Imp p q)`. The replacement is done at this stage because

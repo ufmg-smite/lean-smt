@@ -87,6 +87,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
   where
     go (ts : List (Translator × Name)) : Translator := fun e => do
       -- First try all translators on the whole expression
+      -- TODO: Use `DiscrTree` to index the translators instead of naively looping
       for (t, nm) in ts do
         if let some tm ← t e then
           trace[smt.debug.translator] "{e} =({nm})=> {tm}"

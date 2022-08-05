@@ -69,7 +69,7 @@ protected partial def toString : Term → String
     "(" ++ String.intercalate " " (ss.init.map Term.toString) ++ ") "
         ++ ss.getLast!.toString
   | t@(appT ..) =>
-    let ts := List.reverse <| appToList t
+    let ts := appToList [] t
     "(" ++ String.intercalate " " (ts.map Term.toString) ++ ")"
   | forallT n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
   | existsT n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
@@ -78,9 +78,16 @@ protected partial def toString : Term → String
     arrowToList : Term → List Term
       | arrowT d c => d :: arrowToList c
       | s          => [s]
-    appToList : Term → List Term
-      | appT f t => t :: appToList f
-      | s        => [s]
+    appToList (acc : List Term) : Term → List Term
+      -- We hardcode support for the `(_ extract i j)` term which needs to be parenthesized
+      -- since SMT-LIB does not curry applications. `(_ BitVec n)` does not need special
+      -- casing since it is not a function, so it should not be the head of an `appT`.
+      | appT (symbolT "_") (symbolT "extract") =>
+        let i := acc.get! 0
+        let j := acc.get! 1
+        literalT s!"(_ extract {Term.toString i} {Term.toString j})" :: acc.drop 2
+      | appT f t => appToList (t :: acc) f
+      | s        => s :: acc
 
 instance : ToString Term where
   toString := Term.toString

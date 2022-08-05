@@ -15,33 +15,61 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceType : Translator
-  | e@(app (const `BitVec ..) n ..) => do
+  | e@(app (const ``BitVec _) n) => do
     let n ← Meta.whnf n
     let some n ← Meta.evalNat n |>.run
       | throwError "bitvector type{indentD e}\nhas variable width"
     return mkApp2 (symbolT "_") (symbolT "BitVec") (literalT (toString n))
   | _ => return none
 
-def mkZeroLit (w : Nat) : Term :=
-  literalT <| String.pushn "#b" '0' w
+def mkLit (w : Nat) (n : Nat) : Term :=
+  let bits := Nat.toDigits 2 n |>.take w
+  literalT <| bits.foldl (init := "#b".pushn '0' (w - bits.length)) (·.push ·)
+
+@[smtTranslator] def replaceEq : Translator
+  -- TODO: we should really just support beq/bne across all types uniformly
+  | app (app (const ``BEq.beq _) (app (const ``BitVec _) _)) _ => return symbolT "="
+  | app (app (app (app (const ``bne _) (app (const ``BitVec _) _)) _) e) e' =>
+    return appT (symbolT "not") (mkApp2 (symbolT "=") (← applyTranslators! e) (← applyTranslators! e'))
+  | _ => return none
 
 @[smtTranslator] def replaceFun : Translator
-  | app (const `BitVec.xor ..) .. => return symbolT "bvxor"
-  | app (const `BitVec.shiftLeft ..) .. => return symbolT "bvshl"
-  | app (const `BitVec.shiftRight ..) .. => return symbolT "bvlshr"
-  | e@(app (const `BitVec.zero ..) w ..) => do
-    let w ← Meta.whnf w
-    let some w ← Meta.evalNat w |>.run
-      | throwError "bitvector{indentD e}\nhas variable bitwidth"
-    return mkZeroLit w
-  -- | app (app (app (const `BitVec.lsb_get! ..) ..) t _) bit _ => do
-  --   let bit ← Meta.whnf bit
-  --   let some bit ← Meta.evalNat bit
-  --     | throwError "found variable bit access {bit}"
-  --   let bit := mkLit <| .natVal bit
-  --   let extract := mkApp3 (mkConst `_) (mkConst `extract) bit bit
-  --   let some t ← applyTranslators t | return none
-  --   return (mkApp2 (mkConst "=") (mkApp extract t) (mkConst "#b0"))
+  | app (app (const ``BitVec.append _) _) _ => return symbolT "concat"
+  | app (const ``BitVec.and _) _            => return symbolT "bvand"
+  | app (const ``BitVec.or _) _             => return symbolT "bvor"
+  | app (const ``BitVec.xor _) _            => return symbolT "bvxor"
+  | e@(app (app (app (const ``BitVec.shiftLeft _) w) x) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (mkLit w n)
+  | e@(app (app (app (const ``BitVec.shiftRight _) w) x) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (mkLit w n)
+  | e@(app (app (app (const ``BitVec.extract _) _) i) j) => do
+    let i ← reduceLit i e
+    let j ← reduceLit j e
+    return mkApp3 (symbolT "_") (symbolT "extract") (literalT (toString i)) (literalT (toString j))
+  | e@(app (const ``BitVec.zero _) w) => do
+    let w ← reduceWidth w e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkLit w 0
+  | e@(app (app (const ``BitVec.ofNat _) w) n) => do
+    let w ← reduceWidth w e
+    let n ← reduceLit n e
+    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
+    return mkLit w n
   | _ => return none
+where
+  reduceWidth (w : Expr) (e : Expr) : TranslationM Nat := do
+    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
+      | throwError "bitvector width{indentD w}\nis not constant in{indentD e}"
+    return w
+  reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
+    let some n ← Meta.evalNat (← Meta.whnf n) |>.run
+      | throwError "literal{indentD n}\nis not constant in{indentD e}"
+    return n
 
 end Smt.BitVec
