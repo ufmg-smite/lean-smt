@@ -169,7 +169,7 @@ def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSe
         let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `specialization) eqnRw pfRw).intro1P
         return (fvEq, [mvarId])
 
-syntax blockingConsts := "blocking [" ident,* "]"
+syntax blockingConsts := "blocking [" term,* "]"
 
 /-- `specialize_def foo [arg₁, ⋯, argₙ]` introduces a new equational definition `foo.arg₁.⋯.argₙ`
 whose body is the partial evaluation of `foo arg₁ ⋯ argₙ`. During reduction, all SMT-LIB builtins
