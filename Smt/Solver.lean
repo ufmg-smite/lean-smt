@@ -128,8 +128,8 @@ def createFromKind (kind : Kind) (path : Option String) (timeoutSecs? : Option N
 where
   kindToArgs : Kind → Array String
     | .boolector => #["--smt2"]
-    | .cvc4      => #["--quiet", "--lang", "smt"]
-    | .cvc5      => #["--quiet", "--lang", "smt"]
+    | .cvc4      => #["--quiet", "--incremental", "--lang", "smt"]
+    | .cvc5      => #["--quiet", "--incremental", "--lang", "smt"]
     | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
     | .yices     => #[]
     | .z3        => #["-in", "-smt2"]

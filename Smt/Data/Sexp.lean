@@ -48,7 +48,7 @@ where
     let tk := s.takeWhile fun c => !c.isWhitespace && c != '(' && c != ')'
     if tk.bsize > 0 then
       return (← tokenize (stk.push tk) (s.extract ⟨tk.bsize⟩ ⟨s.bsize⟩))
-    unreachable!
+    else unreachable!
 
   parseOne : List Substring → Except String (Sexp × List Substring)
     | tk :: tks => do
