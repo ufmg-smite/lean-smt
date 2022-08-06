@@ -78,7 +78,7 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
   let query := setOption "produce-models" "true"
-            *> emitCommands (← prepareSmtQuery ⟨stx[1]⟩)
+            *> emitCommands (← prepareSmtQuery ⟨stx[1]⟩).reverse
             *> checkSat
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)

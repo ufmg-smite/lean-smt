@@ -97,7 +97,11 @@ private def getSexp : SolverT m Sexp := do
     sexp := Sexp.parse out
   if let .ok [sexp!{(error {.atom e})}] := sexp then
     (throw (IO.userError (unquote e)) : IO Unit)
-  return sexp.toOption.get!.head!
+  if let .ok [res] := sexp then
+    return res
+  let err ← state.proc.stderr.readToEnd
+  (throw (IO.userError s!"something went wrong.\nstdout:\n{out}\nstderr:\n{err}") : IO Unit)
+  return default
 where
   unquote (s : String) := s.extract ⟨1⟩ ⟨s.length - 1⟩
 
@@ -124,8 +128,8 @@ def createFromKind (kind : Kind) (path : Option String) (timeoutSecs? : Option N
 where
   kindToArgs : Kind → Array String
     | .boolector => #["--smt2"]
-    | .cvc4      => #["--quiet", "--interactive", "--lang", "smt"]
-    | .cvc5      => #["--quiet", "--interactive", "--lang", "smt"]
+    | .cvc4      => #["--quiet", "--lang", "smt"]
+    | .cvc5      => #["--quiet", "--lang", "smt"]
     | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
     | .yices     => #[]
     | .z3        => #["-in", "-smt2"]
@@ -205,7 +209,7 @@ def exit : SolverT m UInt32 := do
   let state ← get
   -- Close stdin to signal EOF to the solver.
   let (_, proc) ← state.proc.takeStdin
-  state.proc.wait
+  proc.wait
 
 end Solver
 
