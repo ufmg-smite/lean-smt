@@ -190,18 +190,7 @@ def checkSat : SolverT m Result := do
 /-- Return the model for a `sat` result. -/
 def getModel : SolverT m String := do
   addCommand .getModel
-  -- TODO: Replace the lines below with `getSexp` once `Sexp.parse` becomes strict.
-  let state ← get
-  let mut (ops, cps) := (0, 0)
-  let mut res := ""
-  while ops = 0 ∨ ops ≠ cps do
-    let ln ← state.proc.stdout.getLine
-    ops := ops + count '(' ln
-    cps := cps + count ')' ln
-    res := res ++ ln
-  return res
-where
-  count (c : Char) (s : String) : Nat := s.data |>.filter (· = c) |>.length
+  toString <$> getSexp
 
 /-- Check if the query given so far is satisfiable and return the result. -/
 def exit : SolverT m UInt32 := do

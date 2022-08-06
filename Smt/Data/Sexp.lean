@@ -74,8 +74,8 @@ partial def parseOneAux : List Substring → Except ParseError (Sexp × List Sub
     if tk.front == ')' then
       throw <| .malformed "unexpected ')'"
     if tk.front == '(' then
-      if let (ss, tk :: tks) ← parseManyAux tks then
-        -- assertion: tk == ')' since parseManyAux only stops on ')'
+      if let (ss, _tk :: tks) ← parseManyAux tks then
+        -- assertion: _tk == ')' since parseManyAux only stops on ')'
         return (expr ss.toList, tks)
       else
         throw <| .incomplete "expected ')'"
