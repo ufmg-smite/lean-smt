@@ -91,13 +91,13 @@ private def addCommand (c : Command) : SolverT m Unit := do
 private def getSexp : SolverT m Sexp := do
   let state ← get
   let mut out ← state.proc.stdout.getLine
-  let mut sexpRes := Sexp.parse out
+  let mut sexpRes := Sexp.parseOne out
   while sexpRes matches .error (.incomplete _) do
     out := out ++ (← state.proc.stdout.getLine)
-    sexpRes := Sexp.parse out
-  if let .ok [sexp!{(error {.atom e})}] := sexpRes then
+    sexpRes := Sexp.parseOne out
+  if let .ok sexp!{(error {.atom e})} := sexpRes then
     (throw (IO.userError (unquote e)) : IO Unit)
-  if let .ok [res] := sexpRes then
+  if let .ok res := sexpRes then
     return res
   let err ← state.proc.stderr.readToEnd
   (throw (IO.userError s!"something went wrong.\nstdout:\n{out}\nstderr:\n{err}") : IO Unit)
