@@ -32,7 +32,7 @@ end
 
 instance : ToSexp String := ⟨Sexp.atom⟩
 
-instance [ToSexp α]: Coe α Sexp := ⟨ToSexp.toSexp⟩
+instance [ToSexp α] : Coe α Sexp := ⟨ToSexp.toSexp⟩
 
 declare_syntax_cat sexp
 

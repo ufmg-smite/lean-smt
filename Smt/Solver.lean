@@ -74,13 +74,13 @@ structure SolverState where
   commands : List Command
   proc : IO.Process.Child ⟨.piped, .piped, .piped⟩
 
-variable [Monad m] [MonadLiftT IO m]
-
 abbrev SolverT (m) [Monad m] [MonadLiftT IO m] := StateT SolverState m
 
 abbrev SolverM := SolverT IO
 
 namespace Solver
+
+variable [Monad m] [MonadLiftT IO m]
 
 def emitCommand (c : Command) : SolverT m Unit := do
   let state ← get
