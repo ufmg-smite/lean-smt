@@ -64,6 +64,11 @@ def parseHints : TSyntax `smtHints → TacticM (List Expr)
   | `(smtHints| ) => return []
   | _ => throwUnsupportedSyntax
 
+def parseTimeout : TSyntax `smtTimeout → TacticM (Option Nat)
+  | `(smtTimeout| (timeout := $n)) => return some n.getNat
+  | `(smtTimeout| ) => return some 5
+  | _ => throwUnsupportedSyntax
+
 def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
   -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
@@ -77,27 +82,31 @@ def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
+  let cmds ← prepareSmtQuery ⟨stx[1]⟩
   let query := setOption "produce-models" "true"
-            *> emitCommands (← prepareSmtQuery ⟨stx[1]⟩).reverse
+            *> emitCommands cmds.reverse
             *> checkSat
+  logInfo m!"goal: {goalType}"
+  logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
   -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
   let path := smt.solver.path.get? (← getOptions)
-  let ss ← createFromKind kind path
+  let timeout ← parseTimeout ⟨stx[2]⟩
+  let ss ← createFromKind kind path timeout
   let (res, ss) ← (StateT.run query ss : MetaM _)
   -- 5. Print the result.
-  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery ss.commands.init}\n\nresult: {res}"
+  logInfo m!"\nresult: {res}"
   if res = .sat then
     let (model, _) ← StateT.run getModel ss
-    logInfo m!"\ncounter-model:\n{model}"
+    logInfo m!"\ncounter-model:\n{model}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   else if res ≠ .unsat then
     throwError "unable to prove goal"
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  let query ← prepareSmtQuery ⟨stx[1]⟩
+  let cmds := .checkSat :: (← prepareSmtQuery ⟨stx[1]⟩)
   -- 4. Print the query.
-  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery query}"
+  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
 
 end Smt

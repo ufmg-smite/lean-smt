@@ -210,10 +210,50 @@ where
 
 end QueryBuilderM
 
+def sortEndsWithNat : Term → Bool
+  | .arrowT _ t    => sortEndsWithNat t
+  | .symbolT "Nat" => true
+  | _              => false
+
+def natAssertBody (t : Term) : Term :=
+  .mkApp2 (.symbolT ">=") t (.literalT "0")
+
+/-- TODO: remove this hack once we have a tactic that replaces Nat goals with Int goals. -/
+def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
+  | arrowT i@(symbolT "Nat") t => do
+    let id ← mkFreshId
+    return (forallT id.toString i
+                   (imp id.toString (← natConstAssert n (id::args) t)))
+  | arrowT a t => do
+    let id ← mkFreshId
+    return (forallT id.toString a (← natConstAssert n (id::args) t))
+  | _ => pure $ natAssertBody (applyList n args)
+  where
+    imp n t := appT (appT (symbolT "=>") (natAssertBody (symbolT n))) t
+    applyList n : List Name → Term
+      | [] => symbolT n
+      | t :: ts => appT (applyList n ts) (symbolT t.toString)
+
+/-- TODO: Remove this function and its `Nat` those hacks. -/
+def addCommand (cmd : Command) (cmds : List Command) : MetaM (List Command) := do
+  let mut cmds := cmds
+  cmds := cmd :: cmds
+  match cmd with
+  | .declare nm st =>
+    if sortEndsWithNat st then
+      let x ← natConstAssert nm [] st
+      cmds := .assert x :: cmds
+  | .defineFun nm ps cod _ _ =>
+    if sortEndsWithNat cod then
+      let tmArrow := ps.foldr (init := cod) fun (_, tp) acc => arrowT tp acc
+      cmds := .assert (← natConstAssert nm [] tmArrow) :: cmds
+  | _ => pure ()
+  return cmds
+
 def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT (List Command) MetaM Unit := do
   trace[smt.debug.query] "emitting {e}"
   let some cmd := cmds.find? e | throwError "no command was computed for {e}"
-  modify (cmd :: ·)
+  set (← addCommand cmd (← get))
 
 def generateQuery (goal : Expr) (hs : List Expr) : MetaM (List Command) :=
   traceCtx `smt.debug.generateQuery do

@@ -11,4 +11,3 @@ model:
 (
 (define-fun x () Int 0)
 )
-
