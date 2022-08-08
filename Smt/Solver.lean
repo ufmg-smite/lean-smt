@@ -127,7 +127,7 @@ def createFromKind (kind : Kind) (path : Option String) (timeoutSecs : Option Na
   let mut args := kindToArgs kind
   if let some secs := timeoutSecs then
     args := args ++ timeoutArgs secs kind
-  create (path.getD (toString kind)) args
+  create (path.getD kind.toDefaultPath) args
 where
   kindToArgs : Kind → Array String
     | .boolector => #["--smt2"]
