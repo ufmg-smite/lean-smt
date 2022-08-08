@@ -12,7 +12,8 @@ query:
 (assert (= (dvd a b) true))
 (assert (= (dvd a d) true))
 (check-sat)
+Test/Int/DvdTimeout.lean:13:4: error: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
 
-result: 
+solver stderr:
 cvc5 interrupted by timeout.
-Test/Int/DvdTimeout.lean:13:4: error: unable to prove goal

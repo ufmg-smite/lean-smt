@@ -1,0 +1,5 @@
+
+Test/Solver/Error.lean:15:0: error: Parse Error: <stdin>:2.20: Cannot bind x to symbol of type Int, maybe the symbol has already been defined?
+
+  (declare-const x Int)
+                   ^

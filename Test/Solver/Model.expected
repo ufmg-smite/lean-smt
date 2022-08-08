@@ -1,0 +1,13 @@
+query:
+(set-logic LIA)
+(set-option :produce-models true)
+(declare-const x Int)
+(check-sat)
+(get-model)
+
+res: sat
+
+model:
+(
+(define-fun x () Int 0)
+)

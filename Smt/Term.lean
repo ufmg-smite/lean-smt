@@ -5,6 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
+import Smt.Data.Sexp
+import Smt.Dsl.Sexp
+
 namespace Smt
 
 /-- The SMT-LIBv2 Term data-structure.
@@ -61,36 +64,32 @@ def quoteSymbol (s : String) : String :=
   else s
 
 /-- Print given `Term` in SMT-LIBv2 format. -/
-protected partial def toString : Term → String
-  | literalT l    => l             -- do not quote theory literals
-  | symbolT n     => quoteSymbol n
-  | t@(arrowT ..) =>
-    let ss := arrowToList t
-    "(" ++ String.intercalate " " (ss.init.map Term.toString) ++ ") "
-        ++ ss.getLast!.toString
-  | t@(appT ..) =>
-    let ts := appToList [] t
-    "(" ++ String.intercalate " " (ts.map Term.toString) ++ ")"
-  | forallT n s t => s!"(forall (({quoteSymbol n} {s.toString})) {t.toString})"
-  | existsT n s t => s!"(exists (({quoteSymbol n} {s.toString})) {t.toString})"
-  | letT n t b    => s!"(let (({quoteSymbol n} {t.toString})) {b.toString})"
-  where
-    arrowToList : Term → List Term
-      | arrowT d c => d :: arrowToList c
-      | s          => [s]
-    appToList (acc : List Term) : Term → List Term
-      -- We hardcode support for the `(_ extract i j)` term which needs to be parenthesized
-      -- since SMT-LIB does not curry applications. `(_ BitVec n)` does not need special
-      -- casing since it is not a function, so it should not be the head of an `appT`.
-      | appT (symbolT "_") (symbolT "extract") =>
-        let i := acc.get! 0
-        let j := acc.get! 1
-        literalT s!"(_ extract {Term.toString i} {Term.toString j})" :: acc.drop 2
-      | appT f t => appToList (t :: acc) f
-      | s        => s :: acc
+protected partial def toSexp : Term → Sexp
+  | literalT l    => sexp!{{l}}             -- do not quote theory literals
+  | symbolT n     => sexp!{{quoteSymbol n}}
+  | t@(arrowT ..) => sexp!{(...{List.intersperse sexp!{->} ((arrowToList t).map Term.toSexp)})}
+  | t@(appT ..)   => sexp!{(...{(appToList [] t).map Term.toSexp})}
+  | forallT n s t => sexp!{(forall (({quoteSymbol n} {s.toSexp})) {t.toSexp})}
+  | existsT n s t => sexp!{(exists (({quoteSymbol n} {s.toSexp})) {t.toSexp})}
+  | letT n t b    => sexp!{(let (({quoteSymbol n} {t.toSexp})) {b.toSexp})}
+where
+  arrowToList : Term → List Term
+    | arrowT d c => d :: arrowToList c
+    | s          => [s]
+  appToList (acc : List Term) : Term → List Term
+    -- We hardcode support for the `(_ extract i j)` term which needs to be parenthesized
+    -- since SMT-LIB does not curry applications. `(_ BitVec n)` does not need special
+    -- casing since it is not a function, so it should not be the head of an `appT`.
+    | appT (symbolT "_") (symbolT "extract") =>
+      let i := acc.get! 0
+      let j := acc.get! 1
+      literalT (toString sexp!{(_ extract {i.toSexp} {j.toSexp})}) :: acc.drop 2
+    | appT f t => appToList (t :: acc) f
+    | s        => s :: acc
 
-instance : ToString Term where
-  toString := Term.toString
+instance : ToSexp Term := ⟨Term.toSexp⟩
+
+instance : ToString Term := ⟨toString ∘ ToSexp.toSexp⟩
 
 instance : Std.ToFormat Term where
   format := Std.Format.text ∘ toString

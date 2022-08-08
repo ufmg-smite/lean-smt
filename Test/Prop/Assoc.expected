@@ -9,4 +9,12 @@ query:
 (check-sat)
 
 result: sat
+
+counter-model:
+(
+(define-fun f ((_arg_1 Bool) (_arg_2 Bool)) Bool (ite _arg_1 (not _arg_2) (and (not _arg_1) (not _arg_2))))
+(define-fun p () Bool true)
+(define-fun q () Bool false)
+(define-fun r () Bool false)
+)
 Test/Prop/Assoc.lean:5:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`

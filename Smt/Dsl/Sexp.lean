@@ -30,8 +30,9 @@ def Lean.TSyntax.getGeneralId : TSyntax `generalIdent → String
 @[combinatorParenthesizer generalIdent] def generalIdent.parenthesizer : Parenthesizer := pure ()
 end
 
-instance : Coe String Sexp :=
-  ⟨Sexp.atom⟩
+instance : ToSexp String := ⟨Sexp.atom⟩
+
+instance [ToSexp α] : Coe α Sexp := ⟨ToSexp.toSexp⟩
 
 declare_syntax_cat sexp
 

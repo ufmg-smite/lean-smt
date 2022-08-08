@@ -36,7 +36,7 @@ def exprToString : Expr → String
   | proj s i e       => s!"(PROJ {s} {i} {exprToString e})"
   where
     literalToString : Literal → String
-      | Literal.natVal v => ⟨Nat.toDigits 10 v⟩
+      | Literal.natVal v => toString v
       | Literal.strVal v => v
 
 /-- Count the number of occurances of the constant `c` in `e`. -/

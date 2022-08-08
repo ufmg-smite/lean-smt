@@ -5,18 +5,25 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
-import Smt.Solver
+import Smt.Data.Sexp
+import Smt.Dsl.Sexp
 import Smt.Term
 
 namespace Smt
+open Smt
 
 /-- An SMT-LIBv2 command that we can emit. -/
 inductive Command where
-  | assert (tm : Term)
-  | declare (nm : String) (st : Term)
+  | setLogic (l : String)
+  | setOption (k : String) (v : String)
   | declareSort (nm : String) (arity : Nat)
   | defineSort (nm : String) (ps : List Term) (tm : Term)
+  | declare (nm : String) (st : Term)
   | defineFun (nm : String) (ps : List (String × Term)) (cod : Term) (tm : Term) (rec : Bool)
+  | assert (tm : Term)
+  | checkSat
+  | getModel
+  | exit
 
 namespace Command
 
@@ -31,52 +38,38 @@ def defNatSub : Command :=
     (`"ite" • (`"<" • `"x" • `"y") • ``"0" • (`"-" • `"x" • `"y"))
     false
 
-def sortEndsWithNat : Term → Bool
-  | arrowT _ t    => sortEndsWithNat t
-  | symbolT "Nat" => true
-  | _             => false
+open ToSexp in
+protected def toSexp : Command → Sexp
+  | .setLogic l                   => sexp!{(set-logic {l})}
+  | .setOption k v                => sexp!{(set-option {s!":{k}"} {v})}
+  | .assert val                   => sexp!{(assert {val})}
+  | .declare nm st@(arrowT ..)    =>
+    let sts := arrowToList st
+    sexp!{(declare-fun {quoteSymbol nm} (...{sts.init.map toSexp}) {sts.getLast!})}
+  | .declare nm st                => sexp!{(declare-const {quoteSymbol nm} {st})}
+  | .declareSort nm arity         =>
+    sexp!{(declare-sort {quoteSymbol nm} {toString arity})}
+  | .defineSort nm ps tm          =>
+    sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {tm})}
+  | .defineFun nm ps cod tm false =>
+    sexp!{(define-fun {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
+  | .defineFun nm ps cod tm true  =>
+    sexp!{(define-fun-rec {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
+  | .checkSat                     => sexp!{(check-sat)}
+  | .getModel                     => sexp!{(get-model)}
+  | .exit                         => sexp!{(exit)}
+where
+  arrowToList : Term → List Term
+    | arrowT d c => d :: arrowToList c
+    | s          => [s]
+  paramToSexp (p : String × Term) : Sexp := sexp!{({quoteSymbol p.fst} {p.snd})}
+  paramsToSexp (ps : List (String × Term)) : Sexp := sexp!{(...{ps.map paramToSexp})}
 
-def natAssertBody (t : Term) : Term :=
-  mkApp2 (symbolT ">=") t (literalT "0")
+instance : ToSexp Command := ⟨Command.toSexp⟩
 
-variable [Monad m] [MonadNameGenerator m]
+instance : ToString Command := ⟨toString ∘ ToSexp.toSexp⟩
 
-/-- TODO: refactor to support functions as input (e.g., (Nat → Nat) → Nat). -/
-def natConstAssert (n : String) (args : List Name) : Term → m Term
-  | arrowT i@(symbolT "Nat") t => do
-    let id ← Lean.mkFreshId
-    return (forallT id.toString i
-                   (imp id.toString (← natConstAssert n (id::args) t)))
-  | arrowT a t => do
-    let id ← Lean.mkFreshId
-    return (forallT id.toString a (← natConstAssert n (id::args) t))
-  | _ => pure $ natAssertBody (applyList n args)
-  where
-    imp n t := appT (appT (symbolT "=>") (natAssertBody (symbolT n))) t
-    applyList n : List Name → Term
-      | [] => symbolT n
-      | t :: ts => appT (applyList n ts) (symbolT t.toString)
-
-def emitCommand (s : Solver) (cmd : Command) : m Solver := do
-  let mut s := s
-  match cmd with
-  | .assert val                   => s := s.assert val
-  | .declare nm st@(arrowT ..)    => s := s.declareFun nm st
-  | .declare nm st                => s := s.declareConst nm st
-  | .declareSort nm arity         => s := s.declareSort nm arity
-  | .defineSort nm ps tm          => s := s.defineSort nm ps tm
-  | .defineFun nm ps cod tm true  => s := s.defineFunRec nm ps cod tm
-  | .defineFun nm ps cod tm false => s := s.defineFun nm ps cod tm
-  match cmd with
-  | .declare nm st =>
-    if sortEndsWithNat st then
-      s := s.assert (← natConstAssert nm [] st)
-  | .defineFun nm ps cod _ _ =>
-    if sortEndsWithNat cod then
-      let tmArrow := ps.foldr (init := cod) fun (_, tp) acc => arrowT tp acc
-      s := s.assert (← natConstAssert nm [] tmArrow)
-  | _ => pure ()
-  return s
+def cmdsAsQuery : List Command → String := .intercalate "\n" ∘ (.map toString) ∘ .reverse
 
 end Command
 end Smt
