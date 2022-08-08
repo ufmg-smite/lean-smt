@@ -1,7 +1,8 @@
 /-
-Copyright (c) 2019 Microsoft Corporation. All rights reserved.
+Copyright (c) 2019-2022 by Microsoft Corporation and the authors listed in the file AUTHORS
+and their institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Leonardo de Moura
+Authors: Leonardo de Moura, Wojciech Nawrocki
 -/
 import Lean.ToExpr
 import Lean.AuxRecursor
