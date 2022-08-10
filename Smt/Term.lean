@@ -84,6 +84,10 @@ where
       let i := acc.get! 0
       let j := acc.get! 1
       literalT (toString sexp!{(_ extract {i.toSexp} {j.toSexp})}) :: acc.drop 2
+    -- Support the non-standard constant array constructor.
+    | appT (symbolT "as") (symbolT "const") =>
+      let t := acc.get! 0
+      literalT s!"(as const {Term.toSexp t})" :: acc.drop 1
     | appT f t => appToList (t :: acc) f
     | s        => s :: acc
 

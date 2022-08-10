@@ -34,6 +34,8 @@ script test do
   let mut tests : Array FilePath := #[]
   let mut expected : Array FilePath := #[]
   for file in files do
+    if file.components.contains "Playground" then
+      continue
     if file.extension = some "lean" then
       tests := tests.push file
     else if file.extension = some "expected" then

@@ -19,6 +19,7 @@ example (a b : Int)
   smt [partCurryAdd']
   sorry
 
+set_option linter.unusedVariables false in
 def mismatchNamesAdd : ∀ (a b : Int), Int := fun c d => c + d
 
 example (a b : Int) : mismatchNamesAdd a b = mismatchNamesAdd b a := by

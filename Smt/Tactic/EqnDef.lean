@@ -8,6 +8,8 @@ import Lean.Meta.Basic
 import Lean.Elab.Tactic.Basic
 import Lean.Elab.Term
 
+import Smt.Tactic.WHNFSmt
+
 /-! Utilities for handling "equational definitions". An equational definition is an equation
 of the form `∀ x₁ ⋯ xₙ, c x₁ ⋯ xₙ = body[x₁,⋯,xₙ]` in the local context, where `c` is either
 a global constant or a local variable. The LHS should be fully applied so that the equality
@@ -118,5 +120,95 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
   liftMetaTacticAux fun mvarId => do
     let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `def) eqn pf).intro1P
     return ((fvVar, fvEq), [mvarId])
+
+open Lean Meta Elab Tactic in
+/-- Place an equational definition for a constant in the local context. -/
+elab "extract_def" i:ident : tactic => do
+  let nm ← resolveGlobalConstNoOverloadWithInfo i
+  let _ ← addEqnDefForConst nm
+
+/-- Specialize an equational definition via partial evaluation. See `specialize_def`. -/
+def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSet Name := {})
+    : TacticM FVarId := do
+  withMainContext do
+    let eqn ← inferType (mkFVar x)
+
+    -- Compute specialized body
+    let newEqn ← instantiateForall eqn args
+    let newLamBody ← getEqnDefLam newEqn
+    let newLamBody ← smtOpaqueReduce newLamBody opaqueConsts
+
+    -- Compute specialization name
+    let ld ← x.getDecl
+    let some nm := ld.userName.eraseSuffix? `def | throwError "{mkFVar x} is not an eqn def!"
+    let nm ← args.foldlM (init := nm) fun nm arg => do
+      let txt := toString (← ppExpr arg)
+      -- let txt := txt.replace " " "_"
+      return nm ++ Name.mkSimple txt
+
+    -- Define the specialization
+    let (fvVar, _fvEq) ← addEqnDefWithBody nm newLamBody
+
+    -- TODO: these nested withContexts are a bit wonky, can we get a nicer api? `withAddEqnDefForLocal` or something
+    withMainContext do
+      -- Compute the rewrite helper
+      let (eqnRw, pfRw) ← forallTelescope newEqn fun fvArgs newEqn => do
+        let some (_, specializedHead, _) := newEqn.eq? | throwNotEqnDef newEqn
+        let rhs ← mkAppOptM' (mkFVar fvVar) (fvArgs.map some)
+        let eqnRw ← mkEq specializedHead rhs
+        -- TODO: Typechecking partial evaluations is currently a fundamental performance bottleneck
+        let pf ← mkSorry eqnRw false
+        -- let pf ← mkAppOptM' (mkFVar fvEq) (fvArgs.map some)
+        -- let pf ← mkEqSymm pf
+        let eqAbstracted ← mkForallFVars fvArgs eqnRw
+        let pfAbstracted ← mkLambdaFVars fvArgs pf
+        --let pfAbstracted ← ensureHasType (some eqAbstracted) pfAbstracted
+        return (eqAbstracted, pfAbstracted)
+
+      liftMetaTacticAux fun mvarId => do
+        let (fvEq, mvarId) ← (← mvarId.assert (nm ++ `specialization) eqnRw pfRw).intro1P
+        return (fvEq, [mvarId])
+
+syntax blockingConsts := "blocking [" term,* "]"
+
+/-- `specialize_def foo [arg₁, ⋯, argₙ]` introduces a new equational definition `foo.arg₁.⋯.argₙ`
+whose body is the partial evaluation of `foo arg₁ ⋯ argₙ`. During reduction, all SMT-LIB builtins
+are blocked from unfolding and `let_opaque` bindings are not zeta-eliminated. It also introduces
+a `foo.arg₁.⋯.argₙ.specialization` equation which can be used to rewrite other expressions.
+
+You can block additional constants from unfolding during evaluation using
+`specialize_def foo [arg₁, ⋯, argₙ] blocking [bar₁, bar₂]`.
+
+See `Playground/WHNFExamples.lean` for examples of partially evaluating definitions.
+
+**WARNING**: This is currently extremely slow! On any sizeable expression the evaluator, typechecker,
+or kernel is likely to time out. -/
+syntax (name := specializeDef) "specialize_def" ident "[" term,* "]" optional(blockingConsts) : tactic
+
+open Lean Meta Elab Tactic in
+@[tactic specializeDef] def elabSpecializeDef : Tactic
+  | `(tactic|specialize_def $i [ $ts,* ]) => go i ts {}
+  | `(tactic|specialize_def $i [ $ts,* ] blocking [ $bs,* ]) =>
+    withMainContext do
+      let opaqueConsts ← bs.getElems.foldlM (init := Std.HashSet.empty) fun cs b => do
+        match ← elabTerm b none with
+        | .const nm _ => return cs.insert nm
+        | .fvar fv    => return cs.insert (← fv.getDecl).userName
+        | _           => throwError "expected a (local) constant, got{indentD b}"
+      go i ts opaqueConsts
+  | stx => throwError "unexpected syntax {stx}"
+where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) : TacticM Unit :=
+  withMainContext do
+    let nm := i.getId
+    let ld ← getLocalDeclFromUserName (eqnDefName nm)
+    let args ← forallTelescopeReducing (← inferType (mkFVar ld.fvarId)) fun args _ => do
+      let mut ret : Array Expr := #[]
+      for (stx, arg) in ts.zip args do
+        let e ← elabTerm stx (some (← inferType arg))
+        ret := ret.push e
+      return ret
+    -- Block the function being specialized from unfolding in recursive definitions
+    let opaqueConsts := opaqueConsts.insert nm
+    let _ ← specializeEqnDef ld.fvarId args opaqueConsts
 
 end Smt
