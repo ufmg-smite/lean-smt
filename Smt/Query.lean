@@ -256,7 +256,7 @@ def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT (List Comma
   set (← addCommand cmd (← get))
 
 def generateQuery (goal : Expr) (hs : List Expr) : MetaM (List Command) :=
-  traceCtx `smt.debug.generateQuery do
+  withTraceNode `smt.debug.query (fun _ => pure .nil) do
     trace[smt.debug.query] "Goal: {← inferType goal}"
     trace[smt.debug.query] "Provided Hints: {hs}"
     let ((_, st), _) ← QueryBuilderM.buildDependencyGraph goal

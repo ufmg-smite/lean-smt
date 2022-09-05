@@ -99,6 +99,10 @@ partial def unfoldProjInsts? (e : Expr) : MetaM (Option Expr) := do
 /-- Returns an expression equivalent to `e` with all typeclass projections
     unfolded. -/
 def unfoldAllProjInsts : Expr → MetaM Expr :=
-  Meta.transform (pre := fun e => return (← unfoldProjInsts? e).getD e |> .visit)
+  Meta.transform (pre := pre)
+where
+  pre e : MetaM TransformStep := return match ← Meta.unfoldProjInst? e with
+    | some e => .visit e
+    | none   => .continue
 
 namespace Smt.Util

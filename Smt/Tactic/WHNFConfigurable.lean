@@ -545,6 +545,11 @@ private def whnfDelayedAssigned? (f' : Expr) (e : Expr) : MetaM (Option Expr) :=
   else
     return none
 
+def traceReduce [Monad m] (e : Expr) (e' : Except ε Expr) : m MessageData :=
+  return m!"{e} ⤳ " ++ match e' with
+    | .ok e'   => m!"{e'}"
+    | .error _ => m!"{bombEmoji}"
+
 /--
   Apply beta-reduction, zeta-reduction (i.e., unfold let local-decls), iota-reduction,
   expand let-expressions, expand assigned meta-variables.
@@ -556,8 +561,7 @@ private def whnfDelayedAssigned? (f' : Expr) (e : Expr) : MetaM (Option Expr) :=
 partial def whnfCore (e : Expr) (deltaAtProj : Bool := true) : ReductionM Expr :=
   go e
 where
-  go (e : Expr) : ReductionM Expr := traceCtx `Smt.reduce.whnfCore <| do
-    trace[Smt.reduce.whnfCore] "{e}"
+  go (e : Expr) : ReductionM Expr := withTraceNode `Smt.reduce.whnfCore (traceReduce e ·) <| do
     whnfEasyCases e fun e => do
       match e with
       | Expr.const ..  => pure e
@@ -952,9 +956,8 @@ private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
   return r
 
 partial def whnfImp (e : Expr) : ReductionM Expr :=
-  withIncRecDepth <| traceCtx `Smt.reduce.whnf <| whnfEasyCases e fun e => do
+  withIncRecDepth <| withTraceNode `Smt.reduce.whnf  (traceReduce e ·) <| whnfEasyCases e fun e => do
     checkMaxHeartbeats "Smt.whnf"
-    trace[Smt.reduce.whnf] "{e}"
     let useCache ← useWHNFCache e
     let e' ← match (← cached? useCache e) with
     | some e' => pure e'
@@ -969,7 +972,6 @@ partial def whnfImp (e : Expr) : ReductionM Expr :=
           match (← unfoldDefinition? e') with
           | some e => whnfImp e
           | none   => cache useCache e e'
-    trace[Smt.reduce.whnf] "⤳ {e'}"
     return e'
 
 /-- If `e` is a projection function that satisfies `p`, then reduce it -/
@@ -990,13 +992,12 @@ def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
 
 partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : ReductionM Expr :=
   let rec visit (e : Expr) : MonadCacheT Expr Expr ReductionM Expr :=
-    checkCache e fun _ => Core.withIncRecDepth <| traceCtx `Smt.reduce do
+    checkCache e fun _ => Core.withIncRecDepth <| withTraceNode `Smt.reduce (traceReduce e ·) do
       if (← (pure skipTypes <&&> isType e)) then
         return e
       else if (← (pure skipProofs <&&> isProof e)) then
         return e
       else
-        trace[Smt.reduce] "{e}"
         let e ← whnf e
         let e' ← match e with
         | Expr.app .. =>
@@ -1046,7 +1047,6 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
           let e' := Expr.letE nm t' v' b' nonDep
           pure <| mkMData md e'
         | _                  => pure e
-        trace[Smt.reduce] "⤳ {e'}"
         return e'
   visit e |>.run
 

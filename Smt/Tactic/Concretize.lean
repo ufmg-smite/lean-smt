@@ -169,7 +169,7 @@ abbrev ConcretizeM := StateT State <| ReaderT Config TacticM
 def withMainContext (x : ConcretizeM α) : ConcretizeM α := do
   controlAt TacticM fun mapInBase => Tactic.withMainContext (mapInBase x)
 
-def traceLCtx : TacticM Unit := traceCtx `smt.debug.lctx <| Tactic.withMainContext do
+def traceLCtx : TacticM Unit := withTraceNode `smt.debug.lctx (fun _ => pure .nil) <| Tactic.withMainContext do
   for ld in (← getLCtx) do
     trace[smt.debug.concretize.lctx] "{ld.userName} @ {repr ld.fvarId} : {ld.type} {if ld.isAuxDecl then "(aux)" else ""}"
 
@@ -193,10 +193,10 @@ def foundConcretizable (nm : Name) : ConcretizeM Unit :=
   modify fun st => { st with foundConcretizables := st.foundConcretizables.insert nm }
 
 def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
-  if !e.isApp then return .visit e
+  if !e.isApp then return .continue
   e.withApp fun fn args => do
-    let .const declName .. := fn | return .visit e
-    if !(← read).concretizeSet.contains declName then return .visit e
+    let .const declName .. := fn | return .continue
+    if !(← read).concretizeSet.contains declName then return .continue
 
     -- Hits if an application with the same concretization was seen before.
     if let some (nm, _) ← getCached? e then
@@ -214,7 +214,7 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
       if isConcretizable then
         concreteArgs := concreteArgs.push (some a')
       else break
-    if concreteArgs.isEmpty then return .visit e
+    if concreteArgs.isEmpty then return .continue
 
     let eConcrete ← mkAppOptM' fn concreteArgs
     trace[smt.debug.concretize.app] "{e} ==> {eConcrete}"
@@ -233,9 +233,9 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
 
     -- We visit children immediately as concretizing the head partial application `eConcrete`
     -- does not expose new opportunities in the arguments.
-    return .visit e
+    return .continue
 
-partial def loop : ConcretizeM Unit := traceCtx `smt.debug.concretize.loop do
+partial def loop : ConcretizeM Unit := withTraceNode `smt.debug.concretize.loop (fun _ => pure .nil) do
   if (← get).visitSet.isEmpty then return
   let tgt ← modifyGet fun st =>
     let st' := { st with

@@ -92,10 +92,12 @@ def emitCommands : List Command → SolverT m Unit := (List.forM · emitCommand)
 
 private def getSexp : SolverT m Sexp := do
   let state ← get
-  let mut out ← state.proc.stdout.getLine
+  let mut line ← state.proc.stdout.getLine
+  let mut out := line
   let mut parseRes := Sexp.parseOne out
-  while !(← (state.proc.stdout.isEof : IO _)) && parseRes matches .error (.incomplete _) do
-    out := out ++ (← state.proc.stdout.getLine)
+  while !line.isEmpty && parseRes matches .error (.incomplete _) do
+    line ← state.proc.stdout.getLine
+    out := out ++ line
     parseRes := Sexp.parseOne out
   match parseRes with
   | .ok sexp!{(error {.atom e})} => (throw (IO.userError (unquote e)) : IO _)

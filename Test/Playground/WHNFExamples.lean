@@ -15,7 +15,7 @@ opaque evalConfig (s : Syntax) : TermElabM Smt.Config
 private def elabReduceCmd
     (f : Expr → Smt.ReductionM Expr) (cfg? : Syntax) (check? : Option Syntax) (t : TSyntax `term)
     : CommandElabM Unit :=
-  liftTermElabM none do
+  liftTermElabM do
     let cfg : Smt.Config ←
       if cfg?.getNumArgs > 0 then evalConfig cfg?[1]
       else pure {}
