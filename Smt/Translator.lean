@@ -117,10 +117,15 @@ partial def applyTranslators? : Translator := withCache fun e => do
 
 end
 
+def traceTranslation (e : Expr) (e' : Except ε (Term × NameSet)) : TranslationM MessageData :=
+  return m!"{e} ↦ " ++ match e' with
+    | .ok (e', _) => m!"{e'}"
+    | .error _    => m!"{bombEmoji}"
+
 /-- Processes `e` by running it through all the registered `Translator`s.
 Returns the resulting SMT-LIB term and set of dependencies. -/
 def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
-  traceCtx `smt.debug.translateExpr do
+  withTraceNode `smt.debug.translate (traceTranslation e ·) do
     modify fun st => { st with depConstants := .empty }
     trace[smt.debug.translator] "before: {e}"
     let e ← Util.unfoldAllProjInsts e

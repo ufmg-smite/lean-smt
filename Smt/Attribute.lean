@@ -6,7 +6,6 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
-import Std
 
 namespace Smt.Attribute
 
