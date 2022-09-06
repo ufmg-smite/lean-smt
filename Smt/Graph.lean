@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 
 import Lean.Data.HashMap
 import Lean.Data.HashSet
+import Lean.Message
 
 open Std
 
@@ -52,9 +53,24 @@ protected def format [ToFormat α] [ToFormat β] : Format :=
   bracket "{" (joinSep (g.vertices.map formatVertex) ("," ++ line)) "}"
 where
   formatVertex (v : α) : Format :=
-    format v ++ " ↦ " ++ bracket "{" (joinSep (g.neighbors! v) ("," ++ line)) "}"
+    f!"{v} ↦ {formatNeighbors (g.neighbors! v)}"
+  formatNeighbors (ns : List α) : Format :=
+    bracket "{" (joinSep ns ("," ++ line)) "}"
 
 instance [ToFormat α] [ToFormat β] : ToFormat (Graph α β) where
   format g := Graph.format g
+
+open Lean MessageData in
+protected def toMessageData [ToMessageData α] [ToMessageData β] : MessageData :=
+  bracket "{" (joinSep (g.vertices.map formatVertex) ("," ++ Format.line)) "}"
+where
+  formatVertex (v : α) : MessageData :=
+    m!"{v} ↦ {formatNeighbors (g.neighbors! v)}"
+  formatNeighbors (ns : List α) : MessageData :=
+    bracket "{" (joinSep (ns.map toMessageData) ("," ++ Format.line)) "}"
+
+open Lean in
+instance [ToMessageData α] [ToMessageData β] : ToMessageData (Graph α β) where
+  toMessageData g := Graph.toMessageData g
 
 end Graph
