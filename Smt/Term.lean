@@ -77,13 +77,20 @@ where
     | arrowT d c => d :: arrowToList c
     | s          => [s]
   appToList (acc : List Term) : Term → List Term
-    -- We hardcode support for the `(_ extract i j)` term which needs to be parenthesized
+    -- We hardcode support for some indexed terms which need to be parenthesized
     -- since SMT-LIB does not curry applications. `(_ BitVec n)` does not need special
-    -- casing since it is not a function, so it should not be the head of an `appT`.
+    -- casing since it is not a function, so it should never be the head of an `appT`.
     | appT (symbolT "_") (symbolT "extract") =>
       let i := acc.get! 0
       let j := acc.get! 1
       literalT (toString sexp!{(_ extract {i.toSexp} {j.toSexp})}) :: acc.drop 2
+    | appT (symbolT "_") (symbolT sym@"repeat")
+        | appT (symbolT "_") (symbolT sym@"zero_extend")
+        | appT (symbolT "_") (symbolT sym@"sign_extend")
+        | appT (symbolT "_") (symbolT sym@"rotate_left")
+        | appT (symbolT "_") (symbolT sym@"rotate_right") =>
+      let i := acc.get! 0
+      literalT (toString sexp!{(_ {sym} {i.toSexp})}) :: acc.drop 1
     -- Support the non-standard constant array constructor.
     | appT (symbolT "as") (symbolT "const") =>
       let t := acc.get! 0
