@@ -1,20 +1,20 @@
-goal: x ++ y = (0 ++ x) <<< 2 ||| 0 ++ y
+goal: x ++ y = BitVec.zeroExtend 2 x <<< 2 ||| BitVec.zeroExtend 2 y
 
 query:
 (declare-const x (_ BitVec 2))
 (declare-const y (_ BitVec 2))
-(assert (not (= (concat x y) (bvor (bvshl (concat #b00 x) #b0010) (concat #b00 y)))))
+(assert (not (= (concat x y) (bvor (bvshl ((_ zero_extend 2) x) #b0010) ((_ zero_extend 2) y)))))
 (check-sat)
 
 result: unsat
 Test/BitVec/Shift.lean:4:8: warning: declaration uses 'sorry'
-goal: x ++ y = (0 ++ x) <<< 3 ||| 0 ++ y
+goal: x ++ y = BitVec.zeroExtend 3 x <<< 3 ||| BitVec.zeroExtend 3 y
 
 query:
 (declare-const x (_ BitVec 3))
 (declare-const y (_ BitVec 3))
-(assert (not (= (concat x y) (bvor (bvshl (concat #b000 x) #b000011) (concat #b000 y)))))
+(assert (not (= (concat x y) (bvor (bvshl ((_ zero_extend 3) x) #b000011) ((_ zero_extend 3) y)))))
 (check-sat)
 
 result: unsat
-Test/BitVec/Shift.lean:10:8: warning: declaration uses 'sorry'
+Test/BitVec/Shift.lean:9:8: warning: declaration uses 'sorry'
