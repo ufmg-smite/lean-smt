@@ -182,7 +182,7 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat),  ¬ (andN l) ∨ getProp l i 
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
 
-theorem cong : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
+theorem smtCong : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
   f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ :=
   by intros A B f₁ f₂ t₁ t₂ h₁ h₂
      rewrite [h₁, h₂]

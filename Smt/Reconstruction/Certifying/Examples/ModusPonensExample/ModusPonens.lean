@@ -1,5 +1,5 @@
-import Meta.Boolean
-import Meta.Resolution
+import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Resolution
 
 theorem mpCvc5 (P Q : Prop) : ¬ (P → (P → Q) → Q) → False :=
   λ lean_a0 =>
