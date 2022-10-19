@@ -1,11 +1,6 @@
-/-Theorems for boolean rules-/
-import Lean
 import Smt.Reconstruction.Certifying.Util
 
-open Lean Lean.Elab Lean.Elab.Tactic Lean.Meta Expr Classical
-open Lean.Elab.Term
-
-open Nat List
+open Nat List Classical
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
@@ -80,9 +75,7 @@ theorem orImplies₃ : ∀ {p q : Prop}, p ∨ q → ¬ p → q := by
 theorem scope : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
   by intros p q h
      exact match em p with
-     | Or.inl pp => match em q with
-                    | Or.inl pq => Or.inr pq
-                    | Or.inr npq => False.elim (npq (h pp))
+     | Or.inl pp =>  Or.inr (h pp)
      | Or.inr npp => Or.inl npp
  
 def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q := scope
@@ -90,8 +83,7 @@ def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q := scope
 theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
   by intros p q h
      exact match em p, em q with
-     | Or.inl pp,  Or.inl _   => False.elim (h (Or.inl pp))
-     | Or.inl pp,  Or.inr _   => False.elim (h (Or.inl pp))
+     | Or.inl pp,  _          => False.elim (h (Or.inl pp))
      | Or.inr _,   Or.inl pq  => False.elim (h (Or.inr pq))
      | Or.inr npp, Or.inr npq => And.intro npp npq
  
@@ -150,20 +142,7 @@ theorem cnfAndNeg : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
      intro h
      exact deMorgan h
  
-theorem lessThanOne : ∀ {i : Nat}, i < 1 → i = 0 := by
-  intros i h
-  match i with
-  | zero => exact rfl
-  | succ i' =>
-    cases h with
-    | step h' => cases h'
-
-def getProp : List Prop → Nat → Prop
-  | [], _ => True
-  | a::_, 0 => a
-  | _::as, (i + 1) => getProp as i
-
-theorem cnfAndPos : ∀ (l : List Prop) (i : Nat),  ¬ (andN l) ∨ getProp l i :=
+theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i True :=
   by intros l i
      apply orImplies
      intro h
@@ -178,73 +157,28 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat),  ¬ (andN l) ∨ getProp l i 
        match i with
        | zero => exact And.left h' 
        | succ i' =>
-         simp [getProp]
+         simp [List.getD]
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
 
-theorem smtCong : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
+theorem cong : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
   f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ :=
   by intros A B f₁ f₂ t₁ t₂ h₁ h₂
      rewrite [h₁, h₂]
      exact rfl
 
-def getGroupOrPrefixGoal : Expr → Nat → Expr
-| e, n => let props := collectPropsInOrChain e
-          let left := createOrChain (take n props)
-          let right := createOrChain (drop n props)
-          app (app (mkConst `Or) left) right
-
-syntax (name := groupOrPrefix) "groupOrPrefix" term "," term "," ident : tactic
-
--- supposed to be used by other rules
-@[tactic groupOrPrefix] def evalGroupOrPrefix : Tactic := fun stx => withMainContext do
-  let hyp ← Tactic.elabTerm stx[1] none
-  let prefLen ← 
-    match ← getNatLit? <$> Tactic.elabTerm stx[3] none with
-    | Option.some i => pure i
-    | Option.none   => throwError "[groupOrPrefix]: second argument must be a nat lit"
-  let type ← Meta.inferType hyp
-  let l := getLength type
-  if prefLen > 1 && prefLen < l then
-    let mvarId ← getMainGoal
-    Meta.withMVarContext mvarId do
-      let name := stx[5].getId
-      let newTerm := getGroupOrPrefixGoal type prefLen
-      let p ← Meta.mkFreshExprMVar newTerm MetavarKind.syntheticOpaque name
-      let (_, mvarIdNew) ← Meta.intro1P $ ← Meta.assert mvarId name newTerm p
-      replaceMainGoal [p.mvarId!, mvarIdNew]
-    for t in reverse (getCongAssoc (prefLen - 1) `orAssocDir) do
-      evalTactic  (← `(tactic| apply $t))
-    Tactic.closeMainGoal hyp
-  else throwError "[groupOrPrefix]: prefix length must be > 1 and < size of or-chain"
-
-syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
-
--- supposed to be used alone
-@[tactic liftOrNToImp] def evalLiftOrNToImp : Tactic :=
-  fun stx => withMainContext do
-    -- TODO: don't repeat this
-    let prefLen ← 
-      match ← getNatLit? <$> Tactic.elabTerm stx[3] none with
-      | Option.some i => pure i
-      | Option.none   => throwError "[liftNOrToImp]: second argument must be a nat lit"
-    let tstx₁ : Term := ⟨stx[1]⟩
-    let tstx₃ : Term := ⟨stx[3]⟩
-    let fname1 ← mkIdent <$> mkFreshId
-    let hyp ← inferType (← Tactic.elabTerm stx[1] none)
-    let _ ← evalTactic (← `(tactic| groupOrPrefix $tstx₁, $tstx₃, $fname1))
-    let fname2 ← mkIdent <$> mkFreshId
-    let _ ← evalTactic (← `(tactic| intros $fname2))
-    let _ ← evalTactic (← `(tactic| apply orImplies₃ $fname1))
-    let li := listExpr (collectNOrNegArgs hyp prefLen) (Expr.sort Level.zero)
-    withMainContext do
-      let ctx ← getLCtx
-      let a := (ctx.findFromUserName? fname2.getId).get!.toExpr
-      let u : Expr := mkApp (mkApp (mkConst `deMorgan₂) li) a
-      Tactic.closeMainGoal u
-
-theorem eqResolve {P Q : Prop} : P → P = Q → Q := by
+theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by
   intros h₁ h₂
   rewrite [← h₂]
   exact h₁
 
+theorem dupOr {P Q : Prop} : P ∨ P ∨ Q → P ∨ Q := λ h =>
+  match h with
+  | Or.inl p          => Or.inl p
+  | Or.inr (Or.inl p) => Or.inl p
+  | Or.inr (Or.inr q) => Or.inr q
+
+theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
+  match h with
+  | Or.inl p => p
+  | Or.inr p => p
