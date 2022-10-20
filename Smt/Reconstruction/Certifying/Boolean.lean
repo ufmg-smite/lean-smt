@@ -1,5 +1,8 @@
+import Lean
+
 import Smt.Reconstruction.Certifying.Util
 
+open Lean.Elab.Tactic Lean.Meta Lean.Expr Lean.Syntax
 open Nat List Classical
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
@@ -161,11 +164,51 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
 
-theorem smtCong : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
+theorem smtCong₁ : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
   f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ :=
   by intros A B f₁ f₂ t₁ t₂ h₁ h₂
      rewrite [h₁, h₂]
      exact rfl
+
+theorem smtCong₂ : ∀ {B : Type u} {f₁ f₂ : Prop → B} {t₁ t₂ : Prop},
+  f₁ = f₂ → (t₁ ↔ t₂) → f₁ t₁ = f₂ t₂ :=
+  by intros B f₁ f₂ t₁ t₂ h₁ h₂
+     rewrite [h₁, h₂]
+     exact rfl
+
+theorem smtCong₃ : ∀ {A : Type u} {f₁ f₂ : A → Prop} {t₁ t₂ : A},
+  (f₁ = f₂) → (t₁ = t₂) → (f₁ t₁ ↔ f₂ t₂) :=
+  by intros A f₁ f₂ t₁ t₂ h₁ h₂
+     rewrite [h₁, h₂]
+     exact Iff.rfl
+
+theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
+  f₁ = f₂ → (t₁ ↔ t₂) → (f₁ t₁ ↔ f₂ t₂) :=
+  by intros f₁ f₂ t₁ t₂ h₁ h₂
+     rewrite [h₁, h₂]
+     exact Iff.rfl
+
+def isIff : Lean.Expr → Bool
+| app (app (const `Iff ..) _) _ => true
+| _ => false
+
+syntax (name := smtCong) "smtCong" term "," term : tactic
+@[tactic smtCong] def evalSmtCong : Tactic := fun stx =>
+  withMainContext do
+    let goal ← getMainTarget
+    let hyp2 ← elabTerm stx[3] none
+    let hyp2Type ← inferType hyp2
+    let t1: Term := ⟨stx[1]⟩
+    let t3: Term := ⟨stx[3]⟩
+    match isIff goal, isIff hyp2Type with
+    | false, false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
+    | false, true  => evalTactic (← `(tactic| exact smtCong₂ $t1 $t3))
+    | true,  false => evalTactic (← `(tactic| exact smtCong₃ $t1 $t3))
+    | true,  true  => evalTactic (← `(tactic| exact smtCong₄ $t1 $t3))
+
+example {f g : Prop → Prop} {A B : Prop} : f = g → (A ↔ B) → f A = g B := by
+  intros h₁ h₂
+  smtCong h₁, h₂
 
 theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by
   intros h₁ h₂
