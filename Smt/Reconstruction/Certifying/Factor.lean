@@ -45,7 +45,7 @@ def loop (i j n : Nat) (pivot : Expr) (li : List Expr) (nm : Ident) : TacticM Id
       loop i j (n - 1) pivot es step₂
     else loop i (j + 1) n pivot es nm
 
-def factorCore (type : Expr) (source result : Ident) : TacticM Unit :=
+def factorCore (type : Expr) (source : Ident) : TacticM Unit :=
   withMainContext do
     let mut li := collectPropsInOrChain type
     let n := li.length
@@ -59,19 +59,17 @@ def factorCore (type : Expr) (source result : Ident) : TacticM Unit :=
         let e ← getTypeFromName answer.getId
         let t ← instantiateMVars e
         li := collectPropsInOrChain t
-    evalTactic (← `(tactic| have $result := $answer))
+    evalTactic (← `(tactic| exact $answer))
 
-syntax (name := factor) "factor" term "," ident : tactic
+syntax (name := factor) "factor" term  : tactic
 
 @[tactic factor] def evalFactor : Tactic := fun stx =>
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
     let source := ⟨stx[1]⟩
-    let result := ⟨stx[3]⟩
-    factorCore type source result
+    factorCore type source 
 
-example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → True :=
+example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h
-     factor h, bla
-     exact True.intro
+     factor h
