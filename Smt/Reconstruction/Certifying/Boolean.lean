@@ -2,7 +2,7 @@ import Lean
 
 import Smt.Reconstruction.Certifying.Util
 
-open Lean.Elab.Tactic Lean.Meta Lean.Expr Lean.Syntax
+open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
@@ -165,10 +165,7 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
          exact orImplies₂ IH (And.right h')
 
 theorem smtCong₁ : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
-  f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ :=
-  by intros A B f₁ f₂ t₁ t₂ h₁ h₂
-     rewrite [h₁, h₂]
-     exact rfl
+  f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ := congr
 
 theorem smtCong₂ : ∀ {B : Type u} {f₁ f₂ : Prop → B} {t₁ t₂ : Prop},
   f₁ = f₂ → (t₁ ↔ t₂) → f₁ t₁ = f₂ t₂ :=
@@ -188,10 +185,6 @@ theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
      rewrite [h₁, h₂]
      exact Iff.rfl
 
-def isIff : Lean.Expr → Bool
-| app (app (const `Iff ..) _) _ => true
-| _ => false
-
 syntax (name := smtCong) "smtCong" term "," term : tactic
 @[tactic smtCong] def evalSmtCong : Tactic := fun stx =>
   withMainContext do
@@ -205,6 +198,10 @@ syntax (name := smtCong) "smtCong" term "," term : tactic
     | false, true  => evalTactic (← `(tactic| exact smtCong₂ $t1 $t3))
     | true,  false => evalTactic (← `(tactic| exact smtCong₃ $t1 $t3))
     | true,  true  => evalTactic (← `(tactic| exact smtCong₄ $t1 $t3))
+where
+  isIff : Lean.Expr → Bool
+  | app (app (const `Iff ..) _) _ => true
+  | _ => false
 
 example {f g : Prop → Prop} {A B : Prop} : f = g → (A ↔ B) → f A = g B := by
   intros h₁ h₂
@@ -225,3 +222,35 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
   match h with
   | Or.inl p => p
   | Or.inr p => p
+
+syntax (name := andElim) "andElim" term "," term : tactic
+@[tactic andElim] def evalAndElim : Tactic := fun stx =>
+  withMainContext do
+    let i ← stxToNat ⟨stx[3]⟩
+    let proof := getProof i stx[1]
+    let proof := Syntax.mkApp (mkIdent `And.left) #[⟨proof⟩]
+    evalTactic (← `(tactic| exact $proof))
+where
+  getProof (i : Nat) (hyp : Syntax) : Syntax :=
+    match i with
+    | 0 => hyp
+    | (i + 1) =>
+      Syntax.mkApp (mkIdent `And.right) #[⟨getProof i hyp⟩]
+
+theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
+
+theorem trueIntro : ∀ {A : Prop}, A → Iff A True :=
+  λ a => Iff.intro (λ _ => True.intro) (λ _ => a)
+theorem trueIntro₂ : ∀ {A : Prop}, A → Iff True A :=
+  λ a => Iff.intro (λ _ => a) (λ _ => True.intro)
+
+theorem trueElim : ∀ {A : Prop}, Iff A True → A := λ h => h.mpr True.intro
+theorem trueElim₂ : ∀ {A : Prop}, Iff True A → A := λ h => h.mp True.intro
+
+theorem falseIntro  : ∀ {A : Prop}, ¬ A → Iff A False :=
+  λ na => Iff.intro (λ a => absurd a na) (λ ff => False.elim ff)
+theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → Iff False A :=
+  λ na => Iff.intro (λ ff => False.elim ff) (λ a => absurd a na)
+
+theorem falseElim  : ∀ {A : Prop}, Iff A False → ¬ A := Iff.mp
+theorem falseElim₂ : ∀ {A : Prop}, Iff False A → ¬ A := Iff.mpr
