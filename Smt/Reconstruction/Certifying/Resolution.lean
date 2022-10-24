@@ -25,12 +25,23 @@ theorem resolution_thm₂ : ∀ {A C: Prop}, A → (¬ A ∨ C) → C := λ a or
   | Or.inl na => False.elim (na a)
   | Or.inr c  => c
 
+theorem flipped_resolution_thm₂ : ∀ {A C : Prop}, ¬ A → (A ∨ C) → C := λ na orac =>
+  match orac with
+  | Or.inl a => False.elim (na a)
+  | Or.inr c => c
+
 theorem resolution_thm₃ : ∀ {A B: Prop}, (A ∨ B) → ¬ A → B := λ orab na =>
   match orab with
   | Or.inl a => False.elim (na a)
   | Or.inr b => b
 
+theorem flipped_resolution_thm₃ : ∀ {A B : Prop}, (¬ A ∨ B) → A → B := λ ornab a =>
+  match ornab with
+  | Or.inl na => False.elim (na a)
+  | Or.inr b => b
+
 theorem resolution_thm₄ : ∀ {A : Prop}, A → ¬ A → False := λ a na => na a
+theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip resolution_thm₄
 
 def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bool) : TacticM Unit := do
   let notPivot : Term := Syntax.mkApp (mkIdent `Not) #[pivotTerm]
