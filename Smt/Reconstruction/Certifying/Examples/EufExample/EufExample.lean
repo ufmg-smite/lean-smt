@@ -25,10 +25,10 @@ theorem euf : (a = b) → (c = d) → p₁ ∧ True → (¬ p₁) ∨ (p₂ ∧ 
           let lean_s1 : f = f := rfl
           have lean_s2 : b = a := Eq.symm lean_a5
           have lean_s3 : (a = b) := Eq.symm lean_s2
-          let lean_s4 := smtCong lean_s1 lean_s3
+          let lean_s4 := by smtCong lean_s1, lean_s3
           have lean_s5 : d = c := Eq.symm lean_a6
           have lean_s6 : (c = d) := Eq.symm lean_s5
-          have lean_s7 : (f a c = f b d) := smtCong lean_s4 lean_s6
+          have lean_s7 : (f a c = f b d) := by smtCong lean_s4, lean_s6
           show (f a c = f b d) from lean_s7
         )
       ))

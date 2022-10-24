@@ -45,15 +45,24 @@ theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip
 
 def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bool) : TacticM Unit := do
   let notPivot : Term := Syntax.mkApp (mkIdent `Not) #[pivotTerm]
-  let mut resolvantOne     ← elabTerm pivotTerm none
+  let mut resolvantOne  ← elabTerm pivotTerm none
   let mut resolvantTwo  ← elabTerm notPivot none
   let firstHypType  ← inferType (← elabTerm firstHyp none)
   let secondHypType ← inferType (← elabTerm secondHyp none)
 
+  let mut len₁ := getLength firstHypType
+  if Option.isNone (getIndex resolvantOne firstHypType) then
+    len₁ := len₁ - (getLength resolvantOne) + 1
+  let mut len₂ := getLength secondHypType
+  let prefixLength := len₁ - 2
+
   if flipped then
     let tmp      := resolvantOne
-    resolvantOne    := resolvantTwo
+    resolvantOne := resolvantTwo
     resolvantTwo := tmp
+    let tmp₂ := len₁
+    len₁ := len₂
+    len₂ := tmp₂
 
   let fident1 ← mkIdent <$> mkFreshId
   let fident2 ← mkIdent <$> mkFreshId
@@ -61,20 +70,15 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   pullCore resolvantOne firstHypType  firstHyp  fident1
   pullCore resolvantTwo secondHypType secondHyp fident2
 
-  let mut len₁ := getLength firstHypType
-  if Option.isNone (getIndex resolvantOne firstHypType) then
-    len₁ := len₁ - (getLength resolvantOne) + 1
-  let len₂ := getLength secondHypType
-
   if lenGoal > 2 then
-    for s in getCongAssoc (len₁ - 2) `orAssocConv do
+    for s in getCongAssoc prefixLength `orAssocConv do
       evalTactic (← `(tactic| apply $s))
       logInfo m!"....apply {s}"
       printGoal
 
   let thmName : Name := 
     match Nat.blt 1 len₁, Nat.blt 1 len₂ with
-    | true, true   => if flipped then `flipped_resolution_thm else `resolution_thm
+    | true, true   => if flipped then `flipped_resolution_thm  else `resolution_thm
     | true, false  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₂
     | false, true  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₃
     | false, false => if flipped then `flipped_resolution_thm₄ else `resolution_thm₄
@@ -105,6 +109,9 @@ example : A ∨ B ∨ C ∨ D →  E ∨ F ∨ ¬ B ∨ G → E ∨ F ∨ G ∨ 
   intros h₁ h₂
   R2 h₂, h₁, B
 
+
 example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
   intros h₁ h₂
   R2 h₁, h₂, A
+
+example : Eq @Eq @Eq := rfl
