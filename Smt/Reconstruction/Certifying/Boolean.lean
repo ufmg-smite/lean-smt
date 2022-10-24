@@ -185,25 +185,38 @@ theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
      rewrite [h₁, h₂]
      exact Iff.rfl
 
+#check Expr
+
 syntax (name := smtCong) "smtCong" term "," term : tactic
 @[tactic smtCong] def evalSmtCong : Tactic := fun stx =>
   withMainContext do
-    let goal ← getMainTarget
     let hyp2 ← elabTerm stx[3] none
     let hyp2Type ← inferType hyp2
     let t1: Term := ⟨stx[1]⟩
     let t3: Term := ⟨stx[3]⟩
-    match isIff goal, isIff hyp2Type with
+    let e₁ ← elabTerm t1 none
+    let t₁ ← inferType e₁
+    logInfo m!"t₁ = {t₁}"
+    let d ← getFunctionCounterDomain t₁
+    let isProp := d == sort Level.zero
+    match isProp, isIff hyp2Type with
     | false, false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
     | false, true  => evalTactic (← `(tactic| exact smtCong₂ $t1 $t3))
     | true,  false => evalTactic (← `(tactic| exact smtCong₃ $t1 $t3))
     | true,  true  => evalTactic (← `(tactic| exact smtCong₄ $t1 $t3))
 where
-  isIff : Lean.Expr → Bool
+  isIff : Expr → Bool
   | app (app (const `Iff ..) _) _ => true
   | _ => false
+  getFunctionCounterDomain : Expr → TacticM Expr
+  | app (app _ e₁) _ => do
+    let t₁ ← inferType e₁
+    logInfo m!"function type = {t₁}"
+    let d₁ := bindingBody! t₁
+    return d₁
+  | _ => throwError "unexpected type in smtCong"
 
-example {f g : Prop → Prop} {A B : Prop} : f = g → (A ↔ B) → f A = g B := by
+example {f g : Prop → Prop} {A B : Prop} : f = g → (A ↔ B) → (f A ↔ g B) := by
   intros h₁ h₂
   smtCong h₁, h₂
 
@@ -254,3 +267,17 @@ theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → Iff False A :=
 
 theorem falseElim  : ∀ {A : Prop}, Iff A False → ¬ A := Iff.mp
 theorem falseElim₂ : ∀ {A : Prop}, Iff False A → ¬ A := Iff.mpr
+
+
+syntax (name := logType) "logType" : tactic
+@[tactic logType] def evalLogType : Tactic := λ stx =>
+  withMainContext do
+    let t ← getMainTarget
+    let _ ← instantiateMVars t
+    logInfo t
+
+example : True := by
+  let z :=
+    by logType
+       exact 2
+  exact True.intro
