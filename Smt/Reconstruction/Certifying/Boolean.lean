@@ -5,9 +5,26 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
+
+noncomputable def nonCompIte (P : Prop) (a b : α) : α := if P then a else b
+
+theorem iteEquiv : ∀ {P : Prop} {a b : α}, ite P a b = nonCompIte P a b := by
+  intros P a b
+  exact rfl
+
+/- def branch' {P : Prop} {a b : P} : P := -/
+/-   match em P with -/
+/-   | Or.inl _  => a -/
+/-   | Or.inr _  => b -/
+
+/- def branch {c : Prop} {a b : Nat} : Nat := -/
+/-   match em c with -/
+/-   | Or.inl _ => a -/
+/-   | Or.inr _ => b -/
+
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
-  cases Classical.em P with
+  cases em P with
   | inl p  => exact p
   | inr np => apply False.elim
               apply h
@@ -16,7 +33,7 @@ theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
 
 theorem notImplies2 : ∀ {P Q : Prop}, ¬ (P → Q) → ¬ Q := by
   intros P Q h
-  cases Classical.em Q with
+  cases em Q with
   | inl q  => exact False.elim (h (λ _ => q))
   | inr nq => exact nq
 
@@ -185,8 +202,6 @@ theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
      rewrite [h₁, h₂]
      exact Iff.rfl
 
-#check Expr
-
 syntax (name := smtCong) "smtCong" term "," term : tactic
 @[tactic smtCong] def evalSmtCong : Tactic := fun stx =>
   withMainContext do
@@ -195,8 +210,7 @@ syntax (name := smtCong) "smtCong" term "," term : tactic
     let t1: Term := ⟨stx[1]⟩
     let t3: Term := ⟨stx[3]⟩
     let e₁ ← elabTerm t1 none
-    let t₁ ← inferType e₁
-    logInfo m!"t₁ = {t₁}"
+    let t₁ ← instantiateMVars (← inferType e₁)
     let d ← getFunctionCounterDomain t₁
     let isProp := d == sort Level.zero
     match isProp, isIff hyp2Type with
@@ -211,14 +225,9 @@ where
   getFunctionCounterDomain : Expr → TacticM Expr
   | app (app _ e₁) _ => do
     let t₁ ← inferType e₁
-    logInfo m!"function type = {t₁}"
     let d₁ := bindingBody! t₁
     return d₁
   | _ => throwError "unexpected type in smtCong"
-
-example {f g : Prop → Prop} {A B : Prop} : f = g → (A ↔ B) → (f A ↔ g B) := by
-  intros h₁ h₂
-  smtCong h₁, h₂
 
 theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by
   intros h₁ h₂
@@ -267,17 +276,3 @@ theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → Iff False A :=
 
 theorem falseElim  : ∀ {A : Prop}, Iff A False → ¬ A := Iff.mp
 theorem falseElim₂ : ∀ {A : Prop}, Iff False A → ¬ A := Iff.mpr
-
-
-syntax (name := logType) "logType" : tactic
-@[tactic logType] def evalLogType : Tactic := λ stx =>
-  withMainContext do
-    let t ← getMainTarget
-    let _ ← instantiateMVars t
-    logInfo t
-
-example : True := by
-  let z :=
-    by logType
-       exact 2
-  exact True.intro
