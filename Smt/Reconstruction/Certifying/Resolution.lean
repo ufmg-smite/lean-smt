@@ -79,8 +79,8 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   let thmName : Name := 
     match Nat.blt 1 len₁, Nat.blt 1 len₂ with
     | true, true   => if flipped then `flipped_resolution_thm  else `resolution_thm
-    | true, false  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₂
-    | false, true  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₃
+    | true, false  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₃
+    | false, true  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₂
     | false, false => if flipped then `flipped_resolution_thm₄ else `resolution_thm₄
 
   let thm := mkIdent thmName
