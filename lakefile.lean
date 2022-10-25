@@ -8,6 +8,10 @@ package smt where
 @[defaultTarget]
 lean_lib Smt
 
+lean_lib Certifying {
+  srcDir := "./Smt/Reconstruction/"
+}
+
 open Std
 open System
 
@@ -60,6 +64,7 @@ script test do
       -- Note: this only works on Unix since it needs the shared library `libSmt`
       -- to also load its transitive dependencies.
       let dynlib := (← findModule? `Smt).get!.dynlibFile
+      IO.println s!"tomaz dynlib: {lean.toString} {dynlib} {test.toString}"
       let out ← IO.Process.output {
         cmd := lean.toString
         args := #[s!"--load-dynlib={dynlib}", test.toString],
