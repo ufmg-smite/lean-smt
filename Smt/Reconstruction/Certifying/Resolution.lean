@@ -4,6 +4,9 @@ import Smt.Reconstruction.Certifying.Pull
 
 open Lean Elab.Tactic Meta
 
+#check List
+#check List.erase
+
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
   intros A B C h₁ h₂
   cases h₁ with
@@ -50,9 +53,11 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   let firstHypType  ← inferType (← elabTerm firstHyp none)
   let secondHypType ← inferType (← elabTerm secondHyp none)
 
-  let mut len₁ := getLength firstHypType
-  if Option.isNone (getIndex resolvantOne firstHypType) then
-    len₁ := len₁ - (getLength resolvantOne) + 1
+  let mut len₁ :=
+    match getIndex resolvantOne firstHypType with
+    | none   => getLength firstHypType - (getLength resolvantOne) + 1
+    | some _ => getLength firstHypType
+
   let mut len₂ := getLength secondHypType
   let prefixLength := len₁ - 2
 
@@ -66,10 +71,10 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
 
   let fident1 ← mkIdent <$> mkFreshId
   let fident2 ← mkIdent <$> mkFreshId
-  let lenGoal ← getLength <$> getMainTarget
   pullCore resolvantOne firstHypType  firstHyp  fident1
   pullCore resolvantTwo secondHypType secondHyp fident2
 
+  let lenGoal := len₁ + len₂ - 2
   if lenGoal > 2 then
     for s in getCongAssoc prefixLength `orAssocConv do
       evalTactic (← `(tactic| apply $s))
