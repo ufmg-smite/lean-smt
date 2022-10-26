@@ -11,4 +11,4 @@ theorem mpCvc5 (P Q : Prop) : ¬ (P → (P → Q) → Q) → False :=
     have lean_s9     := notImplies2 lean_s0
     contradiction lean_s6 lean_s9
 
-theorem mp : ∀ (P Q : Prop), P → (P → Q) → Q := λ P Q => doubleNeg (mpCvc5 P Q)
+theorem mp : ∀ (P Q : Prop), P → (P → Q) → Q := λ P Q => notNotElim (mpCvc5 P Q)

@@ -5,20 +5,6 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
-/- theorem iteEquiv : ∀ {P : Prop} {a b : α}, ite P a b = nonCompIte P a b := by -/
-/-   intros P a b -/
-/-   exact rfl -/
-
-/- def branch' {P : Prop} {a b : P} : P := -/
-/-   match em P with -/
-/-   | Or.inl _  => a -/
-/-   | Or.inr _  => b -/
-
-/- def branch {c : Prop} {a b : Nat} : Nat := -/
-/-   match em c with -/
-/-   | Or.inl _ => a -/
-/-   | Or.inr _ => b -/
-
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
   cases em P with
@@ -115,13 +101,13 @@ theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
                                     | Or.inl pp => False.elim (npp pp) 
                                     | Or.inr pq => False.elim (npq pq)
 
-theorem doubleNeg : ∀ {p : Prop}, ¬ ¬ p → p :=
+theorem notNotElim : ∀ {p : Prop}, ¬ ¬ p → p :=
   by intros p h
      exact match em p with
      | Or.inl pp => pp
      | Or.inr np => False.elim (h (λ p => np p))
 
-theorem doubleNeg₂ : ∀ {p : Prop}, p → ¬ ¬ p := λ p np => np p
+theorem notNotIntro : ∀ {p : Prop}, p → ¬ ¬ p := λ p np => np p
  
 theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l := 
   by intros l h
@@ -137,18 +123,18 @@ theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
                        simp [orN] at t₂
                        have ih := @deMorgan (h₂::t) t₂
                        simp [andN]
-                       have t₁' := doubleNeg t₁
+                       have t₁' := notNotElim t₁
                        exact ⟨ t₁', ih ⟩
  
 theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) :=
   by intros l h
      exact match l with
      | [] => by simp [orN, notList]
-     | [t] => by simp [orN, notList]; simp [andN] at h; exact doubleNeg₂ h
+     | [t] => by simp [orN, notList]; simp [andN] at h; exact notNotIntro h
      | h₁::h₂::t => by simp [orN, notList, map]
                        simp [andN] at h
                        apply deMorganSmall₂
-                       have nnh₁ := doubleNeg₂ (And.left h)
+                       have nnh₁ := notNotIntro (And.left h)
                        have ih := @deMorgan₂ (h₂::t) (And.right h)
                        exact ⟨nnh₁, ih⟩
 
@@ -163,7 +149,7 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
   by intros l i
      apply orImplies
      intro h
-     have h' := doubleNeg h
+     have h' := notNotElim h
      match l with
      | [] => exact True.intro
      | [p] =>
@@ -260,8 +246,6 @@ where
 example : A ∧ B ∧ C ∧ D ∧ E → D := by
   intro h
   andElim h, 3
-
-example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := λ h c => h (Or.inr (Or.inr (Or.inl c)))
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx =>

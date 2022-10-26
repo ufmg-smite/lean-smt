@@ -4,9 +4,6 @@ import Smt.Reconstruction.Certifying.Pull
 
 open Lean Elab.Tactic Meta
 
-#check List
-#check List.erase
-
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
   intros A B C h₁ h₂
   cases h₁ with
