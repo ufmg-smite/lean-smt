@@ -5,12 +5,9 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
-
-noncomputable def nonCompIte (P : Prop) (a b : α) : α := if P then a else b
-
-theorem iteEquiv : ∀ {P : Prop} {a b : α}, ite P a b = nonCompIte P a b := by
-  intros P a b
-  exact rfl
+/- theorem iteEquiv : ∀ {P : Prop} {a b : α}, ite P a b = nonCompIte P a b := by -/
+/-   intros P a b -/
+/-   exact rfl -/
 
 /- def branch' {P : Prop} {a b : P} : P := -/
 /-   match em P with -/
@@ -251,13 +248,45 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let i ← stxToNat ⟨stx[3]⟩
     let proof := getProof i stx[1]
     let proof := Syntax.mkApp (mkIdent `And.left) #[⟨proof⟩]
-    evalTactic (← `(tactic| exact $proof))
+    let proofE ← elabTerm proof none
+    closeMainGoal proofE
 where
   getProof (i : Nat) (hyp : Syntax) : Syntax :=
     match i with
     | 0 => hyp
     | (i + 1) =>
       Syntax.mkApp (mkIdent `And.right) #[⟨getProof i hyp⟩]
+
+example : A ∧ B ∧ C ∧ D ∧ E → D := by
+  intro h
+  andElim h, 3
+
+example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := λ h c => h (Or.inr (Or.inr (Or.inl c)))
+
+syntax (name := notOrElim) "notOrElim" term "," term : tactic
+@[tactic notOrElim] def evalNotOrElim : Tactic := fun stx =>
+  withMainContext do
+    let i ← stxToNat ⟨stx[3]⟩
+    let hyp ← inferType (← elabTerm stx[1] none)
+    let orChain := notExpr hyp
+    let proof: Syntax ←
+      match getLength orChain == i + 1 with
+      | true => `(x)
+      | false => `(Or.inl x)
+    let proof: Syntax := getProof i proof
+    let proof := Syntax.mkApp ⟨stx[1]⟩ #[⟨proof⟩]
+    let proof ← `(fun x => $proof)
+    let proofE ← elabTerm proof none
+    closeMainGoal proofE
+where
+  getProof (i : Nat) (hyp : Syntax) : Syntax :=
+    match i with
+    | 0 => hyp
+    | i + 1 => Syntax.mkApp (mkIdent `Or.inr) #[⟨getProof i hyp⟩]
+
+example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
+  intro h
+  notOrElim h, 2
 
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
