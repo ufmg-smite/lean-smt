@@ -20,6 +20,60 @@ theorem notImplies2 : ∀ {P Q : Prop}, ¬ (P → Q) → ¬ Q := by
   | inl q  => exact False.elim (h (λ _ => q))
   | inr nq => exact nq
 
+theorem equivElim1 : ∀ {P Q : Prop}, P = Q → ¬ P ∨ Q := by
+  intros P Q h
+  rewrite [h]
+  cases em Q with
+  | inl q  => exact Or.inr q
+  | inr nq => exact Or.inl nq
+
+theorem equivElim2 : ∀ {P Q : Prop}, P = Q → P ∨ ¬ Q := by
+  intros P Q h
+  rewrite [h]
+  cases em Q with
+  | inl q  => exact Or.inl q
+  | inr nq => exact Or.inr nq
+
+theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ P = Q → P ∨ Q := by
+  intros P Q h
+  admit
+
+theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ P = Q → ¬ P ∨ ¬ Q := by
+  intros P Q h
+  admit
+
+theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
+  intros c a b h
+  cases em c with
+  | inl hc => have r: ite c a b = a := if_pos hc
+              rewrite [r] at h
+              exact Or.inr h
+  | inr hnc => exact Or.inl hnc
+
+theorem iteElim2 : ∀ {c a b : Prop}, ite c a b → c ∨ b := by
+  intros c a b h
+  cases em c with
+  | inl hc => exact Or.inl hc
+  | inr hnc => have r: ite c a b = b := if_neg hnc
+               rewrite [r] at h
+               exact Or.inr h
+
+theorem notIteElim1 : ∀ {c a b : Prop}, ¬ ite c a b → ¬ c ∨ ¬ a := by
+  intros c a b h
+  cases em c with
+  | inl hc  => have r : ite c a b = a := if_pos hc
+               rewrite [r] at h
+               exact Or.inr h
+  | inr hnc => exact Or.inl hnc
+
+theorem notIteElim2 : ∀ {c a b : Prop}, ¬ ite c a b → c ∨ ¬ b := by
+  intros c a b h
+  cases em c with
+  | inl hc => exact Or.inl hc
+  | inr hnc => have r : ite c a b = b := if_neg hnc
+               rewrite [r] at h
+               exact Or.inr h
+
 theorem contradiction : ∀ {P : Prop}, P → ¬ P → False := λ p np => np p
 
 theorem orComm : ∀ {P Q : Prop}, P ∨ Q → Q ∨ P := by
@@ -271,6 +325,14 @@ where
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
+
+
+
+
+
+
+
+
 
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
