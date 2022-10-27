@@ -34,8 +34,6 @@ theorem equivElim2 : ∀ {P Q : Prop}, P = Q → P ∨ ¬ Q := by
   | inl q  => exact Or.inl q
   | inr nq => exact Or.inr nq
 
--- these two are impossible to prove
--- we have to use another definition of equality
 theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Iff P Q) → P ∨ Q := by
   intros P Q h
   exact match em P, em Q with
@@ -52,8 +50,6 @@ theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Iff P Q) → ¬ P ∨ ¬ Q := by
   | Or.inl p, Or.inl q =>
     absurd (Iff.intro (λ _ => q) (λ _ => p)) h
 
--- here we restrict the counter domain of ite to just Props
--- is that ok?
 theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
   intros c a b h
   cases em c with
