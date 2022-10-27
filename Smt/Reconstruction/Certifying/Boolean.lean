@@ -34,14 +34,26 @@ theorem equivElim2 : ∀ {P Q : Prop}, P = Q → P ∨ ¬ Q := by
   | inl q  => exact Or.inl q
   | inr nq => exact Or.inr nq
 
-theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ P = Q → P ∨ Q := by
+-- these two are impossible to prove
+-- we have to use another definition of equality
+theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Iff P Q) → P ∨ Q := by
   intros P Q h
-  admit
+  exact match em P, em Q with
+  | Or.inl p, _ => Or.inl p
+  | _, Or.inl q => Or.inr q
+  | Or.inr np, Or.inr nq =>
+    absurd (Iff.intro (λ p => absurd p np) (λ q => absurd q nq)) h
 
-theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ P = Q → ¬ P ∨ ¬ Q := by
+theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Iff P Q) → ¬ P ∨ ¬ Q := by
   intros P Q h
-  admit
+  exact match em P, em Q with
+  | Or.inr np, _ => Or.inl np
+  | _, Or.inr nq => Or.inr nq
+  | Or.inl p, Or.inl q =>
+    absurd (Iff.intro (λ _ => q) (λ _ => p)) h
 
+-- here we restrict the counter domain of ite to just Props
+-- is that ok?
 theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
   intros c a b h
   cases em c with
@@ -192,6 +204,20 @@ theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) :=
                        have ih := @deMorgan₂ (h₂::t) (And.right h)
                        exact ⟨nnh₁, ih⟩
 
+theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notList l) :=
+  by intros l h
+     exact match l with
+     | [] => True.intro
+     | [t] => by simp [andN, notList, map]
+                 simp [orN, Not] at h
+                 exact h
+     | h₁::h₂::t => by simp [orN, Not] at h
+                       have ⟨t₁, t₂⟩ := deMorganSmall h
+                       simp [orN, Not] at t₂
+                       simp [andN, notList, map]
+                       have ih := @deMorgan₃ (h₂::t) t₂
+                       exact ⟨t₁, ih⟩
+
 theorem cnfAndNeg : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
   by intro l
      apply orComm
@@ -212,11 +238,33 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
        | _ + 1 => exact True.intro
      | p₁::p₂::ps =>
        match i with
-       | zero => exact And.left h' 
-       | succ i' =>
-         simp [List.getD]
+       | 0 => exact And.left h' 
+       | i' + 1 =>
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
+
+theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i False := by
+  intros l i
+  apply orImplies
+  intros orNl p
+  have andNotl := @deMorgan₃ l orNl
+  match l with
+  | [] => exact False.elim p
+  | [h] =>
+    match i with
+    | 0 => exact absurd p orNl
+    | _ + 1 => exact False.elim p
+  | h₁::h₂::hs =>
+    match i with
+    | 0 => have ⟨nh₁p, _⟩ := andNotl
+           exact absurd p nh₁p
+    | i' + 1 =>
+      have IH := cnfOrNeg (h₂::hs) i'
+      have orNTail := orImplies₂ (orComm IH) p
+      have ⟨_, notOrNTail⟩ := deMorganSmall orNl
+      exact absurd orNTail notOrNTail
+
+theorem cnfOrPos : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (em (orN l))
 
 theorem smtCong₁ : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
   f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ := congr
@@ -325,14 +373,6 @@ where
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
-
-
-
-
-
-
-
-
 
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
