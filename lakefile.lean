@@ -64,7 +64,7 @@ script test do
       -- Note: this only works on Unix since it needs the shared library `libSmt`
       -- to also load its transitive dependencies.
       let dynlib := (← findModule? `Smt).get!.dynlibFile
-      IO.println s!"tomaz dynlib: {lean.toString} {dynlib} {test.toString}"
+      IO.println s!"leanPath.toString = {leanPath.toString}"
       let out ← IO.Process.output {
         cmd := lean.toString
         args := #[s!"--load-dynlib={dynlib}", test.toString],
