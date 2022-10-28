@@ -301,7 +301,6 @@ theorem cnfEquivPos2 : ∀ (p q : Prop), ¬ (Iff p q) ∨ p ∨ ¬ q := by
   apply orImplies
   exact equivElim2 ∘ notNotElim
 
-
 theorem cnfEquivNeg1 : ∀ (p q : Prop), Iff p q ∨ p ∨ q := by
   intros _ _
   apply orImplies
@@ -311,8 +310,6 @@ theorem cnfEquivNeg2 : ∀ (p q : Prop), Iff p q ∨ ¬ p ∨ ¬ q := by
   intros _ _
   apply orImplies
   exact notEquivElim2
-
-#check if_pos
 
 theorem cnfItePos1 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ ¬ c ∨ a := by
   intros c a b
@@ -502,6 +499,19 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
                     have IH := notAnd (p₂::ps) hnAndTail
                     exact Or.inr IH
 
+theorem liftOrToNeg : ∀ (l : List Prop), orN (notList l) → ¬ andN l := by
+  intros l h
+  match l with
+  | [] => exact False.elim h
+  | [_] => exact h
+  | p₁::p₂::ps =>
+    simp [orN, notList, map] at h
+    simp [andN]
+    intro ⟨hp₁, andTail⟩
+    match h with
+    | Or.inl hnp₁      => exact absurd hp₁ hnp₁
+    | Or.inr orNotTail => have IH := liftOrToNeg (p₂::ps) orNotTail
+                          exact absurd andTail IH
 
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
