@@ -19,10 +19,10 @@ def groupOrPrefixCore (hyp type : Expr) (prefLen : Nat) (name : Name)
     let l := getLength type
     if prefLen > 1 && prefLen < l then
       let mvarId ← getMainGoal
-      Meta.withMVarContext mvarId do
+      MVarId.withContext mvarId do
         let newTerm := getGroupOrPrefixGoal type prefLen
         let p ← Meta.mkFreshExprMVar newTerm MetavarKind.syntheticOpaque name
-        let (_, mvarIdNew) ← Meta.intro1P $ ← Meta.assert mvarId name newTerm p
+        let (_, mvarIdNew) ← MVarId.intro1P $ ← MVarId.assert mvarId name newTerm p
         replaceMainGoal [p.mvarId!, mvarIdNew]
       for t in reverse (getCongAssoc (prefLen - 1) `orAssocDir) do
         evalTactic  (← `(tactic| apply $t))

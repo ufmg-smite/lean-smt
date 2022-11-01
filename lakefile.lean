@@ -8,6 +8,10 @@ package smt where
 @[defaultTarget]
 lean_lib Smt
 
+lean_lib Certifying {
+  srcDir := "./Smt/Reconstruction/"
+}
+
 open Std
 open System
 
