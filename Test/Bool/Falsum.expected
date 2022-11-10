@@ -6,7 +6,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬True ↔ False) → False
+  (¬False ↔ True) → False
 with
   ¬¬(!false) = true
 ⊢ ¬¬(!false) = true

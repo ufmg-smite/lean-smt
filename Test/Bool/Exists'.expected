@@ -9,7 +9,7 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_post_processor.cpp:512
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:512
 Check failure
 
  k == kind::FORALL || k == kind::LAMBDA
