@@ -81,12 +81,12 @@ where
     return 0
 
 /--
-Run tests.
+Run update.
 
 USAGE:
   lake script run update
 
-Update expected output for tests.
+Update expected output of tests.
 -/
 script update do
   let lean ← getLean
