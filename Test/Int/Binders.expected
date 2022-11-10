@@ -1,24 +1,26 @@
 goal: curryAdd a b = curryAdd b a
 
 query:
-(declare-const a Int)
-(declare-const b Int)
 (define-fun curryAdd ((a._@.Test.Int.Binders._hyg.3 Int) (a._@.Test.Int.Binders._hyg.5 Int)) Int (+ a._@.Test.Int.Binders._hyg.3 a._@.Test.Int.Binders._hyg.5))
+(declare-const b Int)
+(declare-const a Int)
 (assert (not (= (curryAdd a b) (curryAdd b a))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/Binders.lean:5:0: warning: declaration uses 'sorry'
 goal: partCurryAdd a b = partCurryAdd b a
 
 query:
-(declare-const a Int)
+(define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.37 Int)) Int (+ a a._@.Test.Int.Binders._hyg.37))
 (declare-const b Int)
-(define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.34 Int)) Int (+ a a._@.Test.Int.Binders._hyg.34))
+(declare-const a Int)
 (assert (not (= (partCurryAdd a b) (partCurryAdd b a))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
 goal: partCurryAdd' a b = partCurryAdd' b a
 
@@ -30,15 +32,17 @@ query:
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
 goal: mismatchNamesAdd a b = mismatchNamesAdd b a
 
 query:
 (define-fun mismatchNamesAdd ((a Int) (b Int)) Int (+ a b))
-(declare-const a Int)
 (declare-const b Int)
+(declare-const a Int)
 (assert (not (= (mismatchNamesAdd a b) (mismatchNamesAdd b a))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/Binders.lean:25:0: warning: declaration uses 'sorry'

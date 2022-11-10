@@ -3,21 +3,23 @@ goal: 0 - Nat.zero = 0
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.124 Nat)) (=> (>= _uniq.124 0) (forall ((_uniq.125 Nat)) (=> (>= _uniq.125 0) (>= (Nat.sub _uniq.124 _uniq.125) 0))))))
+(assert (forall ((_uniq.185 Nat)) (=> (>= _uniq.185 0) (forall ((_uniq.186 Nat)) (=> (>= _uniq.186 0) (>= (Nat.sub _uniq.185 _uniq.186) 0))))))
 (assert (not (= (Nat.sub 0 0) 0)))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 goal: 0 - Nat.succ x = 0
 
 query:
 (define-sort Nat () Int)
+(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(assert (forall ((_uniq.196 Nat)) (=> (>= _uniq.196 0) (forall ((_uniq.197 Nat)) (=> (>= _uniq.197 0) (>= (Nat.sub _uniq.196 _uniq.197) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
-(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.135 Nat)) (=> (>= _uniq.135 0) (forall ((_uniq.136 Nat)) (=> (>= _uniq.136 0) (>= (Nat.sub _uniq.135 _uniq.136) 0))))))
-(assert (not (= (Nat.sub 0 (+ x 1)) 0)))
 (assert (= (Nat.sub 0 x) 0))
+(assert (not (= (Nat.sub 0 (+ x 1)) 0)))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof

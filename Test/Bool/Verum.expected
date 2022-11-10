@@ -5,3 +5,8 @@ query:
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  (¬True ↔ False) → False
+with
+  ¬¬true = true
+⊢ ¬¬true = true

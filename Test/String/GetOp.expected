@@ -5,3 +5,4 @@ query:
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered error parsing cvc5 proof

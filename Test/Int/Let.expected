@@ -3,8 +3,8 @@ f y = 10
 
 query:
 (declare-fun f (Int) Int)
-(assert (not (let ((y 10)) (= (f y) 10))))
 (assert (= (f 10) 10))
+(assert (not (let ((y 10)) (= (f y) 10))))
 (check-sat)
 
 result: unsat
@@ -12,8 +12,8 @@ goal: f 10 = 10
 
 query:
 (declare-fun f (Int) Int)
-(assert (not (= (f 10) 10)))
 (assert (let ((y 10)) (= (f y) 10)))
+(assert (not (= (f 10) 10)))
 (check-sat)
 
 result: unsat
@@ -21,30 +21,34 @@ goal: f z = z
 
 query:
 (declare-fun f (Int) Int)
+(assert (= (f 10) 10))
 (define-fun z () Int 10)
 (assert (not (= (f z) z)))
-(assert (= (f 10) 10))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: invalid 'simp', proposition expected
+  Int
 goal: f y = y
 
 query:
 (declare-fun f (Int) Int)
+(assert (= (f 10) 10))
 (define-fun z () Int 10)
 (define-fun y () Int z)
 (assert (not (= (f y) y)))
-(assert (= (f 10) 10))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 goal: z 3 = 10
 
 query:
 (declare-fun f (Int) Int)
-(define-fun z ((x._@.Test.Int.Let._hyg.295 Int)) Int (f 10))
-(assert (not (= (z 3) 10)))
 (assert (= (f 10) 10))
+(define-fun z ((x._@.Test.Int.Let._hyg.283 Int)) Int (f 10))
+(assert (not (= (z 3) 10)))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof

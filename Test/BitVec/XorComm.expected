@@ -7,6 +7,7 @@ query:
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/BitVec/XorComm.lean:4:8: warning: declaration uses 'sorry'
 goal: x ^^^ y = y ^^^ x
 
@@ -17,4 +18,5 @@ query:
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/BitVec/XorComm.lean:8:8: warning: declaration uses 'sorry'
