@@ -63,12 +63,15 @@ def factorCore (type : Expr) (source : Ident) : TacticM Unit :=
 
 syntax (name := factor) "factor" term  : tactic
 
-@[tactic factor] def evalFactor : Tactic := fun stx =>
+@[tactic factor] def evalFactor : Tactic := fun stx => do
+  /- let startTime ← IO.monoMsNow -/
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
     let source := ⟨stx[1]⟩
     factorCore type source 
+  /- let endTime ← IO.monoMsNow -/
+  /- logInfo m!"[factor] Time taken: {endTime - startTime}ms" -/
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h

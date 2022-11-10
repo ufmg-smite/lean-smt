@@ -62,6 +62,10 @@ def getLength : Expr → Nat
 | app (app (const `Or ..) _) e2 => 1 + getLength e2
 | _ => 1
 
+def getLengthAnd : Expr → Nat
+| app (app (const `And ..) _) e2 => 1 + getLengthAnd e2
+| _ => 1
+
 def getNatLit? : Expr → Option Nat
 | app (app _ (lit (Literal.natVal x))) _ => some x
 | _ => none
@@ -82,6 +86,6 @@ def getTypeFromName (name : Name) : TacticM Expr :=
 
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
-  let currGoalType ← getMVarType currGoal
+  let currGoalType ← MVarId.getType currGoal
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
 

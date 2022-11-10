@@ -75,8 +75,8 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   if lenGoal > 2 then
     for s in getCongAssoc prefixLength `orAssocConv do
       evalTactic (← `(tactic| apply $s))
-      logInfo m!"....apply {s}"
-      printGoal
+      /- logInfo m!"....apply {s}" -/
+      /- printGoal -/
 
   let thmName : Name := 
     match Nat.blt 1 len₁, Nat.blt 1 len₂ with
@@ -87,25 +87,33 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
 
   let thm := mkIdent thmName
 
-  logInfo m!"....closing goal with: {thm}"
+  /- logInfo m!"....closing goal with: {thm}" -/
   let proof := ⟨Syntax.mkApp ⟨thm⟩ #[fident1, fident2]⟩
   evalTactic (← `(tactic| exact $proof))
 
 syntax (name := resolution_1) "R1" ident "," ident "," term : tactic
 @[tactic resolution_1] def evalResolution_1 : Tactic :=
-  fun stx => withMainContext do
-    let firstHyp : Ident := ⟨stx[1]⟩
-    let secondHyp : Ident := ⟨stx[3]⟩
-    let pivotTerm : Term := ⟨stx[5]⟩
-    resolutionCore firstHyp secondHyp pivotTerm false
+  fun stx => do
+    /- let startTime ← IO.monoMsNow -/
+    withMainContext do
+      let firstHyp : Ident := ⟨stx[1]⟩
+      let secondHyp : Ident := ⟨stx[3]⟩
+      let pivotTerm : Term := ⟨stx[5]⟩
+      resolutionCore firstHyp secondHyp pivotTerm false
+    /- let endTime ← IO.monoMsNow -/
+    /- logInfo m!"[resolution_1] Time taken: {endTime - startTime}ms" -/
 
 syntax (name := resolution_2) "R2" ident "," ident "," term : tactic
 @[tactic resolution_2] def evalResolution_2 : Tactic :=
-  fun stx => withMainContext do
-    let firstHyp : Ident := ⟨stx[1]⟩
-    let secondHyp : Ident := ⟨stx[3]⟩
-    let pivotTerm : Term := ⟨stx[5]⟩
-    resolutionCore firstHyp secondHyp pivotTerm true
+  fun stx => do
+    /- let startTime ← IO.monoMsNow -/
+    withMainContext do
+      let firstHyp : Ident := ⟨stx[1]⟩
+      let secondHyp : Ident := ⟨stx[3]⟩
+      let pivotTerm : Term := ⟨stx[5]⟩
+      resolutionCore firstHyp secondHyp pivotTerm true
+    /- let endTime ← IO.monoMsNow -/
+    /- logInfo m!"[resolution_2] Time taken: {endTime - startTime}ms" -/
 
 example : A ∨ B ∨ C ∨ D →  E ∨ F ∨ ¬ B ∨ G → E ∨ F ∨ G ∨ A ∨ C ∨ D := by
   intros h₁ h₂

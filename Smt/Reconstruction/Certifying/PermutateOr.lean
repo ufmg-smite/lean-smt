@@ -15,12 +15,16 @@ def parsePermuteOr : Syntax → TacticM (List Nat)
     throwError "[permutateOr]: wrong usage"
 
 @[tactic permutateOr] def evalPermutateOr : Tactic :=
-  fun stx => withMainContext do
-    let hyp ← elabTerm stx[1] none
-    let type ← Meta.inferType hyp
-    let hs ← parsePermuteOr stx
-    let conclusion ← go hs.reverse type hyp stx[1]
-    Tactic.closeMainGoal conclusion
+  fun stx => do
+    /- let startTime ← IO.monoMsNow -/
+    withMainContext do
+      let hyp ← elabTerm stx[1] none
+      let type ← Meta.inferType hyp
+      let hs ← parsePermuteOr stx
+      let conclusion ← go hs.reverse type hyp stx[1]
+      Tactic.closeMainGoal conclusion
+    /- let endTime ← IO.monoMsNow -/
+    /- logInfo m!"[permutateOr] Time taken: {endTime - startTime}ms" -/
 where go : List Nat → Expr → Expr → Syntax → TacticM Expr
        | [], _, hyp, _ => return hyp
        | (i::is), type, hyp, stx => do
