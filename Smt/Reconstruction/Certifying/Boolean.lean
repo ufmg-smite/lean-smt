@@ -14,8 +14,6 @@ theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
               intro p
               exact False.elim (np p)
 
-#print axioms notImplies1
-
 theorem notImplies2 : ∀ {P Q : Prop}, ¬ (P → Q) → ¬ Q := by
   intros P Q h
   cases em Q with
@@ -578,3 +576,5 @@ theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → Iff False A :=
 
 theorem falseElim  : ∀ {A : Prop}, Iff A False → ¬ A := Iff.mp
 theorem falseElim₂ : ∀ {A : Prop}, Iff False A → ¬ A := Iff.mpr
+
+theorem neg_symm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
