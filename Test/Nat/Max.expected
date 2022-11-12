@@ -1,35 +1,39 @@
-Test/Nat/Max.lean:3:4: error: 'Max' has already been declared
-Test/Nat/Max.lean:10:38: error: application type mismatch
-  Max x
-argument
-  x
-has type
-  Nat : Type
-but is expected to have type
-  Type ?u.141 : Type (?u.141 + 1)
-Test/Nat/Max.lean:10:52: error: application type mismatch
-  Max x
-argument
-  x
-has type
-  Nat : Type
-but is expected to have type
-  Type ?u.301 : Type (?u.301 + 1)
-Test/Nat/Max.lean:12:2: error: incorrect number of universe levels sorryAx
-Test/Nat/Max.lean:16:39: error: application type mismatch
-  Max x
-argument
-  x
-has type
-  Nat : Type
-but is expected to have type
-  Type ?u.480 : Type (?u.480 + 1)
-Test/Nat/Max.lean:16:53: error: application type mismatch
-  Max x
-argument
-  x
-has type
-  Nat : Type
-but is expected to have type
-  Type ?u.640 : Type (?u.640 + 1)
-Test/Nat/Max.lean:18:2: error: incorrect number of universe levels sorryAx
+goal: x ≤ max' x y ∧ y ≤ max' x y
+
+query:
+(define-sort Nat () Int)
+(declare-const y Nat)
+(assert (>= y 0))
+(declare-const x Nat)
+(assert (>= x 0))
+(declare-fun |Nat.max'| (Nat Nat) Nat)
+(assert (forall ((_uniq.221 Nat)) (=> (>= _uniq.221 0) (forall ((_uniq.222 Nat)) (=> (>= _uniq.222 0) (>= (|Nat.max'| _uniq.221 _uniq.222) 0))))))
+(assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
+(check-sat)
+
+result: unknown
+Test/Nat/Max.lean:12:2: error: unable to prove goal
+goal: x ≤ max' x y ∧ y ≤ max' x y
+
+query:
+(define-sort Nat () Int)
+(define-fun |Nat.max'| ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
+(assert (forall ((_uniq.262 Nat)) (=> (>= _uniq.262 0) (forall ((_uniq.263 Nat)) (=> (>= _uniq.263 0) (>= (|Nat.max'| _uniq.262 _uniq.263) 0))))))
+(declare-const x Nat)
+(assert (>= x 0))
+(declare-const y Nat)
+(assert (>= y 0))
+(assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
+(check-sat)
+
+result: unsat
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:279
+Check failure
+
+ tn.isInteger()
+Only support integer rationals
+
