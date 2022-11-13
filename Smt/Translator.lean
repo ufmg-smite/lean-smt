@@ -21,7 +21,7 @@ structure TranslationM.State where
   in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
   depConstants : NameSet := .empty
   /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants`. -/
-  cache : Std.HashMap Expr (Option (Term × NameSet)) := .empty
+  cache : HashMap Expr (Option (Term × NameSet)) := .empty
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -49,7 +49,7 @@ private unsafe def getTranslatorsUnsafe : MetaM (List (Translator × Name)) := d
 
 /-- Returns the list of translators maintained by `smtExt` in the current
     Lean environment. -/
-@[implementedBy getTranslatorsUnsafe]
+@[implemented_by getTranslatorsUnsafe]
 opaque getTranslators : MetaM (List (Translator × Name))
 
 /-- Return a cached translation of `e` if found, otherwise run `k e` and cache the result. -/
@@ -90,13 +90,13 @@ partial def applyTranslators? : Translator := withCache fun e => do
       -- TODO: Use `DiscrTree` to index the translators instead of naively looping
       for (t, nm) in ts do
         if let some tm ← t e then
-          trace[smt.debug.translator] "{e} =({nm})=> {tm}"
+          trace[smt.debug.translate.expr] "{e} =({nm})=> {tm}"
           return tm
 
       -- Then try splitting subexpressions
       match e with
       | fvar fv =>
-        let ld ← Meta.getLocalDecl fv
+        let ld ← fv.getDecl
         return symbolT ld.userName.toString
       | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
@@ -127,11 +127,11 @@ Returns the resulting SMT-LIB term and set of dependencies. -/
 def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
   withTraceNode `smt.debug.translate (traceTranslation e ·) do
     modify fun st => { st with depConstants := .empty }
-    trace[smt.debug.translator] "before: {e}"
+    trace[smt.debug.translate.expr] "before: {e}"
     let e ← Util.unfoldAllProjInsts e
-    trace[smt.debug.translator] "after unfolding projs: {e}"
+    trace[smt.debug.translate.expr] "after unfolding projs: {e}"
     let tm ← applyTranslators! e
-    trace[smt.debug.translator] "translated: {tm}"
+    trace[smt.debug.translate.expr] "translated: {tm}"
     return (tm, (← get).depConstants)
 
 def translateExpr' (e : Expr) : TranslationM Term :=

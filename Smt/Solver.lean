@@ -133,8 +133,10 @@ def createFromKind (kind : Kind) (path : Option String) (timeoutSecs : Option Na
 where
   kindToArgs : Kind → Array String
     | .boolector => #["--smt2"]
-    | .cvc4      => #["--quiet", "--incremental", "--lang", "smt"]
-    | .cvc5      => #["--quiet", "--incremental", "--lang", "smt"]
+    | .cvc4      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0"]
+    | .cvc5      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0",
+                      "--produce-proofs", "--proof-granularity=theory-rewrite",
+                      "--proof-format=lean"]
     | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
     | .yices     => #[]
     | .z3        => #["-in", "-smt2"]
@@ -202,6 +204,11 @@ where
     | .expr es => match es with
       | [] => "()"
       | es => "(\n" ++ String.intercalate "\n" (es.map toString) ++ "\n)"
+
+/-- Return the proof for an `unsat` result. -/
+def getProof : SolverT m Sexp := do
+  emitCommand .getProof
+  getSexp
 
 /-- Check if the query given so far is satisfiable and return the result. -/
 def exit : SolverT m UInt32 := do

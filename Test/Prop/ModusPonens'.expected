@@ -1,11 +1,11 @@
 goal: q
 
 query:
-(declare-const q Bool)
-(assert (not q))
 (declare-const p Bool)
 (assert p)
+(declare-const q Bool)
 (assert (=> p q))
+(assert (not q))
 (check-sat)
 
 result: unsat

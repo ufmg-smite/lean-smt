@@ -23,11 +23,11 @@ def generalIdent : Parser :=
       mkNodeToken `generalIdent startPos c s }
 
 def Lean.TSyntax.getGeneralId : TSyntax `generalIdent → String
-  | ⟨.node _ `generalIdent args⟩ => args[0]!.getAtomVal!
+  | ⟨.node _ `generalIdent args⟩ => args[0]!.getAtomVal
   | _ => unreachable!
 
-@[combinatorFormatter generalIdent] def generalIdent.formatter : Formatter := pure ()
-@[combinatorParenthesizer generalIdent] def generalIdent.parenthesizer : Parenthesizer := pure ()
+@[combinator_formatter generalIdent] def generalIdent.formatter : Formatter := pure ()
+@[combinator_parenthesizer generalIdent] def generalIdent.parenthesizer : Parenthesizer := pure ()
 end
 
 instance : ToSexp String := ⟨Sexp.atom⟩

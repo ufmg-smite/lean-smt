@@ -9,7 +9,7 @@ import Lean.Data.HashMap
 import Lean.Data.HashSet
 import Lean.Message
 
-open Std
+open Lean Std
 
 def Graph (α) (β) [BEq α] [Hashable α] := HashMap α (HashMap α β)
 
@@ -37,6 +37,20 @@ def weight? : Option β := g.find? v >>= fun es => es.find? u
 partial def dfs [Monad m] (f : α → m Unit) : m Unit :=
   StateT.run' (s := HashSet.empty) do
     for v in g.vertices do
+      visitVertex v
+where
+  visitVertex (v : α) : StateT (HashSet α) m Unit := do
+    let vs ← get
+    if vs.contains v then
+      return
+    set (vs.insert v)
+    for u in g.neighbors! v do
+      visitVertex u
+    f v
+
+partial def orderedDfs [Monad m] (vs : List α) (f : α → m Unit) : m Unit :=
+  StateT.run' (s := HashSet.empty) do
+    for v in vs do
       visitVertex v
 where
   visitVertex (v : α) : StateT (HashSet α) m Unit := do

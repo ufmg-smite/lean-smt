@@ -62,7 +62,7 @@ It tries to match the kind of definitional matching done by `DiscrTree`. -/
 def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
   let simpTheorems ← ({} : SimpTheorems).addConst `eq_self
   let simpTheorems : SimpTheoremsArray := #[simpTheorems]
-  let simpTheorems ← simpTheorems.addTheorem pf
+  let simpTheorems ← simpTheorems.addTheorem (.fvar pf.fvarId!) pf
   let ctx := {
     config := {
       zeta := true
@@ -74,7 +74,7 @@ def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
     }
     simpTheorems
   }
-  Tactic.simpLocation ctx (loc := loc.toTacticLocation)
+  _ ← Tactic.simpLocation ctx (loc := loc.toTacticLocation)
   let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
   Tactic.dsimpLocation ctx (loc := loc.toTacticLocation)
 
@@ -149,7 +149,7 @@ structure Config where
 structure State where
   /-- Stores all concretizations and their equality hypotheses. These should be well-formed
   in the goal's local context. -/
-  concretizations : Std.RBMap Name ConcretizationData Name.quickCmp := .empty
+  concretizations : RBMap Name ConcretizationData Name.quickCmp := .empty
   /-- Cache of concretization names, lookupable by the concretization. -/
   cache : DiscrTree Name := .empty
 
@@ -158,7 +158,7 @@ structure State where
   /-- Locations that we should visit next. -/
   visitSet : Array Meta.Location
   /-- New concretizations found. -/
-  newConcretizations : Std.RBMap Name Expr Name.quickCmp := .empty
+  newConcretizations : RBMap Name Expr Name.quickCmp := .empty
   /-- The concretizations of all polymorphic terms we found. These might or might not already
   have `generalize` hypotheses which we introduce lazily. Rewriting with each must make progress
   on concretizing the goal. -/

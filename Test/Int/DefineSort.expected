@@ -2,11 +2,12 @@ goal: MyInt.add a b = MyInt.add b a
 
 query:
 (define-sort MyInt () Int)
+(define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
 (declare-const a MyInt)
 (declare-const b MyInt)
-(define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'
