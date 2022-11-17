@@ -29,7 +29,7 @@ def loop (i j n : Nat) (pivot : Expr) (li : List Expr) (nm : Ident) : TacticM Id
           let fname ← mkIdent <$> mkFreshId
           let e ← getTypeFromName nm.getId
           let t ← instantiateMVars e
-          pullIndex2 (i + 1) j nm t fname
+          pullToMiddleCore (i + 1) j nm t fname
           pure fname
         else pure nm
 

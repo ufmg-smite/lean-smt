@@ -40,9 +40,11 @@ def congTactics (tactics : List Term) (i : Nat) (id : Ident) (last : Bool) : Tac
     let r: Term := ⟨r⟩
     `(congOrLeft (fun $id' => $r) $id)
 
--- pull j-th term in the orchain to i-th position (we start counting indices at 0)
+-- pull j-th term in the orchain to i-th position
+-- (we start counting indices at 0)
 -- TODO: clear intermediate steps
-def pullIndex2 (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident) : TacticM Unit :=
+def pullToMiddleCore (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident)
+  : TacticM Unit :=
   if i == j then do
     let hyp: Term := ⟨hyp⟩
     evalTactic (← `(tactic| have $id := $hyp))
@@ -87,18 +89,18 @@ def pullIndex2 (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident) : TacticM U
 
     evalTactic (← `(tactic| have $id := $step₄))
 
-syntax (name := pull2) "pull2" term "," term "," term "," ident : tactic
+syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : tactic
 
-@[tactic pull2] def evalPull2 : Tactic := fun stx => withMainContext do
+@[tactic pullToMiddle] def evalPullToMiddle : Tactic := fun stx => withMainContext do
   let i ← stxToNat ⟨stx[1]⟩ 
   let j ← stxToNat ⟨stx[3]⟩
   let id: Ident := ⟨stx[7]⟩
   let e ← elabTerm stx[5] none
   let t ← instantiateMVars (← Meta.inferType e)
-  pullIndex2 i j stx[5] t id
+  pullToMiddleCore i j stx[5] t id
 
 def pullIndex (index : Nat) (hypS : Syntax) (type : Expr) (id : Ident) : TacticM Unit :=
-  pullIndex2 0 index hypS type id
+  pullToMiddleCore 0 index hypS type id
 
 -- tries to find pivot in the tail of type, even if it has length > 1 (as an or-chain)
 -- pulls it to the beginning if found
@@ -121,4 +123,8 @@ def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident) : TacticM Unit :=
   | none   => withMainContext do
     let ctx ← getLCtx
     let hyp := (ctx.findFromUserName? hypS.getId).get!.toExpr
-    pullTail pivot hyp type id
+    let hypSTerm: Term := ⟨hypS⟩
+    if getLength pivot == getLength type then
+      evalTactic (← `(tactic| have $id := $hypSTerm))
+    else
+      pullTail pivot hyp type id

@@ -43,28 +43,30 @@ theorem flipped_resolution_thm₃ : ∀ {A B : Prop}, (¬ A ∨ B) → A → B :
 theorem resolution_thm₄ : ∀ {A : Prop}, A → ¬ A → False := λ a na => na a
 theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip resolution_thm₄
 
-def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bool) : TacticM Unit := do
+def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term)
+  (flipped : Bool) : TacticM Unit := do
   let notPivot : Term := Syntax.mkApp (mkIdent `Not) #[pivotTerm]
   let mut resolvantOne  ← elabTerm pivotTerm none
   let mut resolvantTwo  ← elabTerm notPivot none
   let firstHypType  ← inferType (← elabTerm firstHyp none)
   let secondHypType ← inferType (← elabTerm secondHyp none)
 
-  let mut len₁ :=
-    match getIndex resolvantOne firstHypType with
-    | none   => getLength firstHypType - (getLength resolvantOne) + 1
-    | some _ => getLength firstHypType
-
-  let mut len₂ := getLength secondHypType
-  let prefixLength := len₁ - 2
-
   if flipped then
     let tmp      := resolvantOne
     resolvantOne := resolvantTwo
     resolvantTwo := tmp
-    let tmp₂ := len₁
-    len₁ := len₂
-    len₂ := tmp₂
+
+  let len₁ :=
+    match getIndex resolvantOne firstHypType with
+    | none   => getLength firstHypType - (getLength resolvantOne) + 1
+    | some _ => getLength firstHypType
+
+  let len₂ :=
+    match getIndex resolvantTwo secondHypType with
+    | none   => getLength secondHypType - (getLength resolvantTwo) + 1
+    | some _ => getLength secondHypType
+
+  let prefixLength := len₁ - 2
 
   let fident1 ← mkIdent <$> mkFreshId
   let fident2 ← mkIdent <$> mkFreshId
@@ -81,8 +83,8 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   let thmName : Name := 
     match Nat.blt 1 len₁, Nat.blt 1 len₂ with
     | true, true   => if flipped then `flipped_resolution_thm  else `resolution_thm
-    | true, false  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₃
-    | false, true  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₂
+    | true, false  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₃
+    | false, true  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₂
     | false, false => if flipped then `flipped_resolution_thm₄ else `resolution_thm₄
 
   let thm := mkIdent thmName
