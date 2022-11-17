@@ -72,7 +72,7 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term) (flipped : Bo
   pullCore resolvantTwo secondHypType secondHyp fident2
 
   let lenGoal := len₁ + len₂ - 2
-  if lenGoal > 2 then
+  if lenGoal > prefixLength + 1 then
     for s in getCongAssoc prefixLength `orAssocConv do
       evalTactic (← `(tactic| apply $s))
       /- logInfo m!"....apply {s}" -/
