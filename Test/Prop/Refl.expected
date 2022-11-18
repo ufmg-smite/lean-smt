@@ -7,7 +7,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬True ↔ False) → False
+  ¬(?p ↔ ?p) → False
 with
   ¬¬p = p
 p : Prop
