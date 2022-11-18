@@ -31,7 +31,7 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:279
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:276
 Check failure
 
  tn.isInteger()
