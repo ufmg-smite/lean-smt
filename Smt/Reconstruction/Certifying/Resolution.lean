@@ -44,34 +44,36 @@ theorem resolution_thm₄ : ∀ {A : Prop}, A → ¬ A → False := λ a na => n
 theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip resolution_thm₄
 
 def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term)
-  (flipped : Bool) : TacticM Unit := do
+  (oSufIdx₁ oSufIdx₂ : Option Nat) (flipped : Bool) : TacticM Unit := do
   let notPivot : Term := Syntax.mkApp (mkIdent `Not) #[pivotTerm]
   let mut resolvantOne  ← elabTerm pivotTerm none
   let mut resolvantTwo  ← elabTerm notPivot none
   let firstHypType  ← inferType (← elabTerm firstHyp none)
   let secondHypType ← inferType (← elabTerm secondHyp none)
 
+  let sufIdx₁ : Nat :=
+    match oSufIdx₁ with
+    | none   => getLength firstHypType - 1
+    | some i => i
+
+  let sufIdx₂ : Nat :=
+    match oSufIdx₂ with
+    | none   => getLength secondHypType - 1
+    | some i => i
+
   if flipped then
     let tmp      := resolvantOne
     resolvantOne := resolvantTwo
     resolvantTwo := tmp
 
-  let len₁ :=
-    match getIndex resolvantOne firstHypType with
-    | none   => getLength firstHypType - (getLength resolvantOne) + 1
-    | some _ => getLength firstHypType
-
-  let len₂ :=
-    match getIndex resolvantTwo secondHypType with
-    | none   => getLength secondHypType - (getLength resolvantTwo) + 1
-    | some _ => getLength secondHypType
-
+  let len₁ := sufIdx₁ + 1
+  let len₂ := sufIdx₂ + 1
   let prefixLength := len₁ - 2
 
   let fident1 ← mkIdent <$> mkFreshId
   let fident2 ← mkIdent <$> mkFreshId
-  pullCore resolvantOne firstHypType  firstHyp  fident1
-  pullCore resolvantTwo secondHypType secondHyp fident2
+  pullCore resolvantOne firstHypType  firstHyp  fident1 oSufIdx₁
+  pullCore resolvantTwo secondHypType secondHyp fident2 oSufIdx₂
 
   let lenGoal := len₁ + len₂ - 2
   if lenGoal > prefixLength + 1 then
@@ -93,37 +95,37 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term)
   let proof := ⟨Syntax.mkApp ⟨thm⟩ #[fident1, fident2]⟩
   evalTactic (← `(tactic| exact $proof))
 
-syntax (name := resolution_1) "R1" ident "," ident "," term : tactic
-@[tactic resolution_1] def evalResolution_1 : Tactic :=
-  fun stx => do
-    /- let startTime ← IO.monoMsNow -/
-    withMainContext do
-      let firstHyp : Ident := ⟨stx[1]⟩
-      let secondHyp : Ident := ⟨stx[3]⟩
-      let pivotTerm : Term := ⟨stx[5]⟩
-      resolutionCore firstHyp secondHyp pivotTerm false
-    /- let endTime ← IO.monoMsNow -/
-    /- logInfo m!"[resolution_1] Time taken: {endTime - startTime}ms" -/
 
-syntax (name := resolution_2) "R2" ident "," ident "," term : tactic
-@[tactic resolution_2] def evalResolution_2 : Tactic :=
-  fun stx => do
-    /- let startTime ← IO.monoMsNow -/
-    withMainContext do
-      let firstHyp : Ident := ⟨stx[1]⟩
-      let secondHyp : Ident := ⟨stx[3]⟩
-      let pivotTerm : Term := ⟨stx[5]⟩
-      resolutionCore firstHyp secondHyp pivotTerm true
-    /- let endTime ← IO.monoMsNow -/
-    /- logInfo m!"[resolution_2] Time taken: {endTime - startTime}ms" -/
+syntax (name := resolution_1) "R1" ident "," ident "," term (",")? ("[" term,* "]")? : tactic
+syntax (name := resolution_2) "R2" ident "," ident "," term (",")? ("[" term,* "]")? : tactic
 
-example : A ∨ B ∨ C ∨ D →  E ∨ F ∨ ¬ B ∨ G → E ∨ F ∨ G ∨ A ∨ C ∨ D := by
-  intros h₁ h₂
-  R2 h₂, h₁, B
+def parseResolution : Syntax → TacticM (Option Nat × Option Nat)
+  | `(tactic| R1 $_, $_, $_, [ $[$hs],* ]) => get hs
+  | `(tactic| R1 $_, $_, $_) => pure (none, none)
+  | `(tactic| R2 $_, $_, $_, [ $[$hs],* ]) => get hs
+  | `(tactic| R2 $_, $_, $_) => pure (none, none)
+  | _ => throwError "[Resolution]: wrong usage"
+where
+  get (hs : Array Term) : TacticM (Option Nat × Option Nat) :=
+    match hs.toList with
+      | [n₁, n₂] => do
+        let e₁ ← elabTerm n₁ none
+        let e₂ ← elabTerm n₂ none
+        return (getNatLit? e₁, getNatLit? e₂)
+      | _ => throwError "[Resolution]: wrong usage"
 
+@[tactic resolution_1] def evalResolution_1 : Tactic := fun stx =>
+  withMainContext do
+    let firstHyp : Ident := ⟨stx[1]⟩
+    let secondHyp : Ident := ⟨stx[3]⟩
+    let pivotTerm : Term := ⟨stx[5]⟩
+    let (sufIdx₁, sufIdx₂) ← parseResolution stx
+    resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ false
 
-example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
-  intros h₁ h₂
-  R2 h₁, h₂, A
-
-example : Eq @Eq @Eq := rfl
+@[tactic resolution_2] def evalResolution_2 : Tactic := fun stx =>
+  withMainContext do
+    let firstHyp : Ident := ⟨stx[1]⟩
+    let secondHyp : Ident := ⟨stx[3]⟩
+    let pivotTerm : Term := ⟨stx[5]⟩
+    let (sufIdx₁, sufIdx₂) ← parseResolution stx
+    resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ true

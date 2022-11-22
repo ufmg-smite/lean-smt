@@ -116,15 +116,38 @@ def pullTail (pivot hyp type : Expr) (id : Ident) : TacticM Unit := do
   else throwError ("term not found: " ++ (toString pivot))
 
 -- insert pivot in the first position of the or-chain
--- represented by hyp
-def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident) : TacticM Unit :=
-  match getIndex pivot type with
-  | some i => pullIndex i hypS type id
-  | none   => withMainContext do
-    let ctx ← getLCtx
-    let hyp := (ctx.findFromUserName? hypS.getId).get!.toExpr
-    let hypSTerm: Term := ⟨hypS⟩
-    if getLength pivot == getLength type then
-      evalTactic (← `(tactic| have $id := $hypSTerm))
-    else
-      pullTail pivot hyp type id
+-- represented by hypS
+def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident)
+  (sufIdx : Option Nat := none) : TacticM Unit :=
+  let lastSuffix := getLength type - 1
+  let sufIdx :=
+    match sufIdx with
+    | some i => i
+    | none   => lastSuffix
+  let li := collectPropsInOrChain' sufIdx type
+  match getIndexList pivot li with
+  | some i =>
+      if i == sufIdx && sufIdx != lastSuffix then do
+        if i == 0 then
+          evalTactic (← `(tactic| have $id := $(⟨hypS⟩)))
+        else
+          let ctx ← getLCtx
+          let hyp := (ctx.findFromUserName? hypS.getId).get!.toExpr
+          let fname ← mkFreshId
+          groupOrPrefixCore hyp type sufIdx fname
+          evalTactic (← `(tactic| have $id := orComm $(mkIdent fname)))
+      else
+        pullIndex i hypS type id
+  | none   => throwError "[Pull]: couldn't find pivot"
+
+syntax (name := pull) "pull" term "," term "," ident : tactic
+
+@[tactic pull] def evalPullCore : Tactic := fun stx => withMainContext do
+  let e ← elabTerm stx[1] none
+  let t ← instantiateMVars (← Meta.inferType e)
+  let e₂ ← elabTerm stx[3] none
+  pullCore e₂ t stx[1] ⟨stx[5]⟩
+
+/- example : A ∨ B ∨ C ∨ D ∨ E → E ∨ A ∨ B ∨ C ∨ D := by -/
+/-   intro h -/
+/-   pull h, E, h₂ -/

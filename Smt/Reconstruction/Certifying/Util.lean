@@ -40,6 +40,21 @@ def createOrChain : List Expr → Expr
 | [h]  => h
 | h::t => app (app (mkConst `Or) h) $ createOrChain t
 
+-- fold the l-th suffix into one expr
+def collectPropsInOrChain' : Nat → Expr → List Expr
+| l, e =>
+  let li := collectPropsInOrChain e
+  let pref := List.take l li
+  let suff := List.drop l li
+  let suffE := createOrChain suff
+  pref ++ [suffE]
+
+def getIndexList [BEq α] : α → List α → Option Nat
+| _, [] => none
+| a, (x::xs) =>
+  if a == x then some 0
+  else (· + 1) <$> getIndexList a xs
+
 def getIndex : Expr → Expr → Option Nat
 | t, app (app (const `Or ..) e1) e2 =>
     if e1 == t then some 0
@@ -88,4 +103,13 @@ def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
   let currGoalType ← MVarId.getType currGoal
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
+
+syntax (name := elabTerm) "#elab" term : command
+open Lean.Elab Lean.Elab.Command Lean.Elab.Term in
+@[commandElab elabTerm] def evalElab : CommandElab
+  | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
+    let e ← Term.elabTerm term none
+    unless e.isSyntheticSorry do
+      logInfoAt tk m!"{e} ::: {repr e}"
+  | _ => throwUnsupportedSyntax
 
