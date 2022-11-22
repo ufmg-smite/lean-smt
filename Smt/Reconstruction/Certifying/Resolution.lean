@@ -82,6 +82,7 @@ def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term)
       /- logInfo m!"....apply {s}" -/
       /- printGoal -/
 
+  -- we could simplify if we knew how to concatenate two Names
   let thmName : Name := 
     match Nat.blt 1 len₁, Nat.blt 1 len₂ with
     | true, true   => if flipped then `flipped_resolution_thm  else `resolution_thm
@@ -101,9 +102,9 @@ syntax (name := resolution_2) "R2" ident "," ident "," term (",")? ("[" term,* "
 
 def parseResolution : Syntax → TacticM (Option Nat × Option Nat)
   | `(tactic| R1 $_, $_, $_, [ $[$hs],* ]) => get hs
-  | `(tactic| R1 $_, $_, $_) => pure (none, none)
+  | `(tactic| R1 $_, $_, $_)               => pure (none, none)
   | `(tactic| R2 $_, $_, $_, [ $[$hs],* ]) => get hs
-  | `(tactic| R2 $_, $_, $_) => pure (none, none)
+  | `(tactic| R2 $_, $_, $_)               => pure (none, none)
   | _ => throwError "[Resolution]: wrong usage"
 where
   get (hs : Array Term) : TacticM (Option Nat × Option Nat) :=
@@ -129,3 +130,9 @@ where
     let pivotTerm : Term := ⟨stx[5]⟩
     let (sufIdx₁, sufIdx₂) ← parseResolution stx
     resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ true
+
+
+example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨ E ∨ F ∨ H := by
+  intros h₁ h₂
+  R1 h₁, h₂, B, [2, -1]
+

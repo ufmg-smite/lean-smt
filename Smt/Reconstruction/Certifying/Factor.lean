@@ -45,9 +45,10 @@ def loop (i j n : Nat) (pivot : Expr) (li : List Expr) (nm : Ident) : TacticM Id
       loop i j (n - 1) pivot es step₂
     else loop i (j + 1) n pivot es nm
 
-def factorCore (type : Expr) (source : Ident) : TacticM Unit :=
+def factorCore (type : Expr) (source : Ident) (suffixIdx : Nat) : TacticM Unit :=
   withMainContext do
-    let mut li := collectPropsInOrChain type
+    let initialLength := getLength type
+    let mut li := collectPropsInOrChain' suffixIdx type
     let n := li.length
     let mut answer := source
     for i in List.range n do
@@ -58,21 +59,41 @@ def factorCore (type : Expr) (source : Ident) : TacticM Unit :=
         answer ← loop i (i + 1) (li.length + i) e es answer
         let e ← getTypeFromName answer.getId
         let t ← instantiateMVars e
-        li := collectPropsInOrChain t
+        let newLength := getLength t
+        let propsDropped := initialLength - newLength
+        li := collectPropsInOrChain' (suffixIdx - propsDropped) t
     evalTactic (← `(tactic| exact $answer))
 
-syntax (name := factor) "factor" term  : tactic
+syntax (name := factor) "factor" term (",")? (term)? : tactic
+
+def parseFactor : Syntax → TacticM (Option Nat)
+  | `(tactic| factor $_)     => pure none
+  | `(tactic| factor $_, $i) => elabTerm i none >>= pure ∘ getNatLit?
+  | _                        => throwError "[factor]: wrong usage"
 
 @[tactic factor] def evalFactor : Tactic := fun stx => do
   /- let startTime ← IO.monoMsNow -/
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
+    let lastSuffix := getLength type - 1
     let source := ⟨stx[1]⟩
-    factorCore type source 
+    let sufIdx :=
+      match (← parseFactor stx) with
+      | none => lastSuffix
+      | some i => i
+    factorCore type source sufIdx
   /- let endTime ← IO.monoMsNow -/
   /- logInfo m!"[factor] Time taken: {endTime - startTime}ms" -/
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h
      factor h
+
+example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
+  intro h
+  factor h, 1
+
+example : (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) := by
+  intro h
+  factor h, 3
