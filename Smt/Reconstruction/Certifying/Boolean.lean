@@ -20,35 +20,36 @@ theorem notImplies2 : ∀ {P Q : Prop}, ¬ (P → Q) → ¬ Q := by
   | inl q  => exact False.elim (h (λ _ => q))
   | inr nq => exact nq
 
-theorem equivElim1 : ∀ {P Q : Prop}, Iff P Q → ¬ P ∨ Q := by
+theorem equivElim1 : ∀ {P Q : Prop}, Eq P Q → ¬ P ∨ Q := by
   intros P Q h
   rewrite [h]
   cases em Q with
   | inl q  => exact Or.inr q
   | inr nq => exact Or.inl nq
 
-theorem equivElim2 : ∀ {P Q : Prop}, Iff P Q → P ∨ ¬ Q := by
+theorem equivElim2 : ∀ {P Q : Prop}, Eq P Q → P ∨ ¬ Q := by
   intros P Q h
   rewrite [h]
   cases em Q with
   | inl q  => exact Or.inl q
   | inr nq => exact Or.inr nq
 
-theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Iff P Q) → P ∨ Q := by
+theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Eq P Q) → P ∨ Q := by
   intros P Q h
   exact match em P, em Q with
   | Or.inl p, _ => Or.inl p
   | _, Or.inl q => Or.inr q
   | Or.inr np, Or.inr nq =>
-    absurd (Iff.intro (λ p => absurd p np) (λ q => absurd q nq)) h
+    
+    absurd (propext (Iff.intro (λ p => absurd p np) (λ q => absurd q nq))) h
 
-theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Iff P Q) → ¬ P ∨ ¬ Q := by
+theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Eq P Q) → ¬ P ∨ ¬ Q := by
   intros P Q h
   exact match em P, em Q with
   | Or.inr np, _ => Or.inl np
   | _, Or.inr nq => Or.inr nq
   | Or.inl p, Or.inl q =>
-    absurd (Iff.intro (λ _ => q) (λ _ => p)) h
+    absurd (propext (Iff.intro (λ _ => q) (λ _ => p))) h
 
 theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
   intros c a b h
@@ -326,22 +327,22 @@ theorem cnfImpliesNeg2 : ∀ (p q : Prop), (p → q) ∨ ¬ q := by
   intros hnnq _
   exact notNotElim hnnq
 
-theorem cnfEquivPos1 : ∀ (p q : Prop), ¬ (Iff p q) ∨ ¬ p ∨ q := by
+theorem cnfEquivPos1 : ∀ (p q : Prop), ¬ (Eq p q) ∨ ¬ p ∨ q := by
   intros _ _
   apply orImplies
   exact equivElim1 ∘ notNotElim
 
-theorem cnfEquivPos2 : ∀ (p q : Prop), ¬ (Iff p q) ∨ p ∨ ¬ q := by
+theorem cnfEquivPos2 : ∀ (p q : Prop), ¬ (Eq p q) ∨ p ∨ ¬ q := by
   intros _ _
   apply orImplies
   exact equivElim2 ∘ notNotElim
 
-theorem cnfEquivNeg1 : ∀ (p q : Prop), Iff p q ∨ p ∨ q := by
+theorem cnfEquivNeg1 : ∀ (p q : Prop), Eq p q ∨ p ∨ q := by
   intros _ _
   apply orImplies
   exact notEquivElim1
 
-theorem cnfEquivNeg2 : ∀ (p q : Prop), Iff p q ∨ ¬ p ∨ ¬ q := by
+theorem cnfEquivNeg2 : ∀ (p q : Prop), Eq p q ∨ ¬ p ∨ ¬ q := by
   intros _ _
   apply orImplies
   exact notEquivElim2
@@ -448,9 +449,9 @@ syntax (name := smtCong) "smtCong" term "," term : tactic
     let isProp := d == sort Level.zero
     match isProp, isIff hyp2Type with
     | false, false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-    | false, true  => evalTactic (← `(tactic| exact smtCong₂ $t1 $t3))
-    | true,  false => evalTactic (← `(tactic| exact smtCong₃ $t1 $t3))
-    | true,  true  => evalTactic (← `(tactic| exact smtCong₄ $t1 $t3))
+    | false, true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
+    | true,  false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
+    | true,  true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
   /- let endTime ← IO.monoMsNow -/
   /- logInfo m!"[smtCong] Time taken: {endTime - startTime}ms" -/
 where
@@ -464,7 +465,12 @@ where
     return d₁
   | _ => throwError "unexpected type in smtCong"
 
-theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by
+/- theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by -/
+/-   intros h₁ h₂ -/
+/-   rewrite [← h₂] -/
+/-   exact h₁ -/
+
+theorem eqResolve {P Q : Prop} : P → (P = Q) → Q := by
   intros h₁ h₂
   rewrite [← h₂]
   exact h₁
@@ -561,20 +567,25 @@ theorem liftOrToNeg : ∀ (l : List Prop), orN (notList l) → ¬ andN l := by
 
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
-theorem trueIntro : ∀ {A : Prop}, A → Iff A True :=
-  λ a => Iff.intro (λ _ => True.intro) (λ _ => a)
-theorem trueIntro₂ : ∀ {A : Prop}, A → Iff True A :=
-  λ a => Iff.intro (λ _ => a) (λ _ => True.intro)
+theorem trueIntro' : ∀ {A : Prop}, A → A = True := by
+  intros A h
+  exact propext (Iff.intro (λ _ => True.intro) (λ _ => h))
+theorem trueIntro₂' : ∀ {A : Prop}, A → True = A := Eq.symm ∘ trueIntro'
 
-theorem trueElim : ∀ {A : Prop}, Iff A True → A := λ h => h.mpr True.intro
-theorem trueElim₂ : ∀ {A : Prop}, Iff True A → A := λ h => h.mp True.intro
+theorem trueElim : ∀ {A : Prop}, A = True → A := by
+  intros A h
+  rewrite [h]
+  trivial
+theorem trueElim₂ : ∀ {A : Prop}, True = A → A :=
+  trueElim ∘ Eq.symm
 
-theorem falseIntro  : ∀ {A : Prop}, ¬ A → Iff A False :=
-  λ na => Iff.intro (λ a => absurd a na) (λ ff => False.elim ff)
-theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → Iff False A :=
-  λ na => Iff.intro (λ ff => False.elim ff) (λ a => absurd a na)
+theorem falseIntro : ∀ {A : Prop}, ¬ A → A = False :=
+  λ h => propext (Iff.intro (λ a => h a) (λ ff => False.elim ff))
+theorem falseIntro₂ : ∀ {A : Prop}, ¬ A → False = A := Eq.symm ∘ falseIntro
 
-theorem falseElim  : ∀ {A : Prop}, Iff A False → ¬ A := Iff.mp
-theorem falseElim₂ : ∀ {A : Prop}, Iff False A → ¬ A := Iff.mpr
+theorem falseElim : ∀ {A : Prop}, A = False → ¬ A := λ h ha =>
+  match h with
+  | rfl => ha
+theorem falseElim₂ : ∀ {A : Prop}, False = A → ¬ A := falseElim ∘ Eq.symm
 
 theorem neg_symm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
