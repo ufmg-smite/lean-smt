@@ -19,24 +19,24 @@ def parsePermuteOr : Syntax → TacticM (List Nat)
     /- let startTime ← IO.monoMsNow -/
     withMainContext do
       let hyp ← elabTerm stx[1] none
-      let type ← Meta.inferType hyp
+      let type ← instantiateMVars (← Meta.inferType hyp)
       let hs ← parsePermuteOr stx
-      let conclusion ← go hs.reverse type hyp stx[1]
-      Tactic.closeMainGoal conclusion
+      let s ← go hs.reverse type type stx[1]
+      evalTactic (← `(tactic| exact $(⟨s⟩))) 
     /- let endTime ← IO.monoMsNow -/
     /- logInfo m!"[permutateOr] Time taken: {endTime - startTime}ms" -/
-where go : List Nat → Expr → Expr → Syntax → TacticM Expr
-       | [], _, hyp, _ => return hyp
-       | (i::is), type, hyp, stx => do
+where go : List Nat → Expr → Expr → Syntax → TacticM Syntax
+       | [], _, _, s => return s
+       | (i::is), initialType, type, z => do
          let fname ← mkIdent <$> mkFreshId
          let ithExpr ←
-           match getIthExpr? i type with
+           match getIthExpr? i initialType with
            | some e => pure e
            | none   => throwError "invalid permutation"
-         let type ← instantiateMVars (← Meta.inferType hyp)
-         pullCore ithExpr type stx fname
+         pullCore ithExpr type z fname
          withMainContext do
            let ctx ← getLCtx
            let hyp' := (ctx.findFromUserName? fname.getId).get!.toExpr
-           go is type hyp' stx
+           let type' ← instantiateMVars (← Meta.inferType hyp')
+           go is initialType type' fname
 
