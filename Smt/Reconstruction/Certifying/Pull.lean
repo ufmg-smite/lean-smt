@@ -102,19 +102,6 @@ syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : 
 def pullIndex (index : Nat) (hypS : Syntax) (type : Expr) (id : Ident) : TacticM Unit :=
   pullToMiddleCore 0 index hypS type id
 
--- tries to find pivot in the tail of type, even if it has length > 1 (as an or-chain)
--- pulls it to the beginning if found
-def pullTail (pivot hyp type : Expr) (id : Ident) : TacticM Unit := do
-  let props := collectPropsInOrChain type
-  let target := collectPropsInOrChain pivot
-  let restLength := props.length - target.length
-  let propsTail := List.drop restLength  props
-  if propsTail == target then
-    let fname ← mkFreshId
-    groupOrPrefixCore hyp type restLength fname
-    evalTactic (← `(tactic| have $id := orComm $(mkIdent fname)))
-  else throwError ("term not found: " ++ (toString pivot))
-
 -- insert pivot in the first position of the or-chain
 -- represented by hypS
 def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident)
