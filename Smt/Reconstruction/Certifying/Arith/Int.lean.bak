@@ -1,0 +1,120 @@
+import Std.Data.Int.Basic
+
+#check Nat.gt_of_not_le
+#check Nat.not_le_eq
+#check Nat.not_succ_le_self
+#check Nat.sub_eq_zero_of_le
+
+#check Int.neg
+#check Int.add
+
+theorem Int.add_comm : ∀ (a b : Int), a + b = b + a
+| ofNat a', ofNat b'     => by
+  show (Int.ofNat (a' + b') = Int.ofNat (b' + a'))
+  rw [Nat.add_comm]
+| ofNat a', negSucc b'   => rfl
+| negSucc a', ofNat b'   => rfl
+| negSucc a', negSucc b' => by
+  show (Int.negSucc (Nat.succ (a' + b')) = Int.negSucc (Nat.succ (b' + a')))
+  rw [Nat.add_comm]
+
+theorem Int.neg_add : ∀ (a b c : Int), c - (a + b) = c - a - b := sorry
+
+theorem Int.neg_pos : ∀ (a : Int), a + (-a) = 0
+| ofNat   0      => rfl
+| ofNat (a' + 1) => by
+  show subNatNat (a' + 1) (a' + 1) = 0
+  simp [subNatNat]
+| negSucc a'     => by
+  show subNatNat (Nat.succ a') (Nat.succ a') = 0
+  simp [subNatNat]
+
+theorem Int.sub_add : ∀ {a b : Int}, a - b = a + (-b) := rfl
+
+theorem Int.zero_add : ∀ (a : Int), (Int.ofNat 0) + a = a
+| ofNat a'   => by
+  show ofNat (0 + a') = ofNat a'
+  rw [Nat.zero_add]
+| negSucc a' => rfl
+
+theorem natSub : ∀ (a b c : Nat), a - b = (a + c) - (b + c)
+| 0, 0 => rfl
+| 0, b'+1 => by
+  simp
+  rw [Nat.add_comm]
+  apply Eq.symm
+  exact Nat.sub_self_add 1 (b' + 1)
+| a'+1, 0 => rfl
+| a'+1,b'+1 => by
+  simp
+  have IH := natSub a' b'
+  rw [← IH]
+  rw [Nat.add_assoc, Nat.add_assoc]
+
+theorem subNatNatSucc : ∀ (a b : Nat), Int.subNatNat (a + 1) (b + 1) = Int.subNatNat a b
+| 0, 0 => rfl
+| 0, b' + 1 => rfl
+| a' + 1, 0 => by
+  simp [Int.subNatNat]
+  have eqZero : 1 - (a' + 1 + 1) = 0 := by
+    apply Nat.sub_eq_zero_of_le
+    exact Nat.succ_le_succ (Nat.zero_le (a' + 1))
+  rw [eqZero]
+  show Int.ofNat (a' + 1 + 1 - 1) = Int.ofNat (a' + 1)
+  have eqPlusOneLessOne : a' + 1 + 1 - 1 = a' + 1 := rfl
+  rw [eqPlusOneLessOne]
+| a' + 1, b' + 1 => by
+  simp [Int.subNatNat]
+  rw [← natSub]
+  rw [← natSub (a' + 1) (b' + 1)]
+
+theorem addSubNatNat : ∀ (a b c : Nat), (Int.ofNat a) + Int.subNatNat b c = Int.subNatNat (a + b) c
+| 0,0,0 => by simp
+| a'+1,0,0 => by
+  simp [Int.subNatNat]
+  rfl
+| 0,b'+1,0 => by
+  simp [Int.subNatNat]
+  show (Int.ofNat (0 + b' + 1) = Int.ofNat (b' + 1))
+  rw [Nat.zero_add]
+| 0,0,c'+1 => rfl
+| a'+1,b'+1,0 => by
+  simp [Int.subNatNat]
+  rfl
+| a'+1,0,c'+1 => rfl
+| 0,b'+1,c'+1 => by
+  rw [Nat.zero_add, Int.zero_add]
+| a'+1,b'+1,c'+1 => by
+    
+  admit
+
+theorem Int.add_assoc_aux1 (m n : Nat) : ∀ c : Int, ofNat m + ofNat n + c = ofNat m + (ofNat n + c)
+| ofNat c'   => by
+  show ofNat (m + n + c') = ofNat (m + (n + c'))
+  simp [Nat.add_assoc]
+| negSucc c' => by
+  show subNatNat (m + n) (Nat.succ c') = ofNat m + (subNatNat n (Nat.succ c'))
+  exact Eq.symm (addSubNatNat m n (Nat.succ c'))
+
+theorem Int.add_assoc : ∀ (a b c : Int), a + b + c = a + (b + c)
+| ofNat a', ofNat b', c => Int.add_assoc_aux1 a' b' c
+| _,_,_ => sorry
+
+theorem Int.add_zero : ∀ (a : Int), a + 0 = a
+| ofNat   _ => rfl
+| negSucc _ => rfl
+
+theorem Int.add_le_add_right {n m : Int} (h : n ≤ m) (k : Int) : n + k ≤ m + k := by
+  show NonNeg (m + k - (n + k))
+  have h₃ : m + k - (n + k) = m - n := by
+    rw [Int.add_comm n k, Int.neg_add k n, Int.sub_add, Int.sub_add]
+    rw [Int.add_assoc m k (-k), Int.neg_pos k, Int.add_zero m]
+    exact rfl
+  rw [h₃]
+  exact h
+
+
+theorem sumBoundsInt : ∀ {a b c d : Int}, a ≤ b → c ≤ d → a + c ≤ b + d := by
+  intros a b c d
+  have r₁: a + c ≤ a + d := sorry
+  admit
