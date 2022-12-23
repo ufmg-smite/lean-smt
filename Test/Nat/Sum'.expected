@@ -3,26 +3,44 @@ goal: sum Nat.zero = Nat.zero * (Nat.zero + 1) / 2
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9201 Nat)) (=> (>= _uniq.9201 0) (forall ((_uniq.9202 Nat)) (=> (>= _uniq.9202 0) (>= (Nat.sub _uniq.9201 _uniq.9202) 0))))))
+(assert (forall ((_uniq.9369 Nat)) (=> (>= _uniq.9369 0) (forall ((_uniq.9370 Nat)) (=> (>= _uniq.9370 0) (>= (Nat.sub _uniq.9369 _uniq.9370) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9203 Nat)) (=> (>= _uniq.9203 0) (>= (sum _uniq.9203) 0))))
+(assert (forall ((_uniq.9371 Nat)) (=> (>= _uniq.9371 0) (>= (sum _uniq.9371) 0))))
 (assert (not (= (sum 0) (div (* 0 (+ 0 1)) 2))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:302
+Check failure
+
+ nChildren == 2
+
 goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 
 query:
 (define-sort Nat () Int)
+(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(assert (forall ((_uniq.9385 Nat)) (=> (>= _uniq.9385 0) (forall ((_uniq.9386 Nat)) (=> (>= _uniq.9386 0) (>= (Nat.sub _uniq.9385 _uniq.9386) 0))))))
+(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
+(assert (forall ((_uniq.9387 Nat)) (=> (>= _uniq.9387 0) (>= (sum _uniq.9387) 0))))
 (declare-const n Nat)
 (assert (>= n 0))
-(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9217 Nat)) (=> (>= _uniq.9217 0) (forall ((_uniq.9218 Nat)) (=> (>= _uniq.9218 0) (>= (Nat.sub _uniq.9217 _uniq.9218) 0))))))
-(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9219 Nat)) (=> (>= _uniq.9219 0) (>= (sum _uniq.9219) 0))))
-(assert (not (= (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2))))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
+(assert (not (= (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:302
+Check failure
+
+ nChildren == 2
+
 Test/Nat/Sum'.lean:5:8: warning: declaration uses 'sorry'

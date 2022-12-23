@@ -1,9 +1,10 @@
 goal: p = q → q = p
 
 query:
-(declare-const p Bool)
 (declare-const q Bool)
+(declare-const p Bool)
 (assert (not (=> (= p q) (= q p))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof

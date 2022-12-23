@@ -13,8 +13,8 @@ namespace Smt
 open Lean
 
 /-- Constants which SMT knows about and we thus don't want to unfold. -/
-def smtConsts : Std.HashSet Name :=
-  List.foldr (fun c s => s.insert c) Std.HashSet.empty
+def smtConsts : HashSet Name :=
+  List.foldr (fun c s => s.insert c) HashSet.empty
   [
     ``Eq,
     ``BEq.beq,
@@ -94,7 +94,7 @@ def smtConsts : Std.HashSet Name :=
     ``UInt32.shiftRight
   ]
 
-def opaquePred (opaqueConsts : Std.HashSet Name) (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do
+def opaquePred (opaqueConsts : HashSet Name) (_ : Meta.Config) (ci : ConstantInfo) : CoreM Bool := do
   if smtConsts.contains ci.name || opaqueConsts.contains ci.name then
     return false
   return true
@@ -103,7 +103,7 @@ def opaquePred (opaqueConsts : Std.HashSet Name) (_ : Meta.Config) (ci : Constan
 to let-lift `let-opaque` bindings. This can produce linearly-sized terms in certain cases. 
 
 Constants with names in `opaqueConsts` are also not unfolded. -/
-def smtOpaqueReduce (e : Expr) (opaqueConsts : Std.HashSet Name := {}) : MetaM Expr :=
+def smtOpaqueReduce (e : Expr) (opaqueConsts : HashSet Name := {}) : MetaM Expr :=
   withTheReader Meta.Context (fun ctx => { ctx with
     canUnfold? := some (opaquePred opaqueConsts)
   }) do Smt.reduce (skipTypes := false) e |>.run {
@@ -116,7 +116,7 @@ syntax (name := «let_opaque») withPosition("let_opaque " letDecl) optional(";"
 open Elab Term in
 /-- A `let_opaque` declaration is not eliminated via substitution during WHNFConfigurable normalization,
 but rather persists in the output term. -/
-@[termElab «let_opaque»] def elabLetOpaqueDecl : TermElab := fun stx expectedType? => do
+@[term_elab «let_opaque»] def elabLetOpaqueDecl : TermElab := fun stx expectedType? => do
   let e ← elabLetDeclCore stx expectedType? (useLetExpr := true) (elabBodyFirst := false) (usedLetOnly := false)
   return mkMData ({ : MData}.insert `zeta false) e
 

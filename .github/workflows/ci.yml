@@ -16,13 +16,13 @@ jobs:
     - name: Install Elan (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:nightly
+        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
         echo "$HOME/.elan/bin" >> $GITHUB_PATH
     - name: Install cvc5 (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         mkdir -p "$HOME/.local/bin"
-        curl https://github.com/cvc5/cvc5/releases/latest/download/cvc5-Linux -L > "$HOME/.local/bin/cvc5"
+        curl https://github.com/HanielB/cvc5/releases/download/leanPrinter-v0.0.2/cvc5-Linux-2022-11-18-02f20ad431 -L > "$HOME/.local/bin/cvc5"
         chmod +x "$HOME/.local/bin/cvc5"
         echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Checkout

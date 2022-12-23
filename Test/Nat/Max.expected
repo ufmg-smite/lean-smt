@@ -1,29 +1,39 @@
-goal: x ≤ Max x y ∧ y ≤ Max x y
+goal: x ≤ max' x y ∧ y ≤ max' x y
 
 query:
 (define-sort Nat () Int)
-(declare-const x Nat)
-(assert (>= x 0))
 (declare-const y Nat)
 (assert (>= y 0))
-(declare-fun Max (Nat Nat) Nat)
-(assert (forall ((_uniq.195 Nat)) (=> (>= _uniq.195 0) (forall ((_uniq.196 Nat)) (=> (>= _uniq.196 0) (>= (Max _uniq.195 _uniq.196) 0))))))
-(assert (not (and (<= x (Max x y)) (<= y (Max x y)))))
+(declare-const x Nat)
+(assert (>= x 0))
+(declare-fun |Nat.max'| (Nat Nat) Nat)
+(assert (forall ((_uniq.221 Nat)) (=> (>= _uniq.221 0) (forall ((_uniq.222 Nat)) (=> (>= _uniq.222 0) (>= (|Nat.max'| _uniq.221 _uniq.222) 0))))))
+(assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
 (check-sat)
 
 result: unknown
 Test/Nat/Max.lean:12:2: error: unable to prove goal
-goal: x ≤ Max x y ∧ y ≤ Max x y
+goal: x ≤ max' x y ∧ y ≤ max' x y
 
 query:
 (define-sort Nat () Int)
+(define-fun |Nat.max'| ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
+(assert (forall ((_uniq.262 Nat)) (=> (>= _uniq.262 0) (forall ((_uniq.263 Nat)) (=> (>= _uniq.263 0) (>= (|Nat.max'| _uniq.262 _uniq.263) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-const y Nat)
 (assert (>= y 0))
-(define-fun Max ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
-(assert (forall ((_uniq.236 Nat)) (=> (>= _uniq.236 0) (forall ((_uniq.237 Nat)) (=> (>= _uniq.237 0) (>= (Max _uniq.236 _uniq.237) 0))))))
-(assert (not (and (<= x (Max x y)) (<= y (Max x y)))))
+(assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:276
+Check failure
+
+ tn.isInteger()
+Only support integer rationals
+

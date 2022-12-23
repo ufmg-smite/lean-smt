@@ -1,0 +1,25 @@
+query:
+(set-logic QF_UF)
+(assert false)
+(check-sat)
+(get-proof)
+
+res: unsat
+
+proof:
+import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Resolution
+import Smt.Reconstruction.Certifying.Factor
+import Smt.Reconstruction.Certifying.PermutateOr
+
+open Classical
+
+set_option maxRecDepth 10000
+set_option maxHeartbeats 500000
+
+
+theorem th0 : False → False :=
+fun lean_a0 : False => by
+
+
+

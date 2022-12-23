@@ -6,12 +6,12 @@ def andN : List Prop → Prop
 | [] => True
 | h :: [] => h
 | h :: t  => h ∧ andN t
- 
+
 def orN : List Prop → Prop
 | [] => False
 | h :: [] => h
 | h₁ :: h₂ :: t  => h₁ ∨ orN (h₂ :: t)
- 
+
 def notList : List Prop → List Prop := List.map Not
 
 def notExpr : Expr → Expr

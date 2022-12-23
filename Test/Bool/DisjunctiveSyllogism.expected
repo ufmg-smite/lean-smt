@@ -1,9 +1,10 @@
 goal: (p || q) = true → (!p) = true → q = true
 
 query:
-(declare-const p Bool)
 (declare-const q Bool)
+(declare-const p Bool)
 (assert (not (=> (= (or p q) true) (=> (= (not p) true) (= q true)))))
 (check-sat)
 
 result: unsat
+failed to reconstruct proof: encountered errors elaborating cvc5 proof

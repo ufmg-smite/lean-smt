@@ -23,6 +23,7 @@ inductive Command where
   | assert (tm : Term)
   | checkSat
   | getModel
+  | getProof
   | exit
 
 namespace Command
@@ -45,7 +46,7 @@ protected def toSexp : Command → Sexp
   | .assert val                   => sexp!{(assert {val})}
   | .declare nm st@(arrowT ..)    =>
     let sts := arrowToList st
-    sexp!{(declare-fun {quoteSymbol nm} (...{sts.init.map toSexp}) {sts.getLast!})}
+    sexp!{(declare-fun {quoteSymbol nm} (...{sts.dropLast.map toSexp}) {sts.getLast!})}
   | .declare nm st                => sexp!{(declare-const {quoteSymbol nm} {st})}
   | .declareSort nm arity         =>
     sexp!{(declare-sort {quoteSymbol nm} {toString arity})}
@@ -57,6 +58,7 @@ protected def toSexp : Command → Sexp
     sexp!{(define-fun-rec {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
   | .checkSat                     => sexp!{(check-sat)}
   | .getModel                     => sexp!{(get-model)}
+  | .getProof                     => sexp!{(get-proof)}
   | .exit                         => sexp!{(exit)}
 where
   arrowToList : Term → List Term
