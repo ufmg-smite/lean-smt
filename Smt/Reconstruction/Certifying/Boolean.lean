@@ -40,7 +40,6 @@ theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Eq P Q) → P ∨ Q := by
   | Or.inl p, _ => Or.inl p
   | _, Or.inl q => Or.inr q
   | Or.inr np, Or.inr nq =>
-
     absurd (propext (Iff.intro (λ p => absurd p np) (λ q => absurd q nq))) h
 
 theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Eq P Q) → ¬ P ∨ ¬ Q := by

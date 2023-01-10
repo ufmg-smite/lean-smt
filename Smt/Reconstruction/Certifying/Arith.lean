@@ -1,3 +1,2 @@
-import Smt.Reconstruction.Certifying.Arith.Lemmas
-import Smt.Reconstruction.Certifying.Arith.Tactic
-import Smt.Reconstruction.Certifying.Arith.Instances
+import Smt.Reconstruction.Certifying.Arith.SumBounds
+import Smt.Reconstruction.Certifying.Arith.Trichotomy

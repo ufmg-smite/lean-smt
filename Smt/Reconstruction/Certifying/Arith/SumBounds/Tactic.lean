@@ -28,6 +28,6 @@ syntax (name := sumBounds) "sumBounds" term "," term : tactic
     closeMainGoal (← mkAppM thmName #[h₁, h₂])
 where
   getOp : Expr → TacticM Name
-    | Expr.app (Expr.app (Expr.app (Expr.app (Expr.const nm ..) ..) ..) ..) .. => pure nm
-    | Expr.app (Expr.app (Expr.app (Expr.const nm ..) ..) ..) .. => pure nm
+    | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
+    | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
     | _ => throwError "[sumBounds] invalid parameter"
