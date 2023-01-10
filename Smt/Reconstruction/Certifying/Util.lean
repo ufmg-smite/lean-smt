@@ -104,12 +104,12 @@ def printGoal : TacticM Unit := do
   let currGoalType ← MVarId.getType currGoal
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
 
-syntax (name := elabTerm) "#elab" term : command
-open Lean.Elab Lean.Elab.Command Lean.Elab.Term in
-@[commandElab elabTerm] def evalElab : CommandElab
-  | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
-    let e ← Term.elabTerm term none
-    unless e.isSyntheticSorry do
-      logInfoAt tk m!"{e} ::: {repr e}"
-  | _ => throwUnsupportedSyntax
+/- syntax (name := elabTerm) "#elab" term : command -/
+/- open Lean.Elab Lean.Elab.Command Lean.Elab.Term in -/
+/- @[commandElab elabTerm] def evalElab : CommandElab -/
+/-   | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do -/
+/-     let e ← Term.elabTerm term none -/
+/-     unless e.isSyntheticSorry do -/
+/-       logInfoAt tk m!"{e} ::: {repr e}" -/
+/-   | _ => throwUnsupportedSyntax -/
 

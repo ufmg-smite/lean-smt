@@ -7,4 +7,4 @@ import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Quant
 import Smt.Reconstruction.Certifying.Resolution
 import Smt.Reconstruction.Certifying.Util
-
+import Smt.Reconstruction.Certifying.Arith
