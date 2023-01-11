@@ -3,8 +3,6 @@ import Smt.Reconstruction.Certifying.PermutateOr
 
 import Mathlib.Init.Algebra.Order
 
-#check LT
-
 variable {α : Type}
 
 variable [LinearOrder α]
