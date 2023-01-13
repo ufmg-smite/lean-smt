@@ -5,9 +5,6 @@ open Lake DSL
 package smt where
   precompileModules := true
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
-
 @[default_target]
 lean_lib Smt
 
