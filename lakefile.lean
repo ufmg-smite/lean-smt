@@ -66,7 +66,9 @@ where
     let leanPath ← getAugmentedLeanPath
     -- Note: this only works on Unix since it needs the shared library `libSmt`
     -- to also loads its transitive dependencies.
-    let dynlib := (← findModule? `Smt).get!.dynlibFile
+    let dynlib := match (← findModule? `Smt) with
+                  | some m => m.dynlibFile
+                  | none   => panic "could not find module"
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],
@@ -111,7 +113,9 @@ where
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
     let leanPath ← getAugmentedLeanPath
-    let dynlib := (← findModule? `Smt).get!.dynlibFile
+    let dynlib := match (← findModule? `Smt) with
+                  | some m => m.dynlibFile
+                  | none   => panic "could not find module"
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],
