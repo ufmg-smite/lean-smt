@@ -56,10 +56,25 @@ theorem castLE : ∀ {a b : Int}, a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
   simp
   exact h
 
-#check Int.div
-#check Int.ediv
-
-#eval Int.ediv (-5) 2
+theorem div_add_one_ge_add_one_div : ∀ {n d : Nat},
+  - Int.ofNat ((n/d + 1) * d) + d ≤ -(1 + n) / d * d + d :=
+    by intros n d
+       simp
+       rw [← Int.neg_add]
+       rw [← Int.neg_mul]
+       apply flip mul_le_mul_of_nonneg_right (by simp)
+       norm_cast
+       cases d with
+       | zero =>
+           simp
+           show -1 ≤ Int.ediv (Int.negSucc (Nat.succ n)) 0
+           unfold Int.ediv
+           simp
+       | succ d' => 
+           simp
+           show Int.negSucc (n / Nat.succ d') ≤ Int.ediv (Int.negSucc n) (Nat.succ d')
+           unfold Int.ediv
+           simp
 
 theorem floorLtImplies : ∀ {c : Rat} {i : Int}, Rat.floor c < i → Rat.floor c + 1 ≤ i := by
   intros c i h
@@ -68,7 +83,6 @@ theorem floorLtImplies : ∀ {c : Rat} {i : Int}, Rat.floor c < i → Rat.floor 
 theorem floorPlusOneGt : ∀ (c : Rat), c < Rat.ofInt (Rat.floor c + 1) := by
   intro c
   show Rat.blt c (Rat.ofInt (Rat.floor c + 1))
-
   unfold Rat.blt
   split_ifs with h₁ h₂ h₃
   { exact rfl }
@@ -103,12 +117,7 @@ theorem floorPlusOneGt : ∀ (c : Rat), c < Rat.ofInt (Rat.floor c + 1) := by
   simp at *
   unfold Rat.floor
   split_ifs with h₄
-  {
-    rw [h₄]
-    norm_cast
-    simp
-  }
-  simp
+  { rw [h₄]; norm_cast; simp }
   norm_cast
   simp
   cases c.num with
@@ -117,28 +126,26 @@ theorem floorPlusOneGt : ∀ (c : Rat), c < Rat.ofInt (Rat.floor c + 1) := by
     norm_cast
     suffices c.den * (num' / c.den) + num' % c.den < (num' / c.den + 1) * c.den 
       by rw [Nat.div_add_mod num' c.den] at this; exact this
-
-    rw [Nat.right_distrib]
-    rw [Nat.mul_comm]
+    rw [Nat.right_distrib, Nat.mul_comm]
     apply add_lt_add_left
     simp
     apply Nat.mod_lt
     exact (Nat.zero_lt_of_ne_zero c.den_nz)
   | negSucc num' =>
-    simp
     show Int.negSucc num' + 1 ≤ (Int.negSucc num' / c.den + 1) * c.den
-    rw [Int.negSucc_coe num']
-    rw [Int.ofNat_add]
+    rw [Int.negSucc_coe num', Int.ofNat_add, Int.add_mul]
     simp
-    rw [Int.add_mul]
-
-    simp
-
     rw [← Int.neg_add]
-
-    admit
-
-#check Int.mul_add
+    suffices - Int.ofNat (c.den * (num' / c.den) + num' % c.den) ≤ -(1 + num') / c.den * c.den + c.den
+      by rw [Nat.div_add_mod num' c.den] at this; exact this
+    have tighter_bound := @div_add_one_ge_add_one_div num' c.den
+    apply flip le_trans tighter_bound
+    norm_cast
+    simp
+    rw [Int.add_mul, Int.mul_comm, Int.add_comm, ← Int.add_assoc]
+    simp
+    have coe_nz (i : Nat) : i ≠ 0 → Int.ofNat i ≠ 0 := by simp
+    exact Int.emod_nonneg num' (coe_nz c.den c.den_nz)
 
 theorem intTightUb : ∀ {i : Int} {c : Rat}, Rat.ofInt i < c → i ≤ Rat.floor c := by
   intros i c h
