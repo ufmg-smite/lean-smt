@@ -4,7 +4,6 @@ import Mathlib.Data.Rat.Order
 
 import Smt.Reconstruction.Certifying.Boolean
 
-
 theorem unwrapDecideFalse {p : Prop} [inst : Decidable p] : decide p = false → ¬ p := by
   intros h
   unfold decide at h
@@ -86,9 +85,18 @@ theorem ceilGtImplies : ∀ {c : Rat} {i : Int}, i < Rat.ceil c → i ≤ Rat.ce
   intros c i h
   exact Int.le_sub_one_of_lt h
 
-def q : Rat := { num := 0, den := 1, reduced := by simp, den_nz := by simp }
-#eval Rat.ofInt (Rat.ceil q - 1)
-
+theorem neg_one_mod : ∀ {i : Nat}, Int.emod (-1) i = i - 1 := by
+  intro i
+  unfold Int.emod
+  have neg_one_def : -1 = Int.negSucc 0 := rfl
+  rw [neg_one_def]
+  simp
+  unfold Int.subNatNat
+  cases i with
+  | zero => simp
+  | succ x => cases x with
+              | zero => simp
+              | succ y => simp; 
 
 theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
   intro c
@@ -203,8 +211,69 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
           rw [Int.add_assoc]
           rw [Int.add_assoc]
           simp
-          norm_cast
-          admit
+          rw [Int.negSucc_coe] at num'_def
+          rw [Int.ofNat_add] at num'_def
+          rw [Int.neg_add] at num'_def
+          simp at num'_def
+          have h'' : c.num + 1 = -num' + -1 + 1 := congrArg (· + 1) num'_def
+          simp at h''
+          have hh : -(c.num + 1) = -(-num') := congrArg Int.neg h''
+          simp at hh
+          rw [← hh]
+          cases lt_trichotomy ((-1 + -c.num) % c.den) (c.den - 1) with
+          | inl l₁ => 
+            have l₁' := add_lt_add_right l₁ 1
+            simp at l₁'
+            exact l₁'
+          | inr h₄ => cases h₄ with
+                      | inl l₂ =>
+                          apply False.elim
+                          have c_red := c.reduced
+                          -- have l₂' : Int.emod (-1 + -c.num) c.den = c.den - 1 := l₂
+                          -- unfold Int.emod at l₂'
+                          rw [hh] at l₂
+                          have l₂' := congrArg (· + 1) l₂
+                          simp at l₂'
+                          have l₂'' := congrArg (fun x => Int.emod x c.den) l₂'
+                          simp at l₂''
+
+                          norm_cast at l₂''
+                          have l₂3 : Int.emod ((Int.emod num' c.den) + 1) c.den = c.den % (c.den : Int) := l₂''
+                          have den_gt_one : 1 < (c.den : Int) := by
+                            cases den_def2: c.den with
+                            | zero => exact absurd den_def2 c.den_nz
+                            | succ x => cases x with
+                                        | zero => exact absurd den_def2 h'
+                                        | succ y => simp
+                          have z : Int.emod 1 c.den = 1 := Int.emod_eq_of_lt (by simp) den_gt_one
+                          rw [← z] at l₂3
+                          rw [Int.emod_self] at l₂3
+                          have l₂3' : ((num' : Int) % c.den + (1 : Int) % c.den) % c.den = 0 := l₂3
+
+                          rw [← Int.add_emod num' 1 c.den] at l₂3'
+
+                          have bleh := Int.dvd_of_emod_eq_zero l₂3'
+                          have num'_def' : -c.num = -(-num' + -1) := congrArg Int.neg num'_def
+                          rw [Int.neg_add] at num'_def'
+                          simp at num'_def'
+                          rw [← num'_def'] at bleh
+                          have y := Int.dvd_neg.mp bleh
+                          unfold Nat.coprime at c_red
+                          have y' := Int.dvd_natAbs.mpr y
+                          norm_cast at y'
+                          have blih := Nat.gcd_eq_right_iff_dvd.mp y'
+                          have blih' := Eq.symm blih
+                          have abs := Eq.trans blih' c_red
+                          exact h' abs
+                      | inr l₃ =>
+                          have l₃' := Int.le_of_sub_one_lt l₃
+                          have den_pos : 0 < (c.den : Int) := by
+                            rw [← Int.ofNat_eq_cast]
+                            simp
+                            exact Nat.pos_of_ne_zero c.den_nz
+                          have abs := Int.emod_lt_of_pos (-1 + -c.num) den_pos
+                          have abs' := lt_of_lt_of_le abs l₃'
+                          simp at abs'
 
 theorem floorPlusOneGt : ∀ (c : Rat), c < Rat.ofInt (Rat.floor c + 1) := by
   intro c
