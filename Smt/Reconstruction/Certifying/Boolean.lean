@@ -5,6 +5,25 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
+abbrev Implies (p q : Prop) := p → q
+
+section
+
+open Lean.Macro
+
+syntax binder := "(" binderIdent term ")"
+syntax binders := binder+
+
+macro "forall " "(" xs:binders ")" b:term : term => match xs with
+  | `(binders| $[($x:ident $t:term)]*) => `(term| ∀ $[($x : $t)]*, $b)
+  | _ => throwUnsupported
+
+macro "exists " "(" xs:binders ")" b:term : term => match xs with
+  | `(binders| $[($x:binderIdent $t:term)]*) => `(term| ∃ $[($x : $t)]*, $b)
+  | _ => throwUnsupported
+
+end
+
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
   cases em P with
