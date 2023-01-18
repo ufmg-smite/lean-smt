@@ -101,7 +101,7 @@ def getTypeFromName (name : Name) : TacticM Expr :=
 
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
-  let currGoalType ← MVarId.getType currGoal
+  let currGoalType ← currGoal.getType
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
 
 syntax (name := elabTerm) "#elab" term : command
@@ -112,5 +112,3 @@ def evalElab : CommandElab
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
-
-/- #elab 2 -/
