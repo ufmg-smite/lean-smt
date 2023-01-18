@@ -40,9 +40,11 @@ def congTactics (tactics : List Term) (i : Nat) (id : Ident) (last : Bool) : Tac
     let r: Term := ⟨r⟩
     `(congOrLeft (fun $id' => $r) $id)
 
--- pull j-th term in the orchain to i-th position (we start counting indices at 0)
+-- pull j-th term in the orchain to i-th position
+-- (we start counting indices at 0)
 -- TODO: clear intermediate steps
-def pullIndex2 (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident) : TacticM Unit :=
+def pullToMiddleCore (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident)
+  : TacticM Unit :=
   if i == j then do
     let hyp: Term := ⟨hyp⟩
     evalTactic (← `(tactic| have $id := $hyp))
@@ -87,38 +89,52 @@ def pullIndex2 (i j : Nat) (hyp : Syntax) (type : Expr) (id : Ident) : TacticM U
 
     evalTactic (← `(tactic| have $id := $step₄))
 
-syntax (name := pull2) "pull2" term "," term "," term "," ident : tactic
+syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : tactic
 
-@[tactic pull2] def evalPull2 : Tactic := fun stx => withMainContext do
+@[tactic pullToMiddle] def evalPullToMiddle : Tactic := fun stx => withMainContext do
   let i ← stxToNat ⟨stx[1]⟩ 
   let j ← stxToNat ⟨stx[3]⟩
   let id: Ident := ⟨stx[7]⟩
   let e ← elabTerm stx[5] none
   let t ← instantiateMVars (← Meta.inferType e)
-  pullIndex2 i j stx[5] t id
+  pullToMiddleCore i j stx[5] t id
 
 def pullIndex (index : Nat) (hypS : Syntax) (type : Expr) (id : Ident) : TacticM Unit :=
-  pullIndex2 0 index hypS type id
-
--- tries to find pivot in the tail of type, even if it has length > 1 (as an or-chain)
--- pulls it to the beginning if found
-def pullTail (pivot hyp type : Expr) (id : Ident) : TacticM Unit := do
-  let props := collectPropsInOrChain type
-  let target := collectPropsInOrChain pivot
-  let restLength := props.length - target.length
-  let propsTail := List.drop restLength  props
-  if propsTail == target then
-    let fname ← mkFreshId
-    groupOrPrefixCore hyp type restLength fname
-    evalTactic (← `(tactic| have $id := orComm $(mkIdent fname)))
-  else throwError ("term not found: " ++ (toString pivot))
+  pullToMiddleCore 0 index hypS type id
 
 -- insert pivot in the first position of the or-chain
--- represented by hyp
-def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident) : TacticM Unit :=
-  match getIndex pivot type with
-  | some i => pullIndex i hypS type id
-  | none   => withMainContext do
-    let ctx ← getLCtx
-    let hyp := (ctx.findFromUserName? hypS.getId).get!.toExpr
-    pullTail pivot hyp type id
+-- represented by hypS
+def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident)
+  (sufIdx : Option Nat := none) : TacticM Unit :=
+  let lastSuffix := getLength type - 1
+  let sufIdx :=
+    match sufIdx with
+    | some i => i
+    | none   => lastSuffix
+  let li := collectPropsInOrChain' sufIdx type
+  match getIndexList pivot li with
+  | some i =>
+      if i == sufIdx && sufIdx != lastSuffix then do
+        if i == 0 then
+          evalTactic (← `(tactic| have $id := $(⟨hypS⟩)))
+        else
+          let ctx ← getLCtx
+          let hyp := (ctx.findFromUserName? hypS.getId).get!.toExpr
+          let fname ← mkFreshId
+          groupOrPrefixCore hyp type sufIdx fname
+          evalTactic (← `(tactic| have $id := orComm $(mkIdent fname)))
+      else
+        pullIndex i hypS type id
+  | none   => throwError "[Pull]: couldn't find pivot"
+
+syntax (name := pull) "pull" term "," term "," ident : tactic
+
+@[tactic pull] def evalPullCore : Tactic := fun stx => withMainContext do
+  let e ← elabTerm stx[1] none
+  let t ← instantiateMVars (← Meta.inferType e)
+  let e₂ ← elabTerm stx[3] none
+  pullCore e₂ t stx[1] ⟨stx[5]⟩
+
+/- example : A ∨ B ∨ C ∨ D ∨ E → E ∨ A ∨ B ∨ C ∨ D := by -/
+/-   intro h -/
+/-   pull h, E, h₂ -/
