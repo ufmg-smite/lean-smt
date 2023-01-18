@@ -38,12 +38,16 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     withMainContext do
       let prefLen ← stxToNat ⟨stx[3]⟩
       let fname1 ← mkFreshId
+      let fident1 := mkIdent fname1
       let hyp ← Tactic.elabTerm stx[1] none
       let type ← inferType hyp
-      groupOrPrefixCore hyp type prefLen fname1
+      if prefLen > 1 then
+        groupOrPrefixCore hyp type prefLen fname1
+      else
+        evalTactic (← `(tactic| have $fident1 := $(⟨stx[1]⟩)))
       let fname2 ← mkIdent <$> mkFreshId
       evalTactic (← `(tactic| intros $fname2))
-      evalTactic (← `(tactic| apply orImplies₃ $(mkIdent fname1)))
+      evalTactic (← `(tactic| apply orImplies₃ $fident1))
       let li := listExpr (collectOrNNegArgs type prefLen) (Expr.sort Level.zero)
       withMainContext do
         let ctx ← getLCtx
@@ -51,3 +55,8 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
         Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
     /- let endTime ← IO.monoMsNow -/
     /- logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms" -/
+
+
+example {A B C : Prop} : ¬ A ∨ ¬ B ∨ ¬ C → A → ¬ B ∨ ¬ C := by
+  intros h₁
+  liftOrNToImp h₁, 1
