@@ -96,10 +96,14 @@ theorem neg_one_mod : ∀ {i : Nat}, Int.emod (-1) i = i - 1 := by
   | zero => simp
   | succ x => cases x with
               | zero => simp
-              | succ y => simp; 
+              | succ y => simp
 
 theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
   intro c
+  have den_pos : 0 < (c.den : Int) := by
+    rw [← Int.ofNat_eq_cast]
+    simp
+    exact Nat.pos_of_ne_zero c.den_nz
   show Rat.blt (Rat.ofInt (Rat.ceil c - 1)) c
   unfold Rat.blt
   split_ifs with h₁ h₂ h₃
@@ -119,19 +123,13 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
                                        simp at c_red
                                        exact absurd c_red h₃
                      | inr num_neg  =>
-                         have den_pos : 0 < (c.den : Int) := by
-                           rw [← Int.ofNat_eq_cast]
-                           simp
-                           exact Nat.pos_of_ne_zero c.den_nz
-                         have rat_neg : c.num / c.den < 0 := Int.ediv_neg' num_neg den_pos
+                         have rat_neg := Int.ediv_neg' num_neg den_pos
                          rw [h₂] at rat_neg
                          simp at rat_neg
-     
   }
   {
     simp at h₃
     have ⟨ceil_pos, num_not_pos⟩ := h₃
-    clear h₃
     unfold Rat.ceil at ceil_pos
     split_ifs at ceil_pos with c_den_one
     {
@@ -151,10 +149,6 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
       simp at c_red
       exact absurd c_red c_den_one
     have num_neg : c.num < 0 := lt_of_le_of_ne num_not_pos num_ne_zero
-    have den_pos : 0 < (c.den : Int) := by
-      rw [← Int.ofNat_eq_cast]
-      simp
-      exact Nat.pos_of_ne_zero c.den_nz
     have rat_neg := Int.ediv_neg' num_neg den_pos
     have abs := lt_trans ceil_pos rat_neg
     simp at abs
@@ -178,14 +172,13 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
       apply Classical.byContradiction
       intro abs
       simp at abs
-      have blah := Nat.dvd_of_mod_eq_zero abs
+      have den_dvd_num := Nat.dvd_of_mod_eq_zero abs
       have c_red := c.reduced
-      have bleh := Nat.gcd_eq_left_iff_dvd.mp blah
+      have gcd_eq_den := Nat.gcd_eq_left_iff_dvd.mp den_dvd_num
       unfold Nat.coprime at c_red
-      rw [Nat.gcd_comm] at c_red
-      rw [num'_def] at c_red
+      rw [Nat.gcd_comm, num'_def] at c_red
       simp at c_red
-      rw [bleh] at c_red
+      rw [gcd_eq_den] at c_red
       exact absurd c_red h'
   | negSucc num' =>
       show Int.ediv (Int.negSucc num') c.den * c.den < Int.negSucc num'
@@ -196,24 +189,24 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
           simp
           norm_cast
           rw [← den_def]
-          have blah : den' + 1 = c.den := symm den_def
-          rw [blah]
-          rw [Int.negSucc_coe, Int.negSucc_coe, Int.ofNat_add, Int.ofNat_add]
-          rw [Int.neg_add]
-          rw [Int.add_mul]
+          have den_def' : den' + 1 = c.den := symm den_def
+          rw [den_def']
+          rw [Int.negSucc_coe, Int.negSucc_coe, Int.ofNat_add, Int.ofNat_add, Int.neg_add, Int.add_mul]
           simp
           suffices -(num' / c.den * c.den : Int) + (-c.den) + Int.ofNat ((c.den * (num' / c.den) + num' % c.den)) < -1
             by rw [Nat.div_add_mod num' c.den] at this; exact this
           simp
-          rw [Int.mul_comm]
-          rw [← Int.add_assoc]
-          rw [Int.add_comm (-(c.den * (num' / c.den))) (-c.den)]
-          rw [Int.add_assoc]
-          rw [Int.add_assoc]
+          rw [ Int.mul_comm
+             , ← Int.add_assoc
+             , Int.add_comm (-(c.den * (num' / c.den))) (-c.den)
+             , Int.add_assoc
+             , Int.add_assoc
+             ]
           simp
-          rw [Int.negSucc_coe] at num'_def
-          rw [Int.ofNat_add] at num'_def
-          rw [Int.neg_add] at num'_def
+          rw [ Int.negSucc_coe
+             , Int.ofNat_add
+             , Int.neg_add
+             ] at num'_def
           simp at num'_def
           have h'' : c.num + 1 = -num' + -1 + 1 := congrArg (· + 1) num'_def
           simp at h''
@@ -229,14 +222,11 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
                       | inl l₂ =>
                           apply False.elim
                           have c_red := c.reduced
-                          -- have l₂' : Int.emod (-1 + -c.num) c.den = c.den - 1 := l₂
-                          -- unfold Int.emod at l₂'
                           rw [hh] at l₂
                           have l₂' := congrArg (· + 1) l₂
                           simp at l₂'
                           have l₂'' := congrArg (fun x => Int.emod x c.den) l₂'
                           simp at l₂''
-
                           norm_cast at l₂''
                           have l₂3 : Int.emod ((Int.emod num' c.den) + 1) c.den = c.den % (c.den : Int) := l₂''
                           have den_gt_one : 1 < (c.den : Int) := by
@@ -249,9 +239,7 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
                           rw [← z] at l₂3
                           rw [Int.emod_self] at l₂3
                           have l₂3' : ((num' : Int) % c.den + (1 : Int) % c.den) % c.den = 0 := l₂3
-
                           rw [← Int.add_emod num' 1 c.den] at l₂3'
-
                           have bleh := Int.dvd_of_emod_eq_zero l₂3'
                           have num'_def' : -c.num = -(-num' + -1) := congrArg Int.neg num'_def
                           rw [Int.neg_add] at num'_def'
@@ -261,9 +249,8 @@ theorem ceilSubOneLt : ∀ (c : Rat), Rat.ofInt (Rat.ceil c - 1) < c := by
                           unfold Nat.coprime at c_red
                           have y' := Int.dvd_natAbs.mpr y
                           norm_cast at y'
-                          have blih := Nat.gcd_eq_right_iff_dvd.mp y'
-                          have blih' := Eq.symm blih
-                          have abs := Eq.trans blih' c_red
+                          have blih := Eq.symm (Nat.gcd_eq_right_iff_dvd.mp y')
+                          have abs := Eq.trans blih c_red
                           exact h' abs
                       | inr l₃ =>
                           have l₃' := Int.le_of_sub_one_lt l₃
