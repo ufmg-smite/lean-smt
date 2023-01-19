@@ -112,5 +112,3 @@ def evalElab : CommandElab
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
-
-/- #elab 2 -/

@@ -89,8 +89,6 @@ def elabProof (text : String) : TacticM Unit := do
     trace[smt.debug.reconstruct] (← m.toString)
   if log.hasErrors then
     throwError "encountered errors elaborating cvc5 proof"
-  let th0 ← Meta.inferType (mkConst `th0)
-  trace[smt.debug.reconstruct] "th0 : {th0}"
 
 def evalAnyGoals (tactic : TacticM Unit) : TacticM Unit := do
   let mvarIds ← getGoals
@@ -119,7 +117,13 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
 def rconsProof (hints : List Expr) : TacticM Unit := do
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
-  gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
+  try
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0)}"
+  catch _ =>
+    let u ← Meta.mkFreshLevelMVar
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0 [u])
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0 [u])}"
   Tactic.replaceMainGoal gs
   for h in hints do
     evalAnyGoals do

@@ -56,7 +56,6 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     /- let endTime ← IO.monoMsNow -/
     /- logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms" -/
 
-
 example {A B C : Prop} : ¬ A ∨ ¬ B ∨ ¬ C → A → ¬ B ∨ ¬ C := by
   intros h₁
   liftOrNToImp h₁, 1
