@@ -5,7 +5,7 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
-abbrev Implies (p q : Prop) := p → q
+/- abbrev Implies (p q : Prop) := p → q -/
 
 namespace Smt.Reconstruction.Certifying.Macro
 
@@ -573,26 +573,11 @@ syntax "flipNotAnd " term ("[" term,* "]")? : term
 macro_rules
 | `(flipNotAnd $premiss:term [ $[$x:term],* ]) => `(notAnd [ $[$x],* ] $premiss)
 
-theorem liftOrToNeg : ∀ (l : List Prop), orN (notList l) → ¬ andN l := by
-  intros l h
-  match l with
-  | [] => exact False.elim h
-  | [_] => exact h
-  | p₁::p₂::ps =>
-    simp [orN, notList, map] at h
-    simp [andN]
-    intro ⟨hp₁, andTail⟩
-    match h with
-    | Or.inl hnp₁      => exact absurd hp₁ hnp₁
-    | Or.inr orNotTail => have IH := liftOrToNeg (p₂::ps) orNotTail
-                          exact absurd andTail IH
-
 theorem modusPonens : ∀ {A B : Prop}, A → (A → B) → B := λ x f => f x
 
-theorem trueIntro' : ∀ {A : Prop}, A → A = True := by
+theorem trueIntro : ∀ {A : Prop}, A → A = True := by
   intros A h
   exact propext (Iff.intro (λ _ => True.intro) (λ _ => h))
-theorem trueIntro₂' : ∀ {A : Prop}, A → True = A := Eq.symm ∘ trueIntro'
 
 theorem trueElim : ∀ {A : Prop}, A = True → A := by
   intros A h
