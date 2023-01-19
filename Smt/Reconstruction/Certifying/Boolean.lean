@@ -483,10 +483,10 @@ where
     return d₁
   | _ => throwError "unexpected type in smtCong"
 
-/- theorem eqResolve {P Q : Prop} : P → (P ↔ Q) → Q := by -/
-/-   intros h₁ h₂ -/
-/-   rewrite [← h₂] -/
-/-   exact h₁ -/
+theorem congrIte {α : Type} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
+  c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
+  intros c₁ c₂ t₁ t₂ e₁ e₂ h₁ h₂ h₃
+  rw [h₁, h₂, h₃]
 
 theorem eqResolve {P Q : Prop} : P → (P = Q) → Q := by
   intros h₁ h₂
@@ -568,6 +568,10 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
                   | Or.inr hnAndTail =>
                     have IH := notAnd (p₂::ps) hnAndTail
                     exact Or.inr IH
+
+syntax "flipNotAnd " term ("[" term,* "]")? : term
+macro_rules
+| `(flipNotAnd $premiss:term [ $[$x:term],* ]) => `(notAnd [ $[$x],* ] $premiss)
 
 theorem liftOrToNeg : ∀ (l : List Prop), orN (notList l) → ¬ andN l := by
   intros l h
