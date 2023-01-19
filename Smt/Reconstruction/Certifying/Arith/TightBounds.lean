@@ -77,14 +77,6 @@ theorem div_add_one_ge_add_one_div : ∀ {n d : Nat},
            unfold Int.ediv
            simp
 
-theorem floorLtImplies : ∀ {c : Rat} {i : Int}, Rat.floor c < i → Rat.floor c + 1 ≤ i := by
-  intros c i h
-  exact (Int.lt_iff_add_one_le (Rat.floor c) i).mp h
-
-theorem ceilGtImplies : ∀ {c : Rat} {i : Int}, i < Rat.ceil c → i ≤ Rat.ceil c - 1 := by
-  intros c i h
-  exact Int.le_sub_one_of_lt h
-
 theorem neg_one_mod : ∀ {i : Nat}, Int.emod (-1) i = i - 1 := by
   intro i
   unfold Int.emod
@@ -336,17 +328,17 @@ theorem intTightUb : ∀ {i : Int} {c : Rat}, Rat.ofInt i < c → i ≤ Rat.floo
   | inr h'   => cases h' with
                 | inl ieqc => exact le_of_eq ieqc
                 | inr igtc =>
-                  have coe_igtc := castLE (floorLtImplies igtc)
+                  have floor_le_i := (Int.lt_iff_add_one_le (Rat.floor c) i).mp igtc
+                  have coe_igtc := castLE floor_le_i
                   have c_lt := floorPlusOneGt c
                   have h' := lt_of_lt_of_le c_lt coe_igtc
-
                   exact absurd h (lt_asymm h')
 
 theorem intTightLb : ∀ {i : Int} {c : Rat}, i > c → i ≥ Rat.ceil c := by
   intros i c h
   cases lt_trichotomy i (Rat.ceil c) with
   | inl iltc =>
-    have coe_iltc := castLE (ceilGtImplies iltc)
+    have coe_iltc := castLE (Int.le_sub_one_of_lt iltc)
     have c_gt := ceilSubOneLt c
     have h' := lt_of_le_of_lt coe_iltc c_gt
     exact absurd h (lt_asymm h')
