@@ -166,7 +166,7 @@ def bbT (bs : List Bool) : BitVec bs.length :=
                               | true => simp [Nat.pow_succ]
                                         have u: toNat (true :: l) = 2^(List.length l) + toNat l := rfl
                                         rw [u]
-                                        rw [show 2^(List.length l)*2 = 2^(List.length l)+ 2^(List.length l) by simp [Nat.mul_add, show (2 = 1=)]]
+                                        rw [show 2^(List.length l)*2 = 2^(List.length l)+ 2^(List.length l) by simp [Nat.mul_add, (show 2 = 1+1 by simp)]]
                                         simp [ih, Nat.add_lt_add_left _ (2^(List.length l))]
                                          ⟩
 
