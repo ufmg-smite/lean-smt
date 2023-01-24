@@ -137,4 +137,38 @@ def shrink (v : Nat) (x : BitVec w) : BitVec v :=
 def lsbGet (x : BitVec w) (i : Nat) : Bool :=
   x.extract i i != 0
 
+
+
+
+
+def toNat (bs : List Bool) : Nat :=
+  toNat' (bs.length - 1) bs
+where
+  toNat' (e : Nat) : List Bool → Nat
+    | [] => 0
+    | false :: xs => toNat' (e - 1) xs
+    | true :: xs  => 2 ^ e + toNat' (e - 1) xs
+
+
+
+def bbT (bs : List Bool) : BitVec bs.length :=
+  ⟨toNat bs, by 
+            induction bs with 
+            | nil => simp
+            | cons b l ih => cases b with
+                             | false => simp [Nat.pow_succ]
+                                        apply Nat.lt_of_le_of_lt _ (Nat.mul_lt_mul_of_pos_right ih (show 2>0 by simp))
+                                        have u: toNat (false :: l) = toNat l := rfl
+                                        rw [u]
+                                        rw [← Nat.mul_one (toNat l), Nat.mul_assoc]
+                                        apply Nat.mul_le_mul_left (toNat l)
+                                        simp
+                              | true => simp [Nat.pow_succ]
+                                        have u: toNat (true :: l) = 2^(List.length l) + toNat l := rfl
+                                        rw [u]
+                                        rw [show 2^(List.length l)*2 = 2^(List.length l)+ 2^(List.length l) by simp [Nat.mul_add, show (2 = 1=)]]
+                                        simp [ih, Nat.add_lt_add_left _ (2^(List.length l))]
+                                         ⟩
+
+#eval (bbT [true, false, true])
 end BitVec
