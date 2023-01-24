@@ -55,6 +55,9 @@ def getIndexList [BEq α] : α → List α → Option Nat
   if a == x then some 0
   else (· + 1) <$> getIndexList a xs
 
+def permutateList [Inhabited α] : List α → List Nat → List α :=
+  λ xs => List.foldr (λ i => (· :: ·) (List.get! xs i)) []
+
 def getIndex : Expr → Expr → Option Nat
 | t, app (app (const `Or ..) e1) e2 =>
     if e1 == t then some 0
@@ -73,9 +76,13 @@ def getCongAssoc : Nat → Name → List Term
 | 1,     n => [getCongAssoc' 0 n]
 | i + 2, n => (getCongAssoc' (i + 1) n) :: (getCongAssoc (i + 1) n)
 
-def getLength : Expr → Nat
-| app (app (const `Or ..) _) e2 => 1 + getLength e2
-| _ => 1
+def getLength : Expr → (i : Option Nat := none) → Nat
+| e, some i =>
+  let li := collectPropsInOrChain' i e
+  List.length li
+| e, none =>
+  let li := collectPropsInOrChain e
+  List.length li
 
 def getLengthAnd : Expr → Nat
 | app (app (const `And ..) _) e2 => 1 + getLengthAnd e2
