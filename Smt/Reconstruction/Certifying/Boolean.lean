@@ -323,7 +323,7 @@ theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i Fal
 
 theorem cnfOrPos : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (em (orN l))
 
-theorem cnfImpliesPos : ∀ (p q : Prop), ¬ (p → q) ∨ ¬ p ∨ q := by
+theorem cnfImpliesPos : ∀ {p q : Prop}, ¬ (p → q) ∨ ¬ p ∨ q := by
   intros p q
   match em p, em q with
   | _,         Or.inl hq  => exact Or.inr (Or.inr hq)
@@ -332,40 +332,40 @@ theorem cnfImpliesPos : ∀ (p q : Prop), ¬ (p → q) ∨ ¬ p ∨ q := by
                              exact absurd (f hp) hnq
   | Or.inr hnp, _         => exact Or.inr (Or.inl hnp)
 
-theorem cnfImpliesNeg1 : ∀ (p q : Prop), (p → q) ∨ p := by
+theorem cnfImpliesNeg1 : ∀ {p q : Prop}, (p → q) ∨ p := by
   intros p q
   apply orComm
   apply orImplies
   exact flip absurd
 
-theorem cnfImpliesNeg2 : ∀ (p q : Prop), (p → q) ∨ ¬ q := by
+theorem cnfImpliesNeg2 : ∀ {p q : Prop}, (p → q) ∨ ¬ q := by
   intros p q
   apply orComm
   apply orImplies
   intros hnnq _
   exact notNotElim hnnq
 
-theorem cnfEquivPos1 : ∀ (p q : Prop), ¬ (Eq p q) ∨ ¬ p ∨ q := by
+theorem cnfEquivPos1 : ∀ {p q : Prop}, ¬ (Eq p q) ∨ ¬ p ∨ q := by
   intros _ _
   apply orImplies
   exact equivElim1 ∘ notNotElim
 
-theorem cnfEquivPos2 : ∀ (p q : Prop), ¬ (Eq p q) ∨ p ∨ ¬ q := by
+theorem cnfEquivPos2 : ∀ {p q : Prop}, ¬ (Eq p q) ∨ p ∨ ¬ q := by
   intros _ _
   apply orImplies
   exact equivElim2 ∘ notNotElim
 
-theorem cnfEquivNeg1 : ∀ (p q : Prop), Eq p q ∨ p ∨ q := by
+theorem cnfEquivNeg1 : ∀ {p q : Prop}, Eq p q ∨ p ∨ q := by
   intros _ _
   apply orImplies
   exact notEquivElim1
 
-theorem cnfEquivNeg2 : ∀ (p q : Prop), Eq p q ∨ ¬ p ∨ ¬ q := by
+theorem cnfEquivNeg2 : ∀ {p q : Prop}, Eq p q ∨ ¬ p ∨ ¬ q := by
   intros _ _
   apply orImplies
   exact notEquivElim2
 
-theorem cnfItePos1 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ ¬ c ∨ a := by
+theorem cnfItePos1 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ ¬ c ∨ a := by
   intros c a b
   apply orImplies
   intro hite
@@ -376,7 +376,7 @@ theorem cnfItePos1 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ ¬ c ∨ a := by
                   exact Or.inr hite'
   | Or.inr hnc => exact Or.inl hnc
 
-theorem cnfItePos2 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ c ∨ b   := by
+theorem cnfItePos2 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ c ∨ b   := by
   intros c a b
   apply orImplies
   intro hite
@@ -387,7 +387,7 @@ theorem cnfItePos2 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ c ∨ b   := by
                   exact Or.inr hite'
   | Or.inl hc  => exact Or.inl hc
 
-theorem cnfItePos3 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ a ∨ b   := by
+theorem cnfItePos3 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ a ∨ b   := by
   intros c a b
   apply orImplies
   intro hite
@@ -400,7 +400,7 @@ theorem cnfItePos3 : ∀ (c a b : Prop), ¬ (ite c a b) ∨ a ∨ b   := by
                   rewrite [r] at hite'
                   exact Or.inl hite'
 
-theorem cnfIteNeg1 : ∀ (c a b : Prop), (ite c a b) ∨ ¬ c ∨ ¬ a := by
+theorem cnfIteNeg1 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ c ∨ ¬ a := by
   intros c a b
   apply orImplies
   intro hnite
@@ -410,7 +410,7 @@ theorem cnfIteNeg1 : ∀ (c a b : Prop), (ite c a b) ∨ ¬ c ∨ ¬ a := by
                   exact Or.inr hnite
   | Or.inr hnc => exact Or.inl hnc
 
-theorem cnfIteNeg2 : ∀ (c a b : Prop), (ite c a b) ∨ c ∨ ¬ b   := by
+theorem cnfIteNeg2 : ∀ {c a b : Prop}, (ite c a b) ∨ c ∨ ¬ b   := by
   intros c a b
   apply orImplies
   intro hnite
@@ -420,7 +420,7 @@ theorem cnfIteNeg2 : ∀ (c a b : Prop), (ite c a b) ∨ c ∨ ¬ b   := by
                    exact Or.inr hnite
   | Or.inl hc => exact Or.inl hc
 
-theorem cnfIteNeg3 : ∀ (c a b : Prop), (ite c a b) ∨ ¬ a ∨ ¬ b := by
+theorem cnfIteNeg3 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ a ∨ ¬ b := by
   intros c a b
   apply orImplies
   intro hnite
@@ -595,4 +595,4 @@ theorem falseElim : ∀ {A : Prop}, A = False → ¬ A := λ h ha =>
   | rfl => ha
 theorem falseElim₂ : ∀ {A : Prop}, False = A → ¬ A := falseElim ∘ Eq.symm
 
-theorem neg_symm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
+theorem negSymm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
