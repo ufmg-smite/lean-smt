@@ -1,6 +1,7 @@
 import Lean
 
 import Smt.Reconstruction.Certifying.Util
+import Smt.Reconstruction.Certifying.Options
 
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
@@ -262,7 +263,7 @@ def parseCnfAndNeg : Syntax → TacticM Expr
     let e ← parseCnfAndNeg stx
     closeMainGoal (mkApp (mkConst `cnfAndNeg) e)
   let endTime ← IO.monoMsNow
-  logInfo m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
  
 syntax (name := cnfAndPosT) "cnfAndPosT" ("[" term,* "]")? "," term : tactic
 
@@ -298,7 +299,7 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
     let (li, i) ← parseCnfAndPos stx
     closeMainGoal $ mkApp (mkApp (mkConst `cnfAndPos) li) i
   let endTime ← IO.monoMsNow
-  logInfo m!"[cnfAndPos]: Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[cnfAndPos]: Time taken: {endTime - startTime}ms"
 
 theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i False := by
   intros l i
@@ -461,7 +462,7 @@ syntax (name := congrT) "congrT" term "," term : tactic
     let h₂ := ⟨stx[3]⟩
     evalTactic (← `(tactic| exact congr $h₁ $h₂))
   let endTime ← IO.monoMsNow
-  logInfo m!"[congrT]: Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[congrT]: Time taken: {endTime - startTime}ms"
 
 syntax (name := smtCong) "smtCong" term "," term : tactic
 @[tactic smtCong] def evalSmtCong : Tactic := fun stx => do
@@ -481,7 +482,7 @@ syntax (name := smtCong) "smtCong" term "," term : tactic
     | true,  false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
     | true,  true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
   let endTime ← IO.monoMsNow
-  logInfo m!"[smtCong] Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[smtCong] Time taken: {endTime - startTime}ms"
 where
   isIff : Expr → Bool
   | app (app (const `Iff ..) _) _ => true
@@ -526,7 +527,7 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let proofE ← elabTerm proof none
     closeMainGoal proofE
   let endTime ← IO.monoMsNow
-  logInfo m!"[andElim] Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
 where
   getProof (i : Nat) (hyp : Syntax) : Syntax :=
     match i with
@@ -555,7 +556,7 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
     let proofE ← elabTerm proof none
     closeMainGoal proofE
   let endTime ← IO.monoMsNow
-  logInfo m!"[notOrElim] Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[notOrElim] Time taken: {endTime - startTime}ms"
 where
   getProof (i : Nat) (hyp : Syntax) : Syntax :=
     match i with
@@ -566,10 +567,15 @@ example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
 
-syntax (name := reportTime) "reportTime" : tactic
-@[tactic reportTime] def evalReportTime : Tactic := fun _ => do
+syntax (name := reportTimeOfTactic) "reportTimeOfTactic" term "," term : tactic
+@[tactic reportTimeOfTactic] def evalReportTimeOfTactic : Tactic := fun stx => do
   let time ← IO.monoMsNow
-  logInfo s!"{time}ms"
+  trace[smt.profile] s!"tactic {stx[1]} produced {stx[3]} at {time}ms"
+
+syntax (name := reportTime) "reportTime" : tactic
+@[tactic reportTime] def evalReport : Tactic := fun _ => do
+  let time ← IO.monoMsNow
+  trace[smt.profile] s!"{time}ms"
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h
