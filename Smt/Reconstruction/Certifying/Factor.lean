@@ -1,6 +1,7 @@
 import Lean
 
 import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 
 open Lean Elab.Tactic Meta
@@ -84,7 +85,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
       | some i => i
     factorCore type source sufIdx
   let endTime ← IO.monoMsNow
-  logInfo m!"[factor] Time taken: {endTime - startTime}ms"
+  trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h

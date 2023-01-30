@@ -1,6 +1,7 @@
 import Lean
 
 import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta Expr
@@ -54,7 +55,7 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
         let hyp2 := (ctx.findFromUserName? fname2.getId).get!.toExpr
         Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
     let endTime ← IO.monoMsNow
-    logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms"
+    trace[smt.profile] m!"[liftOrNToImp] Time taken: {endTime - startTime}ms"
 
 example {A B C : Prop} : ¬ A ∨ ¬ B ∨ ¬ C → A → ¬ B ∨ ¬ C := by
   intros h₁

@@ -1,5 +1,6 @@
 import Lean
 
+import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Util
 
@@ -34,7 +35,7 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
       let s ← go props' suffIdx type stx[1]
       evalTactic (← `(tactic| exact $(⟨s⟩))) 
     let endTime ← IO.monoMsNow
-    logInfo m!"[permutateOr] Time taken: {endTime - startTime}ms"
+    trace[smt.profile] m!"[permutateOr] Time taken: {endTime - startTime}ms"
 where go : List Expr → Nat → Expr → Syntax → TacticM Syntax
        | [], _, _, stx => return stx
        | (e::es), suffIdx, type, stx => do
