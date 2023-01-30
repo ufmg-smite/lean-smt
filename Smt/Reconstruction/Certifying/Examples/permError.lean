@@ -1,0 +1,203 @@
+import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Resolution
+import Smt.Reconstruction.Certifying.Factor
+import Smt.Reconstruction.Certifying.PermutateOr
+import Smt.Reconstruction.Certifying.LiftOrNToNeg
+
+open Classical
+
+abbrev Implies (p q : Prop) := p → q
+
+set_option maxRecDepth 10000
+set_option maxHeartbeats 500000
+
+variable {f : (Prop -> Prop)}
+
+theorem th0 : (Eq (Eq True False) False) → (Eq (Eq (Not (Not (f True))) (f True)) (Eq (f True) (Not (Not (f True))))) → (Eq (Not (Not False)) False) → (Eq (ite (f True) True (f False)) (Or (f True) (f False))) → (Eq (Not (Not (f True))) (f True)) → (Eq (Eq True True) True) → (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) → (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) → (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) True) → (Eq (Not False) True) → (Eq (Eq False False) (Not False)) → (Eq (Eq False False) True) → (Eq (Eq (f True) (f True)) True) → (Eq (Eq (Not (Not False)) False) (Eq False (Not (Not False)))) → (Eq (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Not (Not (Or (f True) (f False)))))) → (Not (f True)) → (f (ite (f True) True (f False))) → False :=
+fun lean_a0 : (Eq (Eq True False) False) =>
+fun lean_a1 : (Eq (Eq (Not (Not (f True))) (f True)) (Eq (f True) (Not (Not (f True))))) =>
+fun lean_a2 : (Eq (Not (Not False)) False) =>
+fun lean_a3 : (Eq (ite (f True) True (f False)) (Or (f True) (f False))) =>
+fun lean_a4 : (Eq (Not (Not (f True))) (f True)) =>
+fun lean_a5 : (Eq (Eq True True) True) =>
+fun lean_a6 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) =>
+fun lean_a7 : (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) =>
+fun lean_a8 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) True) =>
+fun lean_a9 : (Eq (Not False) True) =>
+fun lean_a10 : (Eq (Eq False False) (Not False)) =>
+fun lean_a11 : (Eq (Eq False False) True) =>
+fun lean_a12 : (Eq (Eq (f True) (f True)) True) =>
+fun lean_a13 : (Eq (Eq (Not (Not False)) False) (Eq False (Not (Not False)))) =>
+fun lean_a14 : (Eq (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Not (Not (Or (f True) (f False)))))) =>
+fun lean_a15 : (Not (f True)) =>
+fun lean_a16 : (f (ite (f True) True (f False))) => by
+have lean_s0 : (Or (Not (Not (f True))) (Or (Not True) (Or (Not (Or (f True) (f False))) (Or (Not (f (Or (f True) (f False)))) False)))) :=
+  (scope (fun lean_a17 : (Not (f True)) =>
+    (scope (fun lean_a18 : True =>
+      (scope (fun lean_a19 : (Or (f True) (f False)) =>
+        (scope (fun lean_a20 : (f (Or (f True) (f False))) =>
+          have lean_s0 : (Eq f f) := rfl
+          have lean_s1 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := congr lean_s0 lean_a3
+          have lean_s2 : (Eq f f) := rfl
+          have lean_s3 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+          have lean_s4 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+          let lean_s5 := congr lean_s3 lean_s4
+          have lean_s6 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+          have lean_s7 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := congr lean_s5 lean_s6
+          have lean_s8 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) True) := Eq.trans lean_s7 lean_a8
+          have lean_s9 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := trueElim lean_s8
+          have lean_s10 : (Eq (f (Or (f True) (f False))) (f (Or (f True) (f False)))) := congr lean_s2 lean_s9
+          have lean_s11 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := Eq.trans lean_s1 lean_s10
+          have lean_s12 : (f (Or (f True) (f False))) := eqResolve lean_a16 lean_s11
+          have lean_s13 : (Eq (f (Or (f True) (f False))) True) := trueIntro lean_s12
+          have lean_s14 : (Eq True (f (Or (f True) (f False)))) := Eq.symm lean_s13
+          have lean_s15 : (Eq f f) := rfl
+          have lean_s16 : (Eq (Or (f True) (f False)) True) := trueIntro lean_a19
+          have lean_s17 : (Eq True True) := rfl
+          have lean_s18 : (Eq True True) := Eq.symm lean_s17
+          have lean_s19 : (Eq (Or (f True) (f False)) True) := Eq.trans lean_s16 lean_s18
+          have lean_s20 : (Eq (f (Or (f True) (f False))) (f True)) := congr lean_s15 lean_s19
+          let lean_s21 := Eq.trans lean_s14 lean_s20
+          have lean_s22 : (Eq Not Not) := rfl
+          have lean_s23 : (Eq f f) := rfl
+          have lean_s24 : (Eq True True) := Eq.symm lean_s17
+          have lean_s25 : (Eq (f True) (f True)) := congr lean_s23 lean_s24
+          have lean_s26 : (Eq (Not (f True)) (Not (f True))) := congr lean_s22 lean_s25
+          have lean_s27 : (Not (f True)) := eqResolve lean_a17 lean_s26
+          have lean_s28 : (Eq (f True) False) := falseIntro lean_s27
+          have lean_s29 : (Eq True False) := Eq.trans lean_s21 lean_s28
+          show False from eqResolve lean_s29 lean_a0
+  ))))))))
+have lean_s1 : (Not (And (Not (f True)) (And True (And (Or (f True) (f False)) (f (Or (f True) (f False))))))) := by liftOrNToNeg lean_s0
+have lean_s2 : (Or (Not (Not (f True))) (Or (Not True) (Or (Not (Or (f True) (f False))) (Not (f (Or (f True) (f False))))))) := notAnd [(Not (f True)), True, (Or (f True) (f False)), (f (Or (f True) (f False)))] lean_s1
+have lean_s3 : (Eq Or Or) := rfl
+have lean_s4 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+have lean_s5 : (Eq (f True) (f True)) := rfl
+let lean_s6 := congr lean_s4 lean_s5
+have lean_s7 : (Eq (Eq (f True) (Not (Not (f True)))) (Eq (f True) (f True))) := congr lean_s6 lean_a4
+have lean_s8 : (Eq (Eq (f True) (Not (Not (f True)))) True) := Eq.trans lean_s7 lean_a12
+have lean_s9 : (Eq (Eq (Not (Not (f True))) (f True)) True) := Eq.trans lean_a1 lean_s8
+have lean_s10 : (Eq (Not (Not (f True))) (f True)) := trueElim lean_s9
+let lean_s11 := congr lean_s3 lean_s10
+have lean_s12 : (Eq (Not True) (Not True)) := rfl
+let lean_s13 := congr lean_s3 lean_s12
+have lean_s14 : (Eq (Not (Or (f True) (f False))) (Not (Or (f True) (f False)))) := rfl
+let lean_s15 := congr lean_s3 lean_s14
+have lean_s16 : (Eq (Not (f (Or (f True) (f False)))) (Not (f (Or (f True) (f False))))) := rfl
+let lean_s17 := congr lean_s15 lean_s16
+let lean_s18 := congr lean_s13 lean_s17
+have lean_s19 : (Eq (Or (Not (Not (f True))) (Or (Not True) (Or (Not (Or (f True) (f False))) (Not (f (Or (f True) (f False))))))) (Or (f True) (Or (Not True) (Or (Not (Or (f True) (f False))) (Not (f (Or (f True) (f False)))))))) := congr lean_s11 lean_s18
+have lean_s20 : (Or (f True) (Or (Not True) (Or (Not (Or (f True) (f False))) (Not (f (Or (f True) (f False))))))) := eqResolve lean_s2 lean_s19
+have lean_s21 : (Or (f True) (Or (Not (f (Or (f True) (f False)))) (Or (Not True) (Not (Or (f True) (f False)))))) := by permutateOr lean_s20, [0, 3, 1, 2]
+have lean_s22 : (Or (And (f (Or (f True) (f False))) (And (Not (Or (f True) (f False))) (Not False))) (Or (Not (f (Or (f True) (f False)))) (Or (Not (Not (Or (f True) (f False)))) (Not (Not False))))) := cnfAndNeg [(f (Or (f True) (f False))), (Not (Or (f True) (f False))), (Not False)]
+have lean_s23 : (Or (Not (f (Or (f True) (f False)))) (Or (Not (Not (Or (f True) (f False)))) (Or (Not (Not False)) (f False)))) :=
+  (scope (fun lean_a20 : (f (Or (f True) (f False))) =>
+    (scope (fun lean_a21 : (Not (Or (f True) (f False))) =>
+      (scope (fun lean_a22 : (Not False) =>
+        have lean_s23 : (Eq f f) := rfl
+        have lean_s24 : (Eq False False) := rfl
+        have lean_s25 : (Eq (Or (f True) (f False)) False) := falseIntro lean_a21
+        have lean_s26 : (Eq False (Or (f True) (f False))) := Eq.symm lean_s25
+        have lean_s27 : (Eq False (Or (f True) (f False))) := Eq.trans lean_s24 lean_s26
+        have lean_s28 : (Eq (f False) (f (Or (f True) (f False)))) := congr lean_s23 lean_s27
+        have lean_s29 : (Eq f f) := rfl
+        have lean_s30 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := congr lean_s29 lean_a3
+        have lean_s31 : (Eq f f) := rfl
+        have lean_s32 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+        have lean_s33 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+        let lean_s34 := congr lean_s32 lean_s33
+        have lean_s35 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+        have lean_s36 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := congr lean_s34 lean_s35
+        have lean_s37 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) True) := Eq.trans lean_s36 lean_a8
+        have lean_s38 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := trueElim lean_s37
+        have lean_s39 : (Eq (f (Or (f True) (f False))) (f (Or (f True) (f False)))) := congr lean_s31 lean_s38
+        have lean_s40 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := Eq.trans lean_s30 lean_s39
+        have lean_s41 : (f (Or (f True) (f False))) := eqResolve lean_a16 lean_s40
+        have lean_s42 : (Eq (f (Or (f True) (f False))) True) := trueIntro lean_s41
+        have lean_s43 : (Eq (f False) True) := Eq.trans lean_s28 lean_s42
+        have lean_s44 : (f False) := trueElim lean_s43
+        show (f False) from lean_s44
+  ))))))
+have lean_s24 : (Implies (And (f (Or (f True) (f False))) (And (Not (Or (f True) (f False))) (Not False))) (f False)) := by liftOrNToImp lean_s23, 3
+have lean_s25 : (Or (Not (And (f (Or (f True) (f False))) (And (Not (Or (f True) (f False))) (Not False)))) (f False)) := impliesElim lean_s24
+have lean_s26 : (Or (Not (f (Or (f True) (f False)))) (Or (Not (Not (Or (f True) (f False)))) (Or (Not (Not False)) (f False)))) := by R1 lean_s22, lean_s25, (And (f (Or (f True) (f False))) (And (Not (Or (f True) (f False))) (Not False))), [(- 1), (- 1)]
+have lean_s27 : (Eq Or Or) := rfl
+let lean_s28 := congr lean_s27 lean_s16
+have lean_s29 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+have lean_s30 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+let lean_s31 := congr lean_s29 lean_s30
+have lean_s32 : (Eq (Eq (Or (f True) (f False)) (Not (Not (Or (f True) (f False))))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := congr lean_s31 lean_a7
+have lean_s33 : (Eq (Eq (Or (f True) (f False)) (Not (Not (Or (f True) (f False))))) True) := Eq.trans lean_s32 lean_a8
+have lean_s34 : (Eq (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) True) := Eq.trans lean_a14 lean_s33
+have lean_s35 : (Eq (Not (Not (Or (f True) (f False)))) (Or (f True) (f False))) := trueElim lean_s34
+let lean_s36 := congr lean_s27 lean_s35
+have lean_s37 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+have lean_s38 : (Eq False False) := rfl
+let lean_s39 := congr lean_s37 lean_s38
+have lean_s40 : (Eq (Eq False (Not (Not False))) (Eq False False)) := congr lean_s39 lean_a2
+have lean_s41 : (Eq (Eq False (Not (Not False))) True) := Eq.trans lean_s40 lean_a11
+have lean_s42 : (Eq (Eq (Not (Not False)) False) True) := Eq.trans lean_a13 lean_s41
+have lean_s43 : (Eq (Not (Not False)) False) := trueElim lean_s42
+let lean_s44 := congr lean_s27 lean_s43
+have lean_s45 : (Eq (f False) (f False)) := rfl
+let lean_s46 := congr lean_s44 lean_s45
+let lean_s47 := congr lean_s36 lean_s46
+have lean_s48 : (Eq (Or (Not (f (Or (f True) (f False)))) (Or (Not (Not (Or (f True) (f False)))) (Or (Not (Not False)) (f False)))) (Or (Not (f (Or (f True) (f False)))) (Or (Or (f True) (f False)) (Or False (f False))))) := congr lean_s28 lean_s47
+have lean_s49 : (Or (Not (f (Or (f True) (f False)))) (Or (Or (f True) (f False)) (Or False (f False)))) := eqResolve lean_s26 lean_s48
+have lean_s50 : (Or (Or (f True) (f False)) (Or False (Or (f False) (Not (f (Or (f True) (f False))))))) := by permutateOr lean_s49, [1, 2, 3, 0]
+have lean_s51 : (Eq False False) := rfl
+have lean_s52 : (Not False) := eqResolve lean_s51 lean_a10
+let lean_s53 := by R1 lean_s50, lean_s52, False, [(- 1), 0]
+have lean_s54 : (Eq f f) := rfl
+have lean_s55 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := congr lean_s54 lean_a3
+have lean_s56 : (Eq f f) := rfl
+have lean_s57 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+have lean_s58 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+let lean_s59 := congr lean_s57 lean_s58
+have lean_s60 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+have lean_s61 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := congr lean_s59 lean_s60
+have lean_s62 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) True) := Eq.trans lean_s61 lean_a8
+have lean_s63 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := trueElim lean_s62
+have lean_s64 : (Eq (f (Or (f True) (f False))) (f (Or (f True) (f False)))) := congr lean_s56 lean_s63
+have lean_s65 : (Eq (f (ite (f True) True (f False))) (f (Or (f True) (f False)))) := Eq.trans lean_s55 lean_s64
+have lean_s66 : (f (Or (f True) (f False))) := eqResolve lean_a16 lean_s65
+let lean_s67 := by R2 lean_s53, lean_s66, (f (Or (f True) (f False))), [(- 1), 0]
+have lean_s68 : (Or (Or (f True) (f False)) (Not (f False))) := @cnfOrNeg [(f True), (f False)] 1
+let lean_s69 := by R1 lean_s67, lean_s68, (f False), [(- 1), (- 1)]
+have lean_s70 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+have lean_s71 : (Eq (@Eq Prop) (@Eq Prop)) := rfl
+have lean_s72 : (Eq Or Or) := rfl
+have lean_s73 : (Eq f f) := rfl
+have lean_s74 : (Eq True True) := rfl
+have lean_s75 : (Eq True True) := Eq.symm lean_s74
+have lean_s76 : (Eq (f True) (f True)) := congr lean_s73 lean_s75
+let lean_s77 := congr lean_s72 lean_s76
+have lean_s78 : (Eq f f) := rfl
+have lean_s79 : (Eq Not Not) := rfl
+have lean_s80 : (Eq False False) := rfl
+have lean_s81 : (Eq (Not False) (Not False)) := congr lean_s79 lean_s80
+let lean_s82 := Eq.trans lean_a10 lean_s81
+have lean_s83 : (Eq (Eq False False) True) := Eq.trans lean_s82 lean_a9
+have lean_s84 : (Eq False False) := trueElim lean_s83
+have lean_s85 : (Eq (f False) (f False)) := congr lean_s78 lean_s84
+have lean_s86 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := congr lean_s77 lean_s85
+let lean_s87 := congr lean_s71 lean_s86
+have lean_s88 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := rfl
+have lean_s89 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := congr lean_s87 lean_s88
+have lean_s90 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := Eq.trans lean_s89 lean_a6
+have lean_s91 : (Eq (Eq (Or (f True) (f False)) (Or (f True) (f False))) (Eq (Or (f True) (f False)) (Or (f True) (f False)))) := Eq.trans lean_a6 lean_s90
+have lean_s92 : (Eq (Or (f True) (f False)) (Or (f True) (f False))) := eqResolve lean_s70 lean_s91
+have lean_s93 : (Or (Or (f True) (f False)) (Not (Or (f True) (f False)))) := equivElim2 lean_s92
+have lean_s94 : (Or (Or (f True) (f False)) (Or (f True) (f False))) := by R1 lean_s69, lean_s93, (Or (f True) (f False)), [1, (- 1)]
+have lean_s95 : (Or (f True) (f False)) := by factor lean_s94, 1
+let lean_s96 := by R2 lean_s21, lean_s95, (Or (f True) (f False)), [(- 1), 0]
+have lean_s97 : (Eq True True) := rfl
+have lean_s98 : True := eqResolve lean_s97 lean_a5
+let lean_s99 := by R2 lean_s96, lean_s98, True, [(- 1), 0]
+let lean_s100 := by R2 lean_s99, lean_s66, (f (Or (f True) (f False))), [(- 1), 0]
+have lean_s101 : (Eq Not Not) := rfl
+have lean_s102 : (Eq f f) := rfl
+have lean_s103 : (Eq (f True) (f True)) := congr lean_s102 lean_s75
+have lean_s104 : (Eq (Not (f True)) (Not (f True))) := congr lean_s101 lean_s103
+have lean_s105 : (Not (f True)) := eqResolve lean_a15 lean_s104
+exact (show False from by R1 lean_s100, lean_s105, (f True), [0, 0])

@@ -34,7 +34,7 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
 
 @[tactic liftOrNToImp] def evalLiftOrNToImp : Tactic :=
   fun stx => do
-    /- let startTime ← IO.monoMsNow -/
+    let startTime ← IO.monoMsNow
     withMainContext do
       let prefLen ← stxToNat ⟨stx[3]⟩
       let fname1 ← mkFreshId
@@ -53,8 +53,8 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
         let ctx ← getLCtx
         let hyp2 := (ctx.findFromUserName? fname2.getId).get!.toExpr
         Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
-    /- let endTime ← IO.monoMsNow -/
-    /- logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms" -/
+    let endTime ← IO.monoMsNow
+    logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms"
 
 example {A B C : Prop} : ¬ A ∨ ¬ B ∨ ¬ C → A → ¬ B ∨ ¬ C := by
   intros h₁

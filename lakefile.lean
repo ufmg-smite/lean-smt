@@ -15,6 +15,10 @@ lean_lib Certifying {
   srcDir := "./Smt/Reconstruction/"
 }
 
+/- lean_lib Slow { -/
+/-   srcDir := "Smt/Reconstruction/Certifying/" -/
+/- } -/
+
 open Std
 open System
 
@@ -123,3 +127,20 @@ where
     }
     IO.FS.writeFile expected out.stdout
     return 0
+
+script profile do
+  let lean ← getLean
+  let dynlib := match (← findModule? `Smt) with
+                | some m => m.dynlibFile
+                | none   => panic "could not find module"
+  let leanPath ← getAugmentedLeanPath
+  let out ← IO.Process.output {
+    cmd := lean.toString
+    args := #[s!"--load-dynlib={dynlib}", "./Smt/Reconstruction/Certifying/Slow.lean", "--profile"
+             ],
+    env := #[("LEAN_PATH", leanPath.toString)]
+  }
+  IO.println out.stdout
+  IO.println out.stderr
+  return 0
+

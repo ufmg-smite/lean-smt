@@ -127,14 +127,21 @@ def pullCore (pivot type : Expr) (hypS : Syntax) (id : Ident)
         pullIndex i hypS type id
   | none   => throwError "[Pull]: couldn't find pivot"
 
-syntax (name := pull) "pull" term "," term "," ident : tactic
+syntax (name := pull) "pull" term "," term "," ident ("," term)? : tactic
+
+def parsePull : Syntax → TacticM (Option Nat)
+  | `(tactic| pull $_, $_, $_, $i) =>
+    elabTerm i none >>= pure ∘ getNatLit?
+  | _                      => pure none
 
 @[tactic pull] def evalPullCore : Tactic := fun stx => withMainContext do
   let e ← elabTerm stx[1] none
   let t ← instantiateMVars (← Meta.inferType e)
   let e₂ ← elabTerm stx[3] none
-  pullCore e₂ t stx[1] ⟨stx[5]⟩
+  let i ← parsePull stx
+  pullCore e₂ t stx[1] ⟨stx[5]⟩ i
 
-/- example : A ∨ B ∨ C ∨ D ∨ E → E ∨ A ∨ B ∨ C ∨ D := by -/
-/-   intro h -/
-/-   pull h, E, h₂ -/
+example : A ∨ B ∨ C ∨ D ∨ E → (D ∨ E) ∨ A ∨ B ∨ C := by
+  intro h
+  pull h, (D ∨ E), h₂, 3
+  exact h₂

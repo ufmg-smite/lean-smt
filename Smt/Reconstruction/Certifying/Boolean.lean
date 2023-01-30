@@ -257,12 +257,12 @@ def parseCnfAndNeg : Syntax → TacticM Expr
   | _ => throwError "[cnfAndNeg]: wrong usage"
 
 @[tactic cnfAndNegT] def evalCnfAndNegT : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let e ← parseCnfAndNeg stx
     closeMainGoal (mkApp (mkConst `cnfAndNeg) e)
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[cnfAndNeg] Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
  
 syntax (name := cnfAndPosT) "cnfAndPosT" ("[" term,* "]")? "," term : tactic
 
@@ -293,12 +293,12 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
          exact orImplies₂ IH (And.right h')
 
 @[tactic cnfAndPosT] def evalCnfAndPosT : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let (li, i) ← parseCnfAndPos stx
     closeMainGoal $ mkApp (mkApp (mkConst `cnfAndPos) li) i
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[cnfAndPos]: Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[cnfAndPos]: Time taken: {endTime - startTime}ms"
 
 theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i False := by
   intros l i
@@ -453,9 +453,19 @@ theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
      rewrite [h₁, h₂]
      exact Iff.rfl
 
+syntax (name := congrT) "congrT" term "," term : tactic
+@[tactic congrT] def evalCongrT : Tactic := fun stx => do
+  let startTime ← IO.monoMsNow
+  withMainContext do
+    let h₁ := ⟨stx[1]⟩
+    let h₂ := ⟨stx[3]⟩
+    evalTactic (← `(tactic| exact congr $h₁ $h₂))
+  let endTime ← IO.monoMsNow
+  logInfo m!"[congrT]: Time taken: {endTime - startTime}ms"
+
 syntax (name := smtCong) "smtCong" term "," term : tactic
 @[tactic smtCong] def evalSmtCong : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let hyp2 ← elabTerm stx[3] none
     let hyp2Type ← inferType hyp2
@@ -470,8 +480,8 @@ syntax (name := smtCong) "smtCong" term "," term : tactic
     | false, true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
     | true,  false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
     | true,  true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[smtCong] Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[smtCong] Time taken: {endTime - startTime}ms"
 where
   isIff : Expr → Bool
   | app (app (const `Iff ..) _) _ => true
@@ -506,7 +516,7 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
 
 syntax (name := andElim) "andElim" term "," term : tactic
 @[tactic andElim] def evalAndElim : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
     let mut proof := getProof i stx[1]
@@ -515,8 +525,8 @@ syntax (name := andElim) "andElim" term "," term : tactic
       proof := Syntax.mkApp (mkIdent `And.left) #[⟨proof⟩]
     let proofE ← elabTerm proof none
     closeMainGoal proofE
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[andElim] Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[andElim] Time taken: {endTime - startTime}ms"
 where
   getProof (i : Nat) (hyp : Syntax) : Syntax :=
     match i with
@@ -530,7 +540,7 @@ example : A ∧ B ∧ C ∧ D → D := by
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
     let hyp ← inferType (← elabTerm stx[1] none)
@@ -544,8 +554,8 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
     let proof ← `(fun x => $proof)
     let proofE ← elabTerm proof none
     closeMainGoal proofE
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[notOrElim] Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[notOrElim] Time taken: {endTime - startTime}ms"
 where
   getProof (i : Nat) (hyp : Syntax) : Syntax :=
     match i with
@@ -555,6 +565,11 @@ where
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
+
+syntax (name := reportTime) "reportTime" : tactic
+@[tactic reportTime] def evalReportTime : Tactic := fun _ => do
+  let time ← IO.monoMsNow
+  logInfo s!"{time}ms"
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h

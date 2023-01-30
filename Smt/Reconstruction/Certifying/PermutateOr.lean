@@ -20,7 +20,7 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
 
 @[tactic permutateOr] def evalPermutateOr : Tactic :=
   fun stx => do
-    /- let startTime ← IO.monoMsNow -/
+    let startTime ← IO.monoMsNow
     withMainContext do
       let hyp ← elabTerm stx[1] none
       let type ← instantiateMVars (← Meta.inferType hyp)
@@ -33,14 +33,11 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
       let props' := permutateList props hs.reverse
       let s ← go props' suffIdx type stx[1]
       evalTactic (← `(tactic| exact $(⟨s⟩))) 
-    /- let endTime ← IO.monoMsNow -/
-    /- logInfo m!"[permutateOr] Time taken: {endTime - startTime}ms" -/
+    let endTime ← IO.monoMsNow
+    logInfo m!"[permutateOr] Time taken: {endTime - startTime}ms"
 where go : List Expr → Nat → Expr → Syntax → TacticM Syntax
        | [], _, _, stx => return stx
        | (e::es), suffIdx, type, stx => do
-         /- logInfo m!"current type = {type}" -/
-         /- logInfo m!"current expr to pull = {e}" -/
-         /- logInfo m!"current suffIdx = {suffIdx}" -/
          let fname ← mkIdent <$> mkFreshId
          let last: Bool :=
            match getIndex e type with

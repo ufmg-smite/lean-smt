@@ -2,6 +2,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Resolution
 import Smt.Reconstruction.Certifying.PermutateOr
 
+set_option profiler true
+
 universe u
 
 variable {U : Type u}

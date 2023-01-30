@@ -72,7 +72,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
   | _                        => throwError "[factor]: wrong usage"
 
 @[tactic factor] def evalFactor : Tactic := fun stx => do
-  /- let startTime ← IO.monoMsNow -/
+  let startTime ← IO.monoMsNow
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
@@ -83,8 +83,8 @@ def parseFactor : Syntax → TacticM (Option Nat)
       | none => lastSuffix
       | some i => i
     factorCore type source sufIdx
-  /- let endTime ← IO.monoMsNow -/
-  /- logInfo m!"[factor] Time taken: {endTime - startTime}ms" -/
+  let endTime ← IO.monoMsNow
+  logInfo m!"[factor] Time taken: {endTime - startTime}ms"
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h
