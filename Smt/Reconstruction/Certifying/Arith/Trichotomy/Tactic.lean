@@ -3,10 +3,15 @@
 
 import Lean
 
-open Lean
-open Meta
-open Elab.Tactic
-open Expr
+-- we must import those to have visible instances of LinearOrder of
+-- Nat, Int and Rat
+import Mathlib.Init.Data.Nat.Lemmas
+import Mathlib.Init.Data.Int.Order
+import Mathlib.Data.Rat.Order
+
+import Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
+
+open Lean Meta Elab.Tactic Expr
 
 syntax (name := trichotomy) "trichotomy" term "," term : tactic
 
