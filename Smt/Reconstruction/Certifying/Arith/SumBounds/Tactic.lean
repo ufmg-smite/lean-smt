@@ -1,16 +1,12 @@
 import Lean
 
-open Lean
-open Meta
-open Elab.Tactic
-open Expr
+import Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
+import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
 
-syntax (name := sumBounds) "sumBounds" term "," term : tactic
+open Lean Meta Elab.Tactic Expr
 
-@[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
+def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
   withMainContext do
-    let h₁ ← elabTerm stx[1] none
-    let h₂ ← elabTerm stx[3] none
     let t₁ ← inferType h₁
     let t₂ ← inferType h₂
     let thmName : Name :=
@@ -25,9 +21,34 @@ syntax (name := sumBounds) "sumBounds" term "," term : tactic
       | `Eq    , `LE.le => `sumBounds₈
       | `Eq    , `Eq    => `sumBounds₉
       | _      , _      => panic! "[sumBounds] invalid operation"
-    closeMainGoal (← mkAppM thmName #[h₁, h₂])
+    mkAppM thmName #[h₁, h₂]
 where
   getOp : Expr → TacticM Name
     | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
     | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
     | _ => throwError "[sumBounds] invalid parameter"
+
+syntax (name := sumBounds) "sumBounds" "[" term,* "]" : tactic
+
+def parseSumBounds : Syntax → TacticM (List Expr)
+  | `(tactic| sumBounds [$[$hs],*]) =>
+    hs.toList.mapM (λ stx => elabTerm stx.raw none)
+  | _ => throwError "[sumBounds]: expects a list of premisses"
+
+@[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
+  withMainContext do
+    let (h, hs) ←
+      match ← parseSumBounds stx with
+      | h::hs => pure (h, hs)
+      | [] => throwError "[sumBounds]: empty list of premisses"
+    go h hs
+where
+  go : Expr → List Expr → TacticM Unit
+    | acc, []    => closeMainGoal acc
+    | acc, e::es => do
+      let acc' ← combineBounds acc e
+      go acc' es
+
+example {a b c d e f : Nat} : a < d → b < e → c < f → a + b + c < d + e + f := by
+  intros h₁ h₂ h₃
+  sumBounds [h₁, h₂, h₃]
