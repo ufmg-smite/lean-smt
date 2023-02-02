@@ -12,7 +12,7 @@ def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
     let thmName : Name :=
       match ← getOp t₁, ← getOp t₂ with
       | `LT.lt , `LT.lt => `sumBounds₁
-      | `LT.lt , `LT.le => `sumBounds₂
+      | `LT.lt , `LE.le => `sumBounds₂
       | `LT.lt , `Eq    => `sumBounds₃
       | `LE.le , `LT.lt => `sumBounds₄
       | `LE.le , `LE.le => `sumBounds₅
@@ -50,5 +50,14 @@ where
       go acc' es
 
 example {a b c d e f : Nat} : a < d → b < e → c < f → a + b + c < d + e + f := by
+  intros h₁ h₂ h₃
+  sumBounds [h₁, h₂, h₃]
+
+example {a b c d e f w z : Int} :
+  a ≤ d → b ≤ e → c ≤ f → w ≤ z → a + b + c + w ≤ d + e + f + z := by
+    intros h₁ h₂ h₃ h₄
+    sumBounds [h₁, h₂, h₃, h₄]
+
+example {a b c d e f : ℚ} : a < d → b ≤ e → c ≤ f → a + b + c < d + e + f := by
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
