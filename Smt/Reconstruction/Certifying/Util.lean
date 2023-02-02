@@ -113,9 +113,10 @@ def printGoal : TacticM Unit := do
 
 syntax (name := elabTerm) "#elab" term : command
 open Lean.Elab Lean.Elab.Command Lean.Elab.Term in
-def evalElab : CommandElab
+@[command_elab elabTerm] def evalElab : CommandElab
   | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
     let e ← Term.elabTerm term none
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
+
