@@ -5,32 +5,35 @@ theorem Rat.neg_lt_neg {a b : ℚ} (h : a < b) : -a > -b := by
   simp
   exact h
 
+theorem Rat.neg_le_neg {a b : ℚ} (h : a ≤ b) : -a ≥ -b := by
+  simp
+  exact h
+
 theorem castLE : ∀ {a b : Int}, a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by simp
 
-theorem floorPlusOneGt : ∀ (c : Rat), c < Rat.ofInt (⌊c⌋ + 1) := by
-  intro c
-  have uncasted_pf := Int.lt_floor_add_one c
-  norm_cast at uncasted_pf
-
-theorem intTightUb : ∀ {i : Int} {c : Rat}, Rat.ofInt i < c → i ≤ ⌊c⌋ := by
+theorem intTightLb : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h
-  cases lt_trichotomy i (Rat.floor c) with
-  | inl iltc => exact le_of_lt iltc
-  | inr h'   => cases h' with
-                | inl ieqc => exact le_of_eq ieqc
-                | inr igtc =>
-                  have floor_le_i := (Int.lt_iff_add_one_le ⌊c⌋ i).mp igtc
-                  have coe_igtc := castLE floor_le_i
-                  have c_lt := floorPlusOneGt c
-                  have h' := lt_of_lt_of_le c_lt coe_igtc
-                  exact absurd h (lt_asymm h')
+  cases lt_trichotomy i (⌊c⌋ + 1) with
+  | inl iltc =>
+    have ilec := (Int.lt_iff_add_one_le i (⌊c⌋ + 1)).mp iltc
+    simp at ilec
+    have c_le_floor := Int.floor_le c
+    have cast_ilec := le_trans (castLE ilec) c_le_floor
+    have abs := lt_of_le_of_lt cast_ilec h
+    simp at abs
+  | inr h' => cases h' with
+              | inl ieqc => exact le_of_eq (Eq.symm ieqc)
+              | inr igtc => exact le_of_lt igtc
 
-theorem intTightLb : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌈c⌉ := by
+theorem intTightUb : ∀ {i : Int} {c : ℚ}, i < c → i ≤ ⌈c⌉ - 1 := by
   intros i c h
   have neg_c_lt_neg_i := Rat.neg_lt_neg h
-  have i_le_floor_neg_c := intTightUb neg_c_lt_neg_i
-  have neg_floor_neg_c_le_neg_i := Int.neg_le_neg i_le_floor_neg_c
-  simp at neg_floor_neg_c_le_neg_i
-  rw [Int.floor_neg] at neg_floor_neg_c_le_neg_i
-  simp at neg_floor_neg_c_le_neg_i
-  exact neg_floor_neg_c_le_neg_i
+  have i_le_floor_neg_c := intTightLb neg_c_lt_neg_i
+  rw [Int.floor_neg] at i_le_floor_neg_c
+  have i_plus_one_le_c := Int.neg_le_neg i_le_floor_neg_c
+  simp at i_plus_one_le_c
+  rw [add_comm] at i_plus_one_le_c
+  have pf: i + 1 - 1 ≤ ⌈c⌉ - 1 := Int.add_le_add i_plus_one_le_c le_rfl
+  simp at pf
+  exact pf
+
