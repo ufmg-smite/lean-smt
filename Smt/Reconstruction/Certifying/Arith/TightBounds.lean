@@ -11,6 +11,8 @@ theorem Rat.neg_le_neg {a b : ℚ} (h : a ≤ b) : -a ≥ -b := by
 
 theorem castLE : ∀ {a b : Int}, a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by simp
 
+theorem castLT : ∀ {a b : Int}, a < b → Rat.ofInt a < Rat.ofInt b := by simp
+
 theorem intTightLb : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h
   cases lt_trichotomy i (⌊c⌋ + 1) with
