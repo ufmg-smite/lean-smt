@@ -10,13 +10,8 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:276
-Check failure
-
- tn.isInteger()
-Only support integer rationals
-
+failed to reconstruct proof: argument type is not the type of the function's argument type:
+argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
+has type:  Int
+not type: (-> Int Int Int)
+in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))

@@ -5,5 +5,13 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered error parsing cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::NodeBuilder &cvc5::internal::NodeBuilder::append(cvc5::internal::TNode) at /home/user/projects/cvc5-haniel/src/expr/node_builder.cpp:250
+Check failure
+
+ !n.isNull()
+Cannot use NULL Node as a child of a Node
 Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'

@@ -8,7 +8,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: argument type is not the type of the function's argument type:
+argument:  (fun (a._@.Test.Int.Binders._hyg.3 : Int) => (fun (a._@.Test.Int.Binders._hyg.5 : Int) => (HAdd.hAdd a._@.Test.Int.Binders._hyg.3 a._@.Test.Int.Binders._hyg.5)))
+has type:  Int
+not type: (-> Int Int Int)
+in term : (Eq curryAdd (fun (a._@.Test.Int.Binders._hyg.3 : Int) => (fun (a._@.Test.Int.Binders._hyg.5 : Int) => (HAdd.hAdd a._@.Test.Int.Binders._hyg.3 a._@.Test.Int.Binders._hyg.5))))
 Test/Int/Binders.lean:5:0: warning: declaration uses 'sorry'
 goal: partCurryAdd a b = partCurryAdd b a
 
@@ -20,7 +24,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: argument type is not the type of the function's argument type:
+argument:  (fun (a : Int) => (fun (a._@.Test.Int.Binders._hyg.37 : Int) => (HAdd.hAdd a a._@.Test.Int.Binders._hyg.37)))
+has type:  Int
+not type: (-> Int Int Int)
+in term : (Eq partCurryAdd (fun (a : Int) => (fun (a._@.Test.Int.Binders._hyg.37 : Int) => (HAdd.hAdd a a._@.Test.Int.Binders._hyg.37))))
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
 goal: partCurryAdd' a b = partCurryAdd' b a
 
@@ -32,7 +40,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: argument type is not the type of the function's argument type:
+argument:  (fun (a : Int) => (fun (n : Int) => (HAdd.hAdd a n)))
+has type:  Int
+not type: (-> Int Int Int)
+in term : (Eq |partCurryAdd'| (fun (a : Int) => (fun (n : Int) => (HAdd.hAdd a n))))
 Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
 goal: mismatchNamesAdd a b = mismatchNamesAdd b a
 
@@ -44,5 +56,9 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: argument type is not the type of the function's argument type:
+argument:  (fun (a : Int) => (fun (b : Int) => (HAdd.hAdd a b)))
+has type:  Int
+not type: (-> Int Int Int)
+in term : (Eq mismatchNamesAdd (fun (a : Int) => (fun (b : Int) => (HAdd.hAdd a b))))
 Test/Int/Binders.lean:25:0: warning: declaration uses 'sorry'

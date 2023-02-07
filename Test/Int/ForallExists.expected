@@ -5,13 +5,4 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_post_processor.cpp:515
-Check failure
-
- k == kind::FORALL || k == kind::LAMBDA
-Lean printing only supports FORALL/LAMBDA binders for now. Found kind exists
-
+failed to reconstruct proof: incorrect number of universe levels th0
