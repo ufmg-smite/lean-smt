@@ -18,7 +18,7 @@ def getGroupOrPrefixGoal : Expr → Nat → Expr
 def groupOrPrefixCore (hyp type : Expr) (prefLen : Nat) (name : Name)
   : TacticM Unit := withMainContext do
     let l := getLength type
-    if prefLen > 1 && prefLen < l then
+    if prefLen > 0 && prefLen < l then
       let mvarId ← getMainGoal
       MVarId.withContext mvarId do
         let newTerm := getGroupOrPrefixGoal type prefLen
@@ -29,7 +29,7 @@ def groupOrPrefixCore (hyp type : Expr) (prefLen : Nat) (name : Name)
         evalTactic  (← `(tactic| apply $t))
       Tactic.closeMainGoal hyp
     else throwError
-           "[groupOrPrefix]: prefix length must be > 1 and < size of or-chain"
+           "[groupOrPrefix]: prefix length must be > 0 and < size of or-chain"
 
 syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
 

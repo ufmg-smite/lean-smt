@@ -131,14 +131,10 @@ where
     let (sufIdx₁, sufIdx₂) ← parseResolution stx
     resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ true
 
-
 example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨ E ∨ F ∨ H := by
   intros h₁ h₂
   R1 h₁, h₂, B, [2, -1]
 
-
 example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
   intros h₁ h₂
   R2 h₁, h₂, A
-
-example : Eq @Eq @Eq := rfl
