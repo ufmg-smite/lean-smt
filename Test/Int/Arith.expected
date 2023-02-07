@@ -12,10 +12,8 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:246
-Check failure
-
- !res.isNull()
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:478
+Unreachable code reached Kind * is not supported
 
 Test/Int/Arith.lean:3:0: warning: declaration uses 'sorry'
 goal: (n - m) * k + l = n * k - m * k + l
@@ -29,7 +27,13 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:478
+Unreachable code reached Kind * is not supported
+
 Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
 goal: n + k ≤ m + l
 
@@ -44,14 +48,5 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanprinter/src/proof/lean/lean_node_converter.cpp:276
-Check failure
-
- tn.isInteger()
-Only support integer rationals
-
-Test/Int/Arith.lean:11:0: warning: declaration uses 'sorry'
+failed to reconstruct proof: encountered errors elaborating cvc5 proof
+Test/Int/Arith.lean:13:2: error: (deterministic) timeout at 'elaborator', maximum number of heartbeats (200000) has been reached (use 'set_option maxHeartbeats <num>' to set the limit)

@@ -16,5 +16,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:478
+Unreachable code reached Kind distinct is not supported
+
 Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'
