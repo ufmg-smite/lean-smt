@@ -5,9 +5,9 @@ universe u
 theorem instForall {α : Sort u} (f : α → Prop) (a : α) :
   (forall a' : α, f a') → f a := λ h => h a
 
-syntax "flipInstForall " (term)? (term)? (term)? : term
+syntax "flipInstForall " term ("[" term "," term"]")? : term
 macro_rules
-| `(flipInstForall $premiss:term $arg₁:term $arg₂:term) =>
+| `(flipInstForall $premiss:term [$arg₁:term,  $arg₂:term]) =>
     `(instForall $arg₁ $arg₂ $premiss)
 
 theorem instEqual₁ {A : Type u} {P : A → Prop} {t : A} :
@@ -39,7 +39,17 @@ example : ∃ x₁ x₂ : Int, x₁ + x₂ > 0 = (e₁ + e₂ > 0) :=
     (smtSkolem (λ x₁ : Int => ∃ x₂, x₁ + x₂ > 0))
     (smtSkolem (λ x₂ : Int => e₁ + x₂ > 0))
 
+example : (∀ x y : Int, x + y > 0) → (∀ y : Int, (3 : Int) + y > 0) := by
+  intro h
+  exact (instForall (fun x : Int => (forall y : Int, x + y > 0)) 3 h)
+
 example : (∀ x y : Int, x + y > 0) → (3 : Int) + 4 > 0 := by
   intro h
   let s := (instForall (fun x : Int => (forall y : Int, x + y > 0)) 3 h)
-  exact (instForall (fun y : Int => 3 + y > 0) 4 s)
+  exact (instForall (fun (y : Int) => 3 + y > 0) 4 s)
+
+example : (∀ x y : Int, x + y > 0) → (3 : Int) + 4 > 0 := by
+  intro h
+  let s1 := flipInstForall h [(fun x : Int => (forall y : Int, x + y > 0)), 3]
+  let s2 := flipInstForall s1 [(fun (y : Int) => 3 + y > 0), 4]
+  exact s2
