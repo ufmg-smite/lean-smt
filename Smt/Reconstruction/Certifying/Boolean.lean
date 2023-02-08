@@ -150,7 +150,7 @@ theorem orImplies₂ : ∀ {p q : Prop}, (¬ p) ∨ q → p → q := by
   cases h with
   | inl np => exact False.elim (np p)
   | inr q  => exact q
- 
+
 theorem orImplies₃ : ∀ {p q : Prop}, p ∨ q → ¬ p → q := by
   intros P Q h np
   cases h with
@@ -162,25 +162,25 @@ theorem scope : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
      exact match em p with
      | Or.inl pp =>  Or.inr (h pp)
      | Or.inr npp => Or.inl npp
- 
+
 def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q := scope
- 
+
 theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
   by intros p q h
      exact match em p, em q with
      | Or.inl pp,  _          => False.elim (h (Or.inl pp))
      | Or.inr _,   Or.inl pq  => False.elim (h (Or.inr pq))
      | Or.inr npp, Or.inr npq => And.intro npp npq
- 
+
 theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
   by intros p q h
      have ⟨np, nq⟩ := h
      exact match em p, em q with
-     | Or.inl pp,  _   => False.elim (np pp) 
+     | Or.inl pp,  _   => False.elim (np pp)
      | _        ,  Or.inl pq  => False.elim (nq pq)
      | Or.inr npp, Or.inr npq => λ h₂ =>
                                     match h₂ with
-                                    | Or.inl pp => False.elim (npp pp) 
+                                    | Or.inl pp => False.elim (npp pp)
                                     | Or.inr pq => False.elim (npq pq)
 
 theorem deMorganSmall₃ : ∀ {p q : Prop}, ¬ (p ∧ q) → ¬ p ∨ ¬ q :=
@@ -197,8 +197,8 @@ theorem notNotElim : ∀ {p : Prop}, ¬ ¬ p → p :=
      | Or.inr np => False.elim (h (λ p => np p))
 
 theorem notNotIntro : ∀ {p : Prop}, p → ¬ ¬ p := λ p np => np p
- 
-theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l := 
+
+theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
   by intros l h
      exact match l with
      | []   => True.intro
@@ -214,7 +214,7 @@ theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
                        simp [andN]
                        have t₁' := notNotElim t₁
                        exact ⟨ t₁', ih ⟩
- 
+
 theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) :=
   by intros l h
      exact match l with
@@ -264,7 +264,7 @@ def parseCnfAndNeg : Syntax → TacticM Expr
     closeMainGoal (mkApp (mkConst `cnfAndNeg) e)
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
- 
+
 syntax (name := cnfAndPosT) "cnfAndPosT" ("[" term,* "]")? "," term : tactic
 
 def parseCnfAndPos : Syntax → TacticM (Expr × Expr)
@@ -288,7 +288,7 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
        | _ + 1 => exact True.intro
      | p₁::p₂::ps =>
        match i with
-       | 0 => exact And.left h' 
+       | 0 => exact And.left h'
        | i' + 1 =>
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
@@ -617,3 +617,7 @@ theorem falseElim : ∀ {A : Prop}, A = False → ¬ A := λ h ha =>
 theorem falseElim₂ : ∀ {A : Prop}, False = A → ¬ A := falseElim ∘ Eq.symm
 
 theorem negSymm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
+
+syntax "flipCongrArg " term ("[" term "]")? : term
+macro_rules
+| `(flipCongrArg $premiss:term [$arg:term]) => `(congrArg $arg $premiss)
