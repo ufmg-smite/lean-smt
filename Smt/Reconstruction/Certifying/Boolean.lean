@@ -8,23 +8,6 @@ open Nat List Classical
 
 /- abbrev Implies (p q : Prop) := p → q -/
 
-namespace Smt.Reconstruction.Certifying.Macro
-
-open Lean.Macro
-
-scoped syntax (name := binder) "(" binderIdent term ")" : term
-scoped syntax (name := binders) binder+ : term
-
-scoped macro "forall " "(" xs:binders ")" b:term : term => match xs with
-  | `(binders| $[($x:ident $t:term)]*) => `(term| ∀ $[($x : $t)]*, $b)
-  | _ => throwUnsupported
-
-scoped macro "exists " "(" xs:binders ")" b:term : term => match xs with
-  | `(binders| $[($x:binderIdent $t:term)]*) => `(term| ∃ $[($x : $t)]*, $b)
-  | _ => throwUnsupported
-
-end Smt.Reconstruction.Certifying.Macro
-
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
   cases em P with
@@ -567,16 +550,6 @@ where
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
-
-syntax (name := reportTimeOfTactic) "reportTimeOfTactic" term "," term : tactic
-@[tactic reportTimeOfTactic] def evalReportTimeOfTactic : Tactic := fun stx => do
-  let time ← IO.monoMsNow
-  trace[smt.profile] s!"tactic {stx[1]} produced {stx[3]} at {time}ms"
-
-syntax (name := reportTime) "reportTime" : tactic
-@[tactic reportTime] def evalReport : Tactic := fun _ => do
-  let time ← IO.monoMsNow
-  trace[smt.profile] s!"{time}ms"
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h
