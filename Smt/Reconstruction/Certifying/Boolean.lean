@@ -520,41 +520,42 @@ syntax (name := andElim) "andElim" term "," term : tactic
   let startTime ← IO.monoMsNow
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
-    let mut proof := getProof i stx[1]
-    let andProp ← inferType (← elabTerm stx[1] none)
+    let h ← elabTerm stx[1] none
+    let mut proof ← getProof i h
+    let andProp ← inferType h
     if i < getLengthAnd andProp - 1 then
-      proof := Syntax.mkApp (mkIdent `And.left) #[⟨proof⟩]
-    let proofE ← elabTerm proof none
-    closeMainGoal proofE
+      proof ← mkAppM `And.left #[proof]
+    closeMainGoal proof
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
 where
-  getProof (i : Nat) (hyp : Syntax) : Syntax :=
+  getProof (i : Nat) (hyp : Expr) : TacticM Expr :=
     match i with
-    | 0 => hyp
-    | (i + 1) =>
-      Syntax.mkApp (mkIdent `And.right) #[⟨getProof i hyp⟩]
+    | 0 => pure hyp
+    | (i + 1) => do
+      let rc ← getProof i hyp
+      mkAppM `And.right #[rc]
 
-example : A ∧ B ∧ C ∧ D → D := by
+example : A ∧ B ∧ C ∧ D → A := by
   intro h
-  andElim h, 3
+  andElim h, 0
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
   let startTime ← IO.monoMsNow
   withMainContext do
+    let fname ← mkIdent <$> mkFreshId
+    evalTactic (← `(tactic| intros $fname))
     let i ← stxToNat ⟨stx[3]⟩
     let hyp ← inferType (← elabTerm stx[1] none)
     let orChain := notExpr hyp
     let proof: Syntax ←
       match getLength orChain == i + 1 with
-      | true => `(x)
-      | false => `(Or.inl x)
+      | true => `($fname)
+      | false => `(Or.inl $fname)
     let proof: Syntax := getProof i proof
     let proof := Syntax.mkApp ⟨stx[1]⟩ #[⟨proof⟩]
-    let proof ← `(fun x => $proof)
-    let proofE ← elabTerm proof none
-    closeMainGoal proofE
+    evalTactic (← `(tactic| exact $proof))
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[notOrElim] Time taken: {endTime - startTime}ms"
 where
