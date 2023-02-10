@@ -1,9 +1,9 @@
 goal: p = q → f p = f q
 
 query:
-(declare-const q Bool)
-(declare-const p Bool)
 (declare-fun f (Bool) Bool)
+(declare-const p Bool)
+(declare-const q Bool)
 (assert (not (=> (= p q) (= (f p) (f q)))))
 (check-sat)
 

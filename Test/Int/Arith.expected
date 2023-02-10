@@ -12,17 +12,17 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:478
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:542
 Unreachable code reached Kind * is not supported
 
 Test/Int/Arith.lean:3:0: warning: declaration uses 'sorry'
 goal: (n - m) * k + l = n * k - m * k + l
 
 query:
-(declare-const m Int)
 (declare-const l Int)
 (declare-const n Int)
 (declare-const k Int)
+(declare-const m Int)
 (assert (not (= (+ (* (- n m) k) l) (+ (- (* n k) (* m k)) l))))
 (check-sat)
 
@@ -31,15 +31,15 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:478
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/user/projects/cvc5-haniel/src/proof/lean/lean_node_converter.cpp:542
 Unreachable code reached Kind * is not supported
 
 Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
 goal: n + k ≤ m + l
 
 query:
-(declare-const m Int)
 (declare-const n Int)
+(declare-const m Int)
 (assert (<= n m))
 (declare-const l Int)
 (declare-const k Int)
@@ -49,4 +49,4 @@ query:
 
 result: unsat
 failed to reconstruct proof: encountered errors elaborating cvc5 proof
-Test/Int/Arith.lean:13:2: error: (deterministic) timeout at 'elaborator', maximum number of heartbeats (200000) has been reached (use 'set_option maxHeartbeats <num>' to set the limit)
+Test/Int/Arith.lean:11:0: warning: declaration uses 'sorry'

@@ -5,4 +5,8 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: incorrect number of universe levels th0
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬(¬False) = True → False
+with
+  ¬¬(!false) = true
+⊢ ¬¬(!false) = true

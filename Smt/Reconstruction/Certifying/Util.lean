@@ -1,5 +1,7 @@
 import Lean
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Expr Elab.Tactic Meta
 
 def andN : List Prop → Prop
@@ -104,11 +106,13 @@ def printGoal : TacticM Unit := do
   let currGoalType ← currGoal.getType
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
 
-syntax (name := elabTerm) "#elab" term : command
-open Lean.Elab Lean.Elab.Command Lean.Elab.Term in
-def evalElab : CommandElab
+syntax (name := cmdElabTerm) "#elab " term : command
+open Lean.Elab Lean.Elab.Command in
+@[command_elab cmdElabTerm] def evalCmdElabTerm : CommandElab
   | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
     let e ← Term.elabTerm term none
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
+
+end Smt.Reconstruction.Certifying

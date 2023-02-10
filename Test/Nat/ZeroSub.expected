@@ -11,7 +11,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
+argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y))))
 has type:  Int
 not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))
+in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y)))))

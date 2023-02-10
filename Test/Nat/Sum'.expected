@@ -3,26 +3,26 @@ goal: sum Nat.zero = Nat.zero * (Nat.zero + 1) / 2
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9369 Nat)) (=> (>= _uniq.9369 0) (forall ((_uniq.9370 Nat)) (=> (>= _uniq.9370 0) (>= (Nat.sub _uniq.9369 _uniq.9370) 0))))))
+(assert (forall ((_uniq.9498 Nat)) (=> (>= _uniq.9498 0) (forall ((_uniq.9499 Nat)) (=> (>= _uniq.9499 0) (>= (Nat.sub _uniq.9498 _uniq.9499) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9371 Nat)) (=> (>= _uniq.9371 0) (>= (sum _uniq.9371) 0))))
+(assert (forall ((_uniq.9500 Nat)) (=> (>= _uniq.9500 0) (>= (sum _uniq.9500) 0))))
 (assert (not (= (sum 0) (div (* 0 (+ 0 1)) 2))))
 (check-sat)
 
 result: unsat
 failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
+argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y))))
 has type:  Int
 not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))
+in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y)))))
 goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9385 Nat)) (=> (>= _uniq.9385 0) (forall ((_uniq.9386 Nat)) (=> (>= _uniq.9386 0) (>= (Nat.sub _uniq.9385 _uniq.9386) 0))))))
+(assert (forall ((_uniq.9514 Nat)) (=> (>= _uniq.9514 0) (forall ((_uniq.9515 Nat)) (=> (>= _uniq.9515 0) (>= (Nat.sub _uniq.9514 _uniq.9515) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9387 Nat)) (=> (>= _uniq.9387 0) (>= (sum _uniq.9387) 0))))
+(assert (forall ((_uniq.9516 Nat)) (=> (>= _uniq.9516 0) (>= (sum _uniq.9516) 0))))
 (declare-const n Nat)
 (assert (>= n 0))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
@@ -31,8 +31,8 @@ query:
 
 result: unsat
 failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
+argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y))))
 has type:  Int
 not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))
+in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y)))))
 Test/Nat/Sum'.lean:5:8: warning: declaration uses 'sorry'

@@ -3,6 +3,8 @@ import Lean
 import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic
 
 -- TODO: find a way to remove '?' without breaking the parser
@@ -40,3 +42,4 @@ where go : List Nat → Expr → Expr → Syntax → TacticM Syntax
            let type' ← instantiateMVars (← Meta.inferType hyp')
            go is initialType type' fname
 
+end Smt.Reconstruction.Certifying

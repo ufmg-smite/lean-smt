@@ -3,15 +3,15 @@ goal: MyInt.add a b = MyInt.add b a
 query:
 (define-sort MyInt () Int)
 (define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
-(declare-const a MyInt)
 (declare-const b MyInt)
+(declare-const a MyInt)
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
 
 result: unsat
 failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (a : Int) => (fun (b : Int) => (HAdd.hAdd a b)))
+argument:  (fun (a : Int) => (fun (b : Int) => (binrel% HAdd.hAdd a b)))
 has type:  Int
 not type: (-> Int Int Int)
-in term : (Eq MyInt.add (fun (a : Int) => (fun (b : Int) => (HAdd.hAdd a b))))
+in term : (Eq MyInt.add (fun (a : Int) => (fun (b : Int) => (binrel% HAdd.hAdd a b))))
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'

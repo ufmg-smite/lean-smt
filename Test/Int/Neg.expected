@@ -6,4 +6,20 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+Test/Int/Neg.lean:6:14: error: unsolved goals
+case a.ofNat.succ
+n✝ : Nat
+n_ih✝ : - -Int.ofNat n✝ = -1 * -Int.ofNat n✝
+⊢ Int.ofNat (Nat.succ n✝) = Int.negSucc 0 * Int.negSucc n✝
+Test/Int/Neg.lean:7:14: error: unsolved goals
+case a.negSucc
+n : Nat
+⊢ Int.negSucc n = Int.negSucc 0 * Int.ofNat (Nat.succ n)
+Test/Int/Neg.lean:3:36: error: unsolved goals
+case a
+x : Int
+⊢ -x = -1 * x
+
+case a
+x : Int
+⊢ x = -1 * (-1 * x)

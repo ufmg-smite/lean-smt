@@ -5,4 +5,8 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬0 + (Int.ofNat 0 + 1) = Int.ofNat 0 + 1 → False
+with
+  ¬¬Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero
+⊢ ¬¬Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero

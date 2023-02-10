@@ -2,10 +2,10 @@ goal: x ≤ max' x y ∧ y ≤ max' x y
 
 query:
 (define-sort Nat () Int)
-(declare-const y Nat)
-(assert (>= y 0))
 (declare-const x Nat)
 (assert (>= x 0))
+(declare-const y Nat)
+(assert (>= y 0))
 (declare-fun |Nat.max'| (Nat Nat) Nat)
 (assert (forall ((_uniq.221 Nat)) (=> (>= _uniq.221 0) (forall ((_uniq.222 Nat)) (=> (>= _uniq.222 0) (>= (|Nat.max'| _uniq.221 _uniq.222) 0))))))
 (assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
@@ -19,16 +19,16 @@ query:
 (define-sort Nat () Int)
 (define-fun |Nat.max'| ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
 (assert (forall ((_uniq.262 Nat)) (=> (>= _uniq.262 0) (forall ((_uniq.263 Nat)) (=> (>= _uniq.263 0) (>= (|Nat.max'| _uniq.262 _uniq.263) 0))))))
-(declare-const x Nat)
-(assert (>= x 0))
 (declare-const y Nat)
 (assert (>= y 0))
+(declare-const x Nat)
+(assert (>= x 0))
 (assert (not (and (<= x (|Nat.max'| x y)) (<= y (|Nat.max'| x y)))))
 (check-sat)
 
 result: unsat
 failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LE.le x y) y x)))
+argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LE.le x y) y x)))
 has type:  Int
 not type: (-> Int Int Int)
-in term : (Eq |Nat.max'| (fun (x : Int) => (fun (y : Int) => (ite (LE.le x y) y x))))
+in term : (Eq |Nat.max'| (fun (x : Int) => (fun (y : Int) => (ite (binrel% LE.le x y) y x))))
