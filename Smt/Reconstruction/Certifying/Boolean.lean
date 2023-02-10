@@ -607,3 +607,7 @@ theorem falseElim : ∀ {A : Prop}, A = False → ¬ A := λ h ha =>
 theorem falseElim₂ : ∀ {A : Prop}, False = A → ¬ A := falseElim ∘ Eq.symm
 
 theorem neg_symm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
+
+syntax "flipCongrArg " term ("[" term "]")? : term
+macro_rules
+| `(flipCongrArg $premiss:term [$arg:term]) => `(congrArg $arg $premiss)
