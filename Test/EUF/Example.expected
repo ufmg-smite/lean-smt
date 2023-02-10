@@ -1,0 +1,16 @@
+goal: a = b → c = d → p1 ∧ True → ¬p1 ∨ p2 ∧ p3 → ¬p3 ∨ ¬f a c = f b d → False
+
+query:
+(declare-sort U 0)
+(declare-const b U)
+(declare-const d U)
+(declare-const p1 Bool)
+(declare-const p3 Bool)
+(declare-fun f (U U) U)
+(declare-const a U)
+(declare-const c U)
+(declare-const p2 Bool)
+(assert (not (=> (= a b) (=> (= c d) (=> (and p1 true) (=> (or (not p1) (and p2 p3)) (=> (or (not p3) (not (= (f a c) (f b d)))) false)))))))
+(check-sat)
+
+result: unsat
