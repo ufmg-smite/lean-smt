@@ -3,7 +3,7 @@ import Lean
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Options
 
-open Lean Elab.Tactic Meta Expr Syntax
+open Lean Elab Tactic Meta Expr Syntax
 open Nat List Classical
 
 /- abbrev Implies (p q : Prop) := p → q -/
@@ -505,13 +505,23 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let i ← stxToNat ⟨stx[3]⟩
     let h ← elabTerm stx[1] none
     let mut proof ← getProof i h
-    let andProp ← inferType h
+    let type ← inferType h
+    let binderName := getFirstBinderName type
+    let env ← getEnv
+    let andProp : Expr := 
+      match (env.find? binderName).get!.value? with
+      | none => type
+      | some e => recGetLamBody e
     if i < getLengthAnd andProp - 1 then
       proof ← mkAppM `And.left #[proof]
     closeMainGoal proof
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
 where
+  recGetLamBody (e : Expr) : Expr :=
+    match e with
+    | lam _ _ b _ => recGetLamBody b
+    | e => e
   getProof (i : Nat) (hyp : Expr) : TacticM Expr :=
     match i with
     | 0 => pure hyp
@@ -523,22 +533,34 @@ example : A ∧ B ∧ C ∧ D → A := by
   intro h
   andElim h, 0
 
+-- testing with external definitions
+variable (p2 : Prop)
+variable (p3 : Prop)
+variable (p4 : Prop)
+
+def let10' := And p2 (And p3 p4)
+macro "let10" : term => `(@let10' p2 p3 p4)
+
+example : let10 → p2 := by
+  intro h
+  andElim h, 0
+
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
   let startTime ← IO.monoMsNow
   withMainContext do
-    let fname ← mkIdent <$> mkFreshId
-    evalTactic (← `(tactic| intros $fname))
     let i ← stxToNat ⟨stx[3]⟩
     let hyp ← inferType (← elabTerm stx[1] none)
     let orChain := notExpr hyp
     let proof: Syntax ←
       match getLength orChain == i + 1 with
-      | true => `($fname)
-      | false => `(Or.inl $fname)
+      | true => `(x)
+      | false => `(Or.inl x)
     let proof: Syntax := getProof i proof
     let proof := Syntax.mkApp ⟨stx[1]⟩ #[⟨proof⟩]
-    evalTactic (← `(tactic| exact $proof))
+    let proof ← `(fun x => $proof)
+    let proofE ← elabTerm proof none
+    closeMainGoal proofE
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[notOrElim] Time taken: {endTime - startTime}ms"
 where

@@ -65,8 +65,8 @@ def getIndex : Expr → Expr → Option Nat
 | t, e => if e == t then some 0
           else none
 
-def getLetName : Expr → Name
-| app e _ => getLetName e
+def getFirstBinderName : Expr → Name
+| app e _ => getFirstBinderName e
 | const nm .. => nm
 | _ => panic! "[getLetName] unknown expression"
 
