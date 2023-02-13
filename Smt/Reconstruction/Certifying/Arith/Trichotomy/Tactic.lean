@@ -1,6 +1,3 @@
--- implementation of:
--- https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule16ARITH_TRICHOTOMYE
-
 import Lean
 
 -- we must import those to have visible instances of LinearOrder of
@@ -11,7 +8,8 @@ import Mathlib.Data.Rat.Order
 
 import Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
 
-open Lean Meta Elab.Tactic Expr
+open Lean hiding Rat
+open Meta Elab.Tactic Expr
 
 syntax (name := trichotomy) "trichotomy" term "," term : tactic
 

@@ -49,6 +49,8 @@ instance : CovariantClass Rat Rat (· + ·) (· < ·) where
     intros a b c h
     exact add_lt_add_left h a
 
+#check mul_lt_mul_left'
+
 instance : CovariantClass Rat Rat (swap (· + ·)) (· < ·) where
   elim := by
     intros a b c h

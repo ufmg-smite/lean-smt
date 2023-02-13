@@ -3,7 +3,8 @@ import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
 import Mathlib.Algebra.Order.Floor
 import Lean
 
-open Lean Meta Elab.Tactic Expr
+open Lean hiding Rat
+open Meta Elab.Tactic Expr
 
 syntax (name := intTightUb) "intTightUb" term : tactic
 @[tactic intTightUb] def evalIntTightUb : Tactic := fun stx =>

@@ -5,7 +5,8 @@ import Mathlib.Data.Int.Order.Basic
 
 import Lean
 
-open Lean Elab.Tactic Expr Meta
+open Lean hiding Rat
+open Elab.Tactic Expr Meta
 
 syntax (name := arithMulPos) "arithMulPos" term "," term : tactic
 @[tactic arithMulPos] def evalArithMulPos : Tactic := fun stx =>

@@ -3,7 +3,8 @@ import Lean
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
 
-open Lean Meta Elab.Tactic Expr
+open Lean hiding Rat
+open Meta Elab.Tactic Expr
 
 def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
   withMainContext do
