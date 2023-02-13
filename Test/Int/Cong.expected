@@ -8,4 +8,4 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+Test/Int/Cong.lean:5:2: error: no goals to be solved

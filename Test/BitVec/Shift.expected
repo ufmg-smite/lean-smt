@@ -7,7 +7,7 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: expecting bit-vector terms
 Test/BitVec/Shift.lean:4:8: warning: declaration uses 'sorry'
 goal: x ++ y = BitVec.zeroExtend 3 x <<< 3 ||| BitVec.zeroExtend 3 y
 
@@ -18,5 +18,5 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: expecting bit-vector terms
 Test/BitVec/Shift.lean:9:8: warning: declaration uses 'sorry'

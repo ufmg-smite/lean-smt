@@ -5,4 +5,30 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered error parsing cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: ending " missing after )
+
+solver stdout:
+(proof "import Smt.Reconstruction.Certifying
+
+open Classical
+
+
+
+set_option maxRecDepth 10000
+set_option maxHeartbeats 500000
+
+
+theorem th0 : (Eq (Eq "" "") True) → (Eq (Not True) False) → (Not (Eq "" "")) → False :=
+fun lean_r0 : (Eq (Eq "" "") True) =>
+fun lean_r1 : (Eq (Not True) False) =>
+fun lean_a2 : (Not (Eq "" "")) => by
+have lean_s0 : (Eq Not Not) := rfl
+have lean_s1 : (Eq (Not (Eq "" "")) (Not True)) := congr lean_s0 lean_r0
+have lean_s2 : (Eq (Not (Eq "" "")) False) := Eq.trans lean_s1 lean_r1
+exact (show False from eqResolve lean_a2 lean_s2)
+
+
+")
+
+solver stderr:
+cvc5 interrupted by timeout.
