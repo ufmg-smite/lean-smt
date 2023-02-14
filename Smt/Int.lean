@@ -20,9 +20,11 @@ open Translator Term
   | const `Int.neg _           => return symbolT "-"
   | const `Int.mul _           => return symbolT "*"
   | const `Int.div _           => return symbolT "div"
+  | const `Int.ediv _           => return symbolT "div"
   | const `Int.mod _           => return symbolT "mod"
   | const `Int.le _            => return symbolT "<="
   | const `Int.lt _            => return symbolT "<"
+  | app (app (const `GE.ge _) (const `Int _)) _ => return symbolT ">="
   | _                          => return none
 
 end Smt.Int
