@@ -617,3 +617,9 @@ theorem negSymm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (E
 syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules
 | `(flipCongrArg $premiss:term [$arg:term]) => `(congrArg $arg $premiss)
+
+syntax "smtIte" (term)? (term)? (term)? (term)? : term
+macro_rules
+| `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
+
+#check smtIte (LE.le 0 2) 2 3 Nat
