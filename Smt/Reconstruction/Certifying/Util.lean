@@ -93,10 +93,6 @@ def getLengthAnd : Expr → Nat
 | app (app (const `And ..) _) e2 => 1 + getLengthAnd e2
 | _ => 1
 
-def recGetLamBody : Expr → Expr
-| lam _ _ b _ => recGetLamBody b
-| e => e
-
 def getNatLit? : Expr → Option Nat
 | app (app _ (lit (Literal.natVal x))) _ => some x
 | _ => none
