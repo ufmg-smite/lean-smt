@@ -93,6 +93,10 @@ def getLengthAnd : Expr → Nat
 | app (app (const `And ..) _) e2 => 1 + getLengthAnd e2
 | _ => 1
 
+def recGetLamBody : Expr → Expr
+| lam _ _ b _ => recGetLamBody b
+| e => e
+
 def getNatLit? : Expr → Option Nat
 | app (app _ (lit (Literal.natVal x))) _ => some x
 | _ => none
@@ -110,6 +114,21 @@ def getTypeFromName (name : Name) : TacticM Expr :=
   withMainContext do
     let ctx ← getLCtx
     inferType (ctx.findFromUserName? name).get!.toExpr
+
+partial def expandType : Expr → TacticM Expr := fun e =>
+  match e with
+  | fvar fid => withMainContext do
+    let lctx ← getLCtx
+    match lctx.find? fid with
+    | some ldcl => expandType ldcl.value
+    | none      => pure e
+  | _ => pure e
+
+def expandTypesInOrChain : Expr → TacticM Expr := fun e => do
+  let es         := collectPropsInOrChain e
+  let esExpanded ← List.mapM expandType es
+  let e'         := createOrChain esExpanded
+  pure e'
 
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
@@ -145,10 +164,10 @@ end Smt.Reconstruction.Certifying.Macro
 syntax (name := reportTimeOfTactic) "reportTimeOfTactic" term "," term : tactic
 @[tactic reportTimeOfTactic] def evalReportTimeOfTactic : Tactic := fun stx => do
   let time ← IO.monoMsNow
-  trace[smt.profile] s!"tactic {stx[1]} produced {stx[3]} at {time}ms"
+  logInfo s!"tactic {stx[1]} produced {stx[3]} at {time}ms"
 
 syntax (name := reportTime) "reportTime" : tactic
 @[tactic reportTime] def evalReport : Tactic := fun _ => do
   let time ← IO.monoMsNow
-  trace[smt.profile] s!"{time}ms"
+  logInfo s!"{time}ms"
 
