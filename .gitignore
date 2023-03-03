@@ -1,2 +1,5 @@
 /.vscode
 /build
+__pycache__/
+lake-packages/
+lake-manifest.json
