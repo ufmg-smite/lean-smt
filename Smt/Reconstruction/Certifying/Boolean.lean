@@ -533,18 +533,6 @@ example : A ∧ B ∧ C ∧ D → A := by
   intro h
   andElim h, 0
 
--- testing with external definitions
-variable (p2 : Prop)
-variable (p3 : Prop)
-variable (p4 : Prop)
-
-def let10' := And p2 (And p3 p4)
-macro "let10" : term => `(@let10' p2 p3 p4)
-
-example : let10 → p2 := by
-  intro h
-  andElim h, 0
-
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
   let startTime ← IO.monoMsNow
