@@ -3,6 +3,8 @@ import Lean
 import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic Meta Expr
 open List
 
@@ -51,3 +53,5 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
         Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
     /- let endTime ← IO.monoMsNow -/
     /- logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms" -/
+
+end Smt.Reconstruction.Certifying

@@ -10,6 +10,7 @@ proof:
 import Smt.Reconstruction.Certifying
 
 open Classical
+open Smt.Reconstruction.Certifying
 
 
 

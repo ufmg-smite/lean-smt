@@ -9,9 +9,9 @@ failed to reconstruct proof: could not parse solver output: incomplete input: ex
 solver stdout:
 
 solver stderr:
-Fatal failure within cvc5::internal::NodeBuilder &cvc5::internal::NodeBuilder::append(cvc5::internal::TNode) at /home/user/projects/cvc5-haniel/src/expr/node_builder.cpp:250
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:236
 Check failure
 
- !n.isNull()
-Cannot use NULL Node as a child of a Node
+ !it->second.isNull()
+
 Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'

@@ -1,3 +1,5 @@
+namespace Smt.Reconstruction.Certifying
+
 open Classical
 
 universe u
@@ -31,3 +33,4 @@ axiom g : f
 
 #check Iff.mp (smtSkolem (λ _ => True)) g
 
+end Smt.Reconstruction.Certifying

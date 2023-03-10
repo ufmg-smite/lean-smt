@@ -3,6 +3,8 @@ import Lean
 import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.LiftOrNToImp
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic
 
 def applyList (l: List Term) (res: Term) : TacticM Term :=
@@ -138,3 +140,5 @@ syntax (name := pull) "pull" term "," term "," ident : tactic
 /- example : A ∨ B ∨ C ∨ D ∨ E → E ∨ A ∨ B ∨ C ∨ D := by -/
 /-   intro h -/
 /-   pull h, E, h₂ -/
+
+end Smt.Reconstruction.Certifying

@@ -114,13 +114,14 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
+open Reconstruction.Certifying in
 def rconsProof (hints : List Expr) : TacticM Unit := do
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
-  try
+  if (← getConstInfo `th0).levelParams == [] then
     gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
     trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0)}"
-  catch _ =>
+  else
     let u ← Meta.mkFreshLevelMVar
     gs ← (← Tactic.getMainGoal).apply (mkConst `th0 [u])
     trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0 [u])}"
