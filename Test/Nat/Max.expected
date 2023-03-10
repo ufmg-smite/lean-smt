@@ -27,8 +27,4 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LE.le x y) y x)))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq |Nat.max'| (fun (x : Int) => (fun (y : Int) => (ite (binrel% LE.le x y) y x))))
+failed to reconstruct proof: operator does not have function type

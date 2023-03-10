@@ -8,11 +8,13 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y))))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y)))))
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+
 goal: 0 - Nat.succ x = 0
 
 query:
@@ -26,8 +28,10 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y))))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (binrel% LT.lt x y) 0 (binrel% HSub.hSub x y)))))
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+

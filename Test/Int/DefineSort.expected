@@ -9,9 +9,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (a : Int) => (fun (b : Int) => (binrel% HAdd.hAdd a b)))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq MyInt.add (fun (a : Int) => (fun (b : Int) => (binrel% HAdd.hAdd a b))))
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'
