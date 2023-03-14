@@ -1,10 +1,15 @@
 goal: (p ↔ q) → p = q
 
 query:
-(declare-const q Bool)
 (declare-const p Bool)
+(declare-const q Bool)
 (assert (not (=> (= p q) (= p q))))
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: incorrect number of universe levels th0
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬Smt.Reconstruction.Certifying.Implies (?p = ?q) (?p = ?q) → False
+with
+  ¬¬((p ↔ q) → p = q)
+p q : Prop
+⊢ ¬¬((p ↔ q) → p = q)

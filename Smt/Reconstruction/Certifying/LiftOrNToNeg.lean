@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.LiftOrNToImp
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic Meta Expr
 open List
 
@@ -55,9 +57,9 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
       let hypType' ← instantiateMVars (← inferType hyp')
       let props := map notExpr (collectPropsInOrChain hypType')
       let propsList: Expr := listExpr props $ Expr.sort Level.zero
-      let deMorgan: Expr := mkApp (mkConst `deMorgan₂) propsList
-      let modusTollens: Expr ← mkAppM `mt #[deMorgan]
-      let notNotHyp: Expr ← mkAppM `notNotIntro #[hyp']
+      let deMorgan: Expr := mkApp (mkConst ``deMorgan₂) propsList
+      let modusTollens: Expr ← mkAppM ``mt #[deMorgan]
+      let notNotHyp: Expr ← mkAppM ``notNotIntro #[hyp']
       let answer := mkApp modusTollens notNotHyp
       Tactic.closeMainGoal answer
 
@@ -65,3 +67,4 @@ example : ¬ A ∨ ¬ B ∨ ¬ C ∨ ¬ D ∨ False → ¬ (A ∧ B ∧ C ∧ D)
   intro h
   liftOrNToNeg h
 
+end Smt.Reconstruction.Certifying

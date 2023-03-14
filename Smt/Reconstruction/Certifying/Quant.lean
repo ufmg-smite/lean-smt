@@ -1,3 +1,5 @@
+namespace Smt.Reconstruction.Certifying
+
 open Classical
 
 universe u
@@ -53,3 +55,6 @@ example : (∀ x y : Int, x + y > 0) → (3 : Int) + 4 > 0 := by
   let s1 := flipInstForall h [(fun x : Int => (forall y : Int, x + y > 0)), 3]
   let s2 := flipInstForall s1 [(fun (y : Int) => 3 + y > 0), 4]
   exact s2
+=======
+end Smt.Reconstruction.Certifying
+>>>>>>> 01db45d657cb923ba6288906d2ecf76642f6048c

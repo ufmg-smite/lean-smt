@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab.Tactic Meta
 
 def congDupOr (i : Nat) (nm : Ident) (last : Bool) : TacticM Syntax :=
@@ -98,3 +100,5 @@ example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
 example : (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) := by
   intro h
   factor h, 3
+
+end Smt.Reconstruction.Certifying

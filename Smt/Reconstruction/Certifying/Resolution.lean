@@ -2,6 +2,8 @@ import Lean
 
 import Smt.Reconstruction.Certifying.Pull
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab.Tactic Meta
 
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
@@ -138,3 +140,5 @@ example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨
 example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
   intros h₁ h₂
   R2 h₁, h₂, A
+
+end Smt.Reconstruction.Certifying

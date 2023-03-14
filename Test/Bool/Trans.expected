@@ -1,11 +1,18 @@
 goal: (p == q) = true → (q == r) = true → (p == r) = true
 
 query:
+(declare-const q Bool)
 (declare-const p Bool)
 (declare-const r Bool)
-(declare-const q Bool)
 (assert (not (=> (= (= p q) true) (=> (= (= q r) true) (= (= p r) true)))))
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: incorrect number of universe levels th0
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬Smt.Reconstruction.Certifying.Implies ((?p = ?q) = True)
+        (Smt.Reconstruction.Certifying.Implies ((?q = ?r) = True) ((?p = ?r) = True)) →
+    False
+with
+  ¬¬((p == q) = true → (q == r) = true → (p == r) = true)
+p q r : Bool
+⊢ ¬¬((p == q) = true → (q == r) = true → (p == r) = true)

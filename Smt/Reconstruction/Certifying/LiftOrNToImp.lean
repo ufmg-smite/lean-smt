@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic Meta Expr
 open List
 
@@ -60,3 +62,4 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     let endTime ← IO.monoMsNow
     trace[smt.profile] m!"[liftOrNToImp] Time taken: {endTime - startTime}ms"
 
+end Smt.Reconstruction.Certifying

@@ -3,10 +3,12 @@ import Lean
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Options
 
-open Lean Elab Tactic Meta Expr Syntax
+namespace Smt.Reconstruction.Certifying
+
+open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
-/- abbrev Implies (p q : Prop) := p → q -/
+abbrev Implies (p q : Prop) := p → q
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
@@ -611,3 +613,5 @@ macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
 
 #check smtIte (LE.le 0 2) 2 3 Nat
+
+end Smt.Reconstruction.Certifying
