@@ -115,7 +115,7 @@ theorem congOrRight : ∀ {P Q R : Prop}, (P → Q) → P ∨ R → Q ∨ R := b
   | inl h₃ => exact Or.inl (h₁ h₃)
   | inr h₄ => exact Or.inr h₄
 
-theorem congOrLeft : ∀ {R P Q : Prop}, (P → Q) → R ∨ P → R ∨ Q := by
+theorem congOrLeft : ∀ {P Q R : Prop}, (P → Q) → R ∨ P → R ∨ Q := by
   intros P Q R h₁ h₂
   apply orComm
   exact congOrRight h₁ (orComm h₂)
