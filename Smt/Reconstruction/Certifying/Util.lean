@@ -54,6 +54,19 @@ def collectPropsInOrChain' : Nat → Expr → List Expr
   let suffE := createOrChain suff
   pref ++ [suffE]
 
+def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
+  List.join
+    [ xs.take i
+    , [xs.get! j]
+    , List.drop i (xs.eraseIdx j)
+    ]
+
+-- 0-based
+-- inclusive on both sides
+def subList (i j : Nat) (xs : List α) : List α :=
+  List.take (j + 1 - i) (xs.drop i)
+
+
 def getIndexList [BEq α] : α → List α → Option Nat
 | _, [] => none
 | a, (x::xs) =>
@@ -181,6 +194,26 @@ def groupMiddleLemmas : List Expr → Nat → MetaM (List Expr)
       mkApp (mkApp (mkApp (mkConst `orAssocDir) a₁) a₂) a₃
     groupMiddleLemmas' sufProps i i appliedArgs
   List.mapM f (List.reverse (List.range (groupSize - 1)))
+
+def ungroupMiddleLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
+| _, 0, _, e => pure e
+| props, iter + 1, init, e => do
+  let rc ← ungroupMiddleLemmas' props iter init e
+  let r := props.get! (init - iter - 1)
+  mkAppOptM `congOrLeft #[none, none, r, rc]
+
+def ungroupMiddleLemmas : List Expr → Nat → Nat → MetaM (List Expr)
+| props, groupStart, groupSize =>
+  let f := fun i: Nat => do
+    let a₁ := props.get! i
+    let a₂ := createOrChain (subList (i + 1) (groupStart + groupSize - 1) props)
+    let a₃ := createOrChain $ props.drop (groupStart + groupSize)
+    let appliedArgs :=
+      mkApp (mkApp (mkApp (mkConst `orAssocConv) a₁) a₂) a₃
+    ungroupMiddleLemmas' props i i appliedArgs
+  -- [groupStart ..= groupStart + groupSize - 1]
+  let is := List.drop groupStart (List.range (groupStart + groupSize - 1))
+  List.mapM f is
 
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
