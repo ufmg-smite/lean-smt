@@ -17,7 +17,8 @@ def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
 def subList (i j : Nat) (xs : List α) : List α :=
   List.take (j + 1 - i) (xs.drop i)
 
-def mkAppList : Expr → List Expr → Expr := List.foldr mkApp
+def mkAppList : Expr → List Expr → Expr :=
+  fun e l => List.foldr mkApp e l.reverse
 
 def mkAppListM : Expr → List Expr → MetaM Expr
 | e, [] => pure e
@@ -26,50 +27,46 @@ def mkAppListM : Expr → List Expr → MetaM Expr
   mkAppM' f #[rc]
 
 def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
-   (val : Expr) (last : Bool) : MetaM Expr := do
+   (val: Expr) (last : Bool) : MetaM Expr := do
     match i_iter with
     | 0      =>
-      if last then pure $ mkAppList val lemmas 
+      if last then pure $ mkAppList val lemmas
       else
         let fname ← mkFreshId
-        let body := mkAppList (Expr.bvar 0) lemmas
-        let middleProps := List.take (j - i + 1) $ List.drop i props
-        let baseArg :=
-          let midPref := List.dropLast middleProps
-          let midSuff := List.getLast! middleProps
-          createOrChain [createOrChain midPref, midSuff]
-
-        let lambda := Expr.lam fname baseArg body BinderInfo.default
-        let r := createOrChain $ List.drop (j + 1) props
-        let part ← mkAppOptM `congOrRight #[none, none, r, lambda]
-        pure (mkApp part val)
+        let l₂ := subList i (j - 1) props
+        let l₂_right := props.get! j
+        let t := createOrChain [createOrChain l₂, l₂_right]
+        withLocalDeclD fname t $ fun bv => do
+          let body := mkAppList bv lemmas
+          let lambda ← mkLambdaFVars #[bv] body
+          mkAppM `congOrRight #[lambda, val]
     | i_iter' + 1 =>
       let fname ← mkFreshId
-      let suffProps := List.drop i_iter props
-      let suff := createOrChain suffProps
-      withLocalDeclD fname suff $ fun bv => do
-        let rc: Expr ← congLemmas lemmas props i_iter' i j val last
+      let pref := subList (i - i_iter + 1) (i - 1) props
+      let mid := subList i (j - 1) props
+      let mid_right := props.get! j
+      let suff := subList (j + 1) props.length props
+      let mut t := createOrChain [createOrChain mid, mid_right]
+      if not suff.isEmpty then
+        t := createOrChain [t, createOrChain suff]
+      if not pref.isEmpty then
+        let l' := collectPropsInOrChain t
+        t := createOrChain (pref ++ l')
+      withLocalDeclD fname t $ fun bv => do
+        let rc ← congLemmas lemmas props i_iter' i j bv last
         let lambda ← mkLambdaFVars #[bv] rc
         mkAppM `congOrLeft #[lambda, val]
-        /- let lambda := Expr.lam fname suff rc BinderInfo.default -/
-        /- let r := createOrChain $ List.take i_iter props -/
-        /- let part ← mkAppOptM `congOrLeft #[none, none, r, lambda] -/
-        /- pure (mkApp part val) -/
 
 def congLemmas' (lemmas props : List Expr) (i_iter i j : Nat)
    (val: Expr) (last : Bool) : MetaM Expr := do
     match i_iter with
     | 0      =>
-      if last then
-        pure $ mkAppList val lemmas.reverse
+      if last then pure $ mkAppList val lemmas
       else
         let fname ← mkFreshId
-        let middleProps := List.take (j - i + 1) $ List.drop i props
-        let middle := createOrChain middleProps
+        let middle := createOrChain (subList i j props)
         withLocalDeclD fname middle $ fun bv => do
-          let mut body := bv
-          for l in lemmas do
-            body := mkApp l body
+          let body := mkAppList bv lemmas
           let lambda ← mkLambdaFVars #[bv] body
           mkAppM `congOrRight #[lambda, val]
     | i_iter' + 1 =>
@@ -82,8 +79,7 @@ def congLemmas' (lemmas props : List Expr) (i_iter i j : Nat)
         t := createOrChain [t, createOrChain l₃]
       if not l₁.isEmpty then
         let l' := collectPropsInOrChain t
-        let l'' := l₁ ++ l'
-        t := createOrChain l''
+        t := createOrChain (l₁ ++ l')
       withLocalDeclD fname t $ fun bv => do
         let rc ← congLemmas' lemmas props i_iter' i j bv last
         let lambda ← mkLambdaFVars #[bv] rc
@@ -120,30 +116,31 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     /- --       -> A ∨ ((B ∨ C) ∨ D) ∨ E -/
     let midPref := List.dropLast mid
     let midSuff := List.getLast! mid
-    let goal₂ ← do
-      let mid₂ := [createOrChain midPref, midSuff]
-      let mut goalList := pref ++ [createOrChain mid₂]
-      if not suff.isEmpty then
-        goalList := goalList ++ [createOrChain suff]
-      pure $ createOrChain goalList
+    /- let goal₂ ← do -/
+    /-   let mid₂ := [createOrChain midPref, midSuff] -/
+    /-   let mut goalList := pref ++ [createOrChain mid₂] -/
+    /-   if not suff.isEmpty then -/
+    /-     goalList := goalList ++ [createOrChain suff] -/
+    /-   pure $ createOrChain goalList -/
     let step₂: Expr ← do
       let lemmas ← groupMiddleLemmas (List.drop i props) (j - i)
       congLemmas' lemmas props i i j step₁ last
-    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal₂ step₂
-    return mvar'
 
     /- -- step₃: apply commutativity on middle -/
     /- -- example: A ∨ ((B ∨ C) ∨ D) ∨ E -/
     /- --       -> A ∨ (D ∨ B ∨ C) ∨ E -/
-    /- let goal₃ := -/
-    /-   let mid₃ := [midSuff, createOrChain midPref] -/
-    /-   createOrChain (pref ++ [createOrChain mid₃] ++ [createOrChain suff]) -/
-    /- let comm := -/
-    /-   mkApp (mkApp (mkConst `orComm) (createOrChain midPref)) midSuff -/
+    let goal₃ :=
+      let mid₃ := [midSuff, createOrChain midPref]
+      if not suff.isEmpty then
+        createOrChain (pref ++ [createOrChain mid₃] ++ [createOrChain suff])
+      else
+        createOrChain (pref ++ [createOrChain mid₃])
+    let comm :=
+      mkApp (mkApp (mkConst `orComm) (createOrChain midPref)) midSuff
     /- /1- let midChain := createOrChain [createOrChain midPref, midSuff] -1/ -/
-    /- let step₃ ← congLemmas [comm] props i i j step₂ last -/
-    /- let (_, mvar₃) ← MVarId.intro1P $ ← mvar.assert name goal₃ step₃ -/
-    /- return mvar₃ -/
+    let step₃ ← congLemmas [comm] props i i j step₂ last
+    let (_, mvar₃) ← MVarId.intro1P $ ← mvar.assert name goal₃ step₃
+    return mvar₃
   
     /- -- step₄: ungroup middle -/
     /- -- example: A ∨ (D ∨ B ∨ C) ∨ E -/
@@ -172,43 +169,41 @@ syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : 
   replaceMainGoal [mvar']
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I ∨ J →
-          A ∨ ((B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I) ∨ J) := by
+          A ∨ (J ∨ (B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I)) := by
   intro h
   pullToMiddle 1, 9, h, h₂
 
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ C ∨ ((D ∨ E ∨ F) ∨ G) ∨ H := by
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ C ∨ (G ∨ (D ∨ E ∨ F)) ∨ H := by
   intro h
   pullToMiddle 3, 6, h, h₂
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ ((C ∨ D) ∨ E) ∨ F ∨ G ∨ H := by
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ (E ∨ (C ∨ D)) ∨ F ∨ G ∨ H := by
   intro h
   pullToMiddle 2, 4, h, h₂
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → ((A ∨ B ∨ C ∨ D) ∨ E) ∨ F ∨ G ∨ H := by
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → (E ∨ (A ∨ B ∨ C ∨ D)) ∨ F ∨ G ∨ H := by
   intro h
   pullToMiddle 0, 4, h, h₂
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ ((B ∨ C ∨ D ∨ E ∨ F) ∨ G) ∨ H := by
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ (G ∨ (B ∨ C ∨ D ∨ E ∨ F)) ∨ H := by
   intro h
   pullToMiddle 1, 6, h, h₂
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E ∨ F → A ∨ B ∨ C ∨ ((D ∨ E) ∨ F) := by
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F → A ∨ B ∨ C ∨ (F ∨ (D ∨ E)) := by
   intro h
   pullToMiddle 3, 5, h, h₂
   exact h₂
 
-example : A ∨ B ∨ C ∨ D ∨ E → A ∨ ((B ∨ C ∨ D) ∨ E) := by
+example : A ∨ B ∨ C ∨ D ∨ E → A ∨ (E ∨ (B ∨ C ∨ D)) := by
   intro h
   pullToMiddle 1, 4, h, h₂
   exact h₂
-
-
 
 def pullIndex (mvar: MVarId) (index : Nat) (val type : Expr)
   (name : Name) : MetaM MVarId :=

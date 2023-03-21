@@ -40,6 +40,11 @@ def createOrChain : List Expr → Expr
 | [h]  => h
 | h::t => app (app (mkConst `Or) h) $ createOrChain t
 
+def foldAndExpr : List Expr → Expr
+| [] => panic! "[foldAndExpr]: empty list"
+| [h] => h
+| h::t => app (app (mkConst `And) h) $ foldAndExpr t
+
 -- fold the l-th suffix into one expr
 def collectPropsInOrChain' : Nat → Expr → List Expr
 | l, e =>
@@ -68,18 +73,7 @@ def getIndex : Expr → Expr → Option Nat
 def getFirstBinderName : Expr → Name
 | app e _ => getFirstBinderName e
 | const nm .. => nm
-| _ => panic! "[getLetName] unknown expression"
-
-def getCongAssoc' : Nat → Name → Term
-| 0,     n => mkIdent n
-| i + 1, n =>
-  Syntax.mkApp (mkIdent `congOrLeft) #[getCongAssoc' i n]
-
--- tactics for parenthesizing the prefix of an or-chain
-def getCongAssoc : Nat → Name → List Term
-| 0,     _ => []
-| 1,     n => [getCongAssoc' 0 n]
-| i + 2, n => (getCongAssoc' (i + 1) n) :: (getCongAssoc (i + 1) n)
+| _ => panic! "[getFirstBinderName]: unknown expression"
 
 def getLength : Expr → (i : Option Nat := none) → Nat
 | e, some i =>
@@ -111,6 +105,27 @@ def getTypeFromName (name : Name) : TacticM Expr :=
     let ctx ← getLCtx
     inferType (ctx.findFromUserName? name).get!.toExpr
 
+def mkLam (type body : Expr) : Expr :=
+  lam Name.anonymous type body BinderInfo.default
+
+def mkForall' (t b : Expr) : Expr :=
+  forallE Name.anonymous t b BinderInfo.default
+
+partial def expandType' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
+  match e with
+  | fvar fid => mvar.withContext do
+    let lctx ← getLCtx
+    match lctx.find? fid with
+    | some ldcl => expandType' mvar ldcl.value
+    | none      => pure e
+  | _ => pure e
+
+def expandTypesInOrChain' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
+  do let es := collectPropsInOrChain e
+     let esExpanded ← List.mapM (expandType' mvar) es
+     let e' := createOrChain esExpanded
+     pure e'
+
 partial def expandType : Expr → TacticM Expr := fun e =>
   match e with
   | fvar fid => withMainContext do
@@ -125,6 +140,47 @@ def expandTypesInOrChain : Expr → TacticM Expr := fun e => do
   let esExpanded ← List.mapM expandType es
   let e'         := createOrChain esExpanded
   pure e'
+
+def groupPrefixLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
+| _, 0, _, e => pure e
+| props, i_iter + 1, i,  e => do
+  let rc ← groupPrefixLemmas' props i_iter i e
+  mkAppOptM `congOrLeft #[none, none, props.get! (i - i_iter - 1), rc]
+
+def groupPrefixLemmasCore : Name → List Expr → Nat → MetaM (List Expr)
+| nm, props, n =>
+  let f := λ i: Nat => do
+    let a₁ := props.get! i
+    let a₂ := createOrChain $ List.take (n - i) (props.drop (i + 1))
+    let a₃ := createOrChain $ props.drop (n + 1)
+    let appliedArgs :=
+      mkApp (mkApp (mkApp (mkConst nm) a₁) a₂) a₃
+    groupPrefixLemmas' props i i appliedArgs
+  List.mapM f (List.reverse (List.range n))
+
+def groupPrefixLemmas := groupPrefixLemmasCore `orAssocDir
+def ungroupPrefixLemmas := fun props n => do
+  pure $ List.reverse $ ← groupPrefixLemmasCore `orAssocConv props n
+
+def groupMiddleLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
+| _, 0, _, e => pure e
+| sufProps, iter + 1, init, e => do
+  let rc ← groupMiddleLemmas' sufProps iter init e
+  mkAppOptM `congOrLeft #[none, none, sufProps.get! (init - iter - 1), rc]
+
+-- NOT a generalization of groupPrefixLemmas
+-- exclusively used for pullMiddle (step₂)
+def groupMiddleLemmas : List Expr → Nat → MetaM (List Expr)
+| sufProps, groupSize =>
+  let f := fun i: Nat => do
+    let middleSize := groupSize + 1
+    let a₁ := sufProps.get! i
+    let a₂ := createOrChain $ List.take (groupSize - i - 1) (sufProps.drop (i + 1))
+    let a₃ := sufProps.get! (middleSize - 1)
+    let appliedArgs :=
+      mkApp (mkApp (mkApp (mkConst `orAssocDir) a₁) a₂) a₃
+    groupMiddleLemmas' sufProps i i appliedArgs
+  List.mapM f (List.reverse (List.range (groupSize - 1)))
 
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
