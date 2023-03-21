@@ -22,10 +22,8 @@ def groupPrefixCore' (mvar : MVarId) (val type : Expr) (prefLen : Nat)
         let goal := getGroupOrPrefixGoal type prefLen
         let mut answer := val
         let lemmas ← groupPrefixLemmas props (prefLen - 1)
-        logInfo m!"lemmas = {lemmas}"
         for l in lemmas do
           answer := mkApp l answer
-          logInfo m!"answer = {answer}"
         let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal answer
         return mvar'
       else throwError

@@ -28,10 +28,8 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
     | i_iter' + 1 =>
       let fname ← mkFreshId
       let pref := subList (i - i_iter + 1) (i - 1) props
-      /- let mid := subList i (j - 1) props -/
-      /- let mid_right := props.get! j -/
       let suff := subList (j + 1) props.length props
-      let mut t := mid -- createOrChain [createOrChain mid, mid_right]
+      let mut t := mid
       if not suff.isEmpty then
         t := createOrChain [t, createOrChain suff]
       if not pref.isEmpty then
@@ -177,8 +175,7 @@ def pullCore' (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
               let (_, mvar'') ← MVarId.intro1P $
                 ← mvar'.assert name requiredType answer
               return mvar''
-        else throwError "unimplemented"
-/-         pullIndex i hypS type id -/
+        else pullIndex mvar i val type name
       | none   => throwError "[Pull]: couldn't find pivot"
 
 syntax (name := pull) "pull" term "," term "," ident ("," term)? : tactic
@@ -189,16 +186,21 @@ def parsePull : Syntax → TacticM (Option Nat)
   | _                      => pure none
 
 @[tactic pull] def evalPullCore : Tactic := fun stx => withMainContext do
-  let e ← elabTerm stx[1] none
-  let t ← instantiateMVars (← inferType e)
-  let e₂ ← elabTerm stx[3] none
+  let hyp ← elabTerm stx[1] none
+  let t ← instantiateMVars (← inferType hyp)
+  let pivot ← elabTerm stx[3] none
   let i ← parsePull stx
+  let name := stx[5].getId
   let mvar ← getMainGoal
-  let mvar' ← pullCore' mvar e₂ e t i `blah
+  let mvar' ← pullCore' mvar pivot hyp t i name
   replaceMainGoal [mvar']
 
 example : A ∨ B ∨ C ∨ D ∨ E → (D ∨ E) ∨ A ∨ B ∨ C := by
   intro h
   pull h, (D ∨ E), h₂, 3
-  exact blah
+  exact h₂
 
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → F ∨ A ∨ B ∨ C ∨ D ∨ E ∨ G ∨ H := by
+  intro h
+  pull h, F, h₂
+  exact h₂
