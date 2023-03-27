@@ -149,7 +149,7 @@ def pullIndex (mvar: MVarId) (index : Nat) (val type : Expr)
   (name : Name) : MetaM MVarId :=
     pullToMiddleCore mvar 0 index val type name
 
-def pullCore' (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
+def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
       let lastSuffix := getLength type - 1
@@ -165,7 +165,7 @@ def pullCore' (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
             return mvar
           else
             let fname ← mkFreshId
-            let mvar' ← groupPrefixCore' mvar val type sufIdx fname
+            let mvar' ← groupPrefixCore mvar val type sufIdx fname
             mvar'.withContext do
               let lctx ← getLCtx
               let groupped := (lctx.findFromUserName? fname).get!.toExpr
@@ -192,7 +192,7 @@ def parsePull : Syntax → TacticM (Option Nat)
   let i ← parsePull stx
   let name := stx[5].getId
   let mvar ← getMainGoal
-  let mvar' ← pullCore' mvar pivot hyp t i name
+  let mvar' ← pullCore mvar pivot hyp t i name
   replaceMainGoal [mvar']
 
 example : A ∨ B ∨ C ∨ D ∨ E → (D ∨ E) ∨ A ∨ B ∨ C := by
