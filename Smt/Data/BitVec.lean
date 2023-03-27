@@ -766,21 +766,55 @@ def toNat'' (e : Nat) : List Bool → Nat
     | [] => 0
     | b :: xs => 2^e*b.toNat + toNat'' (e - 1) xs
 
+theorem helper_2 (x i : Nat) : x % 2 ^ (i + 1) = x % 2^i + 2^i * (Nat.testBit x i).toNat := by
+  induction' i with i hi
+  · rw [Nat.testBit_eq_inth]
+    cases' h: Nat.bodd x 
+    · have h1: x%2 = 0 := by simp [Nat.mod_two_of_bodd, h]
+      simp [(Nat.mod_one x), h1]
+      sorry
+      
 
+      
+
+    
+
+    · sorry
+  · sorry
 
 
 #eval 15%8 + 14%8
 #eval toNat.toNat' 2 (go'5 15 14 2) + 2^(2+1)*(carry''' 15 14 (2+1)).toNat
 
-
-
+lemma unfold_carry''' (x y i : Nat) : carry''' x y (Nat.succ i) = (Nat.testBit x i && Nat.testBit y i) || ((Nat.testBit x i ^^ Nat.testBit y i) && carry''' x y i):= by
+  sorry
+  
+  
+  
 
 theorem go'5_correct (x y i: Nat) : x%(2^(i+1)) + y%(2^(i+1)) = toNat'' i (go'5 x y i) + 2^(i+1)*(carry''' x y (i+1)).toNat := by
   induction' i with i hi
   · sorry
   · simp only [toNat'']
     rw [show Nat.succ i - 1 = i by simp]
+    rw [helper_2 x, helper_2 y]
+    suffices goal: (x % 2 ^ (i + 1) + y % 2 ^ (i + 1)) + 2 ^ (i + 1) * Bool.toNat (Nat.testBit x (i + 1))  +  2 ^ (i + 1) * Bool.toNat (Nat.testBit y (i + 1)) = 2 ^ Nat.succ i * Bool.toNat ((Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1)) +
+      toNat'' i (go'5 x y i) +
+    2 ^ (Nat.succ i + 1) * Bool.toNat (carry''' x y (Nat.succ i + 1))
+    · sorry
+    rw [hi]
+    rw [pow_succ 2 (Nat.succ i), two_mul, add_mul]
+
+
+
     
+
+
+    
+
+    
+    
+
     
 
     
@@ -847,21 +881,7 @@ theorem helper_1 {x y : Nat} : (x + y).testBit i = ((x.testBit i ^^ y.testBit i)
 
 
 
-theorem helper_2 (x i : Nat) : x % 2 ^ (i + 1) = x % 2^i + 2^i * (Nat.testBit x i).toNat := by
-  induction' i with i hi
-  · rw [Nat.testBit_eq_inth]
-    cases' h: Nat.bodd x 
-    · have h1: x%2 = 0 := by simp [Nat.mod_two_of_bodd, h]
-      simp [(Nat.mod_one x), h1]
-      sorry
-      
 
-      
-
-    
-
-    · sorry
-  · sorry
 
 #check Nat.bit
 
