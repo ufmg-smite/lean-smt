@@ -1,5 +1,6 @@
 import Lean
 
+import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
@@ -48,3 +49,17 @@ syntax (name := congrT) "congrT" term "," term : tactic
     evalTactic (← `(tactic| exact congr $h₁ $h₂))
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[congrT]: Time taken: {endTime - startTime}ms"
+
+syntax (name := andElimT) "andElimT" term "," term : tactic
+@[tactic andElim] def evalAndElimT : Tactic := fun stx => do
+  let startTime ← IO.monoMsNow
+  evalAndElim stx
+  let endTime ← IO.monoMsNow
+  trace[smt.profile] m!"[andElimT] Time taken: {endTime - startTime}ms"
+
+syntax (name := notOrElimT) "notOrElimT" term "," term : tactic
+@[tactic notOrElimT] def evalNotOrElimT : Tactic := fun stx => do
+  let startTime ← IO.monoMsNow
+  evalNotOrElim stx
+  let endTime ← IO.monoMsNow
+  trace[smt.profile] m!"[notOrElimT] Time taken: {endTime - startTime}ms"

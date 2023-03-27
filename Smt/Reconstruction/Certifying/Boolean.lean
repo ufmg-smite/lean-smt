@@ -432,7 +432,6 @@ where
 
 syntax (name := andElim) "andElim" term "," term : tactic
 @[tactic andElim] def evalAndElim : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
   withMainContext do
     let mvar ← getMainGoal
     let val ← elabTerm stx[1] none
@@ -440,8 +439,6 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let i ← stxToNat idx
     let mvar' ← andElimMeta mvar val i `pf
     replaceMainGoal [mvar']
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
 
 example : A ∧ B ∧ C ∧ D → B := by
   intro h
@@ -477,15 +474,12 @@ where
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
     let val ← elabTerm stx[1] none
     let mvar ← getMainGoal
     let mvar' ← notOrElimMeta mvar val i `pf
     replaceMainGoal [mvar']
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[notOrElim] Time taken: {endTime - startTime}ms"
 
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
