@@ -13,7 +13,7 @@ def getGroupOrPrefixGoal : Expr → Nat → Expr
           let right := createOrChain (drop n props)
           app (app (mkConst `Or) left) right
 
-def groupPrefixCore' (mvar : MVarId) (val type : Expr) (prefLen : Nat)
+def groupPrefixCore (mvar : MVarId) (val type : Expr) (prefLen : Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
       let l := getLength type
@@ -35,7 +35,7 @@ syntax (name := testTac) "testTac" term : tactic
     let e ← elabTerm stx[1] none
     let t ← inferType e
     let mvar ← getMainGoal
-    let mvar' ← groupPrefixCore' mvar e t 3 `pf
+    let mvar' ← groupPrefixCore mvar e t 3 `pf
     replaceMainGoal [mvar']
 
 example : A ∨ B ∨ C ∨ D ∨ E → (A ∨ B ∨ C) ∨ D ∨ E := by
@@ -58,7 +58,7 @@ def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
       let fname1 ← mkFreshId
       let newMVar ←
         if prefLen > 1 then
-          groupPrefixCore' mvar val type prefLen fname1
+          groupPrefixCore mvar val type prefLen fname1
         else pure mvar
       newMVar.withContext do
         let negArgs := collectOrNNegArgs type prefLen
