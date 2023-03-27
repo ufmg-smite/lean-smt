@@ -91,5 +91,4 @@ example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → A ∧ B → C ∨ D ∨ E  := by
   intro h
   liftOrNToImp h, 2
   exact blah
-  /- exact fun h₂ => orImplies₃ (orAssocDir h) (@deMorgan₂ [A, B] h₂) -/
 

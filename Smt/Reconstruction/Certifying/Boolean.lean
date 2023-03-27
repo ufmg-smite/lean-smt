@@ -231,33 +231,6 @@ theorem cnfAndNeg : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
      intro h
      exact deMorgan h
 
-syntax (name := cnfAndNegT) "cnfAndNegT" ("[" term,* "]")? : tactic
-
-def parseCnfAndNeg : Syntax → TacticM Expr
-  | `(tactic| cnfAndNegT [ $[$hs],* ]) => do
-    let each ← Array.mapM (fun h => elabTerm h none) hs
-    let li := listExpr each.data (Expr.sort Level.zero)
-    return li
-  | _ => throwError "[cnfAndNeg]: wrong usage"
-
-@[tactic cnfAndNegT] def evalCnfAndNegT : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
-  withMainContext do
-    let e ← parseCnfAndNeg stx
-    closeMainGoal (mkApp (mkConst `cnfAndNeg) e)
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
-
-syntax (name := cnfAndPosT) "cnfAndPosT" ("[" term,* "]")? "," term : tactic
-
-def parseCnfAndPos : Syntax → TacticM (Expr × Expr)
-  | `(tactic| cnfAndPosT [ $[$hs],* ], $i) => do
-    let each ← Array.mapM (fun h => elabTerm h none) hs
-    let li := listExpr each.data (Expr.sort Level.zero)
-    let i' ← elabTerm i none
-    return (li, i')
-  | _ => throwError "[cnfAndPos]: wrong usage"
-
 theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i True :=
   by intros l i
      apply orImplies
@@ -275,14 +248,6 @@ theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i
        | i' + 1 =>
          have IH :=  cnfAndPos (p₂::ps) i'
          exact orImplies₂ IH (And.right h')
-
-@[tactic cnfAndPosT] def evalCnfAndPosT : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
-  withMainContext do
-    let (li, i) ← parseCnfAndPos stx
-    closeMainGoal $ mkApp (mkApp (mkConst `cnfAndPos) li) i
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[cnfAndPos]: Time taken: {endTime - startTime}ms"
 
 theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i False := by
   intros l i
@@ -416,67 +381,6 @@ theorem cnfIteNeg3 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ a ∨ ¬ b := by
                  rewrite [r] at hnite
                  exact Or.inl hnite
 
-theorem smtCong₁ : ∀ {A B : Type u} {f₁ f₂ : A → B} {t₁ t₂ : A},
-  f₁ = f₂ → t₁ = t₂ → f₁ t₁ = f₂ t₂ := congr
-
-theorem smtCong₂ : ∀ {B : Type u} {f₁ f₂ : Prop → B} {t₁ t₂ : Prop},
-  f₁ = f₂ → (t₁ ↔ t₂) → f₁ t₁ = f₂ t₂ :=
-  by intros B f₁ f₂ t₁ t₂ h₁ h₂
-     rewrite [h₁, h₂]
-     exact rfl
-
-theorem smtCong₃ : ∀ {A : Type u} {f₁ f₂ : A → Prop} {t₁ t₂ : A},
-  (f₁ = f₂) → (t₁ = t₂) → (f₁ t₁ ↔ f₂ t₂) :=
-  by intros A f₁ f₂ t₁ t₂ h₁ h₂
-     rewrite [h₁, h₂]
-     exact Iff.rfl
-
-theorem smtCong₄ : ∀ {f₁ f₂ : Prop → Prop} {t₁ t₂ : Prop},
-  f₁ = f₂ → (t₁ ↔ t₂) → (f₁ t₁ ↔ f₂ t₂) :=
-  by intros f₁ f₂ t₁ t₂ h₁ h₂
-     rewrite [h₁, h₂]
-     exact Iff.rfl
-
-syntax (name := congrT) "congrT" term "," term : tactic
-@[tactic congrT] def evalCongrT : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
-  withMainContext do
-    let h₁ := ⟨stx[1]⟩
-    let h₂ := ⟨stx[3]⟩
-    evalTactic (← `(tactic| exact congr $h₁ $h₂))
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[congrT]: Time taken: {endTime - startTime}ms"
-
-syntax (name := smtCong) "smtCong" term "," term : tactic
-@[tactic smtCong] def evalSmtCong : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
-  withMainContext do
-    let hyp2 ← elabTerm stx[3] none
-    let hyp2Type ← inferType hyp2
-    let t1: Term := ⟨stx[1]⟩
-    let t3: Term := ⟨stx[3]⟩
-    let e₁ ← elabTerm t1 none
-    let t₁ ← instantiateMVars (← inferType e₁)
-    let d ← getFunctionCounterDomain t₁
-    let isProp := d == sort Level.zero
-    match isProp, isIff hyp2Type with
-    | false, false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-    | false, true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-    | true,  false => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-    | true,  true  => evalTactic (← `(tactic| exact smtCong₁ $t1 $t3))
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[smtCong] Time taken: {endTime - startTime}ms"
-where
-  isIff : Expr → Bool
-  | app (app (const `Iff ..) _) _ => true
-  | _ => false
-  getFunctionCounterDomain : Expr → TacticM Expr
-  | app (app _ e₁) _ => do
-    let t₁ ← inferType e₁
-    let d₁ := bindingBody! t₁
-    return d₁
-  | _ => throwError "unexpected type in smtCong"
-
 theorem congrIte {α : Type} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
   c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
   intros c₁ c₂ t₁ t₂ e₁ e₂ h₁ h₂ h₃
@@ -498,68 +402,95 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
   | Or.inl p => p
   | Or.inr p => p
 
-syntax (name := andElim) "andElim" term "," term : tactic
-@[tactic andElim] def evalAndElim : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
-  withMainContext do
-    let i ← stxToNat ⟨stx[3]⟩
-    let h ← elabTerm stx[1] none
-    let mut proof ← getProof i h
-    let type ← inferType h
-    let binderName := getFirstBinderName type
-    let env ← getEnv
-    let andProp : Expr := 
-      match (env.find? binderName).get!.value? with
-      | none => type
-      | some e => recGetLamBody e
-    if i < getLengthAnd andProp - 1 then
-      proof ← mkAppM `And.left #[proof]
-    closeMainGoal proof
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
+def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
+  : MetaM MVarId :=
+    mvar.withContext do
+      let mut pf ← getProof i val
+      let type ← inferType val
+      let binderName := getFirstBinderName type
+      let env ← getEnv
+      let andProp : Expr := 
+        match (env.find? binderName).get!.value? with
+        | none => type
+        | some e => recGetLamBody e
+      if i < getLengthAnd andProp - 1 then
+        pf ← mkAppM `And.left #[pf]
+      let goal ← inferType pf
+      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal pf
+      return mvar'
 where
   recGetLamBody (e : Expr) : Expr :=
     match e with
     | lam _ _ b _ => recGetLamBody b
     | e => e
-  getProof (i : Nat) (hyp : Expr) : TacticM Expr :=
+  getProof (i : Nat) (hyp : Expr) : MetaM Expr :=
     match i with
     | 0 => pure hyp
     | (i + 1) => do
       let rc ← getProof i hyp
       mkAppM `And.right #[rc]
 
-example : A ∧ B ∧ C ∧ D → A := by
+syntax (name := andElim) "andElim" term "," term : tactic
+@[tactic andElim] def evalAndElim : Tactic := fun stx => do
+  let startTime ← IO.monoMsNow
+  withMainContext do
+    let mvar ← getMainGoal
+    let val ← elabTerm stx[1] none
+    let idx: Term := ⟨stx[3]⟩
+    let i ← stxToNat idx
+    let mvar' ← andElimMeta mvar val i `pf
+    replaceMainGoal [mvar']
+  let endTime ← IO.monoMsNow
+  trace[smt.profile] m!"[andElim] Time taken: {endTime - startTime}ms"
+
+example : A ∧ B ∧ C ∧ D → B := by
   intro h
-  andElim h, 0
+  andElim h, 1
+  exact pf
+
+def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
+  : MetaM MVarId :=
+    mvar.withContext do
+      let type ← inferType val
+      let orChain := notExpr type
+      let props := collectPropsInOrChain orChain
+      let prop := props.get! i
+      withLocalDeclD (← mkFreshId) prop $ fun bv => do
+        let pf: Expr ←
+          match getLength orChain == i + 1 with
+          | true  => pure bv
+          | false =>
+            let rest := createOrChain (props.drop (i + 1))
+            mkAppOptM `Or.inl #[none, rest, bv]
+        let pf ← getProof i 0 props pf
+        let pf := mkApp val pf
+        let pf ← mkLambdaFVars #[bv] pf
+        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name (notExpr prop) pf   
+        return mvar'
+where
+  getProof (i j : Nat) (props : List Expr) (val : Expr) : MetaM Expr :=
+    match i with
+    | 0     => pure val
+    | i + 1 => do
+      let currProp := props.get! j
+      mkAppOptM `Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
   let startTime ← IO.monoMsNow
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
-    let hyp ← inferType (← elabTerm stx[1] none)
-    let orChain := notExpr hyp
-    let proof: Syntax ←
-      match getLength orChain == i + 1 with
-      | true => `(x)
-      | false => `(Or.inl x)
-    let proof: Syntax := getProof i proof
-    let proof := Syntax.mkApp ⟨stx[1]⟩ #[⟨proof⟩]
-    let proof ← `(fun x => $proof)
-    let proofE ← elabTerm proof none
-    closeMainGoal proofE
+    let val ← elabTerm stx[1] none
+    let mvar ← getMainGoal
+    let mvar' ← notOrElimMeta mvar val i `pf
+    replaceMainGoal [mvar']
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[notOrElim] Time taken: {endTime - startTime}ms"
-where
-  getProof (i : Nat) (hyp : Syntax) : Syntax :=
-    match i with
-    | 0 => hyp
-    | i + 1 => Syntax.mkApp (mkIdent `Or.inr) #[⟨getProof i hyp⟩]
 
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
+  exact pf
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h
@@ -609,5 +540,3 @@ macro_rules
 syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
-
-#check smtIte (LE.le 0 2) 2 3 Nat

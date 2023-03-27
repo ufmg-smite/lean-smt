@@ -45,7 +45,7 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
 def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
   : MetaM MVarId := mvar.withContext do
   if i == j then
-    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name val type  
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
     return mvar'
   else
     let last := getLength type == j + 1
@@ -162,7 +162,8 @@ def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
       | some i =>
         if i == sufIdx && sufIdx != lastSuffix then do
           if i == 0 then
-            return mvar
+            let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
+            return mvar'
           else
             let fname ← mkFreshId
             let mvar' ← groupPrefixCore mvar val type sufIdx fname
