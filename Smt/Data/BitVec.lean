@@ -2,7 +2,7 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Joe Hendrix, Wojciech Nawrocki
+Authors: Joe Hendrix, Wojciech Nawrocki, Harun Khan
 -/
 
 import Mathlib
@@ -39,6 +39,13 @@ theorem Fin.bne_of_val_ne {n} {i j : Fin n} (h : Not (Eq i.val j.val)) : i != j 
   
 theorem Fin.ne_of_val_bne {n} {i j : Fin n} (h : i != j) : i.val ≠ j.val := by
   sorry
+
+lemma zero_or_one {n: Nat} (h: n < 2) : n = 0 ∨ n = 1 := by
+  induction' n with n ih
+  · simp
+  · induction' n with m
+    · simp
+    · linarith
 
 
 def BitVec (w : Nat) := Fin (2^w)
@@ -355,7 +362,7 @@ where
                         simp [h43 (j+1) (Nat.lt_succ_of_le h6), testBit_eq_rep], 
               right := hj (Nat.lt_of_succ_lt h2) h6 }}
 
-def toNat (bs : List Bool) : Nat :=
+@[simp] def toNat (bs : List Bool) : Nat :=
   toNat' (bs.length - 1) bs.reverse
 where
   toNat' (e : Nat) : List Bool → Nat
@@ -385,6 +392,27 @@ where
       rw [u, this]
       simp [ih, Nat.add_lt_add_left _ (2^(List.length l))]
   ⟩
+
+@[simp] def toNat' (bs : List Bool) : {x : Nat // x < 2 ^ w} :=
+  go w (bs.takeD w false).reverse
+    ((bs.takeD w false).length_reverse ▸ (bs.takeD_length w false).symm)
+where
+  go (e : Nat) (bs : List Bool) (h : e = bs.length) : {x : Nat // x < 2 ^ e} :=
+    match e, bs with
+    | 0, [] => ⟨0, by decide⟩
+    | e + 1, false :: bs =>
+      let ⟨x, hx⟩ := go e bs (Nat.succ.inj h)
+      ⟨x, Nat.lt_trans hx (Nat.pow_lt_pow_succ (by decide) _)⟩
+    | e + 1, true :: bs  =>
+      let ⟨x, hx⟩ := go e bs (Nat.succ.inj h)
+      have : 2 ^ (e + 1) = 2 ^ e + 2 ^ e :=
+        show 2 ^ e * (1 + 1) = _ from
+        Nat.mul_add (2 ^ e) 1 1 ▸ Nat.mul_one _ ▸ rfl
+      ⟨2 ^ e + x, this ▸ Nat.add_lt_add_left hx _⟩
+
+def bbT' (bs : List Bool) : BitVec w :=
+  ⟨(toNat' bs).1, (toNat' bs).2⟩
+
 
 infix:30 " ^^ " => xor
 
@@ -416,9 +444,17 @@ end bit_add
 
 open bit_add in
 def bit_add (x y : BitVec w) {h : w > 0} : BitVec w :=
-  go_length h (Nat.lt_self_sub_one h) ▸ bbT (@go w x y (w - 1) _)
+  bbT' (@go w x y (w - 1) (Nat.lt_self_sub_one h))
 
-theorem add_bitblast {x y : BitVec w} {h: w > 0} : x + y = bit_add x y (h := h) := sorry
+theorem add_bitblast {x y : BitVec w} {h: w > 0} : x + y = bit_add x y (h := h) := by
+  suffices goal: (x.val + y.val)%(2^w) = (bit_add x y (h := h)).val 
+  sorry
+  sorry
+
+
+
+
+
 
 
 
@@ -436,16 +472,37 @@ theorem temp {x : BitVec w} : List.length (toBool x h) = w := by
   sorry
 
 #eval bbT (toBool (BitVec.ofNat 8 259) (by decide))
+#eval @bbT' 259 (toBool (BitVec.ofNat 8 256) (by decide))
 
-theorem inv_bbT_toBool (x : BitVec w) (h : w > 0) : (bbT (toBool x h)).val = x.val := by
-  sorry
+theorem inv_bbT_toBool (x : BitVec w) (h : w > 0) : (bbT' (toBool x h)) = x := by
+  induction' w, h using Nat.le_induction with w h hw
+  · simp only [toBool, toBool.go]
+    have h1: x[0] = true ∨ x[0]=false := by 
+      cases' x[0]
+      <;> simp
+    have h2:= x.isLt
+    apply Fin.eq_of_val_eq
+    
 
-theorem bla (x :  BitVec w)  (h : w > 0) : False := by
-  set y : BitVec _ := (bbT (toBool x h)) with hy
-  have h' : y.val = x.val := by simp [hy]; apply inv_bbT_toBool
-  rw [temp] at y
-  have : x = y := sorry
-  sorry
+
+    cases' h1 with ht hf
+    · rw [ht]
+      simp [bbT', toNat', toNat'.go]
+      sorry
+      
+
+
+
+      
+
+    · sorry
+
+
+
+    
+  · sorry
+
+
 
 /-
 .val both sides
@@ -459,4 +516,414 @@ theorem bla (x :  BitVec w) (y : BitVec (List.length (toBool x h))): False := by
   sorry
 
 -/
+
+variable {x y : BitVec w}
+
+#eval (BitVec.ofNat 8 259)[3]
+#eval Nat.testBit (BitVec.ofNat 8 259).val 3
+
+def carry' (i : Nat) {h : i < w} : Bool := match i with
+  | 0     => false
+  | i + 1 =>
+    have h : i < w := Nat.lt_of_succ_lt h
+    (Nat.testBit x.val i && Nat.testBit y.val i) || ((Nat.testBit x.val i ^^ Nat.testBit y.val i) && @carry' i h)
+
+def go' (i : Nat) {h : i < w} : List Bool := match i with
+  | 0     => [(Nat.testBit x.val 0 ^^ Nat.testBit y.val 0) ^^ @carry' w x y 0 h]
+  | i + 1 =>
+    have : i < w := Nat.lt_of_succ_lt h
+    ((Nat.testBit x.val (i + 1) ^^ Nat.testBit y.val (i + 1)) ^^ @carry' w x y (i + 1) h) :: @go' i this
+
+
+
+
+
+def go'' (i : Nat) (z : Nat) {h : i < w} : Nat := match i with
+  | 0     => Nat.bit ((Nat.testBit x.val 0 ^^ Nat.testBit y.val 0) ^^ @carry' w x y 0 h) z
+  | i + 1 =>
+    have : i < w := Nat.lt_of_succ_lt h
+    @go'' i (Nat.bit ((Nat.testBit x.val (i + 1) ^^ Nat.testBit y.val (i + 1)) ^^ @carry' w x y (i + 1) h) z) this
+
+
+def carry''' (x y : Nat) (i : Nat) : Bool := match i with
+  | 0     => false
+  | i + 1 =>
+    (Nat.testBit x i && Nat.testBit y i) || ((Nat.testBit x i ^^ Nat.testBit y i) && carry''' x y i)
+
+
+def go'5 (x y i : Nat) : List Bool := match i with
+  | 0     => [(Nat.testBit x 0 ^^ Nat.testBit y 0) ^^ @carry''' 0 x y]
+  | i + 1 =>
+  ((Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ @carry''' x y (i + 1)) :: @go'5 x y i
+    
+
+
+def go''' (x y z i : Nat) : Nat := match i with
+  | 0     => Nat.bit ((Nat.testBit x 0 ^^ Nat.testBit y 0) ^^ carry''' 0 x y) z
+  | i + 1 =>
+    go''' x y (Nat.bit ((Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1)) z) i
+
+
+#eval Nat.bit (true) 10
+
+
+#eval go''' 10 11 (carry''' 10 11 4).toNat 3
+#eval 10%16 + 11%16
+
+def go_length (hi0: 0 < i) (hiw : i - 1 < w) : i = (@go' w x y (i - 1) hiw).length := by
+    induction' i, hi0 using Nat.le_induction with i hi0 ih
+    · simp [go']
+    · have h' : i + 1 - 1 = i - 1 + 1 := Nat.eq_add_of_sub_eq hi0 rfl
+      simp only [h']
+      simp [go']
+      exact ih (by linarith)
+
+
+def bit_add' (x y : BitVec w) {h : w > 0} : Nat:=
+  toNat (@go' w x y (w - 1) (Nat.lt_self_sub_one h))
+
+def bit_add'' (x y : BitVec w) {h : w > 0} : Nat :=
+  @go'' w x y (w - 1) 0 (Nat.lt_self_sub_one h)
+
+def bit_add''' (x y : BitVec w) : BitVec w :=
+  ⟨go''' x.val y.val 0 (w - 1), sorry⟩
+
+
+
+#eval @go''' 10 9 0 4
+
+@[simp] def bool_to_nat (b : Bool) : Nat := match b with
+  | true => 1
+  | false => 0
+
+lemma xor_mod_2 (a b : Bool) : toNat [a ^^ b] = (toNat [a] + toNat [b])%2 := by
+  cases' a
+  · cases' b
+    · simp
+    · simp
+  · cases' b
+    · simp
+    · simp
+
+theorem descend_bv_pre (z : BitVec (w +1)) : z.val - 2^w* bool_to_nat (Nat.testBit z.val w) < 2^w:= by
+  cases' z with z hz
+  have h1 : Nat.testBit z w = true ∨ Nat.testBit z w = false := by
+    cases' Nat.testBit z w
+    <;> simp
+  cases' h1 with h1 h1
+  <;> simp only [h1, bool_to_nat, mul_one, mul_zero, Nat.sub_zero]
+  · apply Nat.sub_lt_left_of_lt_add _ (by convert hz 
+                                          simp)
+    by_contra' h3
+    have ⟨i, h4, h5, h6⟩ := lt_of_testBit h3
+    rw  [Nat.testBit_two_pow w i] at h5
+    rw [h5] at h1
+    rw [h1] at h4
+    contradiction
+  · apply Nat.lt_of_testBit w h1 (Nat.testBit_two_pow_self w)
+    have ⟨i, h4, h5, h6⟩ := lt_of_testBit hz
+    intros j hj
+    rw [Nat.testBit_two_pow (w+1) i] at h5
+    rw [← h5] at h4 h6
+    cases' (LE.le.eq_or_gt (show w+1 ≤ j by aesop)) with hj0 hj0
+    · rw [hj0, h4]
+      exact (Nat.testBit_two_pow_of_ne (show w ≠ w+1 by simp)).symm
+    · rw [h6 j]
+      rw [Nat.testBit_two_pow_of_ne (show w ≠ j by aesop)]
+      apply Nat.testBit_two_pow_of_ne (LT.lt.ne hj0)
+      exact hj0
+
+theorem eq_bv (h: v < 2^w): (BitVec.ofNat w v).val = v := by
+  simp [BitVec.ofNat]
+  norm_cast
+  exact Nat.mod_eq_of_lt h
+  
+@[simp] theorem descend_bv (z : BitVec (w +1)) : (BitVec.ofNat w (z.val - 2^w* bool_to_nat (Nat.testBit z.val w))).val = z.val - 2^w* bool_to_nat (Nat.testBit z.val w) := by
+  apply eq_bv
+  apply descend_bv_pre z
+  exact x
+  exact y
+
+
+theorem add_bitblast' {h: w > 0} : (x + y).val = bit_add' x y (h := h) := by
+  suffices goal: (x.val + y.val)%(2^w) = (bit_add' x y (h := h))
+  · rw [← goal]
+    simp [BitVec.add]
+    norm_cast
+  · induction' w, h using Nat.le_induction with w h hw
+    · simp only [(show 2^Nat.succ 0 = 2 by simp)]
+      rw [Nat.add_mod]
+      have h1:= Nat.mod_lt x.val (show 0 <2 by simp)
+      have h2 : ∀ a : Nat, a <2 →  a%2 = @toNat ([Nat.testBit a 0]) := by
+        intros a ha
+        cases' (zero_or_one ha) with ha0 ha1
+        · rw [ha0]
+          simp
+        · rw [ha1]
+          simp
+      rw [h2 (x.val) (Fin.is_lt x), h2 y.val (Fin.is_lt y)]
+      rw [← xor_mod_2]
+      simp [bit_add', bbT', go', carry']
+    /-
+    
+    -/
+    · sorry
+      -- have H :=  @hw (BitVec.ofNat w (x.val - 2^w* bool_to_nat (Nat.testBit x.val w))) (BitVec.ofNat w (y.val - 2^w* bool_to_nat (Nat.testBit y.val w))) 
+      -- rw [eq_bv] at H
+      -- rw [eq_bv] at H
+      -- simp only [bit_add', go', toNat]
+
+   
+
+
+lemma xor_mod_2'' (a b : Bool) : (a ^^ b).toNat = (a.toNat + b.toNat)%2 := by
+  cases' a
+  · cases' b
+    · simp
+    · simp
+  · cases' b
+    · simp
+    · simp
+
+@[simp] lemma toNat_eq_Natbit : a.toNat = Nat.bit a 0 := by
+  cases' a <;> decide
+
+lemma mid_assoc (a b c d : Nat) : (a +b) + (c+d) = (a+c) + (b+d) := by
+  ring_nf
+
+
+example (a b n :Nat) (h: n ∣ a-b) (h1: b< n): a%n =b := by sorry
+
+lemma pow_2_lift (a n : Nat) : a %(2^(n+1)) = a%2^n ∨ a%(2^(n+1)) = 2^n + a%(2^n) := by
+  cases' (lt_or_ge (a%(2^(n+1))) (2^n)) with h1 h1
+  · left
+    have h2:= Nat.dvd_trans (show 2^n ∣ 2^(n+1) by exact Dvd.intro 2 rfl) (@Nat.dvd_sub_mod (2^(n+1)) a)
+    sorry
+      
+  · sorry
+
+theorem t67 {x y : Nat} (h : ((x.testBit i ^^ y.testBit i) ^^ carry''' x y i) = false) : (x + y) % 2 ^ (i + 1) = (x + y) % 2 ^ (i + 2) := by
+  sorry 
+
+#eval (BitVec.ofNat 5 15) + (BitVec.ofNat 5 14)
+#eval @bit_add'' 5 (BitVec.ofNat 5 15) (BitVec.ofNat 5 14) (by simp)
+
+theorem add_bitblast'' {h: w > 0} : (x + y).val = @bit_add'' w x y h := by
+  suffices goal: (x.val + y.val)%(2^w) = @go'' w x y (w - 1) 0 (Nat.lt_self_sub_one h)
+  · simp only [bit_add'']
+    rw [← goal]
+    simp [BitVec.add]
+    norm_cast
+  induction' w, h using Nat.le_induction with w h hw
+  · simp only [(show 2^Nat.succ 0 = 2 by simp)]
+    rw [Nat.add_mod]
+    have h1:= Nat.mod_lt x.val (show 0 <2 by simp)
+    have h2 : ∀ a : Nat, a <2 →  a%2 = (Nat.testBit a 0).toNat := by
+      intros a ha
+      cases' (zero_or_one ha) with ha0 ha1
+      · rw [ha0]
+        simp
+      · rw [ha1]
+        simp
+    rw [h2 (x.val) (Fin.is_lt x), h2 y.val (Fin.is_lt y)]
+    rw [← xor_mod_2'']
+    simp [bit_add'', go'', carry']
+  · have H1:= @hw (BitVec.ofNat w (x.val - 2^w* (Nat.testBit x.val w).toNat)) (BitVec.ofNat w (y.val - 2^w* (Nat.testBit y.val w).toNat)) 
+    rw [eq_bv] at H1
+    rw [eq_bv] at H1
+    have H2: ∀n :Nat, (n - 2^w* (Nat.testBit n w).toNat) +2^w* (Nat.testBit n w).toNat = n := by sorry
+    rw [← H2 (x.val), ← H2 (y.val)]
+    rw [mid_assoc]
+    rw [Nat.add_mod]
+    cases' pow_2_lift (x.val - 2 ^ w * Bool.toNat (Nat.testBit (x.val) w) + (y.val - 2 ^ w * Bool.toNat (Nat.testBit (y.val) w))) (w) with H3 H3
+    · rw [H3]
+      rw [H1]
+      simp only [bit_add'', (show w+1-1 = w-1 + 1 by sorry), go'']
+      cases' h6: Nat.bit ((Nat.testBit (x.val) (w - 1 + 1) ^^ Nat.testBit (y.val) (w - 1 + 1)) ^^ carry' (w - 1 + 1)) 0 with h1 h2
+      · simp [go'']
+        rw [(show w-1+1 = w by sorry)] at h6
+        
+
+        suffices goal: (Nat.bit (Nat.testBit (x.val) w) 0 + Nat.bit (Nat.testBit (y.val) w) 0)%2 = 0
+        · sorry
+        rw [show Nat.zero =0 by rfl ] at h6
+        nth_rewrite 3 [←h6]
+        sorry
+        
+
+
+        
+
+
+
+        
+        
+      · sorry
+    · sorry
+
+
+def toNat'' (e : Nat) : List Bool → Nat
+    | [] => 0
+    | b :: xs => 2^e*b.toNat + toNat'' (e - 1) xs
+
+
+
+
+#eval 15%8 + 14%8
+#eval toNat.toNat' 2 (go'5 15 14 2) + 2^(2+1)*(carry''' 15 14 (2+1)).toNat
+
+
+
+
+theorem go'5_correct (x y i: Nat) : x%(2^(i+1)) + y%(2^(i+1)) = toNat'' i (go'5 x y i) + 2^(i+1)*(carry''' x y (i+1)).toNat := by
+  induction' i with i hi
+  · sorry
+  · simp only [toNat'']
+    rw [show Nat.succ i - 1 = i by simp]
+    
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+theorem descend_bv_pre''' (w : Nat) (z : Nat) (hz: z < 2^(w + 1)) : z - 2^w* (Nat.testBit z w).toNat < 2^w:= by
+  have h1 : Nat.testBit z w = true ∨ Nat.testBit z w = false := by
+    cases' Nat.testBit z w
+    <;> simp
+  cases' h1 with h1 h1
+  <;> simp only [h1, Bool.toNat, cond, mul_one, mul_zero, Nat.sub_zero]
+  · apply Nat.sub_lt_left_of_lt_add _ (by convert hz; simp)
+    by_contra' h3
+    have ⟨i, h4, h5, h6⟩ := lt_of_testBit h3
+    rw  [Nat.testBit_two_pow w i] at h5
+    rw [h5] at h1
+    rw [h1] at h4
+    contradiction
+  · apply Nat.lt_of_testBit w h1 (Nat.testBit_two_pow_self w)
+    have ⟨i, h4, h5, h6⟩ := lt_of_testBit hz
+    intros j hj
+    rw [Nat.testBit_two_pow (w+1) i] at h5
+    rw [← h5] at h4 h6
+    cases' (LE.le.eq_or_gt (show w+1 ≤ j by aesop)) with hj0 hj0
+    · rw [hj0, h4]
+      exact (Nat.testBit_two_pow_of_ne (show w ≠ w+1 by simp)).symm
+    · rw [h6 j]
+      rw [Nat.testBit_two_pow_of_ne (show w ≠ j by aesop)]
+      apply Nat.testBit_two_pow_of_ne (LT.lt.ne hj0)
+      exact hj0
+
+theorem xor_false : p ^^ false = p := by
+  cases' p
+  <;> simp
+
+lemma helper_0 (x y : Nat) : go''' x y 1 i = 2 ^ i + go''' x y 0 i := by sorry
+
+theorem helper_1 {x y : Nat} : (x + y).testBit i = ((x.testBit i ^^ y.testBit i) ^^ carry''' x y i) := by
+  induction' i with i hi
+  · simp [carry''']
+    cases hx : x.testBit 0 <;> cases hy : y.testBit 0
+    <;> unfold Nat.testBit
+    <;> unfold Nat.shiftr
+    <;> rw [Nat.bodd_add]
+    <;> unfold Nat.testBit at hx
+    <;> unfold Nat.shiftr at hx
+    <;> unfold Nat.testBit at hy
+    <;> unfold Nat.shiftr at hy
+    <;> rw [hx, hy]
+  · simp [carry''', Nat.testBit, Nat.shiftr]
+    sorry
+    
+
+
+
+
+theorem helper_2 (x i : Nat) : x % 2 ^ (i + 1) = x % 2^i + 2^i * (Nat.testBit x i).toNat := by
+  induction' i with i hi
+  · rw [Nat.testBit_eq_inth]
+    cases' h: Nat.bodd x 
+    · have h1: x%2 = 0 := by simp [Nat.mod_two_of_bodd, h]
+      simp [(Nat.mod_one x), h1]
+      sorry
+      
+
+      
+
+    
+
+    · sorry
+  · sorry
+
+#check Nat.bit
+
+theorem go'''_helper (x y : Nat) : go''' x y 0 i + 2^(i+1)*(carry''' x y (i+1)).toNat= x % 2 ^ (i + 1) + y % 2^(i+1) := by
+  induction' i with i hi
+  · simp [go''']
+    sorry
+  · unfold go'''
+
+    rw [helper_2 x (i+1), helper_2 y (i+1)]
+    suffices goal: go''' x y (Nat.bit ((Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1))
+      (Bool.toNat (carry''' x y (Nat.succ i + 1)))) i = (x % 2 ^ (i + 1) + y % 2 ^ (i + 1))+ (2 ^ (i + 1) * Bool.toNat (Nat.testBit x (i + 1))  + 2 ^ (i + 1) * Bool.toNat (Nat.testBit y (i + 1)))
+    · sorry
+    rw [← hi]
+    cases' h : ((Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1))
+    · rw [h]
+
+    · sorry
+
+
+
+    
+
+
+
+
+
+
+
+
+theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
+  induction' i with i hi
+  · simp [go''']
+    sorry  
+  · unfold go'''
+
+    cases' h : (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1) with h1 h2
+    · simp
+      rw [hi]
+      rw [helper_2 (x+y) (i+1)]
+      
+      have h := helper_1 h
+      apply helper_2 h
+    · simp
+      rw [helper_0, hi]
+      sorry
+
+
+
+
+         
+  
+  -- have H1 := hi (x - 2 ^ i * bool_to_nat (Nat.testBit x i)) (y - 2 ^ i * bool_to_nat (Nat.testBit y i)) (descend_bv_pre''' i x hx) (descend_bv_pre''' i y hy)
+  --   unfold go'''
+    
+
+theorem bit_add'''_bitblast {h : w > 0} : (x + y).val = (bit_add''' x y).val := by
+  have ⟨x, hx⟩ := x
+  have ⟨y, hy⟩ := y
+  simp only [bit_add''', HAdd.hAdd, Add.add, BitVec.add, Fin.add]
+  rw [go'''_correct x y]
+  sorry
+
+
 end BitVec

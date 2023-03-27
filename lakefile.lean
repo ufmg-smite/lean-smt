@@ -5,6 +5,9 @@ open Lake DSL
 package smt where
   precompileModules := true
 
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4" @ "c16c0c414d4ea87bd10716ffd38b93d9d66aa215"
+
 @[default_target]
 lean_lib Smt
 
@@ -63,7 +66,8 @@ where
     let leanPath ← getAugmentedLeanPath
     -- Note: this only works on Unix since it needs the shared library `libSmt`
     -- to also loads its transitive dependencies.
-    let dynlib := (← findModule? `Smt).get!.dynlibFile
+    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
+      | do IO.println s!"Error: could not fine `Smtlib.so`"; return 3
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],
@@ -108,7 +112,8 @@ where
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
     let leanPath ← getAugmentedLeanPath
-    let dynlib := (← findModule? `Smt).get!.dynlibFile
+    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
+      | do IO.println s!"Error: could not fine `Smtlib.so`"; return 3
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],
