@@ -6,6 +6,8 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
+import Std.Classes.Cast
+import Std.Data.Int.Basic
 import Smt.Translator
 
 namespace Smt.Int
@@ -14,15 +16,18 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceConst : Translator
-  | app (const `Int.ofNat _) e => applyTranslators! e
-  | const `Int.add _           => return symbolT "+"
-  | const `Int.sub _           => return symbolT "-"
-  | const `Int.neg _           => return symbolT "-"
-  | const `Int.mul _           => return symbolT "*"
-  | const `Int.div _           => return symbolT "div"
-  | const `Int.mod _           => return symbolT "mod"
-  | const `Int.le _            => return symbolT "<="
-  | const `Int.lt _            => return symbolT "<"
+  | const ``Int.add _  => return symbolT "+"
+  | const ``Int.sub _  => return symbolT "-"
+  | const ``Int.neg _  => return symbolT "-"
+  | const ``Int.mul _  => return symbolT "*"
+  | const ``Int.div _  -- TODO: one of these is probably wrong
+  | const ``Int.ediv _ => return symbolT "div"
+  | const ``Int.mod _  -- TODO: one of these is probably wrong
+  | const ``Int.emod _ => return symbolT "mod"
+  | const ``Int.le _   => return symbolT "<="
+  | const ``Int.lt _   => return symbolT "<"
+  | app (const ``Int.ofNat _) e => applyTranslators! e
+  | app (app (app (const ``Nat.cast _) (const ``Int _)) _) e => applyTranslators! e
   | _                          => return none
 
 end Smt.Int

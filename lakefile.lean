@@ -6,7 +6,7 @@ package smt where
   precompileModules := true
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "c16c0c414d4ea87bd10716ffd38b93d9d66aa215"
+  "https://github.com/leanprover-community/mathlib4.git" @ "da1f9e0887365959e30e45ed897b8b1b1bfbb1f6"
 
 @[default_target]
 lean_lib Smt
@@ -36,7 +36,6 @@ USAGE:
 Run tests.
 -/
 script test do
-  let lean ← getLean
   let files ← readAllFiles (FilePath.mk "Test")
   let mut tests : Array FilePath := #[]
   let mut expected : Array FilePath := #[]
@@ -51,7 +50,7 @@ script test do
   for t in tests do
     let e := t.withExtension "expected"
     if (expected.contains e) then
-      tasks := (← IO.asTask (runTest lean t e (← readThe Lake.Context))) :: tasks
+      tasks := (← IO.asTask (runTest t e (← readThe Lake.Context))) :: tasks
     else
       IO.println s!"Error: Could not find {e}"
       return 1
@@ -61,17 +60,16 @@ script test do
       return code
   return 0
 where
-  runTest (lean : FilePath) (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
+  runTest (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
     IO.println s!"Start : {test}"
-    let leanPath ← getAugmentedLeanPath
     -- Note: this only works on Unix since it needs the shared library `libSmt`
     -- to also loads its transitive dependencies.
     let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: could not fine `Smtlib.so`"; return 3
+      | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
     let out ← IO.Process.output {
-      cmd := lean.toString
-      args := #[s!"--load-dynlib={dynlib}", test.toString],
-      env := #[("LEAN_PATH", leanPath.toString)]
+      cmd := (← getLean).toString
+      args := #[s!"--load-dynlib={dynlib}", test.toString]
+      env := (← getAugmentedEnv)
     }
     let expected ← IO.FS.readFile expected
     -- TODO: renable disjunct once cvc5 proofs become are more stable.
@@ -80,7 +78,7 @@ where
       IO.println s!"Stderr:\n{out.stderr}"
       IO.println s!"Stdout:\n{out.stdout}"
       IO.println s!"Expect:\n{expected}"
-      return 2
+      return 3
     IO.println s!"Passed: {test}"
     return 0
 
@@ -93,7 +91,6 @@ USAGE:
 Update expected output of tests.
 -/
 script update do
-  let lean ← getLean
   let files ← readAllFiles (FilePath.mk "Test")
   let mut tests : Array FilePath := #[]
   for file in files do
@@ -103,21 +100,20 @@ script update do
       tests := tests.push file
   let mut tasks := []
   for t in tests do
-    tasks := (← IO.asTask (runTest lean t (← readThe Lake.Context))) :: tasks
+    tasks := (← IO.asTask (updateTest t (← readThe Lake.Context))) :: tasks
   for task in tasks do
     _ ← IO.ofExcept task.get
   return 0
 where
-  runTest (lean : FilePath) (test : FilePath) : ScriptM UInt32 := do
+  updateTest (test : FilePath) : ScriptM UInt32 := do
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
-    let leanPath ← getAugmentedLeanPath
     let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: could not fine `Smtlib.so`"; return 3
+      | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
     let out ← IO.Process.output {
-      cmd := lean.toString
-      args := #[s!"--load-dynlib={dynlib}", test.toString],
-      env := #[("LEAN_PATH", leanPath.toString)]
+      cmd := (← getLean).toString
+      args := #[s!"--load-dynlib={dynlib}", test.toString]
+      env := (← getAugmentedEnv)
     }
     IO.FS.writeFile expected out.stdout
     return 0

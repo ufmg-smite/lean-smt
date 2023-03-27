@@ -2,26 +2,26 @@
  "packagesDir": "lake-packages",
  "packages":
  [{"git":
-   {"url": "https://github.com/leanprover-community/mathlib4",
+   {"url": "https://github.com/leanprover-community/mathlib4.git",
     "subDir?": null,
-    "rev": "c16c0c414d4ea87bd10716ffd38b93d9d66aa215",
+    "rev": "da1f9e0887365959e30e45ed897b8b1b1bfbb1f6",
     "name": "mathlib",
-    "inputRev?": "c16c0c414d4ea87bd10716ffd38b93d9d66aa215"}},
+    "inputRev?": "da1f9e0887365959e30e45ed897b8b1b1bfbb1f6"}},
   {"git":
    {"url": "https://github.com/gebner/quote4",
     "subDir?": null,
-    "rev": "7ac99aa3fac487bec1d5860e751b99c7418298cf",
+    "rev": "cc915afc9526e904a7b61f660d330170f9d60dd7",
     "name": "Qq",
     "inputRev?": "master"}},
   {"git":
    {"url": "https://github.com/JLimperg/aesop",
     "subDir?": null,
-    "rev": "ba61f7fec6174d8c7d2796457da5a8d0b0da44c6",
+    "rev": "071464ac36e339afb7a87640aa1f8121f707a59a",
     "name": "aesop",
     "inputRev?": "master"}},
   {"git":
    {"url": "https://github.com/leanprover/std4",
     "subDir?": null,
-    "rev": "de7e2a79905a3f87cad1ad5bf57045206f9738c7",
+    "rev": "ac39f359c64f54e833e358cf0a6b3ca9f00aa490",
     "name": "std",
     "inputRev?": "main"}}]}

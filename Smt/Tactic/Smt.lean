@@ -89,8 +89,6 @@ def elabProof (text : String) : TacticM Unit := do
     trace[smt.debug.reconstruct] (← m.toString)
   if log.hasErrors then
     throwError "encountered errors elaborating cvc5 proof"
-  let th0 ← Meta.inferType (mkConst `th0)
-  trace[smt.debug.reconstruct] "th0 : {th0}"
 
 def evalAnyGoals (tactic : TacticM Unit) : TacticM Unit := do
   let mvarIds ← getGoals
@@ -116,16 +114,24 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
+open Reconstruction.Certifying in
 def rconsProof (hints : List Expr) : TacticM Unit := do
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
-  gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
+  if (← getConstInfo `th0).levelParams == [] then
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0)}"
+  else
+    let u ← Meta.mkFreshLevelMVar
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0 [u])
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0 [u])}"
   Tactic.replaceMainGoal gs
   for h in hints do
     evalAnyGoals do
       let gs ← (← Tactic.getMainGoal).apply h
       Tactic.replaceMainGoal gs
-  let mut thms ← Meta.getSimpTheorems
+  let mut some thms ← (← Meta.getSimpExtension? `smt_simp).mapM (·.getTheorems)
+    | throwError "smt tactic failed, 'smt_simp' simpset is not available"
   for h in hints do
     thms ← addDeclToUnfoldOrTheorem thms h
   evalAnyGoals do

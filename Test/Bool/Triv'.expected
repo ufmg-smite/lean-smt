@@ -5,4 +5,8 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  (¬∀ (p : Prop), Smt.Reconstruction.Certifying.Implies (p = True) (p = True)) → False
+with
+  ¬¬∀ (p : Bool), p = true → p = true
+⊢ ¬¬∀ (p : Bool), p = true → p = true

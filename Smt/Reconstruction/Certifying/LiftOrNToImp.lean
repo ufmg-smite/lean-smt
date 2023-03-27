@@ -3,6 +3,8 @@ import Lean
 import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic Meta Expr
 open List
 
@@ -33,17 +35,23 @@ def groupOrPrefixCore (hyp type : Expr) (prefLen : Nat) (name : Name)
 syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
 
 @[tactic liftOrNToImp] def evalLiftOrNToImp : Tactic :=
-  fun stx => withMainContext do
-    let prefLen ← stxToNat ⟨stx[3]⟩
-    let fname1 ← mkFreshId
-    let hyp ← Tactic.elabTerm stx[1] none
-    let type ← inferType hyp
-    groupOrPrefixCore hyp type prefLen fname1
-    let fname2 ← mkIdent <$> mkFreshId
-    evalTactic (← `(tactic| intros $fname2))
-    evalTactic (← `(tactic| apply orImplies₃ $(mkIdent fname1)))
-    let li := listExpr (collectOrNNegArgs type prefLen) (Expr.sort Level.zero)
+  fun stx => do
+    /- let startTime ← IO.monoMsNow -/
     withMainContext do
-      let ctx ← getLCtx
-      let hyp2 := (ctx.findFromUserName? fname2.getId).get!.toExpr
-      Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
+      let prefLen ← stxToNat ⟨stx[3]⟩
+      let fname1 ← mkFreshId
+      let hyp ← Tactic.elabTerm stx[1] none
+      let type ← inferType hyp
+      groupOrPrefixCore hyp type prefLen fname1
+      let fname2 ← mkIdent <$> mkFreshId
+      evalTactic (← `(tactic| intros $fname2))
+      evalTactic (← `(tactic| apply orImplies₃ $(mkIdent fname1)))
+      let li := listExpr (collectOrNNegArgs type prefLen) (Expr.sort Level.zero)
+      withMainContext do
+        let ctx ← getLCtx
+        let hyp2 := (ctx.findFromUserName? fname2.getId).get!.toExpr
+        Tactic.closeMainGoal $ mkApp (mkApp (mkConst `deMorgan₂) li) hyp2
+    /- let endTime ← IO.monoMsNow -/
+    /- logInfo m!"[liftOrNToImp] Time taken: {endTime - startTime}ms" -/
+
+end Smt.Reconstruction.Certifying

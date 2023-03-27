@@ -8,13 +8,19 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+
 goal: 0 - Nat.succ x = 0
 
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.196 Nat)) (=> (>= _uniq.196 0) (forall ((_uniq.197 Nat)) (=> (>= _uniq.197 0) (>= (Nat.sub _uniq.196 _uniq.197) 0))))))
+(assert (forall ((_uniq.200 Nat)) (=> (>= _uniq.200 0) (forall ((_uniq.201 Nat)) (=> (>= _uniq.201 0) (>= (Nat.sub _uniq.200 _uniq.201) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (assert (= (Nat.sub 0 x) 0))
@@ -22,4 +28,10 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+

@@ -1,10 +1,15 @@
 goal: (p = true ↔ q = true) → (p == q) = true
 
 query:
-(declare-const p Bool)
 (declare-const q Bool)
+(declare-const p Bool)
 (assert (not (=> (= (= p true) (= q true)) (= (= p q) true))))
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬Smt.Reconstruction.Certifying.Implies ((?p = True) = (?q = True)) ((?p = ?q) = True) → False
+with
+  ¬¬((p = true ↔ q = true) → (p == q) = true)
+p q : Bool
+⊢ ¬¬((p = true ↔ q = true) → (p == q) = true)

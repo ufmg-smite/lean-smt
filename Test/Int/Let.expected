@@ -40,15 +40,22 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: invalid 'simp', proposition expected
+  Int
 goal: z 3 = 10
 
 query:
 (declare-fun f (Int) Int)
 (assert (= (f 10) 10))
-(define-fun z ((x._@.Test.Int.Let._hyg.283 Int)) Int (f 10))
+(define-fun z ((x._@.Test.Int.Let._hyg.294 Int)) Int (f 10))
 (assert (not (= (z 3) 10)))
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
+Unreachable code reached Higher-order congruence not supported yet
+

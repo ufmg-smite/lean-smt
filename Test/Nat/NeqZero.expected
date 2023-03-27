@@ -16,5 +16,9 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  (¬∀ (x : Int), Smt.Reconstruction.Certifying.Implies (x ≥ 0) (x + 1 ≠ 0)) → False
+with
+  ¬¬∀ (x : Nat), x + 1 ≠ 0
+⊢ ¬¬∀ (x : Nat), x + 1 ≠ 0
 Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'

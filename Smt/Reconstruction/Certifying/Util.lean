@@ -1,5 +1,7 @@
 import Lean
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Expr Elab.Tactic Meta
 
 def andN : List Prop → Prop
@@ -40,6 +42,21 @@ def createOrChain : List Expr → Expr
 | [h]  => h
 | h::t => app (app (mkConst `Or) h) $ createOrChain t
 
+-- fold the l-th suffix into one expr
+def collectPropsInOrChain' : Nat → Expr → List Expr
+| l, e =>
+  let li := collectPropsInOrChain e
+  let pref := List.take l li
+  let suff := List.drop l li
+  let suffE := createOrChain suff
+  pref ++ [suffE]
+
+def getIndexList [BEq α] : α → List α → Option Nat
+| _, [] => none
+| a, (x::xs) =>
+  if a == x then some 0
+  else (· + 1) <$> getIndexList a xs
+
 def getIndex : Expr → Expr → Option Nat
 | t, app (app (const `Or ..) e1) e2 =>
     if e1 == t then some 0
@@ -60,6 +77,10 @@ def getCongAssoc : Nat → Name → List Term
 
 def getLength : Expr → Nat
 | app (app (const `Or ..) _) e2 => 1 + getLength e2
+| _ => 1
+
+def getLengthAnd : Expr → Nat
+| app (app (const `And ..) _) e2 => 1 + getLengthAnd e2
 | _ => 1
 
 def getNatLit? : Expr → Option Nat
@@ -84,3 +105,14 @@ def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
   let currGoalType ← currGoal.getType
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
+
+syntax (name := cmdElabTerm) "#elab " term : command
+open Lean.Elab Lean.Elab.Command in
+@[command_elab cmdElabTerm] def evalCmdElabTerm : CommandElab
+  | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
+    let e ← Term.elabTerm term none
+    unless e.isSyntheticSorry do
+      logInfoAt tk m!"{e} ::: {repr e}"
+  | _ => throwUnsupportedSyntax
+
+end Smt.Reconstruction.Certifying
