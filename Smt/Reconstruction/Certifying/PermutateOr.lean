@@ -6,6 +6,44 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic
 
+def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)
+  (suffIdx : Option Nat) (name : Name) : MetaM MVarId :=
+  mvar.withContext do
+    let type ← instantiateMVars (← Meta.inferType val)
+    let suffIdx: Nat :=
+      match suffIdx with
+      | some i => i
+      | none   => getLength type - 1
+    let props := collectPropsInOrChain' suffIdx type
+    let goal := createOrChain (permutateList props perm)
+    let props := permutateList props perm.reverse
+    go mvar props suffIdx val goal
+where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
+      | mvar, [], _, acc, goal => mvar.withContext do
+        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal acc
+        return mvar'
+      | mvar, e::es, suffIdx, acc, goal =>
+        mvar.withContext do
+          let fname ← mkFreshId
+          let type ← Meta.inferType acc
+          let last: Bool :=
+            match getIndex e type with
+            | some i => i == suffIdx
+            | none   => panic! "[permutateOr]: invalid permutation"
+          let mvar' ← pullCore mvar e acc type suffIdx fname
+          -- we need to update the new length of the suffix after pulling
+          -- an element
+          let length := getLength type suffIdx
+          let currLastExpr := (getIthExpr? (length - 1) type).get!
+          let suffIdx' :=
+            if last then
+              length - getLength currLastExpr
+            else suffIdx
+          mvar'.withContext do
+            let ctx ← getLCtx
+            let acc' := (ctx.findFromUserName? fname).get!.toExpr
+            go mvar' es suffIdx' acc' goal
+
 -- TODO: find a way to remove '?' without breaking the parser
 syntax (name := permutateOr) "permutateOr" term "," ("[" term,* "]")? ("," term)? : tactic
 
@@ -19,43 +57,20 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
   | _ =>
     throwError "[permutateOr]: wrong usage"
 
-@[tactic permutateOr] def evalPermutateOr : Tactic :=
-  fun stx => do
-    let startTime ← IO.monoMsNow
-    withMainContext do
-      let hyp ← elabTerm stx[1] none
-      let type ← instantiateMVars (← Meta.inferType hyp)
-      let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
-      let suffIdx: Nat :=
-        match suffIdx with
-        | some i => i
-        | none   => getLength type - 1
-      let props := collectPropsInOrChain' suffIdx type
-      let props' := permutateList props hs.reverse
-      let s ← go props' suffIdx type stx[1]
-      evalTactic (← `(tactic| exact $(⟨s⟩))) 
-    let endTime ← IO.monoMsNow
-    trace[smt.profile] m!"[permutateOr] Time taken: {endTime - startTime}ms"
-where go : List Expr → Nat → Expr → Syntax → TacticM Syntax
-       | [], _, _, stx => return stx
-       | (e::es), suffIdx, type, stx => do
-         let fname ← mkIdent <$> mkFreshId
-         let last: Bool :=
-           match getIndex e type with
-           | some i => i == suffIdx
-           | none   => panic! "[permutateOr]: invalid permutation"
-         pullCore e type stx fname suffIdx
-         -- we need to update the new length of the suffix after pulling
-         -- an element
-         let length := getLength type suffIdx
-         let currLastExpr := (getIthExpr? (length - 1) type).get!
-         let suffIdx' :=
-           if last then
-             length - getLength currLastExpr
-           else suffIdx
-         withMainContext do
-           let ctx ← getLCtx
-           let hyp' := (ctx.findFromUserName? fname.getId).get!.toExpr
-           let type' ← instantiateMVars (← Meta.inferType hyp')
-           go es suffIdx' type' fname
+@[tactic permutateOr] def evalPermutateOr : Tactic := fun stx =>
+  withMainContext do
+    let hyp ← elabTerm stx[1] none
+    let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
+    let mvar ← getMainGoal
+    let mvar' ← permutateOrMeta mvar hyp hs suffIdx `pf
+    replaceMainGoal [mvar']
 
+example : A ∨ B ∨ C ∨ D ∨ E → A ∨ C ∨ D ∨ B ∨ E := by
+  intro h
+  permutateOr h, [0, 2, 3, 1, 4]
+  exact pf
+
+example : A ∨ (B ∨ C) ∨ (D ∨ E ∨ F) → (D ∨ E ∨ F) ∨ A ∨ (B ∨ C) := by
+  intro h
+  permutateOr h, [2, 0, 1], 2
+  exact pf
