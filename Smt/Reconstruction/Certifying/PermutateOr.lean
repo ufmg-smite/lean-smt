@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic
 
 def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)

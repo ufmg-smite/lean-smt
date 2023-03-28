@@ -151,9 +151,6 @@ structure State where
   in the goal's local context. -/
   concretizations : RBMap Name ConcretizationData Name.quickCmp := .empty
   /-- Cache of concretization names, lookupable by the concretization. -/
-
-  -- TODO(TGM) new version of lean requires a new boolean parameter for this
-  -- type. should it be true or false?
   cache : DiscrTree Name false := .empty
 
   -- Stuff above is a persistent cache. Stuff below changes on every iteration.

@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.LiftOrNToImp
 import Smt.Reconstruction.Certifying.Util
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab Tactic Meta Expr
 open List
 
@@ -87,3 +89,4 @@ example : ¬ A ∨ ¬ B ∨ ¬ C ∨ ¬ D ∨ False → ¬ (A ∧ B ∧ C ∧ D)
   liftOrNToNeg h, h₂
   exact h₂
 
+end Smt.Reconstruction.Certifying

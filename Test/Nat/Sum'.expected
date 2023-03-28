@@ -3,26 +3,22 @@ goal: sum Nat.zero = Nat.zero * (Nat.zero + 1) / 2
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9369 Nat)) (=> (>= _uniq.9369 0) (forall ((_uniq.9370 Nat)) (=> (>= _uniq.9370 0) (>= (Nat.sub _uniq.9369 _uniq.9370) 0))))))
+(assert (forall ((_uniq.9372 Nat)) (=> (>= _uniq.9372 0) (forall ((_uniq.9373 Nat)) (=> (>= _uniq.9373 0) (>= (Nat.sub _uniq.9372 _uniq.9373) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9371 Nat)) (=> (>= _uniq.9371 0) (>= (sum _uniq.9371) 0))))
+(assert (forall ((_uniq.9374 Nat)) (=> (>= _uniq.9374 0) (>= (sum _uniq.9374) 0))))
 (assert (not (= (sum 0) (div (* 0 (+ 0 1)) 2))))
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))
+failed to reconstruct proof: operator does not have function type
 goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.9385 Nat)) (=> (>= _uniq.9385 0) (forall ((_uniq.9386 Nat)) (=> (>= _uniq.9386 0) (>= (Nat.sub _uniq.9385 _uniq.9386) 0))))))
+(assert (forall ((_uniq.9388 Nat)) (=> (>= _uniq.9388 0) (forall ((_uniq.9389 Nat)) (=> (>= _uniq.9389 0) (>= (Nat.sub _uniq.9388 _uniq.9389) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.9387 Nat)) (=> (>= _uniq.9387 0) (>= (sum _uniq.9387) 0))))
+(assert (forall ((_uniq.9390 Nat)) (=> (>= _uniq.9390 0) (>= (sum _uniq.9390) 0))))
 (declare-const n Nat)
 (assert (>= n 0))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
@@ -30,9 +26,11 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: argument type is not the type of the function's argument type:
-argument:  (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y))))
-has type:  Int
-not type: (-> Int Int Int)
-in term : (Eq Nat.sub (fun (x : Int) => (fun (y : Int) => (ite (LT.lt x y) 0 (HSub.hSub x y)))))
+failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
+solver stdout:
+
+solver stderr:
+Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:549
+Unreachable code reached Kind * is not supported
+
 Test/Nat/Sum'.lean:5:8: warning: declaration uses 'sorry'

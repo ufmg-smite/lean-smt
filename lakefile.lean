@@ -6,7 +6,7 @@ package smt where
   precompileModules := true
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+  "https://github.com/leanprover-community/mathlib4.git" @ "da1f9e0887365959e30e45ed897b8b1b1bfbb1f6"
 
 @[default_target]
 lean_lib Smt
@@ -70,9 +70,8 @@ where
     let leanPath ← getAugmentedLeanPath
     -- Note: this only works on Unix since it needs the shared library `libSmt`
     -- to also loads its transitive dependencies.
-    let dynlib := match (← findModule? `Smt) with
-                  | some m => m.dynlibFile
-                  | none   => panic "could not find module"
+    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
+      | do IO.println s!"Error: Could not find `libSmt.so`"; return 3
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],
@@ -117,9 +116,8 @@ where
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
     let leanPath ← getAugmentedLeanPath
-    let dynlib := match (← findModule? `Smt) with
-                  | some m => m.dynlibFile
-                  | none   => panic "could not find module"
+    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
+      | do IO.println s!"Error: Could not find `libSmt.so`"; return 3
     let out ← IO.Process.output {
       cmd := lean.toString
       args := #[s!"--load-dynlib={dynlib}", test.toString],

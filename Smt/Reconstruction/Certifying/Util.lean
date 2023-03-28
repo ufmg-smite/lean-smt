@@ -1,5 +1,7 @@
 import Lean
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Expr Elab.Tactic Meta
 
 def andN : List Prop → Prop
@@ -220,39 +222,13 @@ def printGoal : TacticM Unit := do
   let currGoalType ← MVarId.getType currGoal
   logInfo m!"......new goal: {← instantiateMVars currGoalType}"
 
-syntax (name := elabTerm) "#elab" term : command
-open Lean.Elab Lean.Elab.Command Lean.Elab.Term in
-@[command_elab elabTerm] def evalElab : CommandElab
+syntax (name := cmdElabTerm) "#elab " term : command
+open Lean.Elab Lean.Elab.Command in
+@[command_elab cmdElabTerm] def evalCmdElabTerm : CommandElab
   | `(#elab%$tk $term) => withoutModifyingEnv $ runTermElabM fun _ => do
     let e ← Term.elabTerm term none
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
 
-namespace Smt.Reconstruction.Certifying.Macro
-
-open Lean.Macro
-
-scoped syntax (name := binder) "(" binderIdent term ")" : term
-scoped syntax (name := binders) binder+ : term
-
-scoped macro "forall " "(" xs:binders ")" b:term : term => match xs with
-  | `(binders| $[($x:ident $t:term)]*) => `(term| ∀ $[($x : $t)]*, $b)
-  | _ => throwUnsupported
-
-scoped macro "exists " "(" xs:binders ")" b:term : term => match xs with
-  | `(binders| $[($x:binderIdent $t:term)]*) => `(term| ∃ $[($x : $t)]*, $b)
-  | _ => throwUnsupported
-
-end Smt.Reconstruction.Certifying.Macro
-
-syntax (name := reportTimeOfTactic) "reportTimeOfTactic" term "," term : tactic
-@[tactic reportTimeOfTactic] def evalReportTimeOfTactic : Tactic := fun stx => do
-  let time ← IO.monoMsNow
-  logInfo s!"tactic {stx[1]} produced {stx[3]} at {time}ms"
-
-syntax (name := reportTime) "reportTime" : tactic
-@[tactic reportTime] def evalReport : Tactic := fun _ => do
-  let time ← IO.monoMsNow
-  logInfo s!"{time}ms"
-
+end Smt.Reconstruction.Certifying

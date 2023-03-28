@@ -1,8 +1,8 @@
 goal: ¬q → (p → q) → ¬p
 
 query:
-(declare-const q Bool)
 (declare-const p Bool)
+(declare-const q Bool)
 (assert (not (=> (not q) (=> (=> p q) (not p)))))
 (check-sat)
 

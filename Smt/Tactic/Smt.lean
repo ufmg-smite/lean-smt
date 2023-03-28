@@ -24,7 +24,7 @@ initialize
   registerTraceClass `smt.debug.translate.query
   registerTraceClass `smt.debug.translate.expr
 
-syntax smtHints := ("[" term,* "]")?
+syntax smtHints := ("[" ident,* "]")?
 syntax smtTimeout := ("(timeout := " num ")")?
 
 /-- `smt` converts the current goal into an SMT query and checks if it is
@@ -71,39 +71,24 @@ def parseTimeout : TSyntax `smtTimeout → TacticM (Option Nat)
   | `(smtTimeout| ) => return some 5
   | _ => throwUnsupportedSyntax
 
-def withProcessedHints (hs : List Expr) (k : List Expr → TacticM α): TacticM α :=
-  processHints' hs [] k
-where
-  processHints' (hs : List Expr) (as : List Expr) (k : List Expr → TacticM α): TacticM α := do
-    match hs with
-    | [] => k as
-    | h :: hs =>
-      if h.isFVar || h.isConst then
-        processHints' hs (h :: as) k
-      else
-        let mv ← Tactic.getMainGoal
-        let mv' ← mv.assert (← mkFreshId) (← Meta.inferType h) h
-        let ⟨a, mv'⟩ ← mv'.intro1
-        Tactic.replaceMainGoal [mv']
-        withMainContext (processHints' hs (.fvar a :: as) k)
-
-def prepareSmtQuery (hs : List Expr) : TacticM (List Command) := do
+def prepareSmtQuery (hints : TSyntax `smtHints) : TacticM (List Command) := do
+  -- 1. Get the current main goal.
   let goalType ← Tactic.getMainTarget
   let goalId ← Lean.mkFreshMVarId
-  Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g =>
+  Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g => do
+  -- 2. Get the hints passed to the tactic.
+  let mut hs ← parseHints hints
+  hs := hs.eraseDups
+  -- 3. Generate the SMT query.
   Query.generateQuery g hs
 
-def elabProof (text : String) : TacticM Name := do
-  let name ← mkFreshId
-  let name := Name.str name.getPrefix ("th0" ++ name.getString)
-  let text := text.replace "th0" s!"{name}"
+def elabProof (text : String) : TacticM Unit := do
   let (env, log) ← process text (← getEnv) .empty "<proof>"
   _ ← modifyEnv (fun _ => env)
   for m in log.msgs do
     trace[smt.debug.reconstruct] (← m.toString)
   if log.hasErrors then
     throwError "encountered errors elaborating cvc5 proof"
-  return name
 
 def evalAnyGoals (tactic : TacticM Unit) : TacticM Unit := do
   let mvarIds ← getGoals
@@ -129,16 +114,17 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
-def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
+open Reconstruction.Certifying in
+def rconsProof (hints : List Expr) : TacticM Unit := do
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
-  try
-    gs ← (← Tactic.getMainGoal).apply (mkConst name)
-    trace[smt.debug.reconstruct] "{name} : {← Meta.inferType (mkConst name)}"
-  catch _ =>
+  if (← getConstInfo `th0).levelParams == [] then
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0)}"
+  else
     let u ← Meta.mkFreshLevelMVar
-    gs ← (← Tactic.getMainGoal).apply (mkConst name [u])
-    trace[smt.debug.reconstruct] "{name} : {← Meta.inferType (mkConst name [u])}"
+    gs ← (← Tactic.getMainGoal).apply (mkConst `th0 [u])
+    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0 [u])}"
   Tactic.replaceMainGoal gs
   for h in hints do
     evalAnyGoals do
@@ -158,40 +144,35 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  -- 1. Get the hints passed to the tactic.
-  let mut hs ← parseHints ⟨stx[1]⟩
-  hs := hs.eraseDups
-  withProcessedHints hs fun hs => do
-  -- 2. Generate the SMT query.
-  let cmds ← prepareSmtQuery hs
+  let cmds ← prepareSmtQuery ⟨stx[1]⟩
   let query := setOption "produce-models" "true"
             *> emitCommands cmds.reverse
             *> checkSat
   logInfo m!"goal: {goalType}"
   logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
-  -- 3. Run the solver.
+  -- 4. Run the solver.
   let kind := smt.solver.kind.get (← getOptions)
   let path := smt.solver.path.get? (← getOptions)
   let timeout ← parseTimeout ⟨stx[2]⟩
   let ss ← createFromKind kind path timeout
   let (res, ss) ← (StateT.run query ss : MetaM _)
-  -- 4. Print the result.
+  -- 5. Print the result.
   logInfo m!"\nresult: {res}"
   if res = .sat then
-    -- 4a. Print model.
+    -- 5a. Print model.
     let (model, _) ← StateT.run getModel ss
     logInfo m!"\ncounter-model:\n{model}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   if res = .unknown then
     throwError "unable to prove goal"
   try
-    -- 4b. Reconstruct proof.
+    -- 5a. Reconstruct proof.
     let (.expr [.atom "proof", .atom nnp], _) ← StateT.run getProof ss
       | throwError "encountered error parsing cvc5 proof"
     let nnp := skipImports (unquote nnp)
     trace[smt.debug.reconstruct] "proof:\n{nnp}"
-    let name ← elabProof nnp
-    rconsProof name hs
+    elabProof nnp
+    rconsProof (← parseHints ⟨stx[1]⟩)
   catch e =>
     logInfo m!"failed to reconstruct proof: {e.toMessageData}"
 where
@@ -205,11 +186,8 @@ where
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
-  let mut hs ← parseHints ⟨stx[1]⟩
-  hs := hs.eraseDups
-  withProcessedHints hs fun hs => do
-  let cmds ← prepareSmtQuery hs
-  let cmds := .checkSat :: cmds
+  let cmds := .checkSat :: (← prepareSmtQuery ⟨stx[1]⟩)
+  -- 4. Print the query.
   logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
 
 end Smt

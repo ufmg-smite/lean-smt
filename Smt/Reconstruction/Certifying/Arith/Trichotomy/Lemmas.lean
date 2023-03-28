@@ -3,6 +3,8 @@ import Smt.Reconstruction.Certifying.PermutateOr
 
 import Mathlib.Init.Algebra.Order
 
+open Smt.Reconstruction.Certifying
+
 variable {α : Type}
 
 variable [LinearOrder α]
@@ -43,5 +45,6 @@ theorem trichotomy₆ : ¬ a > b → ¬ a = b → a < b := by
   have tr' := by permutateOr tr, [1, 2, 0]
   exact (orImplies₃ ((orImplies₃ tr') h₂)) h₁
 
-theorem not_gt_of_le : a ≤ b → ¬ a > b := λ h₁ h₂ => absurd h₂ (not_lt_of_ge h₁)
+theorem not_gt_of_le : a ≤ b → ¬ a > b :=
+  λ h₁ h₂ => absurd h₂ (not_lt_of_ge h₁)
 #check @not_gt_of_le

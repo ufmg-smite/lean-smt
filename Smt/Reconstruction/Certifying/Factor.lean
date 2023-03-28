@@ -4,6 +4,8 @@ import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 
+namespace Smt.Reconstruction.Certifying
+
 open Lean Elab.Tactic Meta
 
 def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
@@ -130,3 +132,4 @@ example :
   by intro h
      factor h, 3
      exact pf
+
