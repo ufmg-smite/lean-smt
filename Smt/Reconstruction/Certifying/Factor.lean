@@ -6,66 +6,86 @@ import Smt.Reconstruction.Certifying.Pull
 
 open Lean Elab.Tactic Meta
 
-def congDupOr (i : Nat) (nm : Ident) (last : Bool) : TacticM Syntax :=
-  match i with
-  | 0 =>
-    if last then `(dupOr₂ $nm)
-    else `(dupOr $nm)
-  | (i' + 1) => do
-    let nm' := mkIdent (Name.mkSimple "w")
-    let r ← congDupOr i' nm' last
-    let r: Term := ⟨r⟩
-    `(congOrLeft (fun $nm' => $r) $nm)
+def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
+  : MetaM Expr :=
+    match i with
+    | 0     =>
+      if last then
+        mkAppM ``dupOr₂ #[val]
+      else mkAppM ``dupOr #[val]
+    | i + 1 => do
+      let tailProps := createOrChain (props.drop (j + 1))
+      withLocalDeclD (← mkFreshId) tailProps $ fun bv => do
+        let r ← congDupOr props bv i (j + 1) last
+        let lambda ← mkLambdaFVars #[bv] r
+        mkAppM ``congOrLeft #[lambda, val]
 
 -- i: the index fixed in the original list
 -- j: the index of li.head! in the original list
-def loop (i j n : Nat) (pivot : Expr) (li : List Expr) (nm : Ident) : TacticM Ident :=
-  match li with
-  | [] => return nm
-  | e::es =>
-    if e == pivot then do
-      -- step₁: move expr that is equal to the pivot to position i + 1
-      let step₁ ←
-        if j > i + 1 then
-          let fname ← mkIdent <$> mkFreshId
-          let e ← getTypeFromName nm.getId
-          let t ← instantiateMVars e
-          pullToMiddleCore (i + 1) j nm t fname
-          pure fname
-        else pure nm
+def loop (mvar : MVarId) (i j n : Nat) (val pivot : Expr) (li : List Expr)
+  (name : Name) : MetaM MVarId :=
+  mvar.withContext do
+    let type ← instantiateMVars $ ← inferType val
+    match li with
+    | []    =>
+      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
+      return mvar'
+    | e::es =>
+      if e == pivot then
+        let (mvar', step₁) ← 
+          if j > i + 1 then
+            let fname ← mkFreshId
+            let mvar' ← pullToMiddleCore mvar (i + 1) j val type fname
+            mvar'.withContext do
+              let lctx ← getLCtx
+              let answer := (lctx.findFromUserName? fname).get!.toExpr
+              pure (mvar', answer)
+          else pure (mvar, val)
 
-      -- step₂: apply congOrLeft i times with dupOr
-      let step₂: Ident ← do
-        let last := i + 1 == n - 1
-        let tactic ← congDupOr i step₁ last 
-        let tactic := ⟨tactic⟩
-        let fname ← mkIdent <$> mkFreshId
-        evalTactic (← `(tactic| have $fname := $tactic))
-        pure fname
+          mvar'.withContext do
+            let step₂ ← do
+              let last := i + 1 == n - 1
+              -- we are never trying to get the last prop
+              -- so we don't need to use the function that
+              -- produces the list considering the last suffix
+              let type₁ ← inferType step₁
+              let props := collectPropsInOrChain type₁
+              congDupOr props step₁ i 0 last
+            loop mvar' i j (n - 1) step₂ pivot es name
+      else loop mvar i (j + 1) n val pivot es name
 
-      loop i j (n - 1) pivot es step₂
-    else loop i (j + 1) n pivot es nm
+def factorCoreMeta (mvar : MVarId) (val type : Expr) (suffIdx : Nat)
+  (name : Name) : MetaM MVarId :=
+    mvar.withContext do
+      let initLength := getLength type
+      let li := collectPropsInOrChain' suffIdx type
+      let (answer, mvar') ← go mvar li (li.length - 1) li.length initLength val
+      let goal: Expr := createOrChain li.eraseDups
+      let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
+      return mvar''
+where
+  go (mvar : MVarId) (li : List Expr) (i n initLength : Nat)
+     (answer : Expr) : MetaM (Expr × MVarId) :=
+       match i with
+       | 0 => pure (answer, mvar)
+       | i' + 1 =>
+         let idx := n - i - 1
+         match li.drop idx with
+         | [] => pure (answer, mvar)
+         | e::es => do
+           let fname ← mkFreshId
+           let mvar' ←
+             loop mvar idx (idx + 1) li.length answer e es fname
+           mvar'.withContext do
+             let lctx ← getLCtx
+             let answer' := (lctx.findFromUserName? fname).get!.toExpr
+             let t ← instantiateMVars (← inferType answer')
+             let newLength := getLength t
+             let propsDropped := initLength - newLength
+             let li' := collectPropsInOrChain' (suffIdx - propsDropped) t
+             go mvar' li' i' n initLength answer'
 
-def factorCore (type : Expr) (source : Ident) (suffixIdx : Nat) : TacticM Unit :=
-  withMainContext do
-    let initialLength := getLength type
-    let mut li := collectPropsInOrChain' suffixIdx type
-    let n := li.length
-    let mut answer := source
-    for i in List.range n do
-      li := List.drop i li
-      match li with
-      | [] => break
-      | e::es => do
-        answer ← loop i (i + 1) (li.length + i) e es answer
-        let e ← getTypeFromName answer.getId
-        let t ← instantiateMVars e
-        let newLength := getLength t
-        let propsDropped := initialLength - newLength
-        li := collectPropsInOrChain' (suffixIdx - propsDropped) t
-    evalTactic (← `(tactic| exact $answer))
-
-syntax (name := factor) "factor" term (",")? (term)? : tactic
+syntax (name := factor) "factor" term ("," term)? : tactic
 
 def parseFactor : Syntax → TacticM (Option Nat)
   | `(tactic| factor $_)     => pure none
@@ -78,23 +98,37 @@ def parseFactor : Syntax → TacticM (Option Nat)
     let e ← elabTerm stx[1] none
     let type ← inferType e
     let lastSuffix := getLength type - 1
-    let source := ⟨stx[1]⟩
-    let sufIdx :=
+    let suffIdx :=
       match (← parseFactor stx) with
       | none => lastSuffix
       | some i => i
-    factorCore type source sufIdx
+    let mvar ← getMainGoal
+    let mvar' ← factorCoreMeta mvar e type suffIdx `pf
+    replaceMainGoal [mvar']
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"
+
+example : A ∨ B ∨ C ∨ B → A ∨ B ∨ C := by
+  intro h
+  factor h
+  exact pf
+
+example : A ∨ B ∨ B → A ∨ B := by
+  intro h
+  factor h
+  exact pf
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h
      factor h
+     exact pf
 
 example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
   intro h
   factor h, 1
+  exact pf
 
 example : (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) := by
   intro h
   factor h, 3
+  exact pf
