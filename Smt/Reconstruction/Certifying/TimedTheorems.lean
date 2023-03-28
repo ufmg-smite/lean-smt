@@ -1,6 +1,7 @@
 import Lean
 
 import Smt.Reconstruction.Certifying.Boolean
+import Smt.Reconstruction.Certifying.Factor
 import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
@@ -63,3 +64,11 @@ syntax (name := notOrElimT) "notOrElimT" term "," term : tactic
   evalNotOrElim stx
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[notOrElimT] Time taken: {endTime - startTime}ms"
+
+syntax (name := factorT) "factorT" term ("," term)? : tactic
+
+@[tactic factorT] def evalFactorT : Tactic := fun stx => do
+  let startTime ← IO.monoMsNow
+  evalFactor stx
+  let endTime ← IO.monoMsNow
+  trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"

@@ -92,8 +92,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
   | `(tactic| factor $_, $i) => elabTerm i none >>= pure ∘ getNatLit?
   | _                        => throwError "[factor]: wrong usage"
 
-@[tactic factor] def evalFactor : Tactic := fun stx => do
-  let startTime ← IO.monoMsNow
+@[tactic factor] def evalFactor : Tactic := fun stx =>
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
@@ -105,8 +104,6 @@ def parseFactor : Syntax → TacticM (Option Nat)
     let mvar ← getMainGoal
     let mvar' ← factorCoreMeta mvar e type suffIdx `pf
     replaceMainGoal [mvar']
-  let endTime ← IO.monoMsNow
-  trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"
 
 example : A ∨ B ∨ C ∨ B → A ∨ B ∨ C := by
   intro h
@@ -128,7 +125,8 @@ example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
   factor h, 1
   exact pf
 
-example : (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) := by
-  intro h
-  factor h, 3
-  exact pf
+example :
+  (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
+  by intro h
+     factor h, 3
+     exact pf
