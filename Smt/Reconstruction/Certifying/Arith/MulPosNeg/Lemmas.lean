@@ -8,6 +8,8 @@ Authors: Tomaz Gomes Mascarenhas
 import Mathlib.Data.Rat.Basic
 import Mathlib.Algebra.Order.Ring.Lemmas
 
+namespace Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
+
 variable {α : Type}
 
 variable [LinearOrderedRing α]
@@ -26,3 +28,4 @@ theorem arith_mul_neg_le : a ≤ b → c < 0 → c * a ≥ c * b := λ h₁ h₂
 theorem arith_mul_neg_gt : a > b → c < 0 → c * a < c * b := arith_mul_neg_lt
 theorem arith_mul_neg_ge : a ≥ b → c < 0 → c * a ≤ c * b := arith_mul_neg_le
 
+end Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas

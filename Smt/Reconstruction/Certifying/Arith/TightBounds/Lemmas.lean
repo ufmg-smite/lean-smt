@@ -8,6 +8,8 @@ Authors: Tomaz Gomes Mascarenhas
 import Mathlib.Data.Rat.Floor
 import Mathlib.Algebra.Order.Floor
 
+namespace Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
+
 theorem Rat.neg_lt_neg {a b : ℚ} (h : a < b) : -a > -b := by
   simp
   exact h
@@ -46,3 +48,4 @@ theorem intTightUb' : ∀ {i : Int} {c : ℚ}, i < c → i ≤ ⌈c⌉ - 1 := by
   simp at pf
   exact pf
 
+end Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas

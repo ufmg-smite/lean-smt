@@ -5,9 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-namespace Smt.Reconstruction.Certifying
-
 open Classical
+
+namespace Smt.Reconstruction.Certifying.Quant
 
 universe u
 
@@ -63,4 +63,4 @@ example : (∀ x y : Int, x + y > 0) → (3 : Int) + 4 > 0 := by
   let s2 := flipInstForall s1 [(fun (y : Int) => 3 + y > 0), 4]
   exact s2
 
-end Smt.Reconstruction.Certifying
+end Smt.Reconstruction.Certifying.Quant

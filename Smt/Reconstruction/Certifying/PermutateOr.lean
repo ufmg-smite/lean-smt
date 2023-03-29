@@ -7,13 +7,14 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Util
 
-namespace Smt.Reconstruction.Certifying
-
 open Lean Elab Tactic
+
+namespace Smt.Reconstruction.Certifying.PermutateOr
+
+open Pull Util
 
 def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)
   (suffIdx : Option Nat) (name : Name) : MetaM MVarId :=
@@ -83,3 +84,5 @@ example : A ∨ (B ∨ C) ∨ (D ∨ E ∨ F) → (D ∨ E ∨ F) ∨ A ∨ (B �
   intro h
   permutateOr h, [2, 0, 1], 2
   exact pf
+
+end Smt.Reconstruction.Certifying.PermutateOr

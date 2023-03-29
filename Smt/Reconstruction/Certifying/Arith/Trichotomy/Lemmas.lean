@@ -10,7 +10,9 @@ import Smt.Reconstruction.Certifying.PermutateOr
 
 import Mathlib.Init.Algebra.Order
 
-open Smt.Reconstruction.Certifying
+namespace Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
+
+open Boolean PermutateOr
 
 variable {α : Type}
 
@@ -31,27 +33,28 @@ theorem trichotomy₂ : ¬ a = b → ¬ a < b → a > b := by
 theorem trichotomy₃ : ¬ a < b → ¬ a > b → a = b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr' := by permutateOr tr, [0, 2, 1]
+  have tr' := by permutateOr tr, [0, 2, 1]; exact pf
   exact (orImplies₃ ((orImplies₃ tr') h₁)) h₂
   
 theorem trichotomy₄ : ¬ a > b → ¬ a < b → a = b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr' := by permutateOr tr, [0, 2, 1]
+  have tr' := by permutateOr tr, [0, 2, 1]; exact pf
   exact (orImplies₃ ((orImplies₃ tr') h₂)) h₁
 
 theorem trichotomy₅ : ¬ a = b → ¬ a > b → a < b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr' := by permutateOr tr, [1, 2, 0]
+  have tr' := by permutateOr tr, [1, 2, 0]; exact pf
   exact (orImplies₃ ((orImplies₃ tr') h₁)) h₂
 
 theorem trichotomy₆ : ¬ a > b → ¬ a = b → a < b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr' := by permutateOr tr, [1, 2, 0]
+  have tr' := by permutateOr tr, [1, 2, 0]; exact pf
   exact (orImplies₃ ((orImplies₃ tr') h₂)) h₁
 
 theorem not_gt_of_le : a ≤ b → ¬ a > b :=
   λ h₁ h₂ => absurd h₂ (not_lt_of_ge h₁)
-#check @not_gt_of_le
+
+end Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas

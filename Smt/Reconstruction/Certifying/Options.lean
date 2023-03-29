@@ -7,6 +7,9 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
+namespace Smt.Reconstruction.Certifying.Options
+
 initialize
   Lean.registerTraceClass `smt.profile
 
+end Smt.Reconstruction.Certifying.Options

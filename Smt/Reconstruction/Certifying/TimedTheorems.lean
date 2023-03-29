@@ -13,6 +13,10 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
 
+namespace Smt.Reconstruction.Certifying.TimedTheorems
+
+open Boolean Factor Util
+
 syntax (name := cnfAndNegT) "cnfAndNegT" ("[" term,* "]")? : tactic
 
 def parseCnfAndNeg : Syntax → TacticM Expr
@@ -26,7 +30,7 @@ def parseCnfAndNeg : Syntax → TacticM Expr
   let startTime ← IO.monoMsNow
   withMainContext do
     let e ← parseCnfAndNeg stx
-    closeMainGoal (mkApp (mkConst `cnfAndNeg) e)
+    closeMainGoal (mkApp (mkConst ``cnfAndNeg) e)
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[cnfAndNeg] Time taken: {endTime - startTime}ms"
 
@@ -44,7 +48,7 @@ def parseCnfAndPos : Syntax → TacticM (Expr × Expr)
   let startTime ← IO.monoMsNow
   withMainContext do
     let (li, i) ← parseCnfAndPos stx
-    closeMainGoal $ mkApp (mkApp (mkConst `cnfAndPos) li) i
+    closeMainGoal $ mkApp (mkApp (mkConst ``cnfAndPos) li) i
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[cnfAndPos]: Time taken: {endTime - startTime}ms"
 
@@ -59,7 +63,7 @@ syntax (name := congrT) "congrT" term "," term : tactic
   trace[smt.profile] m!"[congrT]: Time taken: {endTime - startTime}ms"
 
 syntax (name := andElimT) "andElimT" term "," term : tactic
-@[tactic andElim] def evalAndElimT : Tactic := fun stx => do
+@[tactic andElimT] def evalAndElimT : Tactic := fun stx => do
   let startTime ← IO.monoMsNow
   evalAndElim stx
   let endTime ← IO.monoMsNow
@@ -79,3 +83,5 @@ syntax (name := factorT) "factorT" term ("," term)? : tactic
   evalFactor stx
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"
+
+end Smt.Reconstruction.Certifying.TimedTheorems

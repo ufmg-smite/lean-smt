@@ -13,21 +13,25 @@ import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
 
+namespace Smt.Reconstruction.Certifying.Arith.SumBounds.Tactic
+
+open Lemmas Instances
+
 def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
   withMainContext do
     let t₁ ← inferType h₁
     let t₂ ← inferType h₂
     let thmName : Name :=
       match ← getOp t₁, ← getOp t₂ with
-      | `LT.lt , `LT.lt => `sumBounds₁
-      | `LT.lt , `LE.le => `sumBounds₂
-      | `LT.lt , `Eq    => `sumBounds₃
-      | `LE.le , `LT.lt => `sumBounds₄
-      | `LE.le , `LE.le => `sumBounds₅
-      | `LE.le , `Eq    => `sumBounds₆ 
-      | `Eq    , `LT.lt => `sumBounds₇
-      | `Eq    , `LE.le => `sumBounds₈
-      | `Eq    , `Eq    => `sumBounds₉
+      | ``LT.lt , ``LT.lt => ``sumBounds₁
+      | ``LT.lt , ``LE.le => ``sumBounds₂
+      | ``LT.lt , ``Eq    => ``sumBounds₃
+      | ``LE.le , ``LT.lt => ``sumBounds₄
+      | ``LE.le , ``LE.le => ``sumBounds₅
+      | ``LE.le , ``Eq    => ``sumBounds₆ 
+      | ``Eq    , ``LT.lt => ``sumBounds₇
+      | ``Eq    , ``LE.le => ``sumBounds₈
+      | ``Eq    , ``Eq    => ``sumBounds₉
       | _      , _      => panic! "[sumBounds] invalid operation"
     mkAppM thmName #[h₁, h₂]
 where
@@ -69,3 +73,5 @@ example {a b c d e f w z : Int} :
 example {a b c d e f : ℚ} : a < d → b ≤ e → c ≤ f → a + b + c < d + e + f := by
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
+
+end Smt.Reconstruction.Certifying.Arith.SumBounds.Tactic

@@ -7,11 +7,15 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
+import Smt.Reconstruction.Certifying.LiftOrNToImp
 import Smt.Reconstruction.Certifying.Pull
-
-namespace Smt.Reconstruction.Certifying
+import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab.Tactic Meta
+
+namespace Smt.Reconstruction.Certifying.Resolution
+
+open LiftOrNToImp Pull Util
 
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
   intros A B C h₁ h₂
@@ -164,3 +168,5 @@ example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A 
   intros h₁ h₂
   R2 h₁, h₂, A
   exact pf
+
+end Smt.Reconstruction.Certifying.Resolution

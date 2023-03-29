@@ -9,8 +9,13 @@ import Lean
 
 import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.LiftOrNToImp
+import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
+
+namespace Smt.Reconstruction.Certifying.Pull
+
+open Boolean LiftOrNToImp Util
 
 def mkAppList : Expr → List Expr → Expr :=
   fun e l => List.foldr mkApp e l.reverse
@@ -31,7 +36,7 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
         withLocalDeclD fname mid $ fun bv => do
           let body := mkAppList bv lemmas
           let lambda ← mkLambdaFVars #[bv] body
-          mkAppM `congOrRight #[lambda, val]
+          mkAppM ``congOrRight #[lambda, val]
     | i_iter' + 1 =>
       let fname ← mkFreshId
       let pref := subList (i - i_iter + 1) (i - 1) props
@@ -45,7 +50,7 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
       withLocalDeclD fname t $ fun bv => do
         let rc ← congLemmas lemmas props i_iter' i j bv mid last
         let lambda ← mkLambdaFVars #[bv] rc
-        mkAppM `congOrLeft #[lambda, val]
+        mkAppM ``congOrLeft #[lambda, val]
 
 -- pull j-th term in the orchain to i-th position
 -- (we start counting indices at 0)
@@ -82,7 +87,7 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     let midPref := List.dropLast mid
     let midSuff := List.getLast! mid
     let comm :=
-      mkApp (mkApp (mkConst `orComm) (createOrChain midPref)) midSuff
+      mkApp (mkApp (mkConst ``orComm) (createOrChain midPref)) midSuff
     let mid := createOrChain [createOrChain midPref, midSuff]
     let step₃ ← congLemmas [comm] props i i j step₂ mid last
   
@@ -178,7 +183,7 @@ def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
               let lctx ← getLCtx
               let groupped := (lctx.findFromUserName? fname).get!.toExpr
               let answer: Expr ←
-                mkAppM `orComm #[groupped]
+                mkAppM ``orComm #[groupped]
               let requiredType ← inferType answer
               let (_, mvar'') ← MVarId.intro1P $
                 ← mvar'.assert name requiredType answer
@@ -212,3 +217,5 @@ example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → F ∨ A ∨ B ∨ C �
   intro h
   pull h, F, h₂
   exact h₂
+
+end Smt.Reconstruction.Certifying.Pull

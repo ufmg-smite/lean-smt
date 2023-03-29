@@ -18,6 +18,10 @@ import Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
 
+namespace Smt.Reconstruction.Certifying.Arith.Trichotomy.Tactic
+
+open Lemmas
+
 syntax (name := trichotomy) "trichotomy" term "," term : tactic
 
 @[tactic trichotomy] def evalTrichotomy : Tactic := fun stx =>
@@ -28,12 +32,12 @@ syntax (name := trichotomy) "trichotomy" term "," term : tactic
     let t₂ ← inferType h₂
     let thmName : Name ←
       match ← getOp t₁, ← getOp t₂ with
-      | `LT.lt , `Eq    => pure `trichotomy₁
-      | `Eq    , `LT.lt => pure `trichotomy₂
-      | `LT.lt , `GT.gt => pure `trichotomy₃
-      | `GT.gt , `LT.lt => pure `trichotomy₄
-      | `Eq    , `GT.gt => pure `trichotomy₅
-      | `GT.gt , `Eq    => pure `trichotomy₆
+      | ``LT.lt , ``Eq    => pure ``trichotomy₁
+      | ``Eq    , ``LT.lt => pure ``trichotomy₂
+      | ``LT.lt , ``GT.gt => pure ``trichotomy₃
+      | ``GT.gt , ``LT.lt => pure ``trichotomy₄
+      | ``Eq    , ``GT.gt => pure ``trichotomy₅
+      | ``GT.gt , ``Eq    => pure ``trichotomy₆
       | _      , _      => throwError "[trichotomy] invalid operation"
     closeMainGoal (← mkAppM thmName #[h₁, h₂])
 where
@@ -43,12 +47,14 @@ where
     | _ => throwError "[trichotomy] invalid parameter"
   notLeToLt : Expr → TacticM Expr := λ e => do
     match ← inferType e with
-      | app (app (app (app (app (const `LE.le ..) ..) ..) ..) ..) _ => mkAppM `not_gt_of_le #[e]
-      | app (app (app (app (const `LE.le ..) ..) ..) ..) _ => mkAppM `not_gt_of_le #[e]
-      | app (app (app (app (app (const `GE.ge ..) ..) ..) ..) ..) _ => mkAppM `not_lt_of_ge #[e]
-      | app (app (app (app (const `GE.ge ..) ..) ..) ..) _ => mkAppM `not_lt_of_ge #[e]
+      | app (app (app (app (app (const ``LE.le ..) ..) ..) ..) ..) _ => mkAppM ``not_gt_of_le #[e]
+      | app (app (app (app (const ``LE.le ..) ..) ..) ..) _ => mkAppM ``not_gt_of_le #[e]
+      | app (app (app (app (app (const ``GE.ge ..) ..) ..) ..) ..) _ => mkAppM ``not_lt_of_ge #[e]
+      | app (app (app (app (const ``GE.ge ..) ..) ..) ..) _ => mkAppM ``not_lt_of_ge #[e]
       | _ => pure e
 
 example {a b : Nat} : a ≥ b → ¬ a = b → a > b := by
   intros h₁ h₂
   trichotomy h₁, h₂
+
+end Smt.Reconstruction.Certifying.Arith.Trichotomy.Tactic

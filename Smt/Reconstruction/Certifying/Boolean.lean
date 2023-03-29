@@ -10,10 +10,12 @@ import Lean
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Options
 
-namespace Smt.Reconstruction.Certifying
-
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
+
+namespace Smt.Reconstruction.Certifying.Boolean
+
+open Util
 
 abbrev Implies (p q : Prop) := p → q
 
@@ -423,7 +425,7 @@ def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
         | none => type
         | some e => recGetLamBody e
       if i < getLengthAnd andProp - 1 then
-        pf ← mkAppM `And.left #[pf]
+        pf ← mkAppM ``And.left #[pf]
       let goal ← inferType pf
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal pf
       return mvar'
@@ -437,7 +439,7 @@ where
     | 0 => pure hyp
     | (i + 1) => do
       let rc ← getProof i hyp
-      mkAppM `And.right #[rc]
+      mkAppM ``And.right #[rc]
 
 syntax (name := andElim) "andElim" term "," term : tactic
 @[tactic andElim] def evalAndElim : Tactic := fun stx => do
@@ -467,7 +469,7 @@ def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
           | true  => pure bv
           | false =>
             let rest := createOrChain (props.drop (i + 1))
-            mkAppOptM `Or.inl #[none, rest, bv]
+            mkAppOptM ``Or.inl #[none, rest, bv]
         let pf ← getProof i 0 props pf
         let pf := mkApp val pf
         let pf ← mkLambdaFVars #[bv] pf
@@ -479,7 +481,7 @@ where
     | 0     => pure val
     | i + 1 => do
       let currProp := props.get! j
-      mkAppOptM `Or.inr #[currProp, none, ← getProof i (j + 1) props val]
+      mkAppOptM ``Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
@@ -543,3 +545,5 @@ macro_rules
 syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
+
+end Smt.Reconstruction.Certifying.Boolean

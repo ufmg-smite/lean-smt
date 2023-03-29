@@ -8,12 +8,14 @@ Authors: Tomaz Gomes Mascarenhas
 import Lean
 
 import Smt.Reconstruction.Certifying.Boolean
-import Smt.Reconstruction.Certifying.Options
 import Smt.Reconstruction.Certifying.Pull
-
-namespace Smt.Reconstruction.Certifying
+import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab.Tactic Meta
+
+namespace Smt.Reconstruction.Certifying.Factor
+
+open Boolean Pull Util
 
 def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
   : MetaM Expr :=
@@ -140,3 +142,4 @@ example :
      factor h, 3
      exact pf
 
+end Smt.Reconstruction.Certifying.Factor

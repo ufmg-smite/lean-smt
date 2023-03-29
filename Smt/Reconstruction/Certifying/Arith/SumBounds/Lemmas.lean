@@ -10,6 +10,8 @@ import Mathlib.Init.Function -- swap
 
 open Function
 
+namespace Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
+
 variable {α : Type}
 
 variable [Preorder α]
@@ -69,3 +71,5 @@ theorem sumBounds₉ : a = b → c = d → a + c ≤ b + d := by
   intros h₁ h₂
   rewrite [h₁, h₂]
   exact le_refl (b + d)
+
+end Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
