@@ -13,9 +13,7 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
 
-namespace Smt.Reconstruction.Certifying.Pull
-
-open Boolean LiftOrNToImp Util
+namespace Smt.Reconstruction.Certifying
 
 def mkAppList : Expr → List Expr → Expr :=
   fun e l => List.foldr mkApp e l.reverse
@@ -218,4 +216,4 @@ example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → F ∨ A ∨ B ∨ C �
   pull h, F, h₂
   exact h₂
 
-end Smt.Reconstruction.Certifying.Pull
+end Smt.Reconstruction.Certifying

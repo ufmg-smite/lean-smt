@@ -13,9 +13,7 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic Meta
 
-namespace Smt.Reconstruction.Certifying.TimedTheorems
-
-open Boolean Factor Util
+namespace Smt.Reconstruction.Certifying
 
 syntax (name := cnfAndNegT) "cnfAndNegT" ("[" term,* "]")? : tactic
 
@@ -84,4 +82,4 @@ syntax (name := factorT) "factorT" term ("," term)? : tactic
   let endTime ← IO.monoMsNow
   trace[smt.profile] m!"[factor] Time taken: {endTime - startTime}ms"
 
-end Smt.Reconstruction.Certifying.TimedTheorems
+end Smt.Reconstruction.Certifying

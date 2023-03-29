@@ -12,9 +12,7 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab Tactic
 
-namespace Smt.Reconstruction.Certifying.PermutateOr
-
-open Pull Util
+namespace Smt.Reconstruction.Certifying
 
 def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)
   (suffIdx : Option Nat) (name : Name) : MetaM MVarId :=
@@ -85,4 +83,4 @@ example : A ∨ (B ∨ C) ∨ (D ∨ E ∨ F) → (D ∨ E ∨ F) ∨ A ∨ (B �
   permutateOr h, [2, 0, 1], 2
   exact pf
 
-end Smt.Reconstruction.Certifying.PermutateOr
+end Smt.Reconstruction.Certifying

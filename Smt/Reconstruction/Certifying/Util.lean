@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-namespace Smt.Reconstruction.Certifying.Util
+namespace Smt.Reconstruction.Certifying
 
 open Lean Expr Elab.Tactic Meta
 
@@ -177,4 +177,4 @@ open Lean.Elab Lean.Elab.Command in
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
 
-end Smt.Reconstruction.Certifying.Util
+end Smt.Reconstruction.Certifying

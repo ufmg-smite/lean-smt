@@ -13,9 +13,7 @@ import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
 
-namespace Smt.Reconstruction.Certifying.Arith.SumBounds.Tactic
-
-open Lemmas Instances
+namespace Smt.Reconstruction.Certifying
 
 def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
   withMainContext do
@@ -74,4 +72,4 @@ example {a b c d e f : ℚ} : a < d → b ≤ e → c ≤ f → a + b + c < d + 
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
 
-end Smt.Reconstruction.Certifying.Arith.SumBounds.Tactic
+end Smt.Reconstruction.Certifying

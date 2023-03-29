@@ -18,9 +18,7 @@ import Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
 
-namespace Smt.Reconstruction.Certifying.Arith.Trichotomy.Tactic
-
-open Lemmas
+namespace Smt.Reconstruction.Certifying
 
 syntax (name := trichotomy) "trichotomy" term "," term : tactic
 
@@ -57,4 +55,4 @@ example {a b : Nat} : a ≥ b → ¬ a = b → a > b := by
   intros h₁ h₂
   trichotomy h₁, h₂
 
-end Smt.Reconstruction.Certifying.Arith.Trichotomy.Tactic
+end Smt.Reconstruction.Certifying

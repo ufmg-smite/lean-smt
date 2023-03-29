@@ -13,9 +13,7 @@ import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab.Tactic Meta
 
-namespace Smt.Reconstruction.Certifying.Resolution
-
-open LiftOrNToImp Pull Util
+namespace Smt.Reconstruction.Certifying
 
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
   intros A B C h₁ h₂
@@ -169,4 +167,4 @@ example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A 
   R2 h₁, h₂, A
   exact pf
 
-end Smt.Reconstruction.Certifying.Resolution
+end Smt.Reconstruction.Certifying

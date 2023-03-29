@@ -14,9 +14,7 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab Tactic Meta Expr
 open List
 
-namespace Smt.Reconstruction.Certifying.LiftOrNToImp
-
-open Boolean Util
+namespace Smt.Reconstruction.Certifying
 
 def groupPrefixLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
 | _, 0, _, e => pure e
@@ -150,4 +148,4 @@ example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → A ∧ B → C ∨ D ∨ E  := by
   liftOrNToImp h, 2
   exact pf
 
-end Smt.Reconstruction.Certifying.LiftOrNToImp
+end Smt.Reconstruction.Certifying

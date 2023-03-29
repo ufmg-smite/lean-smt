@@ -12,9 +12,7 @@ import Mathlib.Data.Int.Order.Basic
 
 import Lean
 
-namespace Smt.Reconstruction.Certifying.Arith.MulPosNeg.Tactic
-
-open Lemmas
+namespace Smt.Reconstruction.Certifying
 
 open Lean hiding Rat
 open Elab.Tactic Expr Meta

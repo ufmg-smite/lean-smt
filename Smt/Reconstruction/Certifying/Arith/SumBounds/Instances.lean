@@ -11,7 +11,7 @@ import Mathlib.Data.Rat.Order
 
 open Function
 
-namespace Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
+namespace Smt.Reconstruction.Certifying
 
 instance : CovariantClass Nat Nat (· + ·) (· < ·) where
   elim := by
@@ -73,4 +73,4 @@ instance : CovariantClass Rat Rat (swap (· + ·)) (· ≤ ·) where
     intros a b c h
     exact add_le_add_right h a
 
-end Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
+end Smt.Reconstruction.Certifying

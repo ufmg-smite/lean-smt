@@ -10,9 +10,7 @@ import Smt.Reconstruction.Certifying.PermutateOr
 
 import Mathlib.Init.Algebra.Order
 
-namespace Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
-
-open Boolean PermutateOr
+namespace Smt.Reconstruction.Certifying
 
 variable {α : Type}
 
@@ -57,4 +55,4 @@ theorem trichotomy₆ : ¬ a > b → ¬ a = b → a < b := by
 theorem not_gt_of_le : a ≤ b → ¬ a > b :=
   λ h₁ h₂ => absurd h₂ (not_lt_of_ge h₁)
 
-end Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
+end Smt.Reconstruction.Certifying

@@ -14,9 +14,7 @@ import Smt.Reconstruction.Certifying.Util
 open Lean Elab Tactic Meta Expr
 open List
 
-namespace Smt.Reconstruction.Certifying.LiftOrNToNeg
-
-open Boolean LiftOrNToImp Util
+namespace Smt.Reconstruction.Certifying
 
 theorem orFalse : ∀ {A : Prop}, A ∨ False → A := by
   intros a h
@@ -98,4 +96,4 @@ example : ¬ A ∨ ¬ B ∨ ¬ C ∨ ¬ D ∨ False → ¬ (A ∧ B ∧ C ∧ D)
   liftOrNToNeg h, h₂
   exact h₂
 
-end Smt.Reconstruction.Certifying.LiftOrNToNeg
+end Smt.Reconstruction.Certifying

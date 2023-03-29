@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 open Classical
 
-namespace Smt.Reconstruction.Certifying.Quant
+namespace Smt.Reconstruction.Certifying
 
 universe u
 
@@ -63,4 +63,4 @@ example : (∀ x y : Int, x + y > 0) → (3 : Int) + 4 > 0 := by
   let s2 := flipInstForall s1 [(fun (y : Int) => 3 + y > 0), 4]
   exact s2
 
-end Smt.Reconstruction.Certifying.Quant
+end Smt.Reconstruction.Certifying

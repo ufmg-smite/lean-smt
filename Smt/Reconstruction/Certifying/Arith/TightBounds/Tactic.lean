@@ -13,9 +13,7 @@ import Lean
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
 
-namespace Smt.Reconstruction.Certifying.Arith.TightBounds.Tactic
-
-open Lemmas
+namespace Smt.Reconstruction.Certifying
 
 syntax (name := intTightUb) "intTightUb" term : tactic
 @[tactic intTightUb] def evalIntTightUb : Tactic := fun stx =>
@@ -59,4 +57,4 @@ example {a b : Int} : a > b → (a : Int) ≥ Int.floor (Rat.ofInt b) + 1 := by
   intro h
   intTightLb h
 
-end Smt.Reconstruction.Certifying.Arith.TightBounds.Tactic
+end Smt.Reconstruction.Certifying
