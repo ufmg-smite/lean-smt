@@ -130,7 +130,8 @@ def rconsProof (hints : List Expr) : TacticM Unit := do
     evalAnyGoals do
       let gs ← (← Tactic.getMainGoal).apply h
       Tactic.replaceMainGoal gs
-  let mut thms ← Meta.getSimpTheorems
+  let mut some thms ← (← Meta.getSimpExtension? `smt_simp).mapM (·.getTheorems)
+    | throwError "smt tactic failed, 'smt_simp' simpset is not available"
   for h in hints do
     thms ← addDeclToUnfoldOrTheorem thms h
   evalAnyGoals do

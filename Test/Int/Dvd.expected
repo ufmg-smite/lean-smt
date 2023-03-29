@@ -1,8 +1,8 @@
 goal: dvd a c = true
 
 query:
-(declare-const b Int)
 (declare-fun dvd (Int Int) Bool)
+(declare-const b Int)
 (declare-const a Int)
 (assert (= (dvd a b) true))
 (declare-const c Int)
@@ -16,9 +16,9 @@ failed to reconstruct proof: encountered errors elaborating cvc5 proof
 goal: dvd c e = true
 
 query:
+(declare-const c Int)
 (declare-fun dvd (Int Int) Bool)
 (declare-const d Int)
-(declare-const c Int)
 (assert (= (dvd c d) true))
 (declare-const e Int)
 (assert (= (dvd d e) true))
@@ -31,9 +31,9 @@ failed to reconstruct proof: encountered errors elaborating cvc5 proof
 goal: dvd a e = true
 
 query:
+(declare-const c Int)
 (declare-fun dvd (Int Int) Bool)
 (declare-const a Int)
-(declare-const c Int)
 (assert (= (dvd a c) true))
 (declare-const e Int)
 (assert (= (dvd c e) true))
