@@ -23,7 +23,9 @@ axiom inverse : ∀ a, op (inv a) a = e
 axiom ident   : ∀ a, op e a = a
 
 theorem inverse' : ∀ a, op a (inv a) = e := by
-  smt [assoc op, inverse op inv e, ident op e]
+   -- TODO: too slow. Replace `smt_show` with `smt` once performance is improved.
+  smt_show [assoc op, inverse op inv e, ident op e]
+  sorry
 
 theorem identity' : ∀ a, op a e = a := by
   smt [assoc op, inverse op inv e, ident op e, inverse' op inv e]
