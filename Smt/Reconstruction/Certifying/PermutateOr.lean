@@ -34,10 +34,10 @@ where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
         mvar.withContext do
           let fname ← mkFreshId
           let type ← Meta.inferType acc
-          let last: Bool :=
-            match getIndex e type with
-            | some i => i == suffIdx
-            | none   => panic! "[permutateOr]: invalid permutation"
+          let last: Bool ←
+            match getIndex' e type suffIdx with
+            | some i => pure $ i == suffIdx
+            | none   => throwError "[permutateOr]: invalid permutation"
           let mvar' ← pullCore mvar e acc type suffIdx fname
           -- we need to update the new length of the suffix after pulling
           -- an element
