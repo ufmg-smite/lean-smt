@@ -75,7 +75,6 @@ def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
 def subList (i j : Nat) (xs : List α) : List α :=
   List.take (j + 1 - i) (xs.drop i)
 
-
 def getIndexList [BEq α] : α → List α → Option Nat
 | _, [] => none
 | a, (x::xs) =>
@@ -85,12 +84,23 @@ def getIndexList [BEq α] : α → List α → Option Nat
 def permutateList [Inhabited α] : List α → List Nat → List α :=
   λ xs => List.foldr (λ i => (· :: ·) (List.get! xs i)) []
 
+def findIndex? [BEq α] : List α → α → Option Nat
+| [], _ => none
+| x::xs, a =>
+  if a == x then
+    some 0
+  else (· + 1) <$> findIndex? xs a
+
 def getIndex : Expr → Expr → Option Nat
-| t, app (app (const ``Or ..) e1) e2 =>
-    if e1 == t then some 0
-    else (. + 1) <$> getIndex t e2
-| t, e => if e == t then some 0
-          else none
+| t, e =>
+  let props := collectPropsInOrChain e
+  findIndex? props t
+
+-- this one considers a suffIdx
+def getIndex' : Expr → Expr → Nat → Option Nat
+| t, e, suffIdx =>
+  let props := collectPropsInOrChain' suffIdx e
+  findIndex? props t
 
 def getFirstBinderName : Expr → Name
 | app e _ => getFirstBinderName e
@@ -176,5 +186,11 @@ open Lean.Elab Lean.Elab.Command in
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
+
+#elab 2
+
+#elab Nat → Nat
+
+#elab by exact True.intro
 
 end Smt.Reconstruction.Certifying
