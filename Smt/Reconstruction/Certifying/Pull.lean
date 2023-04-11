@@ -168,9 +168,9 @@ def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
         | some i => i
         | none   => lastSuffix
       let li := collectPropsInOrChain' sufIdx type
-      match getIndexList pivot li with
+      match findIndex? li pivot with
       | some i =>
-        if i == sufIdx && sufIdx != lastSuffix then do
+        if i == sufIdx && sufIdx != lastSuffix then
           if i == 0 then
             let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
             return mvar'
