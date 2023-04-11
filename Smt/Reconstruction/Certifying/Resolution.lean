@@ -89,11 +89,14 @@ def resolutionCoreMeta (mvar : MVarId) (val₁ val₂ pivot : Expr)
         let pulled₁ := (lctx.findFromUserName? fname₁).get!.toExpr
         let pulled₂ := (lctx.findFromUserName? fname₂).get!.toExpr
         let props₁ := collectPropsInOrChain' sufIdx₁ type₁
-        let props₁ := props₁.filter (· != pivot)
+        let props₁ := props₁.erase pivot
         let props₂ := collectPropsInOrChain' sufIdx₂ type₂
-        let props₂ := props₂.filter (· != notPivot)
+        let props₂ := props₂.erase notPivot
         let props := props₁ ++ props₂
-        let goal := createOrChain props
+        let goal :=
+          match props with
+          | [] => mkConst ``False
+          | _  => createOrChain props
         let thmName : Name :=
           match Nat.blt 1 len₁, Nat.blt 1 len₂ with
           | true, true   => if flipped then ``flipped_resolution_thm  else ``resolution_thm
