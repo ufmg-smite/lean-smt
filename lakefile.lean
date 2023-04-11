@@ -121,4 +121,3 @@ where
     }
     IO.FS.writeFile expected out.stdout
     return 0
-
