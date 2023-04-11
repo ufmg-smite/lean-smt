@@ -23,19 +23,19 @@ syntax (name := arithMulPos) "arithMulPos" term "," term : tactic
     let h₁ ← elabTerm stx[1] none
     let h₂ ← elabTerm stx[3] none
     let t₁ ← Meta.inferType h₁
-    let thmName := getThmName t₁
+    let thmName ← getThmName t₁
     let proof : Expr ← mkAppM thmName #[h₁, h₂]
     closeMainGoal proof
-where getThmName : Expr → Name
+where getThmName : Expr → TacticM Name
         | app (app (app (app (app (const nm ..) ..) ..) ..) ..) _ => matchNameThm nm
         | app (app (app (app (const nm ..) ..) ..) ..) _ => matchNameThm nm
-        | _ => panic! "[arithMulPos]: structure not supported"
-      matchNameThm : Name → Name
-        | ``LE.le => ``arith_mul_pos_le
-        | ``LT.lt => ``arith_mul_pos_lt
-        | ``GT.gt => ``arith_mul_pos_gt
-        | ``GE.ge => ``arith_mul_pos_ge
-        | _ => panic! "[arithMulPos]: invalid comparator"
+        | _ => throwError "[arithMulPos]: structure not supported"
+      matchNameThm : Name → TacticM Name
+        | ``LE.le => pure ``arith_mul_pos_le
+        | ``LT.lt => pure ``arith_mul_pos_lt
+        | ``GT.gt => pure ``arith_mul_pos_gt
+        | ``GE.ge => pure ``arith_mul_pos_ge
+        | _ => throwError "[arithMulPos]: invalid comparator"
 
 syntax (name := arithMulNeg) "arithMulNeg" term "," term : tactic
 @[tactic arithMulNeg] def evalArithMulNeg : Tactic := fun stx =>
@@ -65,4 +65,4 @@ example {a b c : ℚ} : a ≤ b → 0 > c → c * a ≥ c * b := by
   intros h₁ h₂
   arithMulNeg h₁, h₂
 
-end Smt.Reconstruction.Certifying.Arith.MulPosNeg.Tactic
+end Smt.Reconstruction.Certifying
