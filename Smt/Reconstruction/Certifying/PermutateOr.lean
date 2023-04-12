@@ -69,18 +69,18 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
   withMainContext do
     let hyp ← elabTerm stx[1] none
     let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← permutateOrMeta mvar hyp hs suffIdx `pf
+    let mvar' ← permutateOrMeta mvar hyp hs suffIdx fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D ∨ E → A ∨ C ∨ D ∨ B ∨ E := by
   intro h
   permutateOr h, [0, 2, 3, 1, 4]
-  exact pf
 
 example : A ∨ (B ∨ C) ∨ (D ∨ E ∨ F) → (D ∨ E ∨ F) ∨ A ∨ (B ∨ C) := by
   intro h
   permutateOr h, [2, 0, 1], 2
-  exact pf
 
 end Smt.Reconstruction.Certifying

@@ -139,13 +139,14 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
   fun stx => withMainContext do
     let val ← elabTerm stx[1] none
     let prefLen ← stxToNat ⟨stx[3]⟩
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← liftOrNToImpCore mvar `pf val prefLen
+    let mvar' ← liftOrNToImpCore mvar fname val prefLen
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → A ∧ B → C ∨ D ∨ E  := by
   intro h
   liftOrNToImp h, 2
-  exact pf
 
 end Smt.Reconstruction.Certifying

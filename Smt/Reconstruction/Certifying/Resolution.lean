@@ -138,9 +138,11 @@ where
     let val₁ ← elabTerm firstHyp none
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ false `pf
+    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ false fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 @[tactic resolution_2] def evalResolution_2 : Tactic := fun stx =>
   withMainContext do
@@ -151,23 +153,23 @@ where
     let val₁ ← elabTerm firstHyp none
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ true `pf
+    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ true fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D → E ∨ ¬ C ∨ F ∨ G → A ∨ B ∨ D ∨ E ∨ F ∨ G := by
   intros h₁ h₂
   R1 h₁, h₂, C, [-1, -1]
-  exact pf
+
 
 example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨ E ∨ F ∨ H := by
   intros h₁ h₂
   R1 h₁, h₂, B, [2, -1]
-  exact pf
 
 example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
   intros h₁ h₂
   R2 h₁, h₂, A
-  exact pf
 
 end Smt.Reconstruction.Certifying

@@ -81,19 +81,19 @@ def liftOrNToNegMeta (mvar : MVarId) (val : Expr) (name : Name)
     let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
     return mvar''
 
-syntax (name := liftOrNToNeg) "liftOrNToNeg" term "," term : tactic
+syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
 
 @[tactic liftOrNToNeg] def evalLiftOrNToNeg : Tactic :=
   fun stx => withMainContext do
     let hyp ← elabTerm stx[1] none
-    let name := stx[3].getId
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← liftOrNToNegMeta mvar hyp name
+    let mvar' ← liftOrNToNegMeta mvar hyp fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : ¬ A ∨ ¬ B ∨ ¬ C ∨ ¬ D ∨ False → ¬ (A ∧ B ∧ C ∧ D) := by
   intro h
-  liftOrNToNeg h, h₂
-  exact h₂
+  liftOrNToNeg h
 
 end Smt.Reconstruction.Certifying

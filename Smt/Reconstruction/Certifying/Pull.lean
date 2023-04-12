@@ -107,53 +107,46 @@ syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : 
 @[tactic pullToMiddle] def evalPullToMiddle : Tactic := fun stx => withMainContext do
   let i ← stxToNat ⟨stx[1]⟩ 
   let j ← stxToNat ⟨stx[3]⟩
-  let id: Ident := ⟨stx[7]⟩
   let e ← elabTerm stx[5] none
   let t ← instantiateMVars (← inferType e)
+  let fname ← mkFreshId
   let mvar ← getMainGoal
-  let mvar' ← pullToMiddleCore mvar i j e t id.getId
+  let mvar' ← pullToMiddleCore mvar i j e t fname
   replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G → A ∨ B ∨ C ∨ F ∨ D ∨ E ∨ G := by
   intro h
   pullToMiddle 3, 5, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I ∨ J →
           A ∨ J ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I := by
   intro h
   pullToMiddle 1, 9, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ C ∨ G ∨ D ∨ E ∨ F ∨ H := by
   intro h
   pullToMiddle 3, 6, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ E ∨ C ∨ D ∨ F ∨ G ∨ H := by
   intro h
   pullToMiddle 2, 4, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → E ∨ A ∨ B ∨ C ∨ D ∨ F ∨ G ∨ H := by
   intro h
   pullToMiddle 0, 4, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ G ∨ B ∨ C ∨ D ∨ E ∨ F ∨ H := by
   intro h
   pullToMiddle 1, 6, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F → A ∨ B ∨ C ∨ F ∨ D ∨ E := by
   intro h
   pullToMiddle 3, 5, h, h₂
-  exact h₂
 
 example : A ∨ B ∨ C ∨ D ∨ E → A ∨ E ∨ B ∨ C ∨ D := by
   intro h
   pullToMiddle 1, 4, h, h₂
-  exact h₂
 
 def pullIndex (mvar: MVarId) (index : Nat) (val type : Expr)
   (name : Name) : MetaM MVarId :=
@@ -189,10 +182,10 @@ def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
         else pullIndex mvar i val type name
       | none   => throwError "[Pull]: couldn't find pivot"
 
-syntax (name := pull) "pull" term "," term "," ident ("," term)? : tactic
+syntax (name := pull) "pull" term "," term ("," term)? : tactic
 
 def parsePull : Syntax → TacticM (Option Nat)
-  | `(tactic| pull $_, $_, $_, $i) =>
+  | `(tactic| pull $_, $_, $i) =>
     elabTerm i none >>= pure ∘ getNatLit?
   | _                      => pure none
 
@@ -201,19 +194,18 @@ def parsePull : Syntax → TacticM (Option Nat)
   let t ← instantiateMVars (← inferType hyp)
   let pivot ← elabTerm stx[3] none
   let i ← parsePull stx
-  let name := stx[5].getId
+  let fname ← mkFreshId
   let mvar ← getMainGoal
-  let mvar' ← pullCore mvar pivot hyp t i name
+  let mvar' ← pullCore mvar pivot hyp t i fname
   replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D ∨ E → (D ∨ E) ∨ A ∨ B ∨ C := by
   intro h
-  pull h, (D ∨ E), h₂, 3
-  exact h₂
+  pull h, (D ∨ E),  3
 
 example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → F ∨ A ∨ B ∨ C ∨ D ∨ E ∨ G ∨ H := by
   intro h
-  pull h, F, h₂
-  exact h₂
+  pull h, F
 
 end Smt.Reconstruction.Certifying

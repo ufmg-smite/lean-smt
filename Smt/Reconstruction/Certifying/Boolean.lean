@@ -446,13 +446,14 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let val ← elabTerm stx[1] none
     let idx: Term := ⟨stx[3]⟩
     let i ← stxToNat idx
-    let mvar' ← andElimMeta mvar val i `pf
+    let fname ← mkFreshId
+    let mvar' ← andElimMeta mvar val i fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∧ B ∧ C ∧ D → B := by
   intro h
   andElim h, 1
-  exact pf
 
 def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
@@ -486,14 +487,15 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
   withMainContext do
     let i ← stxToNat ⟨stx[3]⟩
     let val ← elabTerm stx[1] none
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← notOrElimMeta mvar val i `pf
+    let mvar' ← notOrElimMeta mvar val i fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h
   notOrElim h, 2
-  exact pf
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h

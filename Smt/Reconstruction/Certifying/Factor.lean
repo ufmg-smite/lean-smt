@@ -110,34 +110,31 @@ def parseFactor : Syntax → TacticM (Option Nat)
       match (← parseFactor stx) with
       | none => lastSuffix
       | some i => i
+    let fname ← mkFreshId
     let mvar ← getMainGoal
-    let mvar' ← factorCoreMeta mvar e type suffIdx `pf
+    let mvar' ← factorCoreMeta mvar e type suffIdx fname
     replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ B → A ∨ B ∨ C := by
   intro h
   factor h
-  exact pf
 
 example : A ∨ B ∨ B → A ∨ B := by
   intro h
   factor h
-  exact pf
 
 example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A → A ∨ B ∨ C :=
   by intro h
      factor h
-     exact pf
 
 example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
   intro h
   factor h, 1
-  exact pf
 
 example :
   (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
   by intro h
      factor h, 3
-     exact pf
 
 end Smt.Reconstruction.Certifying
