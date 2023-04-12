@@ -116,7 +116,9 @@ def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
       let newMVar ←
         if prefLen > 1 then
           groupPrefixCore mvar val type prefLen fname1
-        else pure mvar
+        else do
+          let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname1 type val
+          pure mvar'
       newMVar.withContext do
         let negArgs := collectOrNNegArgs type prefLen
         let deMorganArgs :=
@@ -124,7 +126,10 @@ def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
         let dmHyp :=
           mkApp (mkApp (mkConst ``deMorgan₂) deMorganArgs) (bvar 0)
         let lctx ← getLCtx
-        let hyp    := (lctx.findFromUserName? fname1).get!.toExpr
+        let hyp ←
+          match lctx.findFromUserName? fname1 with
+          | none => throwError "[LiftOrNToImp]: Could not find declaration"
+          | some ldcl => pure ldcl.toExpr
         let props  ← collectPropsInOrChain type
         let l      ← createOrChain $ List.take prefLen props
         let r      ← createOrChain $ List.drop prefLen props

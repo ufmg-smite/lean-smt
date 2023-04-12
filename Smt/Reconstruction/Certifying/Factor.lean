@@ -47,7 +47,10 @@ def loop (mvar : MVarId) (i j n : Nat) (val pivot : Expr) (li : List Expr)
             let mvar' ← pullToMiddleCore mvar (i + 1) j val type fname
             mvar'.withContext do
               let lctx ← getLCtx
-              let answer := (lctx.findFromUserName? fname).get!.toExpr
+              let answer ←
+                match lctx.findFromUserName? fname with
+                | none => throwError "[Factor]: Could not find declaration"
+                | some ldcl => pure ldcl.toExpr
               pure (mvar', answer)
           else pure (mvar, val)
 
