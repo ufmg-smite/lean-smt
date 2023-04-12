@@ -416,7 +416,7 @@ def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
     mvar.withContext do
       let mut pf ← getProof i val
       let type ← inferType val
-      let binderName := getFirstBinderName type
+      let binderName ← getFirstBinderName type
       let env ← getEnv
       let andProp : Expr := 
         match (env.find? binderName).get!.value? with
@@ -460,14 +460,14 @@ def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
     mvar.withContext do
       let type ← inferType val
       let orChain := notExpr type
-      let props := collectPropsInOrChain orChain
+      let props ← collectPropsInOrChain orChain
       let prop := props.get! i
       withLocalDeclD (← mkFreshId) prop $ fun bv => do
         let pf: Expr ←
-          match getLength orChain == i + 1 with
+          match (← getLength orChain) == i + 1 with
           | true  => pure bv
           | false =>
-            let rest := createOrChain (props.drop (i + 1))
+            let rest ← createOrChain (props.drop (i + 1))
             mkAppOptM ``Or.inl #[none, rest, bv]
         let pf ← getProof i 0 props pf
         let pf := mkApp val pf

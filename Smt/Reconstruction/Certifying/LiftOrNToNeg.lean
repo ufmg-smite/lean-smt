@@ -29,9 +29,9 @@ syntax (name := removeFalse) "removeFalse" term "," term : tactic
 
 def removeFalseCore (mvar : MVarId) (val type : Expr) (name : Name)
   : MetaM MVarId := mvar.withContext do
-  let length := getLength type
-  let props := collectPropsInOrChain type
-  let goal := createOrChain $ List.dropLast props
+  let length ← getLength type
+  let props ← collectPropsInOrChain type
+  let goal ← createOrChain $ List.dropLast props
   if length > 2 then
     let fname ← mkFreshId
     let mvar' ← groupPrefixCore mvar val type (length - 1) fname
@@ -70,13 +70,13 @@ def liftOrNToNegMeta (mvar : MVarId) (val : Expr) (name : Name)
     let lctx ← getLCtx
     let withoutFalse := (lctx.findFromUserName? fname).get!.toExpr
     let type' ← instantiateMVars (← inferType withoutFalse)
-    let propsList := collectPropsInOrChain type'
+    let propsList ← collectPropsInOrChain type'
     let notPropsList := map notExpr propsList
     let propsListExpr := listExpr notPropsList $ Expr.sort Level.zero
     let deMorgan := mkApp (mkConst ``deMorgan₂) propsListExpr
     let modusTollens ← mkAppM ``mt #[deMorgan]
     let notNotHyp ← mkAppM ``notNotIntro #[withoutFalse]
-    let goal := mkApp (mkConst ``Not) (foldAndExpr notPropsList)
+    let goal := mkApp (mkConst ``Not) (← foldAndExpr notPropsList)
     let answer := mkApp modusTollens notNotHyp
     let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
     return mvar''

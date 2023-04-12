@@ -40,28 +40,28 @@ def listExpr : List Expr → Expr → Expr
 | e::es, ty =>
   mkApp (mkApp (mkApp (const ``List.cons [Level.zero]) ty) e) (listExpr es ty)
 
-def collectPropsInOrChain : Expr → List Expr
-| app (app (const ``Or ..) e₁) e₂ => e₁ :: collectPropsInOrChain e₂
-| e => [e]
+def collectPropsInOrChain : Expr → MetaM (List Expr)
+| app (app (const ``Or ..) e₁) e₂ => (e₁ :: ·) <$> collectPropsInOrChain e₂
+| e => pure [e]
 
-def createOrChain : List Expr → Expr
-| []   => panic! "createOrChain with empty list"
-| [h]  => h
-| h::t => app (app (mkConst ``Or) h) $ createOrChain t
+def createOrChain : List Expr → MetaM Expr
+| []   => throwError "createOrChain with empty list"
+| [h]  => pure h
+| h::t => app (app (mkConst ``Or) h) <$> createOrChain t
 
-def foldAndExpr : List Expr → Expr
-| [] => panic! "[foldAndExpr]: empty list"
-| [h] => h
-| h::t => app (app (mkConst ``And) h) $ foldAndExpr t
+def foldAndExpr : List Expr → MetaM Expr
+| []   => throwError "[foldAndExpr]: empty list"
+| [h]  => pure h
+| h::t => app (app (mkConst ``And) h) <$> foldAndExpr t
 
 -- fold the l-th suffix into one expr
-def collectPropsInOrChain' : Nat → Expr → List Expr
-| l, e =>
-  let li := collectPropsInOrChain e
+def collectPropsInOrChain' : Nat → Expr → MetaM (List Expr)
+| l, e => do
+  let li ← collectPropsInOrChain e
   let pref := List.take l li
   let suff := List.drop l li
-  let suffE := createOrChain suff
-  pref ++ [suffE]
+  let suffE ← createOrChain suff
+  pure $ pref ++ [suffE]
 
 def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
   List.join
@@ -85,29 +85,29 @@ def findIndex? [BEq α] : List α → α → Option Nat
     some 0
   else (· + 1) <$> findIndex? xs a
 
-def getIndex : Expr → Expr → Option Nat
-| t, e =>
-  let props := collectPropsInOrChain e
-  findIndex? props t
+def getIndex : Expr → Expr → MetaM (Option Nat)
+| t, e => do
+  let props ← collectPropsInOrChain e
+  pure $ findIndex? props t
 
 -- this one considers a suffIdx
-def getIndex' : Expr → Expr → Nat → Option Nat
-| t, e, suffIdx =>
-  let props := collectPropsInOrChain' suffIdx e
-  findIndex? props t
+def getIndex' : Expr → Expr → Nat → MetaM (Option Nat)
+| t, e, suffIdx => do
+  let props ← collectPropsInOrChain' suffIdx e
+  pure $ findIndex? props t
 
-def getFirstBinderName : Expr → Name
+def getFirstBinderName : Expr → MetaM Name
 | app e _ => getFirstBinderName e
-| const nm .. => nm
-| _ => panic! "[getFirstBinderName]: unknown expression"
+| const nm .. => pure nm
+| _ => throwError "[getFirstBinderName]: unknown expression"
 
-def getLength : Expr → (i : Option Nat := none) → Nat
-| e, some i =>
-  let li := collectPropsInOrChain' i e
-  List.length li
-| e, none =>
-  let li := collectPropsInOrChain e
-  List.length li
+def getLength : Expr → (i : Option Nat := none) → MetaM Nat
+| e, some i => do
+  let li ← collectPropsInOrChain' i e
+  pure $ List.length li
+| e, none => do
+  let li ← collectPropsInOrChain e
+  pure $ List.length li
 
 def getLengthAnd : Expr → Nat
 | app (app (const ``And ..) _) e2 => 1 + getLengthAnd e2
@@ -117,8 +117,8 @@ def getNatLit? : Expr → Option Nat
 | app (app _ (lit (Literal.natVal x))) _ => some x
 | _ => none
 
-def getIthExpr? : Nat → Expr → Option Expr := λ i e =>
-  List.get? (collectPropsInOrChain e) i
+def getIthExpr? : Nat → Expr → MetaM (Option Expr) :=
+  λ i e => do pure $ List.get? (← collectPropsInOrChain e) i
 
 def stxToNat (h : Term) : TacticM Nat := do
   let expr ← elabTerm h.raw none
@@ -147,9 +147,9 @@ partial def expandType' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
   | _ => pure e
 
 def expandTypesInOrChain' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
-  do let es := collectPropsInOrChain e
+  do let es ← collectPropsInOrChain e
      let esExpanded ← List.mapM (expandType' mvar) es
-     let e' := createOrChain esExpanded
+     let e' ← createOrChain esExpanded
      pure e'
 
 partial def expandType : Expr → TacticM Expr := fun e =>
@@ -162,9 +162,9 @@ partial def expandType : Expr → TacticM Expr := fun e =>
   | _ => pure e
 
 def expandTypesInOrChain : Expr → TacticM Expr := fun e => do
-  let es         := collectPropsInOrChain e
+  let es         ← collectPropsInOrChain e
   let esExpanded ← List.mapM expandType es
-  let e'         := createOrChain esExpanded
+  let e'         ← createOrChain esExpanded
   pure e'
 
 def printGoal : TacticM Unit := do
@@ -180,11 +180,5 @@ open Lean.Elab Lean.Elab.Command in
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
-
-#elab 2
-
-#elab Nat → Nat
-
-#elab by exact True.intro
 
 end Smt.Reconstruction.Certifying

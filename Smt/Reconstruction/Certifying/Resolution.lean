@@ -61,14 +61,14 @@ def resolutionCoreMeta (mvar : MVarId) (val₁ val₂ pivot : Expr)
       let type₂ ← inferType val₂
       let mut pivot := pivot
       let mut notPivot := mkApp (mkConst ``Not) pivot
-      let sufIdx₁ :=
+      let sufIdx₁ ←
         match sufIdx₁' with
-        | none => getLength type₁ - 1
-        | some i => i
-      let sufIdx₂ :=
+        | none   => pure $ (← getLength type₁) - 1
+        | some i => pure i
+      let sufIdx₂ ←
         match sufIdx₂' with
-        | none => getLength type₂ - 1
-        | some i => i
+        | none   => pure $ (← getLength type₂) - 1
+        | some i => pure i
       let len₁ := sufIdx₁ + 1
       let len₂ := sufIdx₂ + 1
       let lenGoal := len₁ + len₂ - 2
@@ -88,14 +88,14 @@ def resolutionCoreMeta (mvar : MVarId) (val₁ val₂ pivot : Expr)
         let lctx ← getLCtx
         let pulled₁ := (lctx.findFromUserName? fname₁).get!.toExpr
         let pulled₂ := (lctx.findFromUserName? fname₂).get!.toExpr
-        let props₁ := collectPropsInOrChain' sufIdx₁ type₁
+        let props₁ ← collectPropsInOrChain' sufIdx₁ type₁
         let props₁ := props₁.erase pivot
-        let props₂ := collectPropsInOrChain' sufIdx₂ type₂
+        let props₂ ← collectPropsInOrChain' sufIdx₂ type₂
         let props₂ := props₂.erase notPivot
         let props := props₁ ++ props₂
-        let goal :=
+        let goal ←
           match props with
-          | [] => mkConst ``False
+          | [] => pure $ mkConst ``False
           | _  => createOrChain props
         let thmName : Name :=
           match Nat.blt 1 len₁, Nat.blt 1 len₂ with
@@ -104,7 +104,7 @@ def resolutionCoreMeta (mvar : MVarId) (val₁ val₂ pivot : Expr)
           | false, true  => if flipped then ``flipped_resolution_thm₂ else ``resolution_thm₂
           | false, false => if flipped then ``flipped_resolution_thm₄ else ``resolution_thm₄
         let mut answer ← mkAppM thmName #[pulled₁, pulled₂]
-        if lenGoal > prefixLength then
+        if lenGoal > prefixLength + 1 then
           let lemmas ← ungroupPrefixLemmas props prefixLength
           for l in lemmas do
             answer := mkApp l answer
@@ -171,5 +171,9 @@ example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨
 example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
   intros h₁ h₂
   R2 h₁, h₂, A
+
+example : A ∨ B ∨ C ∨ D → ¬ A → B ∨ C ∨ D := by
+  intros h₁ h₂
+  R1 h₁, h₂, A
 
 end Smt.Reconstruction.Certifying

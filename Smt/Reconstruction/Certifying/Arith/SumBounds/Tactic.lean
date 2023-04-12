@@ -19,18 +19,18 @@ def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
   withMainContext do
     let t₁ ← inferType h₁
     let t₂ ← inferType h₂
-    let thmName : Name :=
+    let thmName : Name ←
       match ← getOp t₁, ← getOp t₂ with
-      | ``LT.lt , ``LT.lt => ``sumBounds₁
-      | ``LT.lt , ``LE.le => ``sumBounds₂
-      | ``LT.lt , ``Eq    => ``sumBounds₃
-      | ``LE.le , ``LT.lt => ``sumBounds₄
-      | ``LE.le , ``LE.le => ``sumBounds₅
-      | ``LE.le , ``Eq    => ``sumBounds₆ 
-      | ``Eq    , ``LT.lt => ``sumBounds₇
-      | ``Eq    , ``LE.le => ``sumBounds₈
-      | ``Eq    , ``Eq    => ``sumBounds₉
-      | _      , _      => panic! "[sumBounds] invalid operation"
+      | ``LT.lt , ``LT.lt => pure ``sumBounds₁
+      | ``LT.lt , ``LE.le => pure ``sumBounds₂
+      | ``LT.lt , ``Eq    => pure ``sumBounds₃
+      | ``LE.le , ``LT.lt => pure ``sumBounds₄
+      | ``LE.le , ``LE.le => pure ``sumBounds₅
+      | ``LE.le , ``Eq    => pure ``sumBounds₆ 
+      | ``Eq    , ``LT.lt => pure ``sumBounds₇
+      | ``Eq    , ``LE.le => pure ``sumBounds₈
+      | ``Eq    , ``Eq    => pure ``sumBounds₉
+      | _      , _      => throwError "[sumBounds] invalid operation"
     mkAppM thmName #[h₁, h₂]
 where
   getOp : Expr → TacticM Name

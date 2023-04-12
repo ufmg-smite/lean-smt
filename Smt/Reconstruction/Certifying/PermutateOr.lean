@@ -18,12 +18,12 @@ def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)
   (suffIdx : Option Nat) (name : Name) : MetaM MVarId :=
   mvar.withContext do
     let type ← instantiateMVars (← Meta.inferType val)
-    let suffIdx: Nat :=
+    let suffIdx: Nat ←
       match suffIdx with
-      | some i => i
-      | none   => getLength type - 1
-    let props := collectPropsInOrChain' suffIdx type
-    let goal := createOrChain (permutateList props perm)
+      | some i => pure i
+      | none   => pure $ (← getLength type) - 1
+    let props ← collectPropsInOrChain' suffIdx type
+    let goal ← createOrChain (permutateList props perm)
     let props := permutateList props perm.reverse
     go mvar props suffIdx val goal
 where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
@@ -35,17 +35,17 @@ where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
           let fname ← mkFreshId
           let type ← Meta.inferType acc
           let last: Bool ←
-            match getIndex' e type suffIdx with
+            match (← getIndex' e type suffIdx) with
             | some i => pure $ i == suffIdx
             | none   => throwError "[permutateOr]: invalid permutation"
           let mvar' ← pullCore mvar e acc type suffIdx fname
           -- we need to update the new length of the suffix after pulling
           -- an element
-          let length := getLength type suffIdx
-          let currLastExpr := (getIthExpr? (length - 1) type).get!
+          let length ← getLength type suffIdx
+          let currLastExpr := (← getIthExpr? (length - 1) type).get!
           let suffIdx' :=
             if last then
-              length - getLength currLastExpr
+              length - (← getLength currLastExpr) 
             else suffIdx
           mvar'.withContext do
             let ctx ← getLCtx

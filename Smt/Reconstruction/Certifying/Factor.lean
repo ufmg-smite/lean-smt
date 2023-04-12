@@ -23,7 +23,7 @@ def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
         mkAppM ``dupOr₂ #[val]
       else mkAppM ``dupOr #[val]
     | i + 1 => do
-      let tailProps := createOrChain (props.drop (j + 1))
+      let tailProps ← createOrChain (props.drop (j + 1))
       withLocalDeclD (← mkFreshId) tailProps $ fun bv => do
         let r ← congDupOr props bv i (j + 1) last
         let lambda ← mkLambdaFVars #[bv] r
@@ -58,7 +58,7 @@ def loop (mvar : MVarId) (i j n : Nat) (val pivot : Expr) (li : List Expr)
               -- so we don't need to use the function that
               -- produces the list considering the last suffix
               let type₁ ← inferType step₁
-              let props := collectPropsInOrChain type₁
+              let props ← collectPropsInOrChain type₁
               congDupOr props step₁ i 0 last
             loop mvar' i j (n - 1) step₂ pivot es name
       else loop mvar i (j + 1) n val pivot es name
@@ -66,10 +66,10 @@ def loop (mvar : MVarId) (i j n : Nat) (val pivot : Expr) (li : List Expr)
 def factorCoreMeta (mvar : MVarId) (val type : Expr) (suffIdx : Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
-      let initLength := getLength type
-      let li := collectPropsInOrChain' suffIdx type
+      let initLength ← getLength type
+      let li ← collectPropsInOrChain' suffIdx type
       let (answer, mvar') ← go mvar li (li.length - 1) li.length initLength val
-      let goal: Expr := createOrChain li.eraseDups
+      let goal ← createOrChain li.eraseDups
       let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
       return mvar''
 where
@@ -89,9 +89,9 @@ where
              let lctx ← getLCtx
              let answer' := (lctx.findFromUserName? fname).get!.toExpr
              let t ← instantiateMVars (← inferType answer')
-             let newLength := getLength t
+             let newLength ← getLength t
              let propsDropped := initLength - newLength
-             let li' := collectPropsInOrChain' (suffIdx - propsDropped) t
+             let li' ← collectPropsInOrChain' (suffIdx - propsDropped) t
              go mvar' li' i' n initLength answer'
 
 syntax (name := factor) "factor" term ("," term)? : tactic
@@ -105,7 +105,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
   withMainContext do
     let e ← elabTerm stx[1] none
     let type ← inferType e
-    let lastSuffix := getLength type - 1
+    let lastSuffix ← pure $ (← getLength type) - 1
     let suffIdx :=
       match (← parseFactor stx) with
       | none => lastSuffix

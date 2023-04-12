@@ -24,10 +24,10 @@ def groupPrefixLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
 
 def groupPrefixLemmasCore : Name → List Expr → Nat → MetaM (List Expr)
 | nm, props, n =>
-  let f := λ i: Nat => do
+  let f := fun i: Nat => do
     let a₁ := props.get! i
-    let a₂ := createOrChain $ List.take (n - i) (props.drop (i + 1))
-    let a₃ := createOrChain $ props.drop (n + 1)
+    let a₂ ← createOrChain $ List.take (n - i) (props.drop (i + 1))
+    let a₃ ← createOrChain $ props.drop (n + 1)
     let appliedArgs :=
       mkApp (mkApp (mkApp (mkConst nm) a₁) a₂) a₃
     groupPrefixLemmas' props i i appliedArgs
@@ -50,7 +50,7 @@ def groupMiddleLemmas : List Expr → Nat → MetaM (List Expr)
   let f := fun i: Nat => do
     let middleSize := groupSize + 1
     let a₁ := sufProps.get! i
-    let a₂ := createOrChain $ List.take (groupSize - i - 1) (sufProps.drop (i + 1))
+    let a₂ ← createOrChain $ List.take (groupSize - i - 1) (sufProps.drop (i + 1))
     let a₃ := sufProps.get! (middleSize - 1)
     let appliedArgs :=
       mkApp (mkApp (mkApp (mkConst ``orAssocDir) a₁) a₂) a₃
@@ -68,8 +68,8 @@ def ungroupMiddleLemmas : List Expr → Nat → Nat → MetaM (List Expr)
 | props, groupStart, groupSize =>
   let f := fun i: Nat => do
     let a₁ := props.get! i
-    let a₂ := createOrChain (subList (i + 1) (groupStart + groupSize - 1) props)
-    let a₃ := createOrChain $ props.drop (groupStart + groupSize)
+    let a₂ ← createOrChain (subList (i + 1) (groupStart + groupSize - 1) props)
+    let a₃ ← createOrChain $ props.drop (groupStart + groupSize)
     let appliedArgs :=
       mkApp (mkApp (mkApp (mkConst ``orAssocConv) a₁) a₂) a₃
     ungroupMiddleLemmas' props i i appliedArgs
@@ -77,19 +77,20 @@ def ungroupMiddleLemmas : List Expr → Nat → Nat → MetaM (List Expr)
   let is := List.drop groupStart (List.range (groupStart + groupSize - 1))
   List.mapM f is
 
-def getGroupOrPrefixGoal : Expr → Nat → Expr
-| e, n => let props := collectPropsInOrChain e
-          let left := createOrChain (take n props)
-          let right := createOrChain (drop n props)
-          app (app (mkConst ``Or) left) right
+def getGroupOrPrefixGoal : Expr → Nat → MetaM Expr
+| e, n => do
+  let props ← collectPropsInOrChain e
+  let left ← createOrChain (take n props)
+  let right ← createOrChain (drop n props)
+  pure $ app (app (mkConst ``Or) left) right
 
 def groupPrefixCore (mvar : MVarId) (val type : Expr) (prefLen : Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
-      let l := getLength type
+      let l ← getLength type
       if prefLen > 0 && prefLen < l then
-        let props := collectPropsInOrChain type
-        let goal := getGroupOrPrefixGoal type prefLen
+        let props ← collectPropsInOrChain type
+        let goal ← getGroupOrPrefixGoal type prefLen
         let mut answer := val
         let lemmas ← groupPrefixLemmas props (prefLen - 1)
         for l in lemmas do
@@ -99,18 +100,18 @@ def groupPrefixCore (mvar : MVarId) (val type : Expr) (prefLen : Nat)
       else throwError
         "[groupPrefix]: prefix length must be > 0 and < size of or-chain"
 
-def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : Expr :=
-  let propsList := collectPropsInOrChain props
-  let conclusion := createOrChain $ List.drop prefLen propsList
-  let premiss := foldAndExpr $ List.map notExpr $ List.take prefLen propsList
-  mkForall' premiss conclusion
+def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
+  let propsList ← collectPropsInOrChain props
+  let conclusion ← createOrChain $ List.drop prefLen propsList
+  let premiss ← foldAndExpr $ List.map notExpr $ List.take prefLen propsList
+  pure $ mkForall' premiss conclusion
 
 def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
   (prefLen : Nat) : MetaM MVarId :=
     mvar.withContext do
       /- let type ← (expandTypesInOrChain' mvar) $ ← inferType val -/
       let type ← inferType val
-      let goal := liftOrNToImpGoal type prefLen
+      let goal ← liftOrNToImpGoal type prefLen
       let fname1 ← mkFreshId
       let newMVar ←
         if prefLen > 1 then
@@ -124,12 +125,12 @@ def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
           mkApp (mkApp (mkConst ``deMorgan₂) deMorganArgs) (bvar 0)
         let lctx ← getLCtx
         let hyp    := (lctx.findFromUserName? fname1).get!.toExpr
-        let props  := collectPropsInOrChain type
-        let l      := createOrChain $ List.take prefLen props
-        let r      := createOrChain $ List.drop prefLen props
+        let props  ← collectPropsInOrChain type
+        let l      ← createOrChain $ List.take prefLen props
+        let r      ← createOrChain $ List.drop prefLen props
         let answer :=
           mkApp (mkApp (mkApp (mkApp (mkConst ``orImplies₃) l) r) hyp) dmHyp
-        let answer := mkLam (foldAndExpr negArgs) answer
+        let answer := mkLam (← foldAndExpr negArgs) answer
         let (_, newMVar') ← MVarId.intro1P $ ← newMVar.assert name goal answer
         return newMVar'
 

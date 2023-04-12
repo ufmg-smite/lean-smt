@@ -41,10 +41,10 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
       let suff := subList (j + 1) props.length props
       let mut t := mid
       if not suff.isEmpty then
-        t := createOrChain [t, createOrChain suff]
+        t ← createOrChain [t, ← createOrChain suff]
       if not pref.isEmpty then
-        let l' := collectPropsInOrChain t
-        t := createOrChain (pref ++ l')
+        let l' ← collectPropsInOrChain t
+        t ← createOrChain (pref ++ l')
       withLocalDeclD fname t $ fun bv => do
         let rc ← congLemmas lemmas props i_iter' i j bv mid last
         let lambda ← mkLambdaFVars #[bv] rc
@@ -58,8 +58,8 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
     return mvar'
   else
-    let last := getLength type == j + 1
-    let props := collectPropsInOrChain type
+    let last := (← getLength type) == j + 1
+    let props ← collectPropsInOrChain type
     let mid := List.take (j - i + 1) (List.drop i props)
 
     -- step₁: group with parenthesis props in the range [i, j]
@@ -76,7 +76,7 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     /- --       -> A ∨ ((B ∨ C) ∨ D) ∨ E -/
     let step₂: Expr ← do
       let lemmas ← groupMiddleLemmas (props.drop i) (j - i)
-      let mid := createOrChain (subList i j props)
+      let mid ← createOrChain (subList i j props)
       congLemmas lemmas props i i j step₁ mid last
 
     /- -- step₃: apply commutativity on middle -/
@@ -85,15 +85,15 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     let midPref := List.dropLast mid
     let midSuff := List.getLast! mid
     let comm :=
-      mkApp (mkApp (mkConst ``orComm) (createOrChain midPref)) midSuff
-    let mid := createOrChain [createOrChain midPref, midSuff]
+      mkApp (mkApp (mkConst ``orComm) (← createOrChain midPref)) midSuff
+    let mid ← createOrChain [← createOrChain midPref, midSuff]
     let step₃ ← congLemmas [comm] props i i j step₂ mid last
   
     /- -- step₄: ungroup middle -/
     /- -- example: A ∨ (D ∨ B ∨ C) ∨ E -/
     /- --       -> A ∨ D ∨ B ∨ C ∨ E -/
     let goalList := pull! i j props
-    let goal := createOrChain goalList
+    let goal ← createOrChain goalList
     let step₄ ←
       if last then pure step₃
       else do
@@ -155,12 +155,12 @@ def pullIndex (mvar: MVarId) (index : Nat) (val type : Expr)
 def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
-      let lastSuffix := getLength type - 1
+      let lastSuffix := (← getLength type) - 1
       let sufIdx :=
         match sufIdx with
         | some i => i
         | none   => lastSuffix
-      let li := collectPropsInOrChain' sufIdx type
+      let li ← collectPropsInOrChain' sufIdx type
       match findIndex? li pivot with
       | some i =>
         if i == sufIdx && sufIdx != lastSuffix then
