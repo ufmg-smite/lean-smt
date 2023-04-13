@@ -451,10 +451,6 @@ syntax (name := andElim) "andElim" term "," term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-example : A ∧ B ∧ C ∧ D → B := by
-  intro h
-  andElim h, 1
-
 def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
@@ -492,10 +488,6 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
     let mvar' ← notOrElimMeta mvar val i fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-
-example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
-  intro h
-  notOrElim h, 2
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h

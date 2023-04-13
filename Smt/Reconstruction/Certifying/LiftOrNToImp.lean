@@ -151,8 +151,4 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → A ∧ B → C ∨ D ∨ E  := by
-  intro h
-  liftOrNToImp h, 2
-
 end Smt.Reconstruction.Certifying

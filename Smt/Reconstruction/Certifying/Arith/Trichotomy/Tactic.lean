@@ -51,8 +51,4 @@ where
       | app (app (app (app (const ``GE.ge ..) ..) ..) ..) _ => mkAppM ``not_lt_of_ge #[e]
       | _ => pure e
 
-example {a b : Nat} : a ≥ b → ¬ a = b → a > b := by
-  intros h₁ h₂
-  trichotomy h₁, h₂
-
 end Smt.Reconstruction.Certifying

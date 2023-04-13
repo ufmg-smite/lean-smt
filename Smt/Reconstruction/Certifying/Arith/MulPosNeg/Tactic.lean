@@ -57,12 +57,4 @@ where getThmName : Expr → TacticM Name
         | ``GE.ge => pure ``arith_mul_neg_ge
         | _ => throwError "[arithMulNeg]: invalid comparator"
 
-example {a b c : Int} : a < b → 0 < c → c * a < c * b := by
-  intros h₁ h₂
-  arithMulPos h₁, h₂
-
-example {a b c : ℚ} : a ≤ b → 0 > c → c * a ≥ c * b := by
-  intros h₁ h₂
-  arithMulNeg h₁, h₂
-
 end Smt.Reconstruction.Certifying

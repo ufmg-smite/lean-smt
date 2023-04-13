@@ -46,7 +46,6 @@ def removeFalseCore (mvar : MVarId) (val type : Expr) (name : Name)
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal answer
     return mvar'
 
-
 @[tactic removeFalse] def evalRemoveFalse : Tactic :=
   fun stx => withMainContext do
     let hyp ← elabTerm stx[1] none
@@ -55,11 +54,6 @@ def removeFalseCore (mvar : MVarId) (val type : Expr) (name : Name)
     let mvar ← getMainGoal
     let mvar' ← removeFalseCore mvar hyp hypType out.getId
     replaceMainGoal [mvar']
-
-example : ¬ A ∨ B ∨ ¬ C ∨ False → ¬ A ∨ B ∨ ¬ C := by
-  intro h
-  removeFalse h, h₁
-  exact h₁
 
 def liftOrNToNegMeta (mvar : MVarId) (val : Expr) (name : Name)
   : MetaM MVarId := mvar.withContext do
@@ -91,9 +85,5 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
     let mvar' ← liftOrNToNegMeta mvar hyp fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-
-example : ¬ A ∨ ¬ B ∨ ¬ C ∨ ¬ D ∨ False → ¬ (A ∧ B ∧ C ∧ D) := by
-  intro h
-  liftOrNToNeg h
 
 end Smt.Reconstruction.Certifying
