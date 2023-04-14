@@ -15,8 +15,8 @@ open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying
 
-def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
-  withMainContext do
+def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h₂ =>
+  mvar.withContext do
     let t₁ ← inferType h₁
     let t₂ ← inferType h₂
     let thmName : Name ←
@@ -33,10 +33,24 @@ def combineBounds : Expr → Expr → TacticM Expr := fun h₁ h₂ =>
       | _      , _      => throwError "[sumBounds] invalid operation"
     mkAppM thmName #[h₁, h₂]
 where
-  getOp : Expr → TacticM Name
+  getOp : Expr → MetaM Name
     | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
     | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
     | _ => throwError "[sumBounds] invalid parameter"
+
+def sumBoundsMeta (mvar : MVarId) (h : Expr) (hs : List Expr) (name : Name)
+  : MetaM MVarId :=
+  mvar.withContext do
+    go h hs
+where
+  go : Expr → List Expr → MetaM MVarId
+    | acc, [] => do
+      let type ← inferType acc
+      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type acc
+      return mvar'
+    | acc, h::hs => do
+      let acc ← combineBounds mvar acc h
+      go acc hs
 
 syntax (name := sumBounds) "sumBounds" "[" term,* "]" : tactic
 
@@ -51,12 +65,11 @@ def parseSumBounds : Syntax → TacticM (List Expr)
       match ← parseSumBounds stx with
       | h::hs => pure (h, hs)
       | [] => throwError "[sumBounds]: empty list of premisses"
-    go h hs
-where
-  go : Expr → List Expr → TacticM Unit
-    | acc, []    => closeMainGoal acc
-    | acc, e::es => do
-      let acc' ← combineBounds acc e
-      go acc' es
+    let mvar ← getMainGoal
+    let fname ← mkFreshId
+    let mvar' ← sumBoundsMeta mvar h hs fname
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
+
 
 end Smt.Reconstruction.Certifying
