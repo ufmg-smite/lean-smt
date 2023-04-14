@@ -20,12 +20,8 @@ open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying
 
-syntax (name := trichotomy) "trichotomy" term "," term : tactic
-
-@[tactic trichotomy] def evalTrichotomy : Tactic := fun stx =>
-  withMainContext do
-    let h₁ ← notLeToLt (← elabTerm stx[1] none)
-    let h₂ ← notLeToLt (← elabTerm stx[3] none)
+def trichotomyMeta (mvar : MVarId) (h₁ h₂ : Expr) (name : Name) : MetaM MVarId :=
+  mvar.withContext do
     let t₁ ← inferType h₁
     let t₂ ← inferType h₂
     let thmName : Name ←
@@ -37,13 +33,29 @@ syntax (name := trichotomy) "trichotomy" term "," term : tactic
       | ``Eq    , ``GT.gt => pure ``trichotomy₅
       | ``GT.gt , ``Eq    => pure ``trichotomy₆
       | _      , _      => throwError "[trichotomy] invalid operation"
-    closeMainGoal (← mkAppM thmName #[h₁, h₂])
+    let answer ← mkAppM thmName #[h₁, h₂]
+    let answerType ← inferType answer
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name answerType answer
+    return mvar'
 where
-  getOp : Expr → TacticM Name
+  getOp : Expr → MetaM Name
     | app _ (app (app (app (app (const nm ..) ..) ..) ..) ..) => pure nm
     | app _ (app (app (app (const nm ..) ..) ..) ..) => pure nm
-    | _ => throwError "[trichotomy] invalid parameter"
-  notLeToLt : Expr → TacticM Expr := λ e => do
+    | _ => throwError "[Trichotomy] invalid parameter"
+
+syntax (name := trichotomy) "trichotomy" term "," term : tactic
+
+@[tactic trichotomy] def evalTrichotomy : Tactic := fun stx =>
+  withMainContext do
+    let h₁ ← notLeToLt (← elabTerm stx[1] none)
+    let h₂ ← notLeToLt (← elabTerm stx[3] none)
+    let fname ← mkFreshId
+    let mvar ← getMainGoal
+    let mvar' ← trichotomyMeta mvar h₁ h₂ fname
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
+where
+  notLeToLt : Expr → MetaM Expr := λ e => do
     match ← inferType e with
       | app (app (app (app (app (const ``LE.le ..) ..) ..) ..) ..) _ => mkAppM ``not_gt_of_le #[e]
       | app (app (app (app (const ``LE.le ..) ..) ..) ..) _ => mkAppM ``not_gt_of_le #[e]
