@@ -22,7 +22,7 @@ open Elab Tactic Expr Meta
 syntax (name := arithMulPos) "arithMulPos" ("[" term,* "]")? "," term : tactic
 syntax (name := arithMulNeg) "arithMulNeg" ("[" term,* "]")? "," term : tactic
 
-def parseArithMulAux : Array Term → Term → TacticM (List Name × Nat)
+def parseArithMulAux : Array Term → Term → TacticM (Name × Name × Name × Nat)
   | hs, i => do
     let li: List Name :=
       hs.toList.map (fun h: Term =>
@@ -30,21 +30,18 @@ def parseArithMulAux : Array Term → Term → TacticM (List Name × Nat)
                        hIdent.getId
                     )
     let i' ← stxToNat i
-    return (li, i')
+    match li with
+    | [a, b, c] => return (a, b, c, i')
+    | _         => throwError "[arithMul]: List must have 3 elementsd"
 
-def parseArithMul : Syntax → TacticM (List Name × Nat)
+def parseArithMul : Syntax → TacticM (Name × Name × Name × Nat)
   | `(tactic| arithMulPos [ $[$hs],* ], $i) => parseArithMulAux hs i
   | `(tactic| arithMulNeg [ $[$hs],* ], $i) => parseArithMulAux hs i
   | _ => throwError "[arithMul]: wrong usage"
 
-def evalArithMulAux : Syntax → List Name → TacticM Unit:=
-  fun stx thms =>
-    withMainContext do
-      let (names, compId) ← parseArithMul stx
-      let (a, b, c) ←
-        match names with
-        | [a', b', c'] => pure (a', b', c')
-        | _            => throwError "[arithMulNeg]: List must have 3 elements"
+def arithMulMeta (mvar : MVarId) (a b c : Name) (compId : Nat) (outName : Name)
+  (thms : List Name) : MetaM MVarId :=
+    mvar.withContext do
       let lctx ← getLCtx
       let va := (lctx.findFromUserName? a).get!.toExpr
       let vb := (lctx.findFromUserName? b).get!.toExpr
@@ -60,20 +57,34 @@ def evalArithMulAux : Syntax → List Name → TacticM Unit:=
         | const `Rat .. => pure $ mkConst ``lorRat
         | _ => throwError "[arithMulNeg]: unexpected type for variable"
       let proof := mkApp5 (mkConst thmName) type inst va vb vc
-      closeMainGoal proof
+      let proofType ← Meta.inferType proof
+      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert outName proofType proof
+      return mvar'
 
-@[tactic arithMulPos] def evalArithMulPos : Tactic := fun stx =>
-  evalArithMulAux stx [ ``arith_mul_pos_lt
-                      , ``arith_mul_pos_le
-                      , ``arith_mul_pos_gt
-                      , ``arith_mul_pos_ge
-                      ]
+@[tactic arithMulPos] def evalArithMulPos : Tactic := fun stx => do
+  let (a, b, c, compId) ← parseArithMul stx
+  let fname ← mkFreshId
+  let mvar ← getMainGoal
+  let mvar' ← arithMulMeta mvar a b c compId fname
+                [ ``arith_mul_pos_lt
+                , ``arith_mul_pos_le
+                , ``arith_mul_pos_gt
+                , ``arith_mul_pos_ge
+                ]
+  replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-@[tactic arithMulNeg] def evalArithMulNeg : Tactic := fun stx =>
-  evalArithMulAux stx [ ``arith_mul_neg_lt
-                      , ``arith_mul_neg_le
-                      , ``arith_mul_neg_gt
-                      , ``arith_mul_neg_ge
-                      ]
+@[tactic arithMulNeg] def evalArithMulNeg : Tactic := fun stx => do
+  let (a, b, c, compId) ← parseArithMul stx
+  let fname ← mkFreshId
+  let mvar ← getMainGoal
+  let mvar' ← arithMulMeta mvar a b c compId fname
+                [ ``arith_mul_neg_lt
+                , ``arith_mul_neg_le
+                , ``arith_mul_neg_gt
+                , ``arith_mul_neg_ge
+                ]
+  replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 end Smt.Reconstruction.Certifying
