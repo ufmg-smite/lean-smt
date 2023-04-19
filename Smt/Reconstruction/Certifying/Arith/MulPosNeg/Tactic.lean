@@ -22,30 +22,27 @@ open Elab Tactic Expr Meta
 syntax (name := arithMulPos) "arithMulPos" ("[" term,* "]")? "," term : tactic
 syntax (name := arithMulNeg) "arithMulNeg" ("[" term,* "]")? "," term : tactic
 
-def parseArithMulAux : Array Term → Term → TacticM (Name × Name × Name × Nat)
+def parseArithMulAux : Array Term → Term → TacticM (Expr × Expr × Expr × Nat)
   | hs, i => do
-    let li: List Name :=
-      hs.toList.map (fun h: Term =>
-                       let hIdent : Ident := ⟨h⟩
-                       hIdent.getId
-                    )
+    let li: List Expr ←
+      hs.toList.mapM (fun h: Term => elabTerm h none)
     let i' ← stxToNat i
     match li with
     | [a, b, c] => return (a, b, c, i')
     | _         => throwError "[arithMul]: List must have 3 elementsd"
 
-def parseArithMul : Syntax → TacticM (Name × Name × Name × Nat)
+def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
   | `(tactic| arithMulPos [ $[$hs],* ], $i) => parseArithMulAux hs i
   | `(tactic| arithMulNeg [ $[$hs],* ], $i) => parseArithMulAux hs i
   | _ => throwError "[arithMul]: wrong usage"
 
-def arithMulMeta (mvar : MVarId) (a b c : Name) (compId : Nat) (outName : Name)
-  (thms : List Name) : MetaM MVarId :=
+def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
+  (outName : Name) (thms : List Name) : MetaM MVarId :=
     mvar.withContext do
-      let lctx ← getLCtx
-      let va := (lctx.findFromUserName? a).get!.toExpr
-      let vb := (lctx.findFromUserName? b).get!.toExpr
-      let vc := (lctx.findFromUserName? c).get!.toExpr
+      /- let lctx ← getLCtx -/
+      /- let va := (lctx.findFromUserName? a).get!.toExpr -/
+      /- let vb := (lctx.findFromUserName? b).get!.toExpr -/
+      /- let vc := (lctx.findFromUserName? c).get!.toExpr -/
       let type ← inferType va
       let thmName: Name ←
         if compId <= 3 then
