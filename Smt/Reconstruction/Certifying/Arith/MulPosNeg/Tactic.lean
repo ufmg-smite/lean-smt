@@ -39,10 +39,6 @@ def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
 def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
   (outName : Name) (thms : List Name) : MetaM MVarId :=
     mvar.withContext do
-      /- let lctx ← getLCtx -/
-      /- let va := (lctx.findFromUserName? a).get!.toExpr -/
-      /- let vb := (lctx.findFromUserName? b).get!.toExpr -/
-      /- let vc := (lctx.findFromUserName? c).get!.toExpr -/
       let type ← inferType va
       let thmName: Name ←
         if compId <= 3 then
