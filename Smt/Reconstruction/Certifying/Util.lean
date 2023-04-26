@@ -6,6 +6,7 @@ Authors: Tomaz Gomes Mascarenhas
 -/
 
 import Lean
+import Mathlib.Data.Nat.Parity
 
 namespace Smt.Reconstruction.Certifying
 
@@ -180,5 +181,11 @@ open Lean.Elab Lean.Elab.Command in
     unless e.isSyntheticSorry do
       logInfoAt tk m!"{e} ::: {repr e}"
   | _ => throwUnsupportedSyntax
+
+def getOp : Expr → MetaM Name
+  | app (app (app (app (app (Expr.const nm ..) ..) ..) ..) ..) .. => pure nm
+  | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
+  | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
+  | _ => throwError "[sumBounds] invalid parameter"
 
 end Smt.Reconstruction.Certifying

@@ -19,7 +19,7 @@ namespace Smt.Reconstruction.Certifying
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
-  cases em P with
+  cases Classical.em P with
   | inl p  => exact p
   | inr np => apply False.elim
               apply h
@@ -28,27 +28,27 @@ theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
 
 theorem notImplies2 : ∀ {P Q : Prop}, ¬ (P → Q) → ¬ Q := by
   intros P Q h
-  cases em Q with
+  cases Classical.em Q with
   | inl q  => exact False.elim (h (λ _ => q))
   | inr nq => exact nq
 
 theorem equivElim1 : ∀ {P Q : Prop}, Eq P Q → ¬ P ∨ Q := by
   intros P Q h
   rewrite [h]
-  cases em Q with
+  cases Classical.em Q with
   | inl q  => exact Or.inr q
   | inr nq => exact Or.inl nq
 
 theorem equivElim2 : ∀ {P Q : Prop}, Eq P Q → P ∨ ¬ Q := by
   intros P Q h
   rewrite [h]
-  cases em Q with
+  cases Classical.em Q with
   | inl q  => exact Or.inl q
   | inr nq => exact Or.inr nq
 
 theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Eq P Q) → P ∨ Q := by
   intros P Q h
-  exact match em P, em Q with
+  exact match Classical.em P, Classical.em Q with
   | Or.inl p, _ => Or.inl p
   | _, Or.inl q => Or.inr q
   | Or.inr np, Or.inr nq =>
@@ -56,7 +56,7 @@ theorem notEquivElim1 : ∀ {P Q : Prop}, ¬ (Eq P Q) → P ∨ Q := by
 
 theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Eq P Q) → ¬ P ∨ ¬ Q := by
   intros P Q h
-  exact match em P, em Q with
+  exact match Classical.em P, Classical.em Q with
   | Or.inr np, _ => Or.inl np
   | _, Or.inr nq => Or.inr nq
   | Or.inl p, Or.inl q =>
@@ -64,7 +64,7 @@ theorem notEquivElim2 : ∀ {P Q : Prop}, ¬ (Eq P Q) → ¬ P ∨ ¬ Q := by
 
 theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
   intros c a b h
-  cases em c with
+  cases Classical.em c with
   | inl hc => have r: ite c a b = a := if_pos hc
               rewrite [r] at h
               exact Or.inr h
@@ -72,7 +72,7 @@ theorem iteElim1 : ∀ {c a b : Prop}, ite c a b → ¬ c ∨ a := by
 
 theorem iteElim2 : ∀ {c a b : Prop}, ite c a b → c ∨ b := by
   intros c a b h
-  cases em c with
+  cases Classical.em c with
   | inl hc => exact Or.inl hc
   | inr hnc => have r: ite c a b = b := if_neg hnc
                rewrite [r] at h
@@ -80,7 +80,7 @@ theorem iteElim2 : ∀ {c a b : Prop}, ite c a b → c ∨ b := by
 
 theorem notIteElim1 : ∀ {c a b : Prop}, ¬ ite c a b → ¬ c ∨ ¬ a := by
   intros c a b h
-  cases em c with
+  cases Classical.em c with
   | inl hc  => have r : ite c a b = a := if_pos hc
                rewrite [r] at h
                exact Or.inr h
@@ -88,7 +88,7 @@ theorem notIteElim1 : ∀ {c a b : Prop}, ¬ ite c a b → ¬ c ∨ ¬ a := by
 
 theorem notIteElim2 : ∀ {c a b : Prop}, ¬ ite c a b → c ∨ ¬ b := by
   intros c a b h
-  cases em c with
+  cases Classical.em c with
   | inl hc => exact Or.inl hc
   | inr hnc => have r : ite c a b = b := if_neg hnc
                rewrite [r] at h
@@ -131,9 +131,9 @@ theorem congOrLeft : ∀ {P Q R : Prop}, (P → Q) → R ∨ P → R ∨ Q := by
 
 theorem orImplies : ∀ {p q : Prop}, (¬ p → q) → p ∨ q :=
   by intros p q h
-     exact match em p with
+     exact match Classical.em p with
      | Or.inl pp => Or.inl pp
-     | Or.inr npp => match em q with
+     | Or.inr npp => match Classical.em q with
                      | Or.inl pq => Or.inr pq
                      | Or.inr npq => False.elim (npq (h npp))
 
@@ -151,7 +151,7 @@ theorem orImplies₃ : ∀ {p q : Prop}, p ∨ q → ¬ p → q := by
 
 theorem scope : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
   by intros p q h
-     exact match em p with
+     exact match Classical.em p with
      | Or.inl pp =>  Or.inr (h pp)
      | Or.inr npp => Or.inl npp
 
@@ -159,7 +159,7 @@ def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q := scope
 
 theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
   by intros p q h
-     exact match em p, em q with
+     exact match Classical.em p, Classical.em q with
      | Or.inl pp,  _          => False.elim (h (Or.inl pp))
      | Or.inr _,   Or.inl pq  => False.elim (h (Or.inr pq))
      | Or.inr npp, Or.inr npq => And.intro npp npq
@@ -167,7 +167,7 @@ theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
 theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
   by intros p q h
      have ⟨np, nq⟩ := h
-     exact match em p, em q with
+     exact match Classical.em p, Classical.em q with
      | Or.inl pp,  _   => False.elim (np pp)
      | _        ,  Or.inl pq  => False.elim (nq pq)
      | Or.inr npp, Or.inr npq => λ h₂ =>
@@ -177,14 +177,14 @@ theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
 
 theorem deMorganSmall₃ : ∀ {p q : Prop}, ¬ (p ∧ q) → ¬ p ∨ ¬ q :=
   by intros p q h
-     match em p, em q with
+     match Classical.em p, Classical.em q with
      | Or.inl hp, Or.inl hq  => exact False.elim (h (And.intro hp hq))
      | _,         Or.inr hnq => exact Or.inr hnq
      | Or.inr hnp, _        => exact Or.inl hnp
 
 theorem notNotElim : ∀ {p : Prop}, ¬ ¬ p → p :=
   by intros p h
-     exact match em p with
+     exact match Classical.em p with
      | Or.inl pp => pp
      | Or.inr np => False.elim (h (λ p => np p))
 
@@ -196,9 +196,9 @@ theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
      | []   => True.intro
      | [t]  => by simp [andN]
                   simp [notList, orN, map] at h
-                  cases em t with
+                  cases Classical.em t with
                   | inl tt  => exact tt
-                  | inr ntt => exact False.elim (h ntt)
+                  | inr ntt => exact False.elim (ntt h)
      | h₁::h₂::t => by simp [orN, notList, map] at h
                        have ⟨ t₁, t₂ ⟩ := deMorganSmall h
                        simp [orN] at t₂
@@ -211,7 +211,7 @@ theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) :=
   by intros l h
      exact match l with
      | [] => by simp [orN, notList]
-     | [t] => by simp [orN, notList]; simp [andN] at h; exact notNotIntro h
+     | [t] => by simp [orN, notList]; simp [andN] at h; exact h
      | h₁::h₂::t => by simp [orN, notList, map]
                        simp [andN] at h
                        apply deMorganSmall₂
@@ -279,11 +279,11 @@ theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i Fal
       have ⟨_, notOrNTail⟩ := deMorganSmall orNl
       exact absurd orNTail notOrNTail
 
-theorem cnfOrPos : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (em (orN l))
+theorem cnfOrPos : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (Classical.em (orN l))
 
 theorem cnfImpliesPos : ∀ {p q : Prop}, ¬ (p → q) ∨ ¬ p ∨ q := by
   intros p q
-  match em p, em q with
+  match Classical.em p, Classical.em q with
   | _,         Or.inl hq  => exact Or.inr (Or.inr hq)
   | Or.inl hp, Or.inr hnq => apply Or.inl
                              intro f
@@ -328,7 +328,7 @@ theorem cnfItePos1 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ ¬ c ∨ a := by
   apply orImplies
   intro hite
   have hite' := notNotElim hite
-  match em c with
+  match Classical.em c with
   | Or.inl hc  => have r: (if c then a else b) = a := if_pos hc
                   rewrite [r] at hite'
                   exact Or.inr hite'
@@ -339,7 +339,7 @@ theorem cnfItePos2 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ c ∨ b   := by
   apply orImplies
   intro hite
   have hite' := notNotElim hite
-  match em c with
+  match Classical.em c with
   | Or.inr hnc => have r: (if c then a else b) = b := if_neg hnc
                   rewrite [r] at hite'
                   exact Or.inr hite'
@@ -350,7 +350,7 @@ theorem cnfItePos3 : ∀ {c a b : Prop}, ¬ (ite c a b) ∨ a ∨ b   := by
   apply orImplies
   intro hite
   have hite' := notNotElim hite
-  match em c with
+  match Classical.em c with
   | Or.inr hnc => have r: (if c then a else b) = b := if_neg hnc
                   rewrite [r] at hite'
                   exact Or.inr hite'
@@ -362,7 +362,7 @@ theorem cnfIteNeg1 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ c ∨ ¬ a := by
   intros c a b
   apply orImplies
   intro hnite
-  match em c with
+  match Classical.em c with
   | Or.inl hc  => have r: (if c then a else b) = a := if_pos hc
                   rewrite [r] at hnite
                   exact Or.inr hnite
@@ -372,7 +372,7 @@ theorem cnfIteNeg2 : ∀ {c a b : Prop}, (ite c a b) ∨ c ∨ ¬ b   := by
   intros c a b
   apply orImplies
   intro hnite
-  match em c with
+  match Classical.em c with
   | Or.inr hnc  => have r: (if c then a else b) = b := if_neg hnc
                    rewrite [r] at hnite
                    exact Or.inr hnite
@@ -382,7 +382,7 @@ theorem cnfIteNeg3 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ a ∨ ¬ b := by
   intros c a b
   apply orImplies
   intro hnite
-  match em c with
+  match Classical.em c with
   | Or.inr hnc  => have r: (if c then a else b) = b := if_neg hnc
                    rewrite [r] at hnite
                    exact Or.inr hnite
@@ -494,8 +494,7 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   match l with
   | []         => exact False.elim (h True.intro)
   | [_]        => exact h
-  | p₁::p₂::ps => simp [andN] at h
-                  simp [orN, notList, map]
+  | p₁::p₂::ps => simp [orN, notList, map]
                   match deMorganSmall₃ h with
                   | Or.inl hnp₁ => exact Or.inl hnp₁
                   | Or.inr hnAndTail =>

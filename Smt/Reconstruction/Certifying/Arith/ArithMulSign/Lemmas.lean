@@ -6,6 +6,8 @@ import Mathlib.Data.Nat.Parity
 
 open Smt.Reconstruction.Certifying
 
+#check Nat.odd_iff
+
 mutual
 
 theorem powEven : ∀ {k : Nat} {z : Int} , z < 0 → Even k → Int.pow z k > 0 := by

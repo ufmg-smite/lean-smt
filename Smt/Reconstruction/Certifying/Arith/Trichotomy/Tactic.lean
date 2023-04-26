@@ -37,11 +37,6 @@ def trichotomyMeta (mvar : MVarId) (h₁ h₂ : Expr) (name : Name) : MetaM MVar
     let answerType ← inferType answer
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name answerType answer
     return mvar'
-where
-  getOp : Expr → MetaM Name
-    | app _ (app (app (app (app (const nm ..) ..) ..) ..) ..) => pure nm
-    | app _ (app (app (app (const nm ..) ..) ..) ..) => pure nm
-    | _ => throwError "[Trichotomy] invalid parameter"
 
 syntax (name := trichotomy) "trichotomy" term "," term : tactic
 

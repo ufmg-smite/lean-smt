@@ -9,6 +9,7 @@ import Lean
 
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
+import Smt.Reconstruction.Certifying.Util
 
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
@@ -32,11 +33,6 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
       | ``Eq    , ``Eq    => pure ``sumBounds₉
       | _      , _      => throwError "[sumBounds] invalid operation"
     mkAppM thmName #[h₁, h₂]
-where
-  getOp : Expr → MetaM Name
-    | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
-    | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
-    | _ => throwError "[sumBounds] invalid parameter"
 
 def sumBoundsMeta (mvar : MVarId) (h : Expr) (hs : List Expr) (name : Name)
   : MetaM MVarId :=
