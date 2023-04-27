@@ -1,4 +1,4 @@
-goal: ∀ (x : Nat), x ≥ 0
+goal: ∀ (x : ℕ), x ≥ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (>= x 0)))))
@@ -6,7 +6,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∀ (x : Int), Smt.Reconstruction.Certifying.Implies (x ≥ 0) (x ≥ 0)) → False
+  (¬∀ (x : ℤ), Implies (x ≥ 0) (x ≥ 0)) → False
 with
-  ¬¬∀ (x : Nat), x ≥ 0
-⊢ ¬¬∀ (x : Nat), x ≥ 0
+  ¬¬∀ (x : ℕ), x ≥ 0
+⊢ ¬¬∀ (x : ℕ), x ≥ 0

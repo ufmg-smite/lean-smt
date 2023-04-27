@@ -2,8 +2,8 @@ goal: dvd a c = true
 
 query:
 (declare-fun dvd (Int Int) Bool)
-(declare-const b Int)
 (declare-const a Int)
+(declare-const b Int)
 (assert (= (dvd a b) true))
 (declare-const c Int)
 (assert (= (dvd b c) true))
@@ -12,13 +12,23 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬?dvd ?a ?c = True → False
+with
+  ¬¬dvd a c = true
+a b c d e : ℤ
+dvdax : ∀ (x y z : ℤ), dvd x y = true → dvd y z = true → dvd x z = true
+h1 : dvd a b = true
+h2 : dvd b c = true
+h3 : dvd c d = true
+h4 : dvd d e = true
+⊢ ¬¬dvd a c = true
 goal: dvd c e = true
 
 query:
-(declare-const c Int)
-(declare-fun dvd (Int Int) Bool)
 (declare-const d Int)
+(declare-fun dvd (Int Int) Bool)
+(declare-const c Int)
 (assert (= (dvd c d) true))
 (declare-const e Int)
 (assert (= (dvd d e) true))
@@ -27,13 +37,24 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬?dvd ?c ?e = True → False
+with
+  ¬¬dvd c e = true
+a b c d e : ℤ
+dvdax : ∀ (x y z : ℤ), dvd x y = true → dvd y z = true → dvd x z = true
+h1 : dvd a b = true
+h2 : dvd b c = true
+h3 : dvd c d = true
+h4 : dvd d e = true
+h5 : dvd a c = true
+⊢ ¬¬dvd c e = true
 goal: dvd a e = true
 
 query:
-(declare-const c Int)
 (declare-fun dvd (Int Int) Bool)
 (declare-const a Int)
+(declare-const c Int)
 (assert (= (dvd a c) true))
 (declare-const e Int)
 (assert (= (dvd c e) true))
@@ -42,4 +63,16 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
+failed to reconstruct proof: tactic 'apply' failed, failed to unify
+  ¬?dvd ?a ?e = True → False
+with
+  ¬¬dvd a e = true
+a b c d e : ℤ
+dvdax : ∀ (x y z : ℤ), dvd x y = true → dvd y z = true → dvd x z = true
+h1 : dvd a b = true
+h2 : dvd b c = true
+h3 : dvd c d = true
+h4 : dvd d e = true
+h5 : dvd a c = true
+h6 : dvd c e = true
+⊢ ¬¬dvd a e = true

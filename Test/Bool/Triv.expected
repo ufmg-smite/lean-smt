@@ -7,7 +7,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Smt.Reconstruction.Certifying.Implies (?p = True) (?p = True) → False
+  ¬Implies (?p = True) (?p = True) → False
 with
   ¬¬(p = true → p = true)
 p : Bool

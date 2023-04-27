@@ -28,7 +28,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: invalid 'simp', proposition expected
-  Int
+  ℤ
 goal: f y = y
 
 query:
@@ -41,7 +41,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: invalid 'simp', proposition expected
-  Int
+  ℤ
 goal: z 3 = 10
 
 query:

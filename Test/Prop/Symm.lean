@@ -1,4 +1,4 @@
 import Smt
 
-theorem symm (p q : Prop) : p = q → q = p := by
+example (p q : Prop) : p = q → q = p := by
   smt
