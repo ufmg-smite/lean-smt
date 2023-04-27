@@ -54,6 +54,9 @@ instance : OfNat (BitVec w) (nat_lit 0) :=
 protected def add (x y : BitVec w) : BitVec w := Fin.add x y
 protected def sub (x y : BitVec w) : BitVec w := Fin.sub x y
 protected def mul (x y : BitVec w) : BitVec w := Fin.mul x y
+protected def neg (x : BitVec w) : BitVec w := (Fin.neg (2^w)).neg x.val
+
+#eval BitVec.neg (BitVec.ofNat 4 4)
 
 protected def mod (x y : BitVec w) : BitVec w :=
   ⟨x.val % y.val, Nat.lt_of_le_of_lt (Nat.mod_le _ _) x.isLt⟩
@@ -72,6 +75,8 @@ instance : Mod (BitVec w) := ⟨BitVec.mod⟩
 instance : Div (BitVec w) := ⟨BitVec.div⟩
 instance : LT (BitVec w)  := ⟨fun x y => BitVec.lt x y⟩
 instance : LE (BitVec w)  := ⟨fun x y => BitVec.le x y⟩
+
+
 
 @[norm_cast, simp]
 theorem val_bitvec_eq {a b : BitVec w} : a.val = b.val ↔ a = b :=
@@ -161,7 +166,7 @@ def shrink (v : Nat) (x : BitVec w) : BitVec v :=
 @[simp] def lsbGet (x : BitVec w) (i : Nat) : Bool :=
   x.extract i i != 0
 
-#eval BitVec.lsbGet (⟨100, sorry⟩ : BitVec 5) 2
+#eval BitVec.lsbGet (⟨100, by norm_num⟩ : BitVec 7) 2
 #eval Nat.testBit 100 2
 
 -- theorem lsbGet_equiv_testBit {x : BitVec w} : x.lsbGet i = x.val.testBit i := by
@@ -603,6 +608,10 @@ theorem toNat_equiv_testBit (l: List Bool) (h: 0<l.length) (h1: i< l.length) : N
     · rfl
   rw [h4]
 
+
+#eval toNat  ([false, false, true])
+#eval Nat.testBit 4 2
+
 -- theorem inv_bbT_toBool (x : BitVec w) (h : w > 0) : (bbT' (toBool x h)) = x := by
 --   induction' w, h using Nat.le_induction with w h hw
 --   · simp only [toBool, toBool.go]
@@ -673,20 +682,17 @@ lemma go'5_length (x y i : Nat) : (go'5 x y i ).length = i+1 := by
 -- lemma foo : 2^(i+1) = 2^i + 2^i := by
 --   sorry
 
--- lemma helper_0 {x y : Nat} {b: Bool}: go''' x y b.toNat i = 2 ^ (i + 1)*b.toNat + go''' x y 0 i := by
---   cases b
---   · simp [go''', Bool.toNat]
---   · simp only [go''', Bool.toNat, cond, mul_one]
---     induction' i with i ih
---     · sorry
---     · unfold go'''
---       rw [bit_0, bit_1]
---       cases' (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1)
---       · simp only [Bool.toNat, cond, add_zero]
---         rw [foo, add_assoc, ← ih]
---         sorry
---       · sorry
---       sorry
+lemma helper_0 {x y : Nat} : go''' x y 1 i = 2 ^ (i + 1) + go''' x y 0 i := by
+  · simp only [go''', Bool.toNat, cond, mul_one]
+    induction' i with i ih
+    · sorry
+    · unfold go'''
+      rw [bit_0, bit_1]
+      cases' (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1)
+      · simp only [Bool.toNat, cond, add_zero]
+        sorry
+      · sorry
+      sorry
 
 -- theorem go'5_eq_go''' (x y w: Nat) : toNat.toNat' w (go'5 x y w) = go''' x y 0 w := by
 --   induction' w with w ih
@@ -907,7 +913,7 @@ lemma go'5_testBit (x y : Nat) (h: i <  w+1) : (go'5 x y w)[i]'(by simp[go'5_len
   simp only[go'5_length, list_rec_reverse w (go'5 x y) (by simp[go'5_length]; linarith)  (λ i => (Nat.testBit x i ^^ Nat.testBit y i) ^^ carry''' x y i) (by simp[go'5]) (by simp [go'5])]
   aesop
 
-theorem testBit_add (x y i: Nat): (x + y).testBit i = ((x.testBit i ^^ y.testBit i) ^^ carry''' x y i):= by
+theorem testBit_add {x y i: Nat} : (x + y).testBit i = ((x.testBit i ^^ y.testBit i) ^^ carry''' x y i):= by
   set u := max i (max x y) with hu
   have h : i ≤ u ∧ x ≤ u ∧ y ≤ u := by simp [hu]
   have h1: (x+y)%2^(u+1) = x+y := by
@@ -989,25 +995,20 @@ theorem testBit_add (x y i: Nat): (x + y).testBit i = ((x.testBit i ^^ y.testBit
 
 --     · sorry
 
--- theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
---   induction' i with i hi
---   · simp [go''']
---     sorry  
---   · unfold go'''
+example ( a : Nat) : a%2 = (Nat.testBit a 0).toNat := by sorry
 
---     cases' h : (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1) with h1 h2
---     · simp
---       rw [hi]
---       rw [helper_2 (x+y) (i+1)]
-      
---       have h := helper_1 h
---       apply helper_2 h
---     · simp
---       rw [helper_0, hi]
---       sorry
-  -- have H1 := hi (x - 2 ^ i * bool_to_nat (Nat.testBit x i)) (y - 2 ^ i * bool_to_nat (Nat.testBit y i)) (descend_bv_pre''' i x hx) (descend_bv_pre''' i y hy)
-  --   unfold go'''
-
+theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
+  induction' i with i hi
+  · simp [go''']
+    rw [bit_0]
+    sorry
+  · unfold go'''
+    cases' h : (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1) with h1 h2
+    · show go''' _ _ 0 _ = _
+      rw [hi, helper_2 (x+y) (i+1), testBit_add, helper_2, h]; simp
+    · show go''' _ _ 1 _ = _
+      rw [helper_0, hi, helper_2 (x+y) (i+1), testBit_add, helper_2, h]
+      simp [Bool.toNat]; ring
 
 -- theorem bit_add'''_bitblast {h : w > 0} : (x + y).val = (bit_add''' x y).val := by
 --   have ⟨x, hx⟩ := x
