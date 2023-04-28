@@ -186,6 +186,6 @@ def getOp : Expr → MetaM Name
   | app (app (app (app (app (Expr.const nm ..) ..) ..) ..) ..) .. => pure nm
   | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
   | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
-  | _ => throwError "[sumBounds] invalid parameter"
+  | _ => throwError "[getOp] invalid parameter"
 
 end Smt.Reconstruction.Certifying

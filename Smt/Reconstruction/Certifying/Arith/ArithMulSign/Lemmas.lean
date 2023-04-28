@@ -121,3 +121,16 @@ theorem combineSigns₄ : a < 0 → b < 0 → b * a > 0 := by
   simp at h
   exact h
 
+theorem castPos : ∀ (a : Int), a > 0 → Rat.ofInt a > 0 := by
+  intros a h
+  simp [h]
+
+theorem castNeg : ∀ (a : Int), a < 0 → Rat.ofInt a < 0 := by
+  intros a h
+  simp [h]
+
+instance : HMul ℤ ℚ ℚ where
+  hMul z q := Rat.ofInt z * q
+
+instance : HMul ℚ ℤ ℚ where
+  hMul q z := q * Rat.ofInt z

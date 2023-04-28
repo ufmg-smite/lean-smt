@@ -46,16 +46,16 @@ def parseArithMulSign : Syntax → TacticM MulSignInput
       evalTactic (← `(tactic| exact $(mkIdent fname)))
 where
 -- acc is a partial proof corresponding to the sign of the prefix of the multiplication
-  go (first : Bool) (xs xs' : MulSignInput) (acc : Expr) (prod : Expr) : MetaM Expr :=
+  go (first : Bool) (xs xs' : MulSignInput) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=
     match xs with
     | [] =>
-      return acc
+      return prodSignPf
     | (name, pol, exp) :: t => do
       let lctx ← getLCtx
       let val := (lctx.findFromUserName? name).get!.toExpr
       let evenExp := decide (Even exp)
       let valType ← inferType val
-      let isInt ←
+      let valIsInt ←
         match valType with
         | .const `Rat .. => pure false
         | .const `Int .. => pure true
@@ -63,9 +63,9 @@ where
       let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
       let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
       -- zero with the same type as the current argument
-      let currZero := if isInt then zeroI else zeroR
+      let currZero := if valIsInt then zeroI else zeroR
       let powThm ←
-        match isInt, evenExp with
+        match valIsInt, evenExp with
         | false, false => pure ``powOddR
         | false, true  => pure ``powEvenR
         | true, false  => pure ``powOddI
@@ -79,7 +79,7 @@ where
           if exp == 1 then
             pure bv
           else if pol then
-            match isInt with
+            match valIsInt with
             | false => pure $ mkApp3 (mkConst ``powPosR) (mkNatLit exp) val bv
             | true  => pure $ mkApp3 (mkConst ``powPosI) (mkNatLit exp) val bv
           else
@@ -97,24 +97,53 @@ where
           if exp == 1 then
             pure val
           else mkAppM ``Pow.pow #[val, mkNatLit exp]
-        let acc' ←
+        let prodType ←
+          if first then
+            pure valType
+          else inferType prod
+        let prodIsInt ←
+          match prodType with
+          | .const `Int .. => pure true
+          | .const `Rat .. => pure false
+          | _ => throwError "[arithMulSign]: unexpected type for accumulated product"
+        let prodSignPfType ←
+          if first then
+            inferType valPowSignPf
+          else inferType prodSignPf
+        let prodPos := (← getOp prodSignPfType) == `GT.gt
+        -- normalize types in case one is rat and the other is int
+        let (valPow', prod', valPowSignPf', prodSignPf') :=
+          match valIsInt, prodIsInt with
+          | false, false => (valPow, prod, valPowSignPf, prodSignPf)
+          | false, true  =>
+            let prodSignPf' :=
+              if prodPos then
+                mkApp2 (mkConst ``castPos) prod prodSignPf
+              else mkApp2 (mkConst ``castNeg) prod prodSignPf
+            (valPow, mkApp (mkConst ``Rat.ofInt) prod, valPowSignPf, prodSignPf')
+          | true, false  =>
+            let valPowSignPf' :=
+              if pol || exp % 2 == 0 then
+                mkApp2 (mkConst ``castPos) valPow valPowSignPf
+              else mkApp2 (mkConst ``castNeg) valPow valPowSignPf
+            (mkApp (mkConst ``Rat.ofInt) valPow, prod, valPowSignPf', prodSignPf)
+          | true, true   => (valPow, prod, valPowSignPf, prodSignPf)
+        let answer ←
           if first then pure valPowSignPf
           else
-            let accType ← inferType acc
-            let valPos := (← getOp accType) == `GT.gt
             if pol || exp % 2 == 0 then
-              if valPos then
-                mkAppOptM ``combineSigns₁ #[none, none, valPow, prod, valPowSignPf, acc]
-              else mkAppOptM ``combineSigns₂ #[none, none, valPow, prod, valPowSignPf, acc]
+              if prodPos then
+                mkAppOptM ``combineSigns₁ #[none, none, valPow', prod', valPowSignPf', prodSignPf']
+              else mkAppOptM ``combineSigns₂ #[none, none, valPow', prod', valPowSignPf', prodSignPf']
             else
-              if valPos then
-                mkAppOptM ``combineSigns₃ #[none, none, valPow, prod, valPowSignPf, acc]
-              else mkAppOptM ``combineSigns₄ #[none, none, valPow, prod, valPowSignPf, acc]
+              if prodPos then
+                mkAppOptM ``combineSigns₃ #[none, none, valPow', prod', valPowSignPf', prodSignPf']
+              else mkAppOptM ``combineSigns₄ #[none, none, valPow', prod', valPowSignPf', prodSignPf']
         let prod' ←
           if first then
             pure valPow
-          else mkAppM ``Mul.mul #[prod, valPow]
-        let rc ← go false t xs' acc' prod'
+          else mkAppM ``Mul.mul #[prod', valPow']
+        let rc ← go false t xs' answer prod'
         mkLambdaFVars #[bv] rc
 
 example (a : Int) : a > 0 → a ^ 2 > 0 := by
@@ -127,4 +156,10 @@ example (a b : ℚ) : a > 0 → b < 0 → a ^ 2 * b ^ 3 < 0 := by
   arithMulSign [a,b], [1,-1], [2,3]
 
 example (a b c d e : Int) : a < 0 → b > 0 → c < 0 → d > 0 → e < 0 → a * (b ^ 2) * (c ^ 2) * (d ^ 4) * (e ^ 5) > 0 := by
+  arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,2,4,5]
+
+example (a : Int) (b : ℚ) : a < 0 → b < 0 → a ^ 3 * b ^ 3 > 0 := by
+  arithMulSign [a,b], [-1,-1], [3,3]
+
+example (a e : Int) (b c d : ℚ) : a < 0 → b > 0 → c < 0 → d > 0 → e < 0 → a * (b ^ 2) * (c ^ 2) * (d ^ 4) * (e ^ 5) > 0 := by
   arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,2,4,5]
