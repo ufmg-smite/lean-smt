@@ -102,7 +102,7 @@ where
           else
             let accType ← inferType acc
             let valPos := (← getOp accType) == `GT.gt
-            if pol then
+            if pol || exp % 2 == 0 then
               if valPos then
                 mkAppOptM ``combineSigns₁ #[none, none, valPow, prod, valPowSignPf, acc]
               else mkAppOptM ``combineSigns₂ #[none, none, valPow, prod, valPowSignPf, acc]
@@ -126,5 +126,5 @@ example (a : Int) : a < 0 → a ^ 3 < 0 := by
 example (a b : ℚ) : a > 0 → b < 0 → a ^ 2 * b ^ 3 < 0 := by
   arithMulSign [a,b], [1,-1], [2,3]
 
-example (a b c d e : Int) : a < 0 → b > 0 → c < 0 → d > 0 → e < 0 → a * (b ^ 2) * (c ^ 3) * (d ^ 4) * (e ^ 5) < 0 := by
-  arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,3,4,5]
+example (a b c d e : Int) : a < 0 → b > 0 → c < 0 → d > 0 → e < 0 → a * (b ^ 2) * (c ^ 2) * (d ^ 4) * (e ^ 5) > 0 := by
+  arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,2,4,5]
