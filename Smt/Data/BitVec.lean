@@ -283,8 +283,7 @@ theorem exists_most_significant_bit' {n : BitVec w} :
     have h3: i ≤ k:= by
       by_contra' h4
       have h5 := hj i h4
-      rw [h] at h5
-      contradiction
+      simp [h] at h5
     have h8 := Nat.le_trans h2 h3
     have ⟨l, hl1, hl2, hl3⟩  := lt_of_testBit hn
     cases' Nat.eq_or_lt_of_le h8 with h9 h10
@@ -525,15 +524,17 @@ lemma list_rec_reverse {α : Type} (w: Nat) (f: Nat → List α) (h2 : i < (f w)
 
 lemma toBool'_testBit {x i w : Nat} (h: i<(toBool'.go x w).length) : (toBool'.go x w)[i]= Nat.testBit x ((toBool'.go x w).length-(i+1))  := list_rec_reverse w (toBool'.go x) h (Nat.testBit x) (by simp[toBool'.go]) (by simp[toBool'.go])
 
-theorem testBit_eq_scale_pow_two {x w i:Nat} {b:Bool} (h: i<w) : Nat.testBit x i = Nat.testBit (x+ 2^w* b.toNat) i := by
-  cases' b
-  <;> simp [Bool.toNat]
+example (a b c: Nat) (h: a  ≤ b) :2^a ∣ 2^b := by library_search
+
+#check Nat.mul_div_assoc
+
+theorem testBit_eq_scale_pow_two {x w i:Nat} (h: i<w) : Nat.testBit x i = Nat.testBit (x+ 2^w* b) i := by
   simp only [Nat.testBit]
   rw [Nat.shiftr_eq_div_pow, Nat.shiftr_eq_div_pow]
-  suffices goal: (x/2^i)%2 = ((x+2^w)/2^i)%2 
+  suffices goal: (x/2^i)%2 = ((x+2^w*b)/2^i)%2 
   · simp [Nat.mod_two_of_bodd, cond] at goal
     aesop
-  rw [Nat.add_div_of_dvd_left (by simp [Nat.pow_dvd_pow_iff_le_right, Nat.le_of_lt h]), Nat.add_mod]
+  rw [Nat.add_div_of_dvd_left (by simp [Dvd.dvd.mul_right, Nat.pow_dvd_pow_iff_le_right, Nat.le_of_lt h]), Nat.add_mod]
   have h1: (2^w/2^i)%2 = 0 := by
     rw [← Nat.dvd_iff_mod_eq_zero]
     use 2^(w-(i+1))
@@ -541,7 +542,7 @@ theorem testBit_eq_scale_pow_two {x w i:Nat} {b:Bool} (h: i<w) : Nat.testBit x i
     nth_rewrite 2 [← pow_one 2]
     rw [← pow_add, add_comm]
     simp [← Nat.sub_add_comm, Nat.succ_le_of_lt h]
-  · simp [h1, add_zero]
+  · simp [mul_comm, Nat.mul_div_assoc b (pow_dvd_pow 2 (le_of_lt h)), Nat.mul_mod, h1]
 
 theorem testBit_eq_scale_pow_two_bit {x w :Nat} {b:Bool} (h: x<2^w) : Nat.testBit (x+2^w*b.toNat) w = b:= by
   simp only [Nat.testBit]
@@ -995,13 +996,13 @@ theorem testBit_add {x y i: Nat} : (x + y).testBit i = ((x.testBit i ^^ y.testBi
 
 --     · sorry
 
-example ( a : Nat) : a%2 = (Nat.testBit a 0).toNat := by sorry
+#check Nat.testBit
 
 theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
   induction' i with i hi
-  · simp [go''']
-    rw [bit_0]
-    sorry
+  · by_cases (Nat.bodd x)
+    <;> by_cases (Nat.bodd y)
+    <;> simp [go''', carry''', bit_0, Nat.mod_two_of_bodd, *, Nat.testBit, Nat.shiftr]
   · unfold go'''
     cases' h : (Nat.testBit x (i + 1) ^^ Nat.testBit y (i + 1)) ^^ carry''' x y (i + 1) with h1 h2
     · show go''' _ _ 0 _ = _
@@ -1016,6 +1017,8 @@ theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
 --   simp only [bit_add''', HAdd.hAdd, Add.add, BitVec.add, Fin.add]
 --   rw [go'''_correct x y]
 --   sorry
+
+    
 
 
 -- end BitVec
