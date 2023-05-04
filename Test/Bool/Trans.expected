@@ -9,9 +9,7 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Smt.Reconstruction.Certifying.Implies ((?p = ?q) = True)
-        (Smt.Reconstruction.Certifying.Implies ((?q = ?r) = True) ((?p = ?r) = True)) →
-    False
+  ¬Implies ((?p = ?q) = True) (Implies ((?q = ?r) = True) ((?p = ?r) = True)) → False
 with
   ¬¬((p == q) = true → (q == r) = true → (p == r) = true)
 p q r : Bool

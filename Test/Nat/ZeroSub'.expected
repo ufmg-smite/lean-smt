@@ -3,7 +3,7 @@ goal: 0 - Nat.zero = 0
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.185 Nat)) (=> (>= _uniq.185 0) (forall ((_uniq.186 Nat)) (=> (>= _uniq.186 0) (>= (Nat.sub _uniq.185 _uniq.186) 0))))))
+(assert (forall ((_uniq.229 Nat)) (=> (>= _uniq.229 0) (forall ((_uniq.230 Nat)) (=> (>= _uniq.230 0) (>= (Nat.sub _uniq.229 _uniq.230) 0))))))
 (assert (not (= (Nat.sub 0 0) 0)))
 (check-sat)
 
@@ -20,7 +20,7 @@ goal: 0 - Nat.succ x = 0
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.200 Nat)) (=> (>= _uniq.200 0) (forall ((_uniq.201 Nat)) (=> (>= _uniq.201 0) (>= (Nat.sub _uniq.200 _uniq.201) 0))))))
+(assert (forall ((_uniq.244 Nat)) (=> (>= _uniq.244 0) (forall ((_uniq.245 Nat)) (=> (>= _uniq.245 0) (>= (Nat.sub _uniq.244 _uniq.245) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (assert (= (Nat.sub 0 x) 0))

@@ -1,4 +1,4 @@
 import Smt
 
-theorem refl (p : Prop) : p = p := by
+example (p : Prop) : p = p := by
   smt

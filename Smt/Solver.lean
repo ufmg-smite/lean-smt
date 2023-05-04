@@ -136,7 +136,7 @@ where
     | .cvc4      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0"]
     | .cvc5      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0",
                       "--produce-proofs", "--proof-granularity=theory-rewrite",
-                      "--proof-format=lean"]
+                      "--proof-format=lean", "--enum-inst"]
     | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
     | .yices     => #[]
     | .z3        => #["-in", "-smt2"]

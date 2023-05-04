@@ -1,10 +1,19 @@
+/-
+Copyright (c) 2021-2023 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Tomaz Gomes Mascarenhas
+-/
+
 import Lean
 
+import Smt.Reconstruction.Certifying.LiftOrNToImp
 import Smt.Reconstruction.Certifying.Pull
-
-namespace Smt.Reconstruction.Certifying
+import Smt.Reconstruction.Certifying.Util
 
 open Lean Elab.Tactic Meta
+
+namespace Smt.Reconstruction.Certifying
 
 theorem resolution_thm : ∀ {A B C : Prop}, (A ∨ B) → (¬ A ∨ C) → B ∨ C := by
   intros A B C h₁ h₂
@@ -45,59 +54,62 @@ theorem flipped_resolution_thm₃ : ∀ {A B : Prop}, (¬ A ∨ B) → A → B :
 theorem resolution_thm₄ : ∀ {A : Prop}, A → ¬ A → False := λ a na => na a
 theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip resolution_thm₄
 
-def resolutionCore (firstHyp secondHyp : Ident) (pivotTerm : Term)
-  (oSufIdx₁ oSufIdx₂ : Option Nat) (flipped : Bool) : TacticM Unit := do
-  let notPivot : Term := Syntax.mkApp (mkIdent `Not) #[pivotTerm]
-  let mut resolvantOne  ← elabTerm pivotTerm none
-  let mut resolvantTwo  ← elabTerm notPivot none
-  let firstHypType  ← inferType (← elabTerm firstHyp none)
-  let secondHypType ← inferType (← elabTerm secondHyp none)
+def resolutionCoreMeta (mvar : MVarId) (val₁ val₂ pivot : Expr)
+  (sufIdx₁' sufIdx₂' : Option Nat) (flipped : Bool) (name : Name) : MetaM MVarId :=
+    mvar.withContext do
+      let type₁ ← inferType val₁
+      let type₂ ← inferType val₂
+      let mut pivot := pivot
+      let mut notPivot := mkApp (mkConst ``Not) pivot
+      let sufIdx₁ ←
+        match sufIdx₁' with
+        | none   => pure $ (← getLength type₁) - 1
+        | some i => pure i
+      let sufIdx₂ ←
+        match sufIdx₂' with
+        | none   => pure $ (← getLength type₂) - 1
+        | some i => pure i
+      let len₁ := sufIdx₁ + 1
+      let len₂ := sufIdx₂ + 1
+      let lenGoal := len₁ + len₂ - 2
+      let prefixLength := len₁ - 2
 
-  let sufIdx₁ : Nat :=
-    match oSufIdx₁ with
-    | none   => getLength firstHypType - 1
-    | some i => i
+      if flipped then
+        let tmp := pivot
+        pivot := notPivot
+        notPivot := tmp
 
-  let sufIdx₂ : Nat :=
-    match oSufIdx₂ with
-    | none   => getLength secondHypType - 1
-    | some i => i
+      let fname₁ ← mkFreshId
+      let fname₂ ← mkFreshId
+      let mvar' ← pullCore mvar pivot val₁ type₁ sufIdx₁' fname₁
+      let mvar'' ← pullCore mvar' notPivot val₂ type₂ sufIdx₂' fname₂
 
-  if flipped then
-    let tmp      := resolvantOne
-    resolvantOne := resolvantTwo
-    resolvantTwo := tmp
-
-  let len₁ := sufIdx₁ + 1
-  let len₂ := sufIdx₂ + 1
-  let prefixLength := len₁ - 2
-
-  let fident1 ← mkIdent <$> mkFreshId
-  let fident2 ← mkIdent <$> mkFreshId
-  pullCore resolvantOne firstHypType  firstHyp  fident1 oSufIdx₁
-  pullCore resolvantTwo secondHypType secondHyp fident2 oSufIdx₂
-
-  let lenGoal := len₁ + len₂ - 2
-  if lenGoal > prefixLength + 1 then
-    for s in getCongAssoc prefixLength `orAssocConv do
-      evalTactic (← `(tactic| apply $s))
-      /- logInfo m!"....apply {s}" -/
-      /- printGoal -/
-
-  -- we could simplify if we knew how to concatenate two Names
-  let thmName : Name := 
-    match Nat.blt 1 len₁, Nat.blt 1 len₂ with
-    | true, true   => if flipped then `flipped_resolution_thm  else `resolution_thm
-    | true, false  => if flipped then `flipped_resolution_thm₃ else `resolution_thm₃
-    | false, true  => if flipped then `flipped_resolution_thm₂ else `resolution_thm₂
-    | false, false => if flipped then `flipped_resolution_thm₄ else `resolution_thm₄
-
-  let thm := mkIdent thmName
-
-  /- logInfo m!"....closing goal with: {thm}" -/
-  let proof := ⟨Syntax.mkApp ⟨thm⟩ #[fident1, fident2]⟩
-  evalTactic (← `(tactic| exact $proof))
-
+      mvar''.withContext do
+        let lctx ← getLCtx
+        let pulled₁ := (lctx.findFromUserName? fname₁).get!.toExpr
+        let pulled₂ := (lctx.findFromUserName? fname₂).get!.toExpr
+        let props₁ ← collectPropsInOrChain' sufIdx₁ type₁
+        let props₁ := props₁.erase pivot
+        let props₂ ← collectPropsInOrChain' sufIdx₂ type₂
+        let props₂ := props₂.erase notPivot
+        let props := props₁ ++ props₂
+        let goal ←
+          match props with
+          | [] => pure $ mkConst ``False
+          | _  => createOrChain props
+        let thmName : Name :=
+          match Nat.blt 1 len₁, Nat.blt 1 len₂ with
+          | true, true   => if flipped then ``flipped_resolution_thm  else ``resolution_thm
+          | true, false  => if flipped then ``flipped_resolution_thm₃ else ``resolution_thm₃
+          | false, true  => if flipped then ``flipped_resolution_thm₂ else ``resolution_thm₂
+          | false, false => if flipped then ``flipped_resolution_thm₄ else ``resolution_thm₄
+        let mut answer ← mkAppM thmName #[pulled₁, pulled₂]
+        if lenGoal > prefixLength + 1 then
+          let lemmas ← ungroupPrefixLemmas props prefixLength
+          for l in lemmas do
+            answer := mkApp l answer
+        let (_, mvar₃) ← MVarId.intro1P $ ← mvar''.assert name goal answer
+        return mvar₃
 
 syntax (name := resolution_1) "R1" ident "," ident "," term (",")? ("[" term,* "]")? : tactic
 syntax (name := resolution_2) "R2" ident "," ident "," term (",")? ("[" term,* "]")? : tactic
@@ -123,7 +135,14 @@ where
     let secondHyp : Ident := ⟨stx[3]⟩
     let pivotTerm : Term := ⟨stx[5]⟩
     let (sufIdx₁, sufIdx₂) ← parseResolution stx
-    resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ false
+    let val₁ ← elabTerm firstHyp none
+    let val₂ ← elabTerm secondHyp none
+    let pivot ← elabTerm pivotTerm none
+    let fname ← mkFreshId
+    let mvar ← getMainGoal
+    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ false fname
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 @[tactic resolution_2] def evalResolution_2 : Tactic := fun stx =>
   withMainContext do
@@ -131,18 +150,13 @@ where
     let secondHyp : Ident := ⟨stx[3]⟩
     let pivotTerm : Term := ⟨stx[5]⟩
     let (sufIdx₁, sufIdx₂) ← parseResolution stx
-    resolutionCore firstHyp secondHyp pivotTerm sufIdx₁ sufIdx₂ true
-
-
-example : A ∨ B ∨ C ∨ D → E ∨ F ∨ ¬ B ∨ H → A ∨ (C ∨ D) ∨ E ∨ F ∨ H := by
-  intros h₁ h₂
-  R1 h₁, h₂, B, [2, -1]
-
-
-example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ (A ∧ B) := by
-  intros h₁ h₂
-  R2 h₁, h₂, A
-
-example : Eq @Eq @Eq := rfl
+    let val₁ ← elabTerm firstHyp none
+    let val₂ ← elabTerm secondHyp none
+    let pivot ← elabTerm pivotTerm none
+    let fname ← mkFreshId
+    let mvar ← getMainGoal
+    let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ true fname
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 end Smt.Reconstruction.Certifying

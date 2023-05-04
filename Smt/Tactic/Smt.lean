@@ -118,13 +118,9 @@ open Reconstruction.Certifying in
 def rconsProof (hints : List Expr) : TacticM Unit := do
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
-  if (← getConstInfo `th0).levelParams == [] then
-    gs ← (← Tactic.getMainGoal).apply (mkConst `th0)
-    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0)}"
-  else
-    let u ← Meta.mkFreshLevelMVar
-    gs ← (← Tactic.getMainGoal).apply (mkConst `th0 [u])
-    trace[smt.debug.reconstruct] "th0 : {← Meta.inferType (mkConst `th0 [u])}"
+  let th0 ← Meta.mkConstWithFreshMVarLevels `th0
+  trace[smt.debug.reconstruct] "th0 : {← Meta.inferType th0}"
+  gs ← (← Tactic.getMainGoal).apply th0
   Tactic.replaceMainGoal gs
   for h in hints do
     evalAnyGoals do
@@ -132,6 +128,8 @@ def rconsProof (hints : List Expr) : TacticM Unit := do
       Tactic.replaceMainGoal gs
   let mut some thms ← (← Meta.getSimpExtension? `smt_simp).mapM (·.getTheorems)
     | throwError "smt tactic failed, 'smt_simp' simpset is not available"
+  -- TODO: replace with our abbreviation of `Implies`
+  thms ← thms.addDeclToUnfold ``Implies
   for h in hints do
     thms ← addDeclToUnfoldOrTheorem thms h
   evalAnyGoals do

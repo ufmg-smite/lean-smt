@@ -1,16 +1,14 @@
 goal: p = true → q = true → (p && q) = true
 
 query:
-(declare-const q Bool)
 (declare-const p Bool)
+(declare-const q Bool)
 (assert (not (=> (= p true) (=> (= q true) (= (and p q) true)))))
 (check-sat)
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Smt.Reconstruction.Certifying.Implies (?p = True)
-        (Smt.Reconstruction.Certifying.Implies (?q = True) ((?p ∧ ?q) = True)) →
-    False
+  ¬Implies (?p = True) (Implies (?q = True) ((?p ∧ ?q) = True)) → False
 with
   ¬¬(p = true → q = true → (p && q) = true)
 p q : Bool

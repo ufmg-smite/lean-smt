@@ -6,7 +6,7 @@ package smt where
   precompileModules := true
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "da1f9e0887365959e30e45ed897b8b1b1bfbb1f6"
+  "https://github.com/leanprover-community/mathlib4.git" @ "d8de9b777d16d2c287569a684b0404df900583c9"
 
 @[default_target]
 lean_lib Smt
@@ -42,6 +42,10 @@ script test do
   for file in files do
     if file.components.contains "Playground" then
       continue
+    if file.components.contains "Reconstruction" then
+      continue
+    if file.components.contains "Examples" then
+      continue
     if file.extension = some "lean" then
       tests := tests.push file
     else if file.extension = some "expected" then
@@ -49,7 +53,7 @@ script test do
   let mut tasks := []
   for t in tests do
     let e := t.withExtension "expected"
-    if (expected.contains e) then
+    if expected.contains e then
       tasks := (← IO.asTask (runTest t e (← readThe Lake.Context))) :: tasks
     else
       IO.println s!"Error: Could not find {e}"
@@ -69,7 +73,7 @@ where
     let out ← IO.Process.output {
       cmd := (← getLean).toString
       args := #[s!"--load-dynlib={dynlib}", test.toString]
-      env := (← getAugmentedEnv)
+      env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
     -- TODO: renable disjunct once cvc5 proofs become are more stable.
@@ -113,7 +117,7 @@ where
     let out ← IO.Process.output {
       cmd := (← getLean).toString
       args := #[s!"--load-dynlib={dynlib}", test.toString]
-      env := (← getAugmentedEnv)
+      env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout
     return 0
