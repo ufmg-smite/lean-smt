@@ -1,5 +1,5 @@
 import Smt
 
-theorem density (x y : Rat) : x < y → ∃ z, x < z ∧ z < y := by
+theorem density (x z : Rat) : x < z → ∃ y, x < y ∧ y < z := by
   smt
   sorry

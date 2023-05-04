@@ -1,9 +1,9 @@
-goal: x < y → ∃ z, x < z ∧ z < y
+goal: x < z → ∃ y, x < y ∧ y < z
 
 query:
 (declare-const x Real)
-(declare-const y Real)
-(assert (not (=> (= (< x y) true) (exists ((z Real)) (and (= (< x z) true) (= (< z y) true))))))
+(declare-const z Real)
+(assert (not (=> (= (< x z) true) (exists ((y Real)) (and (= (< x y) true) (= (< y z) true))))))
 (check-sat)
 
 result: unsat
