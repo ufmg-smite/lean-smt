@@ -4,7 +4,6 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki
 -/
-
 import Lean.Parser
 
 import Smt.Data.Sexp
@@ -32,7 +31,7 @@ end
 
 instance : ToSexp String := ⟨Sexp.atom⟩
 
-instance [ToSexp α] : Coe α Sexp := ⟨ToSexp.toSexp⟩
+instance [ToSexp α] : CoeOut α Sexp := ⟨ToSexp.toSexp⟩
 
 declare_syntax_cat sexp
 
