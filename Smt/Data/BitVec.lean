@@ -54,7 +54,7 @@ instance : OfNat (BitVec w) (nat_lit 0) :=
 protected def add (x y : BitVec w) : BitVec w := Fin.add x y
 protected def sub (x y : BitVec w) : BitVec w := Fin.sub x y
 protected def mul (x y : BitVec w) : BitVec w := Fin.mul x y
-protected def neg (x : BitVec w) : BitVec w := (Fin.neg (2^w)).neg x.val
+protected def neg (x : BitVec w) : BitVec w := (Fin.neg (2^w)).neg x
 
 #eval BitVec.neg (BitVec.ofNat 4 4)
 
@@ -392,8 +392,6 @@ def bbT' (bs : List Bool) : BitVec w :=
 
 infix:30 " ^^ " => xor
 
-namespace bit_add
-
 variable {x y : BitVec w}
 
 -- def carry (i : Nat) {h : i < w} : Bool := match i with
@@ -523,8 +521,6 @@ lemma list_rec_reverse {α : Type} (w: Nat) (f: Nat → List α) (h2 : i < (f w)
       simp [list_rec_length]
 
 lemma toBool'_testBit {x i w : Nat} (h: i<(toBool'.go x w).length) : (toBool'.go x w)[i]= Nat.testBit x ((toBool'.go x w).length-(i+1))  := list_rec_reverse w (toBool'.go x) h (Nat.testBit x) (by simp[toBool'.go]) (by simp[toBool'.go])
-
-example (a b c: Nat) (h: a  ≤ b) :2^a ∣ 2^b := by library_search
 
 #check Nat.mul_div_assoc
 
@@ -1018,7 +1014,4 @@ theorem go'''_correct (x y : Nat) : go''' x y 0 i = (x + y) % 2 ^ (i + 1) := by
 --   rw [go'''_correct x y]
 --   sorry
 
-    
-
-
--- end BitVec
+end BitVec
