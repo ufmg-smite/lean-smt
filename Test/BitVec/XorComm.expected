@@ -1,8 +1,8 @@
 goal: x ^^^ y = y ^^^ x
 
 query:
-(declare-const y (_ BitVec 2))
 (declare-const x (_ BitVec 2))
+(declare-const y (_ BitVec 2))
 (assert (not (= (bvxor x y) (bvxor y x))))
 (check-sat)
 

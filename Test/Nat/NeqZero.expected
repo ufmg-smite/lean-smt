@@ -1,4 +1,4 @@
-goal: ∀ (x : Nat), x ≠ 0
+goal: ∀ (x : ℕ), x ≠ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
@@ -9,7 +9,7 @@ result: sat
 counter-model:
 ()
 Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
-goal: ∀ (x : Nat), x + 1 ≠ 0
+goal: ∀ (x : ℕ), x + 1 ≠ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))
@@ -17,8 +17,8 @@ query:
 
 result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∀ (x : Int), Smt.Reconstruction.Certifying.Implies (x ≥ 0) (x + 1 ≠ 0)) → False
+  (¬∀ (x : ℤ), Implies (x ≥ 0) (x + 1 ≠ 0)) → False
 with
-  ¬¬∀ (x : Nat), x + 1 ≠ 0
-⊢ ¬¬∀ (x : Nat), x + 1 ≠ 0
+  ¬¬∀ (x : ℕ), x + 1 ≠ 0
+⊢ ¬¬∀ (x : ℕ), x + 1 ≠ 0
 Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'

@@ -80,6 +80,4 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-#check @arith_mul_neg_lt
-
 end Smt.Reconstruction.Certifying

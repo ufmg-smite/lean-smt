@@ -67,5 +67,4 @@ def parseSumBounds : Syntax → TacticM (List Expr)
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-
 end Smt.Reconstruction.Certifying

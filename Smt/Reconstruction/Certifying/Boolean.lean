@@ -167,7 +167,7 @@ theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
 theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
   by intros p q h
      have ⟨np, nq⟩ := h
-     exact match Classical.em p, Classical.em q with
+     exact match em p, em q with
      | Or.inl pp,  _   => False.elim (np pp)
      | _        ,  Or.inl pq  => False.elim (nq pq)
      | Or.inr npp, Or.inr npq => λ h₂ =>
