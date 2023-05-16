@@ -167,7 +167,7 @@ theorem deMorganSmall : ∀ {p q : Prop}, ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
 theorem deMorganSmall₂ : ∀ {p q : Prop}, ¬ p ∧ ¬ q → ¬ (p ∨ q) :=
   by intros p q h
      have ⟨np, nq⟩ := h
-     exact match em p, em q with
+     exact match Classical.em p, Classical.em q with
      | Or.inl pp,  _   => False.elim (np pp)
      | _        ,  Or.inl pq  => False.elim (nq pq)
      | Or.inr npp, Or.inr npq => λ h₂ =>
@@ -468,7 +468,8 @@ def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
         let pf ← getProof i 0 props pf
         let pf := mkApp val pf
         let pf ← mkLambdaFVars #[bv] pf
-        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name (notExpr prop) pf   
+        let notProp := mkApp (mkConst ``Not) prop
+        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name notProp pf
         return mvar'
 where
   getProof (i j : Nat) (props : List Expr) (val : Expr) : MetaM Expr :=
