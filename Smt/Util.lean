@@ -107,4 +107,6 @@ where
     | some e => .visit e
     | none   => .continue
 
+theorem iff_eq_eq : (p ↔ q) = (p = q) := propext ⟨propext, (· ▸ ⟨(·), (·)⟩)⟩
+
 namespace Smt.Util
