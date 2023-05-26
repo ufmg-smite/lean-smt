@@ -11,5 +11,3 @@ Authors: Tomaz Gomes Mascarenhas
 import Smt.Reconstruction.Certifying.Arith.ArithMulSign.Lemmas
 import Smt.Reconstruction.Certifying.Arith.ArithMulSign.Tactic
 
-#check Int.ofNat
-#check Rat.ofInt

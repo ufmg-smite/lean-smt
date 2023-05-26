@@ -29,7 +29,7 @@ def parseArithMulAux : Array Term → Term → TacticM (Expr × Expr × Expr × 
     let i' ← stxToNat i
     match li with
     | [a, b, c] => return (a, b, c, i')
-    | _         => throwError "[arithMul]: List must have 3 elementsd"
+    | _         => throwError "[arithMul]: List must have 3 elements"
 
 def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
   | `(tactic| arithMulPos [ $[$hs],* ], $i) => parseArithMulAux hs i
@@ -39,7 +39,17 @@ def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
 def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
   (outName : Name) (thms : List Name) : MetaM MVarId :=
     mvar.withContext do
+      let typeC ← inferType vc
       let type ← inferType va
+      let vc ←
+        match typeC with
+        | const `Nat .. =>
+          match type with
+          | const `Int .. => pure $ mkApp (mkConst ``Int.ofNat) vc
+          | const `Rat .. =>
+            pure $ mkApp (mkConst ``Rat.ofInt) (mkApp (mkConst ``Int.ofNat) vc)
+          | _ => throwError "[arithMul]: unexpected type for first variable"
+        | _ => pure vc
       let thmName: Name ←
         if compId <= 3 then
           pure (thms.get! compId) 
@@ -48,7 +58,7 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
         match type with
         | const `Int .. => pure $ mkConst ``lorInt
         | const `Rat .. => pure $ mkConst ``lorRat
-        | _ => throwError "[arithMulNeg]: unexpected type for variable"
+        | _ => throwError "[arithMul]: unexpected type for first variable"
       let proof := mkApp5 (mkConst thmName) type inst va vb vc
       let proofType ← Meta.inferType proof
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert outName proofType proof
