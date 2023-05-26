@@ -391,9 +391,14 @@ theorem cnfIteNeg3 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ a ∨ ¬ b := by
                  exact Or.inl hnite
 
 theorem congrIte {α : Type} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
-  c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
+    c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
   intros c₁ c₂ t₁ t₂ e₁ e₂ h₁ h₂ h₃
   rw [h₁, h₂, h₃]
+
+theorem congrHAdd {α β γ : Type} [HAdd α β γ] : ∀ {a₁ a₂ : α} {b₁ b₂ : β},
+    a₁ = a₂ → b₁ = b₂ → a₁ + b₁ = a₂ + b₂ := by
+  intros a₁ a₂ b₁ b₂ h₁ h₂
+  rw [h₁, h₂]
 
 theorem eqResolve {P Q : Prop} : P → (P = Q) → Q := by
   intros h₁ h₂
