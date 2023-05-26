@@ -2,11 +2,12 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Joe Hendrix, Wojciech Nawrocki, Harun Khan, Abdalrhman M Mohamed
+Authors: Harun Khan, Abdalrhman M Mohamed, Wojciech Nawrocki, Joe Hendrix
 -/
 
 import Mathlib
 import Std
+
 
 /-!
 We define bitvectors. We choose the `Fin` representation over others for its relative efficiency
@@ -88,7 +89,7 @@ theorem val_bitvec_lt {a b : BitVec w} : (a.val : ℕ) < (b.val : ℕ) ↔ a < b
   simp [LT.lt, BitVec.lt]
 
 
-/-- `a < b` as natural numbers if and only if `a < b` in `Fin n`. -/
+/-- `a ≠ b` as natural numbers if and only if `a != b` in `Fin n`. -/
 @[norm_cast, simp]
 theorem val_bitvec_bne {a b : BitVec w} : a.val ≠ b.val ↔ a != b := by
   simp [bne]
@@ -130,7 +131,7 @@ def rotateRight (x : BitVec w) (n : Nat) : BitVec w :=
   x >>> n ||| x <<< (w - n)
 
 protected def append (x : BitVec w) (y : BitVec v) : BitVec (w+v) :=
-  ⟨x.val <<< v ||| y.val, sorry⟩
+  ⟨x.val <<< v ||| y.val, sorry⟩ -- is it swapped? why?
 
 instance : HAppend (BitVec w) (BitVec v) (BitVec (w+v)) := ⟨BitVec.append⟩
 
@@ -175,8 +176,9 @@ theorem shiftr_eq_shiftRight: Nat.shiftr = Nat.shiftRight := by
 
 theorem lsbGet_equiv_testBit {x : BitVec w} : x.lsbGet i = x.val.testBit i := by
   cases' h: Nat.bodd (Nat.shiftRight (x.val) i)
-  <;> simp [lsbGet, extract, Nat.testBit, BitVec.ofNat, Fin.ofNat', ShiftRight.shiftRight, HShiftRight.hShiftRight, Nat.mod_two_of_bodd, h, shiftr_eq_shiftRight]
-  aesop
+  <;> simp [Nat.testBit, BitVec.ofNat, Fin.ofNat', ShiftRight.shiftRight, HShiftRight.hShiftRight, Nat.mod_two_of_bodd, h, shiftr_eq_shiftRight]
+  aesop -- non-terminating simp :(
+  
 
 
 instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
@@ -190,149 +192,257 @@ lemma bit_1 (b : Bool) (n : Nat) : Nat.bit b 1 = 2+b.toNat:= by
 
 def Nat.lt_self_sub_one (h : 0 < w) : w - 1 < w := Nat.lt_of_succ_le ((Nat.sub_add_cancel (Nat.succ_le_of_lt h)) ▸ Nat.le.refl)
 
-def conditions_ult (x y : BitVec w) (h : w > 0) :=
-  conds x y (w - 1) (Nat.lt_self_sub_one h)
+def bitwise_extract (x i j: Nat) : Nat := go x j 0 (i-j)
 where
-  conds (x y : BitVec w) (i : Nat) (h : i < w) : Prop := match i with
-    | 0     => ¬ x[0] ∧ y[0]
-    | i + 1 =>
-      have h : i < w := Nat.lt_of_succ_lt h
-      (¬ x[i + 1] ∧ y[i + 1]) ∨ (¬ (x[i + 1] ∧ ¬y[i + 1]) ∧ conds x y i h)
+  go (x j z : Nat) : Nat → Nat
+  | 0     => z.bit (x.testBit j)
+  | i + 1 => go x j (z.bit (x.testBit (i+1+j))) i
+
+theorem bitwise_extract_eq_extract : bitwise_extract x i j = (x >>> j)%(2^(i-j+1)):= sorry
+
+theorem bV_extract {x : BitVec w} : BitVec.ofNat (i-j+1) (bitwise_extract x.val i j)= extract i j x := by
+  rw [← val_bitvec_eq]
+  simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
 
 
-theorem contra_le_of_testBit {n m :ℕ} (i :ℕ) (h: n ≤ m) :  Nat.testBit n i = true ∧ Nat.testBit m i = false → (∃ (j : ℕ), i < j ∧  Nat.testBit n j ≠ Nat.testBit m j) :=by
-  have H := @Nat.lt_of_testBit m n i
-  contrapose! H
-  aesop
+def bitwise_concat (x y n m: Nat) : Nat := go x y n 0 (n+m-1)
+where
+  go (x y n z: Nat) : Nat → Nat
+  | 0     => z.bit (x.testBit 0)
+  | i + 1 => if i+1 < n then go x y n (z.bit (x.testBit (i+1))) i else go x y n (z.bit (y.testBit (i+1-n))) i
 
-theorem most_sig_eq_base {m :ℕ} (h : m ≠ 0) : ∃ i, Nat.testBit 0 i ≠ Nat.testBit m i ∧ ∀ j > i, Nat.testBit m j = Nat.testBit 0 j := by
-  have ⟨k, Hk⟩ := Nat.exists_most_significant_bit h
-  use k
-  simp_all
+lemma bitwise_concat_size (h: 0< n): bitwise_concat x y n m < 2^(m+n) := sorry
+
+theorem bitwise_concat_eq_concat (hx : x < 2^n) (hy: y< 2^m): bitwise_concat x y n m = y <<< n ||| x := sorry
+
+lemma or_eq_or': Nat.bitwise or = lor' := sorry
+
+theorem bV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): x ++ y = BitVec.ofNat (w+v) (bitwise_concat y.val x.val v w) := by
+  rw [← val_bitvec_eq]
+  simp only [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt (bitwise_concat_size h)]
+  simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat y.isLt x.isLt]
+
+def bitwise_ext (x n k: Nat) := go x (n-1) 0 (n+k-1)
+where
+  go (x n z : Nat) : Nat → Nat
+  | 0     => z.bit (x.testBit 0)
+  | i + 1 => if i+1 < n then go x n (z.bit (x.testBit (i+1))) i else go x n (z.bit (x.testBit n)) i
+
+#check rec_heq_iff_heq
+
+example {x: BitVec w} (h: 0<w): (signExtend i x).val = ((repeat_ i (extract (w-1) (w-1) x)) ++ x).val:= by
+  set u := w+i
+  simp only [signExtend]
+  have h1 : (w - 1 - (w - 1) + 1) * i + w = u := by sorry
+  apply eq_of_heq
+  sorry
+
+theorem rec_succ (f : Nat → Nat → Nat) (g: Nat → Bool) (h0: ∀ y, f y 0 = y.bit (g 0) )(h: ∀y n, f y (n+1) = f (y.bit (g (n+1))) n) :  f y i = f 0 i + 2^(i+1)*y:= sorry
+
+lemma bitwise_ext_succ : bitwise_ext.go x n y m = bitwise_ext.go x n 0 m + 2^(m+1)*y := rec_succ (bitwise_ext.go x n) (λ i => if i < n then x.testBit i else x.testBit n) (by cases' n <;> simp [bitwise_ext.go]) (by intros y m; by_cases h: m+1 < n <;> simp [bitwise_ext.go, h])
+
+lemma val_to_ofNat (h: m < 2^w) : (BitVec.ofNat w m).val = m := by simp [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt h]
+
+lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
+  simp [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt x.isLt]
+
+lemma ofNat_to_val' (x : BitVec w) (h: v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
+
+theorem append_eq_add (hx : x < 2^n) (hy: y< 2^m): x <<< m ||| y = x*2^m + y := sorry
+
+lemma BVappend_eq_add {a: BitVec w} {b : BitVec u} : (a ++ b).val = a.val*2^u+b.val := by
+  simp only [HAppend.hAppend, BitVec.append, BitVec.val_bitvec_eq, append_eq_add a.isLt b.isLt]
+
+
+lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
+  rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt))] 
+  rw [BitVec.val_bitvec_eq]
+  apply eq_of_heq
+  rw [rec_heq_iff_heq]
+  exact ofNat_to_val' _ h.symm  
+
+lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (Nat.succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (Nat.testBit (x.val) (w - 1)) := by
+  simp only [signExtend, cast_heq, BVappend_eq_add, repeat_]
+  simp [cast_heq, show (Nat.testBit x.val (w-1)).toNat = (BitVec.ofNat (w-1 - (w-1)+1) (x.val >>> (w-1))).val by sorry, add_mul, mul_assoc, ← pow_add, add_rotate _ _ x.val, mul_comm _ (2^(i+w))]
+
+
+
+#check rec_heq_iff_heq
+-- ok i see. we have to use extract and concat! maybe induction on just w? maybe double induction on w and n?
+theorem signExt {x : BitVec w} (h: 0 < w): (signExtend i x) = BitVec.ofNat (w+i) (bitwise_ext x.val w i) := by
+  induction' i with i ih
+  · simp [signExtend, repeat_, HAppend.hAppend, BitVec.append, bitwise_ext, bitwise_ext.go]
+    sorry
+  · rw [← val_bitvec_eq] at *
+    rw [val_to_ofNat (by sorry)] at ih
+    simp only [bitwise_ext] at *
+    rw [show w+ Nat.succ i -1 = w + i - 1 + 1 by simp [Nat.sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
+    simp only [bitwise_ext.go, bit_0]
+    rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (Nat.testBit (x.val) (w - 1))) _]
+    rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
+    simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false]
+    rw [@val_to_ofNat _ (w+Nat.succ i) (by sorry)]
+    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]
+
+
+-- def conditions_ult (x y : BitVec w) (h : w > 0) :=
+--   conds x y (w - 1) (Nat.lt_self_sub_one h)
+-- where
+--   conds (x y : BitVec w) (i : Nat) (h : i < w) : Prop := match i with
+--     | 0     => ¬ x[0] ∧ y[0]
+--     | i + 1 =>
+--       have h : i < w := Nat.lt_of_succ_lt h
+--       (¬ x[i + 1] ∧ y[i + 1]) ∨ (¬ (x[i + 1] ∧ ¬y[i + 1]) ∧ conds x y i h)
+
+
+-- theorem contra_le_of_testBit {n m :ℕ} (i :ℕ) (h: n ≤ m) :  Nat.testBit n i = true ∧ Nat.testBit m i = false → (∃ (j : ℕ), i < j ∧  Nat.testBit n j ≠ Nat.testBit m j) :=by
+--   have H := @Nat.lt_of_testBit m n i
+--   contrapose! H
+--   aesop
+
+-- theorem most_sig_eq_base {m :ℕ} (h : m ≠ 0) : ∃ i, Nat.testBit 0 i ≠ Nat.testBit m i ∧ ∀ j > i, Nat.testBit m j = Nat.testBit 0 j := by
+--   have ⟨k, Hk⟩ := Nat.exists_most_significant_bit h
+--   use k
+--   simp_all
   
 
-theorem most_sig_eq {n m :ℕ} (h : n ≠ m) : ∃ i, Nat.testBit n i ≠ Nat.testBit m i ∧ ∀ j > i, Nat.testBit m j = Nat.testBit n j := by
-  by_cases hnz : n = 0
-  · by_cases hmz : m ≠ 0
-    · rewrite [hnz]; exact most_sig_eq_base hmz
-    · push_neg at hmz; rewrite [hnz, hmz] at h; contradiction
-  by_cases hmz : m = 0
-  · rewrite [hmz]
-    have ⟨i, h, h'⟩ := most_sig_eq_base hnz
-    exact ⟨i, Ne.symm h, fun j hj => Eq.symm (h' j hj)⟩ 
-  have H2 : ¬(∀ (i : ℕ), Nat.testBit n i = Nat.testBit m i) := (fun hnq hp => hnq (Nat.eq_of_testBit_eq hp)) h
-  push_neg at H2
-  by_contra' H3
-  replace H3 : ∀ i, Nat.testBit n i ≠ Nat.testBit m i → ∃ j, j>i ∧ Nat.testBit n j ≠ Nat.testBit m j := fun i h => by by_contra' h'; apply H3 ⟨i, ⟨h, fun j hj => Eq.symm (h' j hj)⟩⟩
-  have ⟨k1, Hk1⟩:= Nat.exists_most_significant_bit hnz
-  have ⟨k2, Hk2⟩:= Nat.exists_most_significant_bit hmz
-  have ⟨u, hu⟩ := H2 
-  let M := max k1 k2
-  have H4 : ∀ i:ℕ, ∃ l, l>i ∧ Nat.testBit n l ≠ Nat.testBit m l := by
-    intro i
-    induction' i with d hd
-    · have ⟨v, hv1, hv2⟩ := H3 u hu
-      use v
-      exact ⟨pos_of_gt hv1, hv2⟩ 
-    · have ⟨l, hl1, hl2⟩ := hd
-      have ⟨v, hv1, hv2⟩ := H3 l hl2
-      use v
-      exact ⟨ instTransGtToLTGeToLE.proof_1 hv1 hl1, hv2⟩ 
-  have ⟨l, hl1, hl2⟩ := H4 M
-  replace Hk1 := Hk1.right l (show k1 < l by aesop)
-  replace Hk2 := Hk2.right l (show k2 < l by aesop)
-  rw [← Hk1] at Hk2
-  exact hl2 (Eq.symm Hk2)
+-- theorem most_sig_eq {n m :ℕ} (h : n ≠ m) : ∃ i, Nat.testBit n i ≠ Nat.testBit m i ∧ ∀ j > i, Nat.testBit m j = Nat.testBit n j := by
+--   by_cases hnz : n = 0
+--   · by_cases hmz : m ≠ 0
+--     · rewrite [hnz]; exact most_sig_eq_base hmz
+--     · push_neg at hmz; rewrite [hnz, hmz] at h; contradiction
+--   by_cases hmz : m = 0
+--   · rewrite [hmz]
+--     have ⟨i, h, h'⟩ := most_sig_eq_base hnz
+--     exact ⟨i, Ne.symm h, fun j hj => Eq.symm (h' j hj)⟩ 
+--   have H2 : ¬(∀ (i : ℕ), Nat.testBit n i = Nat.testBit m i) := (fun hnq hp => hnq (Nat.eq_of_testBit_eq hp)) h
+--   push_neg at H2
+--   by_contra' H3
+--   replace H3 : ∀ i, Nat.testBit n i ≠ Nat.testBit m i → ∃ j, j>i ∧ Nat.testBit n j ≠ Nat.testBit m j := fun i h => by by_contra' h'; apply H3 ⟨i, ⟨h, fun j hj => Eq.symm (h' j hj)⟩⟩
+--   have ⟨k1, Hk1⟩:= Nat.exists_most_significant_bit hnz
+--   have ⟨k2, Hk2⟩:= Nat.exists_most_significant_bit hmz
+--   have ⟨u, hu⟩ := H2 
+--   let M := max k1 k2
+--   have H4 : ∀ i:ℕ, ∃ l, l>i ∧ Nat.testBit n l ≠ Nat.testBit m l := by
+--     intro i
+--     induction' i with d hd
+--     · have ⟨v, hv1, hv2⟩ := H3 u hu
+--       use v
+--       exact ⟨pos_of_gt hv1, hv2⟩ 
+--     · have ⟨l, hl1, hl2⟩ := hd
+--       have ⟨v, hv1, hv2⟩ := H3 l hl2
+--       use v
+--       exact ⟨ instTransGtToLTGeToLE.proof_1 hv1 hl1, hv2⟩ 
+--   have ⟨l, hl1, hl2⟩ := H4 M
+--   replace Hk1 := Hk1.right l (show k1 < l by aesop)
+--   replace Hk2 := Hk2.right l (show k2 < l by aesop)
+--   rw [← Hk1] at Hk2
+--   exact hl2 (Eq.symm Hk2)
 
-def lt_of_testBit' {n m :ℕ} (_: n<m) (i :ℕ) : Prop := Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ (∀ (j : ℕ), i < j →  Nat.testBit n j = Nat.testBit m j)
+-- def lt_of_testBit' {n m :ℕ} (_: n<m) (i :ℕ) : Prop := Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ (∀ (j : ℕ), i < j →  Nat.testBit n j = Nat.testBit m j)
 
-theorem lt_of_testBit {n m :ℕ} (h: n < m) : ∃ i, Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ (∀ (j : ℕ), i < j →  Nat.testBit n j = Nat.testBit m j) := by
-  have H := @contra_le_of_testBit n m
-  have ⟨i, hi1, hi2⟩ := most_sig_eq (Nat.ne_of_lt h)
-  by_cases hni : Nat.testBit n i <;> by_cases hmi : Nat.testBit m i
-  · simp [*] at *
-  · replace hmi: Nat.testBit m i = false := by aesop
-    have ⟨j,  hj1, hj2⟩ := H i (Nat.le_of_lt h)  ⟨hni, hmi⟩
-    exfalso
-    have hi3 := Eq.symm (hi2 j (hj1))
-    contradiction
-  · use i
-    exact ⟨ (show _ by simp [hni]), hmi, (show _ by aesop)⟩ 
-  · simp [*] at *
+-- theorem lt_of_testBit {n m :ℕ} (h: n < m) : ∃ i, Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ (∀ (j : ℕ), i < j →  Nat.testBit n j = Nat.testBit m j) := by
+--   have H := @contra_le_of_testBit n m
+--   have ⟨i, hi1, hi2⟩ := most_sig_eq (Nat.ne_of_lt h)
+--   by_cases hni : Nat.testBit n i <;> by_cases hmi : Nat.testBit m i
+--   · simp [*] at *
+--   · replace hmi: Nat.testBit m i = false := by aesop
+--     have ⟨j,  hj1, hj2⟩ := H i (Nat.le_of_lt h)  ⟨hni, hmi⟩
+--     exfalso
+--     have hi3 := Eq.symm (hi2 j (hj1))
+--     contradiction
+--   · use i
+--     exact ⟨ (show _ by simp [hni]), hmi, (show _ by aesop)⟩ 
+--   · simp [*] at *
 
 
 theorem testBit_eq_rep {x: BitVec w} (i : Nat) (h: i< w): x[i] = Nat.testBit x.val i := by rfl
 
 theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = Nat.testBit x i := by 
 unfold BitVec.ofNat
-simp [GetElem.getElem, lsbGet, extract, Fin.ofNat',Nat.mod_eq_of_lt, h2]
+simp [GetElem.getElem, lsbGet, extract, Fin.ofNat', Nat.mod_eq_of_lt, h2]
 
-
-theorem exists_most_significant_bit' {n : BitVec w} :
-    ∀ i, Nat.testBit n.val i = true → i < w := by
-    have ⟨n, hn⟩ := n
-    intro i h
-    replace h : Nat.testBit n i = true := h
-    by_contra' h2
-    replace h2 : w ≤ i := Nat.le_of_not_lt h2
-    have ⟨k, hk, hj⟩ := Nat.exists_most_significant_bit (show n ≠ 0 by aesop) 
-    have h3: i ≤ k:= by
-      by_contra' h4
-      have h5 := hj i h4
-      simp [h] at h5
-    have h8 := Nat.le_trans h2 h3
-    have ⟨l, hl1, hl2, hl3⟩  := lt_of_testBit hn
-    cases' Nat.eq_or_lt_of_le h8 with h9 h10
-    · by_cases heq : l = w
-      · simp [*] at *
-      · simp_rw [Nat.testBit_two_pow_of_ne (Ne.symm heq)] at hl2
-    · have h7 := Nat.testBit_two_pow w k
-      have h8 : Nat.testBit (2 ^ w) k = false := by
-        apply Bool.bool_eq_false
-        replace h10: w ≠ k := Nat.ne_of_lt h10
-        rw [h7]
-        exact h10
-      have h9 : ∀ j, k < j → Nat.testBit (2^w) j = Nat.testBit n j := by
-        intros j h11
-        rw [hj j h11]
-        have h12 : w < j := Nat.lt_trans h10 h11
-        have h13 := Nat.testBit_two_pow w j
-        apply Bool.bool_eq_false
-        replace h14: w ≠ j := Nat.ne_of_lt h12
-        rw [h13]
-        exact h14
-      exact Nat.lt_asymm hn (Nat.lt_of_testBit k h8 hk h9)
+/-THERE'S A MUCH QUICKER PROOF using lt_testBit_pow_two_false-/
+-- theorem exists_most_significant_bit' {n : BitVec w} : 
+--     ∀ i, Nat.testBit n.val i = true → i < w := by
+--     have ⟨n, hn⟩ := n
+--     intro i h
+--     replace h : Nat.testBit n i = true := h
+--     by_contra' h2
+--     replace h2 : w ≤ i := Nat.le_of_not_lt h2
+--     have ⟨k, hk, hj⟩ := Nat.exists_most_significant_bit (show n ≠ 0 by aesop) 
+--     have h3: i ≤ k:= by
+--       by_contra' h4
+--       have h5 := hj i h4
+--       simp [h] at h5
+--     have h8 := Nat.le_trans h2 h3
+--     have ⟨l, hl1, hl2, hl3⟩  := lt_of_testBit hn
+--     cases' Nat.eq_or_lt_of_le h8 with h9 h10
+--     · by_cases heq : l = w
+--       · simp [*] at *
+--       · simp_rw [Nat.testBit_two_pow_of_ne (Ne.symm heq)] at hl2
+--     · have h7 := Nat.testBit_two_pow w k
+--       have h8 : Nat.testBit (2 ^ w) k = false := by
+--         apply Bool.bool_eq_false
+--         replace h10: w ≠ k := Nat.ne_of_lt h10
+--         rw [h7]
+--         exact h10
+--       have h9 : ∀ j, k < j → Nat.testBit (2^w) j = Nat.testBit n j := by
+--         intros j h11
+--         rw [hj j h11]
+--         have h12 : w < j := Nat.lt_trans h10 h11
+--         have h13 := Nat.testBit_two_pow w j
+--         apply Bool.bool_eq_false
+--         replace h14: w ≠ j := Nat.ne_of_lt h12
+--         rw [h13]
+--         exact h14
+--       exact Nat.lt_asymm hn (Nat.lt_of_testBit k h8 hk h9)
 
 
 theorem Nat.le_of_lt_dec (h : 0 < w) (h' : i < w) : i ≤ w - 1 := le_tsub_of_add_le_right h'
 
-theorem t {x y : BitVec w} {h : 0 < w} (h1 : x.val < y.val): conditions_ult x y h := by 
-  have ⟨i, hi⟩ := lt_of_testBit h1
-  apply bitblast_ult_base' (j := w - 1) (Nat.lt_self_sub_one h) (Nat.le_of_lt_dec h (exists_most_significant_bit' i hi.right.left)) hi
+
+def bitwise_ult (x y w : Nat) := go x y (w - 1) 
 where
- bitblast_ult_base' {i j} (h2 : j < w) (h3 : i ≤ j) : lt_of_testBit' h1 i → conditions_ult.conds x y j h2 := by
-  intro h4
-  unfold lt_of_testBit' at h4
-  have ⟨h41, h42, h43 ⟩ := h4
-  induction' j with j hj
-  · unfold conditions_ult.conds
-    replace h3 := Nat.eq_zero_of_le_zero h3
-    rw [h3] at h41
-    rw [h3] at h42
-    simp [h41, h42, testBit_eq_rep]
-  · unfold conditions_ult.conds
-    cases' (LE.le.eq_or_lt h3) with h5 h6
-    { left
-      rw [h5] at h41
-      rw [h5] at h42
-      simp [h41, h42, testBit_eq_rep]}
-    { replace h6:= SuccOrder.le_of_lt_succ h6 
-      right
-      push_neg
-      exact {left := by intro h7
-                        rw [← h7]
-                        simp [h43 (j+1) (Nat.lt_succ_of_le h6), testBit_eq_rep], 
-              right := hj (Nat.lt_of_succ_lt h2) h6 }}
+  go (x y : Nat) : Nat →  Prop
+    | 0     => ¬ x.testBit 0  ∧ y.testBit 0
+    | i + 1 => (¬ x.testBit (i + 1) ∧ y.testBit (i+1)) ∨ (¬(x.testBit (i + 1) ∧ ¬ y.testBit (i + 1)) ∧ go x y i)
+
+theorem bitwise_ult_of_ult (hy: y< 2^w) (h1: x < y) : bitwise_ult x y w := sorry
+
+
+theorem ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (by simp [LT.lt, BitVec.lt] at h1; assumption)
+
+
+-- theorem Nat_to_BitVec (f: BitVec w → Bitvec w →  Prop) (g: Nat → Nat → Prop) (h: f x y = g x.val y.val) : false:= sorry
+
+-- theorem t {x y : BitVec w} {h : 0 < w} (h1 : x.val < y.val): conditions_ult x y h := by 
+--   have ⟨i, hi⟩ := lt_of_testBit h1
+--   apply bitblast_ult_base' (j := w - 1) (Nat.lt_self_sub_one h) (Nat.le_of_lt_dec h (exists_most_significant_bit' i hi.right.left)) hi
+-- where
+--  bitblast_ult_base' {i j} (h2 : j < w) (h3 : i ≤ j) : lt_of_testBit' h1 i → conditions_ult.conds x y j h2 := by
+--   intro h4
+--   unfold lt_of_testBit' at h4
+--   have ⟨h41, h42, h43 ⟩ := h4
+--   induction' j with j hj
+--   · unfold conditions_ult.conds
+--     replace h3 := Nat.eq_zero_of_le_zero h3
+--     rw [h3] at h41
+--     rw [h3] at h42
+--     simp [h41, h42, testBit_eq_rep]
+--   · unfold conditions_ult.conds
+--     cases' (LE.le.eq_or_lt h3) with h5 h6
+--     { left
+--       rw [h5] at h41
+--       rw [h5] at h42
+--       simp [h41, h42, testBit_eq_rep]}
+--     { replace h6:= SuccOrder.le_of_lt_succ h6 
+--       right
+--       push_neg
+--       exact {left := by intro h7
+--                         rw [← h7]
+--                         simp [h43 (j+1) (Nat.lt_succ_of_le h6), testBit_eq_rep], 
+--               right := hj (Nat.lt_of_succ_lt h2) h6 }}
 
 @[simp] def toNat (bs : List Bool) : Nat :=
   toNat' (bs.length - 1) bs.reverse
@@ -498,7 +608,7 @@ theorem toNat_toBool (x w: Nat) : x%(2^(w+1)) = toNat.toNat' w (toBool'.go x w) 
   · rw [helper_2, ih]
     simp [toNat.toNat', add_comm]
 
-
+#check List.length_reverse
 
 lemma list_rec_length {α : Type} {w: Nat} (f: Nat → List α)  (g: Nat → α)  (h0: f 0 = [g 0]) (h : ∀ n, f (n+1) = g (n+1) :: f n) : (f w).length = w+1 := by
   induction' w with w ih
@@ -719,14 +829,8 @@ lemma go'''_testBit {x y : Nat} (h: i ≤  j): (go''' x y 0 j).testBit i = ((Nat
   | false => 0
 
 lemma xor_mod_2 (a b : Bool) : toNat [a ^^ b] = (toNat [a] + toNat [b])%2 := by
-  cases' a
-  · cases' b
-    · simp
-    · simp
-  · cases' b
-    · simp
-    · simp
-
+  cases' a <;> cases' b <;> simp
+  
 -- theorem descend_bv_pre (z : BitVec (w +1)) : z.val - 2^w* bool_to_nat (Nat.testBit z.val w) < 2^w:= by
 --   cases' z with z hz
 --   have h1 : Nat.testBit z w = true ∨ Nat.testBit z w = false := by
@@ -794,14 +898,6 @@ theorem eq_bv (h: v < 2^w): (BitVec.ofNat w v).val = v := by
 --       -- rw [eq_bv] at H
 --       -- simp only [bit_add', go', toNat]
 
-lemma xor_mod_2'' (a b : Bool) : (a ^^ b).toNat = (a.toNat + b.toNat)%2 := by
-  cases' a
-  · cases' b
-    · simp
-    · simp
-  · cases' b
-    · simp
-    · simp
 
 -- @[simp] lemma toNat_eq_Natbit : a.toNat = Nat.bit a 0 := by
 --   cases' a <;> decide
