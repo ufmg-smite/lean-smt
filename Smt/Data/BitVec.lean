@@ -35,15 +35,14 @@ instance : DecidableEq (BitVec w) :=
 
 namespace BitVec
 
-theorem pow_two_gt_zero (w : Nat) : 2^w > 0 :=
-  Nat.pos_pow_of_pos _ (by decide)
+theorem pow_two_pos (w : Nat) : 0 < 2^w := sorry
 
 protected def zero (w : Nat) : BitVec w :=
-  ⟨0, pow_two_gt_zero w⟩
+  ⟨0, pow_two_pos w⟩
 
 /-- The bitvector `n mod 2^w`. -/
 protected def ofNat (w : Nat) (n : Nat) : BitVec w :=
-  Fin.ofNat' n (pow_two_gt_zero w)
+  Fin.ofNat' n (pow_two_pos w)
 
 instance : Inhabited (BitVec w) := ⟨BitVec.zero w⟩
 
@@ -94,28 +93,36 @@ theorem val_bitvec_lt {a b : BitVec w} : (a.val : ℕ) < (b.val : ℕ) ↔ a < b
 theorem val_bitvec_bne {a b : BitVec w} : a.val ≠ b.val ↔ a != b := by
   simp [bne]
 
+theorem shiftr_eq_shiftRight: Nat.shiftr = Nat.shiftRight := by
+  funext x y
+  induction' y with y hy generalizing x
+  <;> simp [Nat.shiftr, Nat.shiftRight, Nat.div2_val, *]
+
+theorem bitwise_lt (hx : x < 2^n) (hy: y< 2^n) (h: f false false = false): Nat.bitwise f x y < 2^n := sorry
+
+lemma concat_size (hx : x < 2^n) (hy: y< 2^m) : y <<< n ||| x < 2^(n+m) := sorry
+
+lemma pow_two_succ (n: Nat) : 2^(n+1) = 2^n +2^n := sorry
+
 protected def complement (x : BitVec w) : BitVec w :=
   0 - (x + .ofNat w 1)
 
 protected def and (x y : BitVec w) : BitVec w :=
-  ⟨x.val &&& y.val, by simp 
-                       cases x
-                       sorry
-
-                                            
-                      ⟩
+  ⟨x.val &&& y.val, by simp [HAnd.hAnd, AndOp.and, Nat.land, bitwise_lt]⟩
 
 protected def or (x y : BitVec w) : BitVec w :=
-  ⟨x.val ||| y.val, sorry⟩
+  ⟨x.val ||| y.val, by simp [HOr.hOr, OrOp.or, Nat.lor, bitwise_lt]⟩
 
 protected def xor (x y : BitVec w) : BitVec w :=
-  ⟨x.val ^^^ y.val, sorry⟩
+  ⟨x.val ^^^ y.val, by simp [HXor.hXor, Xor.xor, Nat.xor, bitwise_lt]⟩
 
 protected def shiftLeft (x : BitVec w) (n : Nat) : BitVec w :=
   .ofNat w (x.val <<< n)
 
 protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
-  ⟨x.val >>> n, sorry⟩
+  ⟨x.val >>> n, by 
+      simp only [HShiftRight.hShiftRight, ShiftRight.shiftRight, ← shiftr_eq_shiftRight, Nat.shiftr_eq_div_pow]
+      exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩ 
 
 instance : Complement (BitVec w) := ⟨BitVec.complement⟩
 instance : AndOp (BitVec w) := ⟨BitVec.and⟩
@@ -131,7 +138,7 @@ def rotateRight (x : BitVec w) (n : Nat) : BitVec w :=
   x >>> n ||| x <<< (w - n)
 
 protected def append (x : BitVec w) (y : BitVec v) : BitVec (w+v) :=
-  ⟨x.val <<< v ||| y.val, sorry⟩ -- is it swapped? why?
+  ⟨x.val <<< v ||| y.val, Nat.add_comm _ _ ▸ concat_size y.isLt x.isLt⟩ -- is it swapped? why?
 
 instance : HAppend (BitVec w) (BitVec v) (BitVec (w+v)) := ⟨BitVec.append⟩
 
@@ -169,17 +176,12 @@ def shrink (v : Nat) (x : BitVec w) : BitVec v :=
 
 #eval BitVec.lsbGet (⟨100, by norm_num⟩ : BitVec 7) 2
 
-theorem shiftr_eq_shiftRight: Nat.shiftr = Nat.shiftRight := by
-  funext x y
-  induction' y with y hy generalizing x
-  <;> simp [Nat.shiftr, Nat.shiftRight, Nat.div2_val, *]
-
 theorem lsbGet_equiv_testBit {x : BitVec w} : x.lsbGet i = x.val.testBit i := by
   cases' h: Nat.bodd (Nat.shiftRight (x.val) i)
   <;> simp [Nat.testBit, BitVec.ofNat, Fin.ofNat', ShiftRight.shiftRight, HShiftRight.hShiftRight, Nat.mod_two_of_bodd, h, shiftr_eq_shiftRight]
   aesop -- non-terminating simp :(
   
-
+lemma toNat_le_one (b: Bool) : b.toNat ≤ 1 := by cases' b <;> simp
 
 instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
   getElem x i _ := Nat.testBit x.val i
@@ -199,6 +201,7 @@ where
   | i + 1 => go x j (z.bit (x.testBit (i+1+j))) i
 
 theorem bitwise_extract_eq_extract : bitwise_extract x i j = (x >>> j)%(2^(i-j+1)):= sorry
+
 
 theorem bV_extract {x : BitVec w} : BitVec.ofNat (i-j+1) (bitwise_extract x.val i j)= extract i j x := by
   rw [← val_bitvec_eq]
@@ -228,18 +231,14 @@ where
   | 0     => z.bit (x.testBit 0)
   | i + 1 => if i+1 < n then go x n (z.bit (x.testBit (i+1))) i else go x n (z.bit (x.testBit n)) i
 
-#check rec_heq_iff_heq
+@[simp] lemma unfold_bitwise_ext : bitwise_ext x n k = bitwise_ext.go x (n-1) 0 (n+k-1) := rfl
 
-example {x: BitVec w} (h: 0<w): (signExtend i x).val = ((repeat_ i (extract (w-1) (w-1) x)) ++ x).val:= by
-  set u := w+i
-  simp only [signExtend]
-  have h1 : (w - 1 - (w - 1) + 1) * i + w = u := by sorry
-  apply eq_of_heq
-  sorry
+lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (Nat.testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
+  simp only [BitVec.ofNat, Fin.ofNat', Nat.testBit, HShiftRight.hShiftRight, shiftr_eq_shiftRight, ShiftRight.shiftRight, Nat.mod_two_of_bodd, pow_one]
+  aesop
 
-theorem rec_succ (f : Nat → Nat → Nat) (g: Nat → Bool) (h0: ∀ y, f y 0 = y.bit (g 0) )(h: ∀y n, f y (n+1) = f (y.bit (g (n+1))) n) :  f y i = f 0 i + 2^(i+1)*y:= sorry
 
-lemma bitwise_ext_succ : bitwise_ext.go x n y m = bitwise_ext.go x n 0 m + 2^(m+1)*y := rec_succ (bitwise_ext.go x n) (λ i => if i < n then x.testBit i else x.testBit n) (by cases' n <;> simp [bitwise_ext.go]) (by intros y m; by_cases h: m+1 < n <;> simp [bitwise_ext.go, h])
+lemma bitwise_ext_succ : bitwise_ext.go x n y m = bitwise_ext.go x n 0 m + 2^(m+1)*y := sorry
 
 lemma val_to_ofNat (h: m < 2^w) : (BitVec.ofNat w m).val = m := by simp [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt h]
 
@@ -250,39 +249,42 @@ lemma ofNat_to_val' (x : BitVec w) (h: v = w): HEq x (BitVec.ofNat v x.val) := h
 
 theorem append_eq_add (hx : x < 2^n) (hy: y< 2^m): x <<< m ||| y = x*2^m + y := sorry
 
-lemma BVappend_eq_add {a: BitVec w} {b : BitVec u} : (a ++ b).val = a.val*2^u+b.val := by
+lemma bVappend_eq_add {a: BitVec w} {b : BitVec u} : (a ++ b).val = a.val*2^u+b.val := by
   simp only [HAppend.hAppend, BitVec.append, BitVec.val_bitvec_eq, append_eq_add a.isLt b.isLt]
 
 
 lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
-  rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt))] 
-  rw [BitVec.val_bitvec_eq]
-  apply eq_of_heq
-  rw [rec_heq_iff_heq]
-  exact ofNat_to_val' _ h.symm  
+  rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt)), BitVec.val_bitvec_eq]
+  exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
 
 lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (Nat.succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (Nat.testBit (x.val) (w - 1)) := by
-  simp only [signExtend, cast_heq, BVappend_eq_add, repeat_]
-  simp [cast_heq, show (Nat.testBit x.val (w-1)).toNat = (BitVec.ofNat (w-1 - (w-1)+1) (x.val >>> (w-1))).val by sorry, add_mul, mul_assoc, ← pow_add, add_rotate _ _ x.val, mul_comm _ (2^(i+w))]
+  simp only [signExtend, cast_heq, bVappend_eq_add, repeat_, extract]
+  rw [show w - 1 - (w - 1) + 1 = 1 by simp]
+  simp [cast_heq, testBit_eq_ofNat, add_mul, mul_assoc, ← pow_add, add_rotate _ _ x.val, mul_comm _ (2^(i+w))]
 
+lemma signExtend_zero {x: BitVec w} (h: 0 < w) : (signExtend 0 x).val = x.val := by
+  simp [signExtend, cast_heq, bVappend_eq_add, repeat_, extract]
 
+lemma bitwise_ext_size (h: 0< n): bitwise_ext x n m < 2^(n+m) := sorry
 
-#check rec_heq_iff_heq
--- ok i see. we have to use extract and concat! maybe induction on just w? maybe double induction on w and n?
-theorem signExt {x : BitVec w} (h: 0 < w): (signExtend i x) = BitVec.ofNat (w+i) (bitwise_ext x.val w i) := by
-  induction' i with i ih
-  · simp [signExtend, repeat_, HAppend.hAppend, BitVec.append, bitwise_ext, bitwise_ext.go]
-    sorry
-  · rw [← val_bitvec_eq] at *
-    rw [val_to_ofNat (by sorry)] at ih
-    simp only [bitwise_ext] at *
+lemma bitwise_ext_zero (h: 0 < w) (hx: x < 2^w) : bitwise_ext x w 0 = x := sorry
+
+theorem bv_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x) = BitVec.ofNat (w+i) (bitwise_ext x.val w i) := by
+  induction' i with i ih <;> rw [← val_bitvec_eq] at *
+  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt, ofNat_to_val]
+  · rw [val_to_ofNat (bitwise_ext_size h)] at ih
+    rw [unfold_bitwise_ext] at *
     rw [show w+ Nat.succ i -1 = w + i - 1 + 1 by simp [Nat.sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
     simp only [bitwise_ext.go, bit_0]
     rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (Nat.testBit (x.val) (w - 1))) _]
     rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
     simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false]
-    rw [@val_to_ofNat _ (w+Nat.succ i) (by sorry)]
-    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]
+    rw [@val_to_ofNat _ (w+Nat.succ i)]
+    · simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]
+    · rw [Nat.succ_eq_add_one, ← add_assoc, pow_two_succ]
+      exact add_lt_add_of_lt_of_le (unfold_bitwise_ext ▸ @bitwise_ext_size w x.val i h) (mul_le_of_le_one_right' (toNat_le_one _))
+      
+
 
 
 -- def conditions_ult (x y : BitVec w) (h : w > 0) :=
@@ -583,7 +585,7 @@ theorem helper_2 (x i : Nat) : x % 2 ^ (i + 1) = x % 2^i + 2^i * (Nat.testBit x 
     rw [← h3, mul_add, ← mul_assoc, (show 2^i*2 = 2^(i+1) by rfl), add_assoc, add_comm] at h1
     simp [(Nat.div_mod_unique (NeZero.pos (2^(i+1)))).mpr ⟨Eq.symm h1, (show 2^i*1 + x%(2^i) < 2^(i+1) by simp[Nat.add_lt_add_left, Nat.mod_lt x (NeZero.pos (2^i)), Nat.pow_succ, Nat.mul_two])⟩, Bool.toNat, add_comm]
 
-lemma pow_two_succ (n: Nat) : 2^(n+1) = 2^n +2^n := by simp [Nat.pow_succ, Nat.mul_two]
+
 
 lemma eq_zero_or_one_le (n : Nat) : n= 0 ∨ 1 ≤ n := by
   have h := Nat.eq_zero_or_pos n
@@ -824,9 +826,6 @@ lemma go'''_testBit {x y : Nat} (h: i ≤  j): (go''' x y 0 j).testBit i = ((Nat
 -- def bit_add''' (x y : BitVec w) : BitVec w :=
 --   ⟨go''' x.val y.val 0 (w - 1), sorry⟩
 
-@[simp] def bool_to_nat (b : Bool) : Nat := match b with
-  | true => 1
-  | false => 0
 
 lemma xor_mod_2 (a b : Bool) : toNat [a ^^ b] = (toNat [a] + toNat [b])%2 := by
   cases' a <;> cases' b <;> simp
