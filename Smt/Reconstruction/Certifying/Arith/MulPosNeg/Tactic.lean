@@ -51,7 +51,7 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
           | _ => throwError "[arithMul]: unexpected type for first variable"
         | _ => pure vc
       let thmName: Name ←
-        if compId <= 3 then
+        if compId <= 4 then
           pure (thms.get! compId) 
         else throwError "[arithMul]: unexpected second argument"
       let inst ←
@@ -73,6 +73,7 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
                 , ``arith_mul_pos_le
                 , ``arith_mul_pos_gt
                 , ``arith_mul_pos_ge
+                , ``arith_mul_pos_eq
                 ]
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
@@ -86,6 +87,7 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
                 , ``arith_mul_neg_le
                 , ``arith_mul_neg_gt
                 , ``arith_mul_neg_ge
+                , ``arith_mul_neg_eq
                 ]
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
