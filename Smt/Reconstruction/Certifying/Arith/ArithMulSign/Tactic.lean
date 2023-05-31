@@ -4,11 +4,23 @@ import Mathlib.Data.Nat.Parity
 
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Arith.ArithMulSign.Lemmas
+import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Instances
 
 open Lean Elab Tactic Meta Expr
 open Smt.Reconstruction.Certifying
 
-abbrev MulSignInput := List (Expr × Bool × Nat)
+inductive Pol where
+ | Neg : Pol
+ | NZ  : Pol
+ | Pos : Pol
+ deriving BEq
+
+def polToString : Pol → String
+  | Pol.Neg => "Pol.Neg"
+  | Pol.Pos => "Pol.Pos"
+  | Pol.NZ  => "Pol.NZ"
+
+abbrev MulSignInput := List (Expr × Pol × Nat)
 
 --              var names/neg or pos/ exponents
 -- arithMulSign [a, b, c] [1, -1, 1], [2, 3, 1]
@@ -18,11 +30,14 @@ def parseArithMulSign : Syntax → TacticM MulSignInput
   | `(tactic| arithMulSign [ $[$ns],* ], [ $[$bs],* ], [ $[$es],* ]) => do
     let exprs: List Expr ←
       ns.toList.mapM (fun h: Term => elabTerm h none)
-    let bools: List Bool ←
+    let bools: List Pol ←
       bs.toList.mapM (fun h: Term => do
                       let hExpr ← elabTerm h none
-                      let o := getNatLit? hExpr
-                      pure $ Option.isSome o
+                      match getNatLit? hExpr with
+                      | none   => pure Pol.Neg
+                      | some 0 => pure Pol.NZ
+                      | some 1 => pure Pol.Pos
+                      | _      => throwError "[arithMulSign]: invalid polarity"
                     )
     let exps : List Nat ← es.toList.mapM stxToNat
     pure (exprs.zip (bools.zip exps))
@@ -52,40 +67,42 @@ where
         match exprType with
         | .const `Rat .. => pure false
         | .const `Int .. => pure true
-        | _ => throwError "[arithMulSign]: unexpected type for variable"
+        | _ => throwError "[arithMulSign]: unexpected type for expression"
+      let lorInst := mkConst $
+        if exprIsInt then ``lorInt else ``lorRat
       let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
       let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
       -- zero with the same type as the current argument
       let currZero := if exprIsInt then zeroI else zeroR
-      let powThm ←
-        match exprIsInt, evenExp with
-        | false, false => pure ``powOddR
-        | false, true  => pure ``powEvenR
-        | true, false  => pure ``powOddI
-        | true, true   => pure ``powEvenI
       let bindedType: Expr ←
         match pol with
-        | false => mkAppM ``LT.lt #[expr, currZero]
-        | true => mkAppM ``GT.gt #[expr, currZero]
+        | Pol.Neg => mkAppM ``LT.lt #[expr, currZero]
+        | Pol.NZ  => mkAppM ``Ne    #[expr, currZero]
+        | Pol.Pos => mkAppM ``GT.gt #[expr, currZero]
+      let expParityPf ← do
+        if evenExp then
+          let rflExpr ← mkAppOptM ``rfl #[(mkConst ``Nat), (mkNatLit 0)]
+          let iffExp := mkApp (mkConst ``Nat.even_iff) (mkNatLit exp)
+          mkAppM ``Iff.mpr #[iffExp, rflExpr]
+        else
+          let rflExpr ← mkAppOptM ``rfl #[(mkConst ``Nat), (mkNatLit 1)]
+          let iffExp := mkApp (mkConst ``Nat.odd_iff) (mkNatLit exp)
+          mkAppM ``Iff.mpr #[iffExp, rflExpr]
       withLocalDeclD (← mkFreshId) bindedType $ fun bv => do
         let exprPowSignPf ←
           if exp == 1 then
             pure bv
-          else if pol then
-            match exprIsInt with
-            | false => pure $ mkApp3 (mkConst ``powPosR) (mkNatLit exp) expr bv
-            | true  => pure $ mkApp3 (mkConst ``powPosI) (mkNatLit exp) expr bv
           else
-            if evenExp then
-              let rflExpr ← mkAppOptM ``rfl #[(mkConst ``Nat), (mkNatLit 0)]
-              let iffExp := mkApp (mkConst ``Nat.even_iff) (mkNatLit exp)
-              let evenExp ← mkAppM ``Iff.mpr #[iffExp, rflExpr]
-              mkAppM powThm #[bv, evenExp]
-            else
-              let rflExpr ← mkAppOptM ``rfl #[(mkConst ``Nat), (mkNatLit 1)]
-              let iffExp := mkApp (mkConst ``Nat.odd_iff) (mkNatLit exp)
-              let oddExp ← mkAppM ``Iff.mpr #[iffExp, rflExpr]
-              mkAppM powThm #[bv, oddExp]
+            match pol with
+            | Pol.NZ =>
+              pure $ mkApp6 (mkConst ``nonZeroEvenPow) exprType lorInst (mkNatLit exp) expr bv expParityPf
+            | Pol.Pos =>
+              pure $ mkApp5 (mkConst ``powPos) exprType lorInst (mkNatLit exp) expr bv
+            | Pol.Neg =>
+              if evenExp then
+                mkAppM ``powNegEven #[bv, expParityPf]
+              else
+                mkAppM ``powNegOdd #[bv, expParityPf]
         let exprPow ←
           if exp == 1 then
             pure expr
@@ -103,6 +120,8 @@ where
           if first then
             inferType exprPowSignPf
           else inferType prodSignPf
+        logInfo m!"prodSignPfType = {prodSignPfType}"
+        logInfo m!"pol = {polToString pol}"
         let prodPos := (← getOp prodSignPfType) == `GT.gt
         -- normalize types in case one is rat and the other is int
         let (exprPow', prod', exprPowSignPf', prodSignPf') :=
@@ -116,7 +135,7 @@ where
             (exprPow, mkApp (mkConst ``Rat.ofInt) prod, exprPowSignPf, prodSignPf')
           | true, false  =>
             let exprPowSignPf' :=
-              if pol || exp % 2 == 0 then
+              if pol == Pol.Pos || pol == Pol.NZ || evenExp then
                 mkApp2 (mkConst ``castPos) exprPow exprPowSignPf
               else mkApp2 (mkConst ``castNeg) exprPow exprPowSignPf
             (mkApp (mkConst ``Rat.ofInt) exprPow, prod, exprPowSignPf', prodSignPf)
@@ -124,7 +143,7 @@ where
         let answer ←
           if first then pure exprPowSignPf
           else
-            if pol || exp % 2 == 0 then
+            if pol == Pol.Pos || pol == Pol.NZ || evenExp then
               if prodPos then
                 mkAppOptM ``combineSigns₁ #[none, none, exprPow', prod', exprPowSignPf', prodSignPf']
               else mkAppOptM ``combineSigns₂ #[none, none, exprPow', prod', exprPowSignPf', prodSignPf']
@@ -138,4 +157,42 @@ where
           else mkAppM ``Mul.mul #[prod', exprPow']
         let rc ← go false t xs' answer prod'
         mkLambdaFVars #[bv] rc
+
+#check @nonZeroEvenPow
+#check @powPos
+#check @powNegEven
+
+example (a : Int) : (a + 3) > 0 → (a + 3) ^ 2 > 0 := by
+  arithMulSign [(a + 3)], [1], [2]
+
+example (a : Int) : a > 0 → a ^ 3 > 0 := by
+  arithMulSign [a], [1], [3]
+
+example (b : Int) : b ≠ 0 → b ^ 4 > 0 := by
+  arithMulSign [b], [0], [4]
+
+example (a b : ℚ) : a > 0 → b < 0 → a ^ 2 * b ^ 3 < 0 := by
+  arithMulSign [a,b], [1,-1], [2,3]
+
+example (a b c d e : Int) :
+  a < 0 →
+    b > 0 →
+      c < 0 →
+        d > 0 →
+          e < 0 →
+            a * (b ^ 2) * (c ^ 2) * (d ^ 4) * (e ^ 5) > 0 := by
+  arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,2,4,5]
+
+example (a : Int) (b : ℚ) : a < 0 → b < 0 → a ^ 3 * b ^ 3 > 0 := by
+  arithMulSign [a,b], [-1,-1], [3,3]
+
+example (a e : Int) (b c d : ℚ) :
+  a < 0 →
+    b > 0 →
+      c < 0 →
+        d > 0 →
+          e < 0 →
+            a * (b ^ 2) * (c ^ 2) * (d ^ 4) * (e ^ 5) > 0 := by
+  arithMulSign [a,b,c,d,e], [-1,1,-1,1,-1], [1,2,2,4,5]
+
 
