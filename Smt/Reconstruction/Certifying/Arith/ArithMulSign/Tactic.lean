@@ -50,10 +50,8 @@ where
 -- acc is a partial proof corresponding to the sign of the prefix of the multiplication
   go (first : Bool) (xs : (List (Expr × Pol × Nat))) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=
     match xs with
-    | [] =>
-      return prodSignPf
+    | [] => return prodSignPf
     | (expr, pol, exp) :: t => do
-      let evenExp := decide (Even exp)
       let exprType ← inferType expr
       let exprIsInt ←
         match exprType with
@@ -72,7 +70,7 @@ where
         | Pol.NZ  => mkAppM ``Ne    #[expr, currZero]
         | Pol.Pos => mkAppM ``GT.gt #[expr, currZero]
       let expParityPf ← do
-        if evenExp then
+        if exp % 2 == 0 then
           let rflExpr ← mkAppOptM ``rfl #[(mkConst ``Nat), (mkNatLit 0)]
           let iffExp := mkApp (mkConst ``Nat.even_iff) (mkNatLit exp)
           mkAppM ``Iff.mpr #[iffExp, rflExpr]
@@ -91,7 +89,7 @@ where
             | Pol.Pos =>
               pure $ mkApp5 (mkConst ``powPos) exprType lorInst (mkNatLit exp) expr bv
             | Pol.Neg =>
-              if evenExp then
+              if exp % 2 == 0 then
                 mkAppM ``powNegEven #[bv, expParityPf]
               else
                 mkAppM ``powNegOdd #[bv, expParityPf]
@@ -116,7 +114,6 @@ where
         -- normalize types in case one is rat and the other is int
         let (exprPow', prod', exprPowSignPf', prodSignPf') :=
           match exprIsInt, prodIsInt with
-          | false, false => (exprPow, prod, exprPowSignPf, prodSignPf)
           | false, true  =>
             let prodSignPf' :=
               if prodPos then
@@ -125,15 +122,15 @@ where
             (exprPow, mkApp (mkConst ``Rat.ofInt) prod, exprPowSignPf, prodSignPf')
           | true, false  =>
             let exprPowSignPf' :=
-              if pol == Pol.Pos || pol == Pol.NZ || evenExp then
+              if pol == Pol.Pos || pol == Pol.NZ || exp % 2 == 0 then
                 mkApp2 (mkConst ``castPos) exprPow exprPowSignPf
               else mkApp2 (mkConst ``castNeg) exprPow exprPowSignPf
             (mkApp (mkConst ``Rat.ofInt) exprPow, prod, exprPowSignPf', prodSignPf)
-          | true, true   => (exprPow, prod, exprPowSignPf, prodSignPf)
+          | _, _   => (exprPow, prod, exprPowSignPf, prodSignPf)
         let answer ←
           if first then pure exprPowSignPf
           else
-            if pol == Pol.Pos || pol == Pol.NZ || evenExp then
+            if pol == Pol.Pos || pol == Pol.NZ || exp % 2 == 0 then
               if prodPos then
                 mkAppOptM ``combineSigns₁ #[none, none, exprPow', prod', exprPowSignPf', prodSignPf']
               else mkAppOptM ``combineSigns₂ #[none, none, exprPow', prod', exprPowSignPf', prodSignPf']
