@@ -3,7 +3,6 @@ import Smt.Reconstruction.Certifying.Boolean
 
 import Mathlib.Algebra.Parity
 import Mathlib.Data.Nat.Parity
-import Mathlib.Tactic.Linarith
 
 open Smt.Reconstruction.Certifying
 
