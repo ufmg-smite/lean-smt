@@ -15,13 +15,11 @@ inductive Pol where
  | Pos : Pol
  deriving BEq
 
-abbrev MulSignInput := List (Expr × Pol × Nat)
-
 --              var names/neg or pos/ exponents
 -- arithMulSign [a, b, c] [1, -1, 1], [2, 3, 1]
 syntax (name := arithMulSign) "arithMulSign" ("[" term,* "]")? "," ("[" term,* "]") "," ("[" term,* "]")? : tactic
 
-def parseArithMulSign : Syntax → TacticM MulSignInput
+def parseArithMulSign : Syntax → TacticM (List (Expr × Pol × Nat))
   | `(tactic| arithMulSign [ $[$ns],* ], [ $[$bs],* ], [ $[$es],* ]) => do
     let exprs: List Expr ←
       ns.toList.mapM (fun h: Term => elabTerm h none)
@@ -38,20 +36,19 @@ def parseArithMulSign : Syntax → TacticM MulSignInput
     pure (exprs.zip (bools.zip exps))
   | _ => throwError "[ArithMulSign]: wrong syntax"
 
-@[tactic arithMulSign] def evalArithMulSign : Tactic := fun stx =>
-  withMainContext do
+@[tactic arithMulSign] def evalArithMulSign : Tactic := fun stx => do
+  let mvar ← getMainGoal
+  mvar.withContext do
     let data ← parseArithMulSign stx
-    let mvar ← getMainGoal
-    mvar.withContext do
-      let answer ← go true data data (mkConst `empty) (mkConst `empty)
-      let answerType ← inferType answer
-      let fname ← mkFreshId
-      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname answerType answer
-      replaceMainGoal [mvar']
-      evalTactic (← `(tactic| exact $(mkIdent fname)))
+    let answer ← go true data (mkConst `empty) (mkConst `empty)
+    let answerType ← inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname answerType answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 where
 -- acc is a partial proof corresponding to the sign of the prefix of the multiplication
-  go (first : Bool) (xs xs' : MulSignInput) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=
+  go (first : Bool) (xs : (List (Expr × Pol × Nat))) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=
     match xs with
     | [] =>
       return prodSignPf
@@ -148,6 +145,6 @@ where
           if first then
             pure exprPow
           else mkAppM ``Mul.mul #[prod', exprPow']
-        let rc ← go false t xs' answer prod'
+        let rc ← go false t answer prod'
         mkLambdaFVars #[bv] rc
 
