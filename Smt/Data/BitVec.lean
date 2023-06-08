@@ -85,7 +85,7 @@ theorem val_bitvec_eq {a b : BitVec w} : a.val = b.val ↔ a = b :=
 theorem val_bitvec_lt {a b : BitVec w} : (a.val : ℕ) < (b.val : ℕ) ↔ a < b := by
   simp [LT.lt, BitVec.lt]
 
-
+#check Nat.add_div_of_dvd_right
 /-- `a ≠ b` as natural numbers if and only if `a != b` in `Fin n`. -/
 @[norm_cast, simp]
 theorem val_bitvec_bne {a b : BitVec w} : a.val ≠ b.val ↔ a != b := by
@@ -461,6 +461,7 @@ lemma toNat_lt : toNat bs < 2^bs.length := by
     -- calc _ ≤ 2*(2^l.length - 1) + 1 := add_le_add (by simp [Nat.le_pred_of_lt ih]) (toNat_eq_bif ▸ toNat_le_one b)
     --      _ = 2 ^ (Nat.succ l.length) -1 := by rw [mul_tsub, pow_succ, ← tsub_tsub_assoc (by decide) (by linarith)]
     --      _ < _ := Nat.pred_lt (ne_of_gt (pow_two_pos (Nat.succ l.length)))
+#check List.Subset
 
 def bbT (bs : List Bool): BitVec bs.length :=
   ⟨toNat bs, toNat_lt⟩
@@ -985,4 +986,13 @@ theorem bla (x :  BitVec w) (y : BitVec (List.length (toBool x h))): False := by
 --   simp only [bit_add''', HAdd.hAdd, Add.add, BitVec.add, Fin.add]
 --   rw [go'''_correct x y]
 --   sorry
+def uDivModRec (a b : Nat) (w : Nat) : (Nat × Nat) :=
+  match w with
+  | 0    => (0, 0)
+  | w + 1 =>
+    let (q1, r1) := uDivModRec (a >>> 1) b w
+    let (q1, r1) := (q1 <<< 1, r1 <<< 1)
+
+    _
+
 end BitVec
