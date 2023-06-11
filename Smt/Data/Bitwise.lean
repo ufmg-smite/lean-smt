@@ -12,20 +12,33 @@ import Mathlib.Data.Bool.Basic
 /-
 # Bitwise Operations for Bitvectors
 
-A bitvector is defined in BitVec as a natural number modulo 2^w (i.e. `Fin` of length 2^w). Many operators on bitvectors are defined as the corresponding operations on `Fin`. For example, less than is defined as the less than of the underlying naturals. Similarly, addition is defined as addition of the underlying naturals modulo 2^w (i.e. `Fin.add`). Many bitvector operations were defined from the [`QF_BV` logic](https://smtlib.cs.uiowa.edu/logics-all.shtml#QF_BV) of SMT-LIBv2.
+A bitvector is defined in BitVec as a natural number modulo 2^w (i.e. `Fin` of length 2^w). 
+Many operators on bitvectors are defined as the corresponding operations on `Fin`. 
+For example, less than is defined as the less than of the underlying naturals. Similarly, addition 
+is defined as addition of the underlying naturals modulo 2^w (i.e. `Fin.add`). 
+The bitvector operations were defined from the 
+[`QF_BV` logic](https://smtlib.cs.uiowa.edu/logics-all.shtml#QF_BV) of SMT-LIBv2.
 
-In this file, we define bitwise versions for these operations and show that they correspond to bitvector operations in BitVec.
+In this file, we define bitwise versions for these operations and show that they correspond 
+to bitvector operations in BitVec.
 
 ## Main Results
 
-* `mod_two_pow_succ` expresses a number modulo `2^(i+1)` in terms of its value modulo 2^i. This allows for induction on the most significant bit in a very clean way. This will be used extensively in the proofs of `bitwise_add` and `bitwise_mul` where induction on the most significant bit is easier.  
-* `of_lt_of_testBit` shows that if `x < y` then there exists a bit `i` such that `x.testBit i = false` and `y.testBit i = true`.
-* `toNat_testBit` shows that the `testBit` of `toNat` is the function at that index. This used extensively in the proof of each of the bitwise operations.
-* `testBit_add` shows that `testBit` of the sum of two bitvectors is equivalent to the bitwise xor of the `testBit` of the two bitvectors and the `testBit` of the carry.
+* `mod_two_pow_succ` expresses a number modulo `2^(i+1)` in terms of its value modulo 2^i. 
+This allows for induction on the most significant bit in a very clean way. This will be used 
+extensively in the proofs of `bitadd` and `bitmul` where induction on the most significant bit 
+is easier.  
+* `of_lt_of_testBit` shows that if `x < y` then there exists a bit `i` such that 
+`x.testBit i = false` and `y.testBit i = true`.
+* `toNat_testBit` shows that the `testBit` of `toNat` is the function at that index. 
+This used extensively in the proof of each of the bitwise operations.
+* `testBit_add` shows that `testBit` of the sum of two bitvectors is equivalent to the bitwise 
+xor of the `testBit` of the two bitvectors and the `testBit` of the carry.
 
 ## Future Work
 
-Prove correspondence for other bitvector operations (neg, mul, append, extract etc.). This is currently work in progress (see Bitwisemain). This is all proved but is undergoing reviews.
+Prove correspondence for other bitvector operations (neg, mul, append, extract etc.). 
+This is currently WIP (see Bitwisemain). This is all proved but is undergoing refactoring.
 -/
 
 infix:30 " ^^ " => xor
@@ -129,7 +142,8 @@ theorem testBit_translate_one' {x w :Nat} (h: x<2^w) : Nat.testBit (2^w+x) w = t
 
 @[simp] lemma testBit_bool : testBit b.toNat 0 = b := by cases' b <;> simp
 
-/---Generic method to create a natural number by tail-recursively appending bits from the tail. This is an alternative to using `List` altogether.-/
+/---Generic method to create a natural number by tail-recursively appending bits from the tail.
+This is an alternative to using `List` altogether.-/
 def toNat (f : Nat → Bool) (z : Nat) : Nat → Nat
   | 0 => z.bit (f 0)
   | i + 1 => toNat f (z.bit (f (i + 1))) i
@@ -162,13 +176,13 @@ def bitwise_carry (x y : Nat) : Nat → Bool
   | i + 1 => (x.testBit i && y.testBit i) || ((x.testBit i ^^ y.testBit i) && bitwise_carry x y i)
 
 /---Bitblast addition-/
-@[simp] def bitwise_add (x y i: Nat) := toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j) 0 i
+@[simp] def bitadd (x y i: Nat) := toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j) 0 i
 
 lemma unfold_carry (x y i : Nat) : (bitwise_carry x y (i+1)).toNat = ((Nat.testBit x i && Nat.testBit y i) || ((Nat.testBit x i ^^ Nat.testBit y i) && bitwise_carry x y i)).toNat := by simp [bitwise_carry]
 
-theorem bitwise_add_eq_add_base (x y i: Nat) : x%(2^(i+1)) + y%(2^(i+1)) = bitwise_add x y i + 2^(i+1)*(bitwise_carry x y (i+1)).toNat := by
+theorem bitadd_eq_add_base (x y i: Nat) : x%(2^(i+1)) + y%(2^(i+1)) = bitadd x y i + 2^(i+1)*(bitwise_carry x y (i+1)).toNat := by
   induction' i with i hi
-  · simp only [bitwise_carry, bitwise_add, toNat]
+  · simp only [bitwise_carry, bitadd, toNat]
     cases' hx: Nat.bodd x  <;> cases' hy: Nat.bodd y
     <;> simp [mod_two_of_bodd, testBit, hx, hy, shiftr]
   · rw [mod_two_pow_succ x, mod_two_pow_succ y]
@@ -179,12 +193,12 @@ theorem bitwise_add_eq_add_base (x y i: Nat) : x%(2^(i+1)) + y%(2^(i+1)) = bitwi
     <;> simp [Bool.toNat, @toNat_succ 1 i _, two_pow_succ, hx, hy, hc, toNat]
     <;> ring
 
-theorem bitwise_add_eq_add (x y : Nat) : bitwise_add x y i = (x + y) % 2 ^ (i + 1) := by
-  rw [Nat.add_mod, bitwise_add_eq_add_base]
+theorem bitwise_add_eq_add (x y : Nat) : bitadd x y i = (x + y) % 2 ^ (i + 1) := by
+  rw [Nat.add_mod, bitadd_eq_add_base]
   cases' i with i i
   · cases' h0: Nat.testBit x 0 ^^ (Nat.testBit y 0 ^^ bitwise_carry x y 0)
     <;> simp [toNat, h0]
-  · simp [bitwise_add, Nat.mod_eq_of_lt toNat_lt]
+  · simp [bitadd, Nat.mod_eq_of_lt toNat_lt]
 
 theorem testBit_add {x y i: Nat} : (x + y).testBit i = ((x.testBit i ^^ y.testBit i) ^^ bitwise_carry x y i):= by
   have := lt_of_lt_of_le (lt_trans (lt_two_pow (x + y)) (pow_lt_pow_succ (by decide) (x + y))) (pow_le_pow_of_le_right (show 0 < 2 by decide) (@le_add_self _ _ _ i))
