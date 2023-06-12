@@ -1,5 +1,5 @@
 /-
-Copyright (c) 2022 by the authors listed in the file AUTHORS and their
+Copyright (c) 2023 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan, Abdalrhman M Mohamed
@@ -9,7 +9,7 @@ import Mathlib.Data.Nat.Bitwise
 import Mathlib.Data.Nat.ModEq
 import Mathlib.Data.Bool.Basic
 
-/-
+/-!
 # Bitwise Operations for Bitvectors
 
 A bitvector is defined in BitVec as a natural number modulo 2^w (i.e. `Fin` of length 2^w). 
@@ -142,8 +142,8 @@ theorem testBit_translate_one' {x w :Nat} (h: x<2^w) : Nat.testBit (2^w+x) w = t
 
 @[simp] lemma testBit_bool : testBit b.toNat 0 = b := by cases' b <;> simp
 
-/---Generic method to create a natural number by tail-recursively appending bits from the tail.
-This is an alternative to using `List` altogether.-/
+/-- Generic method to create a natural number by tail-recursively appending 
+bits from the tail. This is an alternative to using `List` altogether.-/
 def toNat (f : Nat → Bool) (z : Nat) : Nat → Nat
   | 0 => z.bit (f 0)
   | i + 1 => toNat f (z.bit (f (i + 1))) i
@@ -162,7 +162,7 @@ theorem toNat_lt {f: Nat → Bool} : toNat f 0 i < 2^(i+1) := by
     rw [toNat_succ]
     cases' (f (i+1)) <;> simp [ih, two_pow_succ] at * <;> linarith
 
-/--The `ith` bit of `toNat` is the function at `i`.-/
+/-- The `ith` bit of `toNat` is the function at `i`.-/
 theorem toNat_testBit {f: Nat → Bool} (h1: i ≤ j): (toNat f 0 j).testBit i = f i := by
   induction' j with j ih generalizing i
   · simp [nonpos_iff_eq_zero.mp h1, toNat, bit_val]
@@ -170,12 +170,12 @@ theorem toNat_testBit {f: Nat → Bool} (h1: i ≤ j): (toNat f 0 j).testBit i =
     · rw [← ih (show i ≤ j by linarith), toNat, toNat_succ, ←testBit_translate h1]
     · rw [h1, toNat, toNat_succ, bit_toNat, testBit_translate' (toNat_lt)]
 
-/---Carry function for bitwise addition.-/
+/-- Carry function for bitwise addition.-/
 def bitwise_carry (x y : Nat) : Nat → Bool
   | 0     => false
   | i + 1 => (x.testBit i && y.testBit i) || ((x.testBit i ^^ y.testBit i) && bitwise_carry x y i)
 
-/---Bitblast addition-/
+/-- Bitblast addition-/
 @[simp] def bitadd (x y i: Nat) := toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j) 0 i
 
 lemma unfold_carry (x y i : Nat) : (bitwise_carry x y (i+1)).toNat = ((Nat.testBit x i && Nat.testBit y i) || ((Nat.testBit x i ^^ Nat.testBit y i) && bitwise_carry x y i)).toNat := by simp [bitwise_carry]
