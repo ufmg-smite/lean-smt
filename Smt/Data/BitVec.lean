@@ -198,7 +198,7 @@ where
   | 0     => z.bit (x.testBit j)
   | i + 1 => go x j (z.bit (x.testBit (i+1+j))) i
 
-lemma bitwise_extract_size (h: 0< n): bitwise_extract x n m < 2^(n+m) := sorry
+lemma bitwise_extract_size (h: 0< n): bitwise_extract x n m < 2^(n-m+1) := sorry
 
 theorem bitwise_extract_eq_extract : bitwise_extract x i j = (x >>> j)%(2^(i-j+1)):= sorry
 
@@ -292,16 +292,25 @@ lemma append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} : ((x ++ y) ++ z
   ring
 
 
-#check Nat.shiftLeft_eq
-lemma extract_append {x : BitVec w} (hjk : j ≤ k) (hij : i ≤ j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
+lemma eq_of_testBit_eq_lt (h0: x < 2^i) (h1: y< 2^i) (h: ∀ (j : Nat), j < i → x.testBit j = y.testBit j): x = y := sorry
+
+lemma testBit_extract (h: k ≤ i-j) : (bitwise_extract x i j).testBit k = x.testBit (k+j) := sorry
+
+lemma extract_append {x : BitVec w} (hjk : j ≤ k) (hij : i ≤ j) (hk: 0 < k) (hj : 0 < j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
   simp only [HAppend.hAppend, BitVec.append, extract, BitVec.ofNat, Fin.ofNat', ← bitwise_extract_eq_extract]
+  have := concat_size (@bitwise_extract_size j x.val i hj) (@bitwise_extract_size k x.val (j+1) hk)
+  apply eq_of_testBit_eq_lt (bitwise_extract_size hk) (by sorry)
+  intro l hl
+  rw [testBit_extract (by linarith), ← bitwise_concat_eq_concat]
+
+
   -- rw [append_eq_add (bitwise_extract_size sorry)]
   simp [Nat.shiftr_eq_div_pow]
-  sorry
+  <;> sorry
 
 
 
-  
+
 -- def conditions_ult (x y : BitVec w) (h : w > 0) :=
 --   conds x y (w - 1) (Nat.lt_self_sub_one h)
 -- where
