@@ -128,11 +128,13 @@ theorem toNat_testBit {f: Nat → Bool} (h1: i ≤ j): (toNat f 0 j).testBit i =
     · rw [h1, toNat, toNat_succ, bit_toNat, testBit_translate' (toNat_lt)]
 
 
-def bitwise_carry (x y : Nat) : Nat → Bool
-  | 0     => false
+def bitwise_carry (x y i : Nat) (d := false) : Bool := match i with
+  | 0     => d
   | i + 1 => (x.testBit i && y.testBit i) || ((x.testBit i ^^ y.testBit i) && bitwise_carry x y i)
 
-@[simp] def bitwise_add (x y i: Nat) := toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j) 0 i
+def rippleCarryAdd (x y i : Nat) (cin : Bool) : (Nat × Bool) := (toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j cin) 0 i, bitwise_carry x y (i + 1) cin)
+
+@[simp] def bitwise_add (x y i: Nat) := toNat (λ j => (x.testBit j ^^ y.testBit j) ^^ bitwise_carry x y j false) 0 i
 
 lemma unfold_carry (x y i : Nat) : (bitwise_carry x y (i+1)).toNat = ((Nat.testBit x i && Nat.testBit y i) || ((Nat.testBit x i ^^ Nat.testBit y i) && bitwise_carry x y i)).toNat := by
   simp [bitwise_carry]
@@ -197,8 +199,7 @@ lemma bits_two_pow_minus_one (h: j ≤ i): testBit (2^(i+1) -1) j = true:= by
   · simp [nonpos_iff_eq_zero.1 h]
   · have h1: 2^(succ i +1) -1 =  bit true (2^(i+1) -1) := by
       simp only [bit_val, cond]
-      zify
-      push_cast [two_pow_pos]
+      zify [two_pow_pos]
       rw [pow_succ'']; ring
     rw [h1]
     cases' j with j

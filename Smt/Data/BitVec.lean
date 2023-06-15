@@ -218,6 +218,8 @@ lemma bitwise_concat_size (h: 0< n): bitwise_concat x y n m < 2^(m+n) := sorry
 
 theorem bitwise_concat_eq_concat (hx : x < 2^n) (hy: y< 2^m): bitwise_concat x y n m = y <<< n ||| x := sorry
 
+lemma testBit_concat (h: 0< n) (h2: k ≤ n+m-1): (bitwise_concat x y n m).testBit k = if k < n then x.testBit k else y.testBit (k-n) := sorry
+
 lemma or_eq_or': Nat.bitwise or = lor' := sorry
 
 theorem bV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): x ++ y = BitVec.ofNat (w+v) (bitwise_concat y.val x.val v w) := by
@@ -296,18 +298,24 @@ lemma eq_of_testBit_eq_lt (h0: x < 2^i) (h1: y< 2^i) (h: ∀ (j : Nat), j < i �
 
 lemma testBit_extract (h: k ≤ i-j) : (bitwise_extract x i j).testBit k = x.testBit (k+j) := sorry
 
-lemma extract_append {x : BitVec w} (hjk : j ≤ k) (hij : i ≤ j) (hk: 0 < k) (hj : 0 < j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
+lemma extract_append {x : BitVec w} (hjk : j+1 ≤ k) (hij : i ≤ j) (hk: 0 < k) (hj : 0 < j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
   simp only [HAppend.hAppend, BitVec.append, extract, BitVec.ofNat, Fin.ofNat', ← bitwise_extract_eq_extract]
   have := concat_size (@bitwise_extract_size j x.val i hj) (@bitwise_extract_size k x.val (j+1) hk)
-  apply eq_of_testBit_eq_lt (bitwise_extract_size hk) (by sorry)
+  have h2 : i ≤ k := by linarith
+  have h3: (j-i+1)+(k-(j+1)+1) = k-i+1 := by zify[hjk, hij, hk, hj, h2]; ring
+  apply eq_of_testBit_eq_lt (bitwise_extract_size hk) (h3 ▸ concat_size (bitwise_extract_size hj) (bitwise_extract_size hk))
   intro l hl
-  rw [testBit_extract (by linarith), ← bitwise_concat_eq_concat]
-
-
-  -- rw [append_eq_add (bitwise_extract_size sorry)]
-  simp [Nat.shiftr_eq_div_pow]
-  <;> sorry
-
+  rw [testBit_extract (by linarith), ← bitwise_concat_eq_concat (bitwise_extract_size hj) (bitwise_extract_size hk)]
+  rw [testBit_concat (by linarith) (by simp [h3]; linarith)]
+  by_cases h1: l < j-i+1
+  · rw [testBit_extract (by linarith)]
+    simp [h1]
+  · have h4: l - (j - i + 1) ≤  k - (j + 1) := by 
+      push_neg at h1; zify[*] at *; linarith
+    rw [testBit_extract h4]
+    have : l-(j-i+1)+(j+1) = l+i := by push_neg at h1; zify [h1, hij]; linarith
+    simp [h1, this]
+  
 
 
 
@@ -1017,8 +1025,23 @@ def uDivModRec (a b : Nat) (w : Nat) : (Nat × Nat) :=
   match w with
   | 0    => (0, 0)
   | w + 1 =>
-    let (q1, r1) := uDivModRec (a >>> 1) b w
+    let (q1, r1) := uDivModRec (a >>> 1) b w --want to use bitwise shift right instead of a >>> 1 same thing below
+  
     let (q1, r1) := (q1 <<< 1, r1 <<< 1)
+    
+    let (r1ShiftAdd, _) := bitwise_add r1 0 w (a.testBit 0)
+    let notB := bitwise_negate b w
+    let (rMinusB, co1) := bitwise_add r1ShiftAdd notB w true
+    let sign := !co1
+
+    -- ...
+
+    let (aMinusB, co2) := bitwise_add a notB w true
+    let aLtB := !co2
+
+    
+
+
 
     _
 
