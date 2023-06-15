@@ -249,7 +249,7 @@ lemma val_to_ofNat (h: m < 2^w) : (BitVec.ofNat w m).val = m := by simp [BitVec.
 lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
   simp [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt x.isLt]
 
-lemma ofNat_to_val' (x : BitVec w) (h: v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
+lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
 
 theorem append_eq_add (hy: y< 2^m): x <<< m ||| y = 2^m*x + y := sorry
 
@@ -257,9 +257,19 @@ lemma bVappend_eq_add {a: BitVec w} {b : BitVec u} : (a ++ b).val = a.val*2^u+b.
   simp only [HAppend.hAppend, BitVec.append, BitVec.val_bitvec_eq, append_eq_add b.isLt, mul_comm]
 
 
-lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
+private lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
   rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt)), BitVec.val_bitvec_eq]
   exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
+
+lemma append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} : ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by 
+  simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (concat_size z.isLt y.isLt)]
+  simp only [append_eq_add _, y.isLt, x.isLt, z.isLt]
+  ring
+
+theorem append_assoc' {x : BitVec a} {y : BitVec b} {z : BitVec c} :
+  ((x ++ y) ++ z) = Nat.add_assoc _ _ _ ▸ (x ++ (y ++ z)) := by
+  rw [← val_bitvec_eq, cast_heq, append_assoc]
+
 
 lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (Nat.succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (Nat.testBit (x.val) (w - 1)) := by
   simp only [signExtend, cast_heq, bVappend_eq_add, repeat_, extract]
@@ -273,25 +283,19 @@ lemma bitwise_ext_size (h: 0< n): bitwise_ext x n m < 2^(n+m) := sorry
 
 lemma bitwise_ext_zero (h: 0 < w) (hx: x < 2^w) : bitwise_ext x w 0 = x := sorry
 
-theorem bv_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x) = BitVec.ofNat (w+i) (bitwise_ext x.val w i) := by
-  induction' i with i ih <;> rw [← val_bitvec_eq] at *
-  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt, ofNat_to_val]
-  · rw [val_to_ofNat (bitwise_ext_size h)] at ih
-    rw [unfold_bitwise_ext] at *
+theorem bv_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
+  induction' i with i ih 
+  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt]
+  · rw [unfold_bitwise_ext] at *
     rw [show w+ Nat.succ i -1 = w + i - 1 + 1 by simp [Nat.sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
     simp only [bitwise_ext.go, bit_0]
     rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (Nat.testBit (x.val) (w - 1))) _]
     rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
     simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false]
-    rw [@val_to_ofNat _ (w+Nat.succ i)]
-    · simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]
-    · simp [Nat.succ_eq_add_one, ← add_comm, ← add_assoc, lt_succ_pow_two (toNat_le_one _)  (unfold_bitwise_ext ▸ @bitwise_ext_size w x.val i h)]
-    
+    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]
+-- if use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 
-lemma append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} : ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by 
-  simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (concat_size z.isLt y.isLt)]
-  simp only [append_eq_add _, y.isLt, x.isLt, z.isLt]
-  ring
+
 
 
 lemma eq_of_testBit_eq_lt (h0: x < 2^i) (h1: y< 2^i) (h: ∀ (j : Nat), j < i → x.testBit j = y.testBit j): x = y := sorry
