@@ -12,3 +12,4 @@ import Smt.Reconstruction.Rewrites.Arith
 import Smt.Reconstruction.Rewrites.Builtin
 import Smt.Reconstruction.Rewrites.Prop
 import Smt.Reconstruction.Rewrites.Tactic
+import Smt.Reconstruction.Rewrites.UF
