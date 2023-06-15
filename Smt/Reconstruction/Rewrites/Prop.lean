@@ -7,18 +7,16 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Reconstruction.Rewrites.Simp
 
-private theorem And.assoc : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) :=
-  .intro
-    (let ⟨⟨hp, hq⟩, hr⟩ := ·; .intro hp (.intro hq hr))
-    (let ⟨hp, ⟨hq, hr⟩⟩ := ·; .intro (.intro hp hq) hr)
+private theorem And.assoc : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := .intro
+  (let ⟨⟨hp, hq⟩, hr⟩ := ·; .intro hp (.intro hq hr))
+  (let ⟨hp, ⟨hq, hr⟩⟩ := ·; .intro (.intro hp hq) hr)
 
 private theorem Or.comm : p ∨ q ↔ q ∨ p :=
   .intro (·.elim Or.inr Or.inl) (·.elim Or.inr Or.inl)
 
-private theorem Or.assoc : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) :=
-  .intro
-    (·.elim (·.elim .inl (.inr ∘ .inl)) (.inr ∘ .inr))
-    (·.elim (.inl ∘ .inl) (·.elim (.inl ∘ .inr) .inr))
+private theorem Or.assoc : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := .intro
+  (·.elim (·.elim .inl (.inr ∘ .inl)) (.inr ∘ .inr))
+  (·.elim (.inl ∘ .inl) (·.elim (.inl ∘ .inr) .inr))
 
 namespace Smt.Reconstruction.Rewrites.Prop
 
@@ -70,8 +68,8 @@ open Function
 @[smt_simp] theorem bool_and_conf : (xs ∧ w ∧ ys ∧ ¬w ∧ zs) = False :=
   propext ⟨fun ⟨_, hw, _, hnw, _⟩ => absurd hw hnw, False.elim⟩
 @[smt_simp] theorem bool_or_taut [h : Decidable w] : (xs ∨ w ∨ ys ∨ ¬w ∨ zs) = True := propext $ .intro
-    (const _ trivial)
-    (eq_true h.em ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
+  (const _ trivial)
+  (eq_true h.em ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
 
 @[smt_simp] theorem bool_xor_refl : (x ≠ x) = False :=
   propext ⟨(nomatch ·), False.elim⟩
@@ -83,11 +81,10 @@ open Function
   propext ⟨(· $ propext ⟨const _ trivial, const _ ·⟩), ne_true_of_not⟩
 @[smt_simp] theorem bool_xor_comm : (x ≠ y) = (y ≠ x) :=
   propext ⟨Ne.symm, Ne.symm⟩
-@[smt_simp] theorem bool_xor_elim : (x ≠ y) = ¬(x = y) :=
-  rfl
+@[smt_simp] theorem bool_xor_elim : (x ≠ y) = ¬(x = y) := rfl
 
-@[smt_simp] theorem ite_neg_branch [h : Decidable c] [Decidable y] : x = ¬y → ite c x y = (c = x) := fun hxny =>
-  hxny ▸ h.byCases
+@[smt_simp] theorem ite_neg_branch [h : Decidable c] [Decidable y] : x = ¬y → ite c x y = (c = x) :=
+  fun hxny => hxny ▸ h.byCases
     (fun hc => if_pos hc ▸ propext ⟨(propext ⟨const _ ·, const _ hc⟩), (· ▸ hc)⟩)
     (fun hnc => if_neg hnc ▸ propext
       ⟨fun hy => propext ⟨fun hc => False.elim (hnc hc), fun hny => False.elim (hny hy)⟩,
