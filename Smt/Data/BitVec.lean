@@ -91,10 +91,7 @@ theorem val_bitvec_lt {a b : BitVec w} : (a.val : ℕ) < (b.val : ℕ) ↔ a < b
 theorem val_bitvec_bne {a b : BitVec w} : a.val ≠ b.val ↔ a != b := by
   simp [bne]
 
-theorem shiftr_eq_shiftRight: Nat.shiftr = Nat.shiftRight := by --maybe this should be ∀ x y, x >>> y = x.shiftr y
-  funext x y
-  induction' y with y hy generalizing x
-  <;> simp [Nat.shiftr, Nat.shiftRight, Nat.div2_val, *]
+theorem shiftRight_eq_shiftr: n >>> m = Nat.shiftr n m := sorry
 
 theorem bitwise_lt (hx : x < 2^n) (hy: y< 2^n) (h: f false false = false): Nat.bitwise f x y < 2^n := sorry
 
@@ -119,7 +116,7 @@ protected def shiftLeft (x : BitVec w) (n : Nat) : BitVec w :=
 
 protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
   ⟨x.val >>> n, by 
-      simp only [HShiftRight.hShiftRight, ShiftRight.shiftRight, ← shiftr_eq_shiftRight, Nat.shiftr_eq_div_pow]
+      simp only [shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
       exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩ 
 
 instance : Complement (BitVec w) := ⟨BitVec.complement⟩
@@ -173,9 +170,9 @@ def shrink (v : Nat) (x : BitVec w) : BitVec v :=
   x.extract i i != 0
 
 theorem lsbGet_eq_testBit {x : BitVec w} : x.lsbGet i = x.val.testBit i := by
-  cases' h: Nat.bodd (Nat.shiftRight (x.val) i)
-  <;> simp [Nat.testBit, BitVec.ofNat, Fin.ofNat', ShiftRight.shiftRight, HShiftRight.hShiftRight, Nat.mod_two_of_bodd, h, shiftr_eq_shiftRight] --probably some API missing here.. shouldnt have to take cases
-  aesop -- non-terminating simp :(
+  cases' h: Nat.bodd (Nat.shiftr (x.val) i)
+  <;> simp [Nat.testBit, BitVec.ofNat, Fin.ofNat', h, Nat.mod_two_of_bodd, Nat.shiftRight, shiftRight_eq_shiftr] --probably some API missing here.. shouldnt have to take cases
+  aesop-- non-terminating simp :(
   
 lemma toNat_le_one (b: Bool) : b.toNat ≤ 1 := sorry
 
@@ -198,10 +195,10 @@ where
   | 0     => z.bit (x.testBit j)
   | i + 1 => go x j (z.bit (x.testBit (i+1+j))) i
 
-lemma bitwise_extract_size (h: 0< n): bitwise_extract x n m < 2^(n-m+1) := sorry
+lemma bitwise_extract_size : bitwise_extract x n m < 2^(n-m+1) := sorry
 
-theorem bitwise_extract_eq_extract : bitwise_extract x i j = (x >>> j)%(2^(i-j+1)):= sorry
-
+--change formatoof rhs to extract
+theorem bitwise_extract_eq_extract : bitwise_extract x.val i j = (extract i j x).val := sorry
 
 theorem bV_extract {x : BitVec w} : BitVec.ofNat (i-j+1) (bitwise_extract x.val i j)= extract i j x := by
   rw [← val_bitvec_eq]
@@ -222,9 +219,7 @@ lemma testBit_concat (h: 0< n) (h2: k ≤ n+m-1): (bitwise_concat x y n m).testB
 
 lemma or_eq_or': Nat.bitwise or = lor' := sorry
 
-theorem bV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): x ++ y = BitVec.ofNat (w+v) (bitwise_concat y.val x.val v w) := by
-  rw [← val_bitvec_eq]
-  simp only [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt (bitwise_concat_size h)]
+theorem bV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): (x ++ y).val = bitwise_concat y.val x.val v w := by
   simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat y.isLt x.isLt]
 
 def bitwise_ext (x n k: Nat) := go x (n-1) 0 (n+k-1)
@@ -236,7 +231,7 @@ where
 @[simp] lemma unfold_bitwise_ext : bitwise_ext x n k = bitwise_ext.go x (n-1) 0 (n+k-1) := rfl
 
 lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (Nat.testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
-  simp only [BitVec.ofNat, Fin.ofNat', Nat.testBit, HShiftRight.hShiftRight, shiftr_eq_shiftRight, ShiftRight.shiftRight, Nat.mod_two_of_bodd, pow_one]
+  simp only [BitVec.ofNat, Fin.ofNat', Nat.testBit, shiftRight_eq_shiftr, Nat.mod_two_of_bodd, pow_one]
   aesop
 
 lemma lt_succ_pow_two {y b i : Nat} (h: b ≤ 1) (hy : y < 2^i) : 2^i * b + y < 2^(i+1) := sorry
@@ -248,6 +243,12 @@ lemma val_to_ofNat (h: m < 2^w) : (BitVec.ofNat w m).val = m := by simp [BitVec.
 
 lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
   simp [BitVec.ofNat, Fin.ofNat', Nat.mod_eq_of_lt x.isLt]
+
+
+lemma extract_eq_shiftr : (extract i j x).val =  Nat.shiftr x.val j := by
+  simp [extract, ofNat_to_val x, shiftRight_eq_shiftr]
+  sorry
+
 
 lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
 
@@ -297,31 +298,47 @@ theorem bv_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_
 
 
 
-
 lemma eq_of_testBit_eq_lt (h0: x < 2^i) (h1: y< 2^i) (h: ∀ (j : Nat), j < i → x.testBit j = y.testBit j): x = y := sorry
 
 lemma testBit_extract (h: k ≤ i-j) : (bitwise_extract x i j).testBit k = x.testBit (k+j) := sorry
 
-lemma extract_append {x : BitVec w} (hjk : j+1 ≤ k) (hij : i ≤ j) (hk: 0 < k) (hj : 0 < j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
-  simp only [HAppend.hAppend, BitVec.append, extract, BitVec.ofNat, Fin.ofNat', ← bitwise_extract_eq_extract]
-  have := concat_size (@bitwise_extract_size j x.val i hj) (@bitwise_extract_size k x.val (j+1) hk)
-  have h2 : i ≤ k := by linarith
-  have h3: (j-i+1)+(k-(j+1)+1) = k-i+1 := by zify[hjk, hij, hk, hj, h2]; ring
-  apply eq_of_testBit_eq_lt (bitwise_extract_size hk) (h3 ▸ concat_size (bitwise_extract_size hj) (bitwise_extract_size hk))
-  intro l hl
-  rw [testBit_extract (by linarith), ← bitwise_concat_eq_concat (bitwise_extract_size hj) (bitwise_extract_size hk)]
-  rw [testBit_concat (by linarith) (by simp [h3]; linarith)]
-  by_cases h1: l < j-i+1
-  · rw [testBit_extract (by linarith)]
-    simp [h1]
-  · have h4: l - (j - i + 1) ≤  k - (j + 1) := by 
-      push_neg at h1; zify[*] at *; linarith
-    rw [testBit_extract h4]
-    have : l-(j-i+1)+(j+1) = l+i := by push_neg at h1; zify [h1, hij]; linarith
-    simp [h1, this]
-  
+theorem extract_append {x : BitVec w} (hjk : j+1 ≤ k) (hij : i ≤ j): (x.extract k i).val = (x.extract k (j + 1) ++ x.extract j i).val := by
+  simp only [extract, HAppend.hAppend, BitVec.append, BitVec.ofNat, Fin.ofNat']
+  rw [append_eq_add (Nat.mod_lt _ (pow_two_pos _)), add_comm _ (x.val >>> i % 2 ^ (j - i + 1)), eq_comm]
+  apply @And.left _ ((x.val >>> i) % 2^(j-i+1)< 2^(j-i+1)) _
+  rw [← Nat.div_mod_unique (pow_two_pos (j-i+1))]
+  simp only [shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
+  apply And.intro _ (Nat.mod_mod_of_dvd _ (pow_dvd_pow 2 (by zify [*, (show i ≤ k by linarith)]; linarith)))
+  simp only [Nat.div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]; congr 2
+  · congr 1; zify [*, (show i ≤ k by linarith)]; ring
+  · zify [*]; ring
+
+  -- alternative proof. it bothers me that half of this proof is jst simps to get it to the right form. the real meat is the last 8 lines.
+  -- simp only [HAppend.hAppend, BitVec.append, BitVec.ofNat, Fin.ofNat', ← bitwise_extract_eq_extract]
+  -- have h1: (j-i+1)+(k-(j+1)+1) = k-i+1 := by zify[hjk, hij, (show i ≤ k by linarith)]; ring
+  -- apply eq_of_testBit_eq_lt bitwise_extract_size (h1 ▸ concat_size (bitwise_extract_size) (bitwise_extract_size))
+  -- intro l hl
+  -- rw [testBit_extract (by linarith), ← bitwise_concat_eq_concat (bitwise_extract_size) (bitwise_extract_size)]
+  -- rw [testBit_concat (by linarith) (by simp [h1]; linarith)]
+  -- by_cases h2: l < j-i+1
+  -- · rw [testBit_extract (by linarith)]
+  --   simp [h2]
+  -- · have h3: l - (j - i + 1) ≤  k - (j + 1) := by 
+  --     push_neg at h2; zify[*] at *; linarith
+  --   rw [testBit_extract h3]
+  --   have : l-(j-i+1)+(j+1) = l+i := by push_neg at h2; zify [h2, hij]; linarith
+  --   simp [h2, this]
+
+theorem bv_extract_whole {x : BitVec w} {h : w ≤ n + 1} : (x.extract n 0).val = x.val := by
+  rw [← val_to_ofNat (lt_of_lt_of_le x.isLt (Nat.pow_le_pow_of_le_right (by decide) h)), extract]
+  simp [shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
 
 
+theorem bv_extract_extract {x : BitVec w} {hl : k ≤ l} {hk : l ≤ j - i}: ((x.extract j i).extract l k).val = (x.extract (i + l) (i + k)).val := by
+  simp only [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr]
+  simp only [Nat.shiftr_eq_div_pow, Nat.div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]
+  rw [Nat.mod_mod_of_dvd _ (by apply pow_dvd_pow; zify [*]; linarith)]
+  congr 3; zify [hl, hk, add_le_add_left hl]; ring
 
 -- def conditions_ult (x y : BitVec w) (h : w > 0) :=
 --   conds x y (w - 1) (Nat.lt_self_sub_one h)
