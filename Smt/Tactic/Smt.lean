@@ -115,8 +115,6 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
-
-
 open Reconstruction.Certifying in
 unsafe def rconsProof (hints : List Expr) : TacticM Unit := do
   let mvar' ← Smt.Util.rewriteIffMeta (← Tactic.getMainGoal)
