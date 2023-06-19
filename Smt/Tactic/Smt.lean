@@ -115,9 +115,12 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
+
+
 open Reconstruction.Certifying in
-def rconsProof (hints : List Expr) : TacticM Unit := do
-  evalTactic (← `(tactic| repeat rewrite [Smt.Util.iff_eq_eq] at *))
+unsafe def rconsProof (hints : List Expr) : TacticM Unit := do
+  let mvar' ← Smt.Util.rewriteIffMeta (← Tactic.getMainGoal)
+  replaceMainGoal [mvar']
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
   let th0 ← Meta.mkConstWithFreshMVarLevels `th0
@@ -143,7 +146,7 @@ def rconsProof (hints : List Expr) : TacticM Unit := do
     | none => replaceMainGoal []
     | some (_, mvarId) => replaceMainGoal [mvarId]
 
-@[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
+@[tactic smt] unsafe def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
   let cmds ← prepareSmtQuery ⟨stx[1]⟩
   let query := setOption "produce-models" "true"
