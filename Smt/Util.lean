@@ -123,14 +123,14 @@ def rewriteIffDecl (decl : LocalDecl) (mvar : MVarId) : MetaM MVarId :=
     let repRes ← mvar.replaceLocalDecl decl.fvarId rwRes.eNew rwRes.eqProof
     pure repRes.mvarId
 
-unsafe def fixRewriteIff (mvar : MVarId) (f : MVarId → MetaM MVarId) : MetaM MVarId :=
+partial def fixRewriteIff (mvar : MVarId) (f : MVarId → MetaM MVarId) : MetaM MVarId :=
   mvar.withContext do
     try
       let mvar' ← f mvar
       fixRewriteIff mvar' f
     catch _ => return mvar
 
-unsafe def rewriteIffMeta (mvar : MVarId) : MetaM MVarId :=
+def rewriteIffMeta (mvar : MVarId) : MetaM MVarId :=
   mvar.withContext do
     let mvar' ← fixRewriteIff mvar rewriteIffGoal
     let lctx ← getLCtx
