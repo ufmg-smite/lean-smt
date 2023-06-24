@@ -1,6 +1,8 @@
 import Mathlib.Data.Nat.Bitwise
 import Mathlib.Data.Nat.ModEq
 import Mathlib.Data.Bool.Basic
+import Mathlib.Data.Int.ModEq
+import Mathlib.Tactic.IntervalCases
 
 
 infix:30 " ^^ " => xor
@@ -25,6 +27,7 @@ lemma shiftr_eq_testBit : Nat.shiftr x i %2 = (x.testBit i).toNat := by simp [Na
 
 lemma div_add_mod_two_pow (m n : Nat) : n = 2^m*Nat.shiftr n m + n%(2^m):= by simp_rw [Nat.shiftr_eq_div_pow, Nat.div_add_mod]
 
+--there should be a quicker proof with jst one div_add_mod
 theorem mod_two_pow_succ (x i : Nat) : x % 2 ^ (i + 1) = 2^i * (Nat.testBit x i).toNat + x % (2^i):= by 
   have h1 := div_add_mod_two_pow i x
   have h3 := div_add_mod (Nat.shiftr x i) 2 -- hmm isnt this bit_val or sth. avoid this have?
@@ -213,7 +216,7 @@ theorem bitwise_not_eq_neg_sub_one (h0: x <  2^(i+1)) : bitwise_not x i  + x  = 
     rw [lt_two_pow_testBit_false (sub_lt (two_pow_pos (i+1)) (by simp)) (by simp [hj]), hj]
     simp [bitwise_carry, toNat_testBit, bitwise_carry_not_eq_false]
 
-theorem bitwise_neg_eq_neg (x i : Nat) (h: x < 2^(i+1)) : bitwise_neg x i  = (2 ^ (i + 1) - x) % 2 ^ (i + 1) := by
+theorem bitwise_neg_eq_neg (h: x < 2^(i+1)) : bitwise_neg x i  = (2 ^ (i + 1) - x) % 2 ^ (i + 1) := by
   simp only [bitwise_neg, bitwise_add_eq_add]; congr
   have := bitwise_not_eq_neg_sub_one h
   zify [le_of_lt h, (show 1 ≤ 2^(i+1) by linarith)] at * ; linarith
@@ -248,13 +251,13 @@ def bitwise_mul.sh (x y i j : Nat) : Bool :=
 mutual
 def bitwise_mul.res (x y : Nat) : Nat → Nat → Bool
   | i, 0     => sh x y i 0
-  | 0, j     => sh x y 0 0
+  | 0, _     => sh x y 0 0
   | i, j + 1 =>
     ((res x y i j) ^^ (sh x y i (j + 1))) ^^ carry x y i (j + 1)
 
 def bitwise_mul.carry (x y : Nat) : Nat → Nat → Bool
-  | i, 0          => false
-  | 0, j          => false 
+  | _, 0          => false
+  | 0, _          => false 
   | i + 1, j + 1  =>
     if j < i then
       (res x y i j && sh x y i (j + 1)) || ((res x y i j ^^ sh x y i (j + 1))) && carry x y i (j + 1)
@@ -369,7 +372,7 @@ theorem mul_two_pow_gen (h: i ≤ n) : testBit (x*2^i) n = testBit x (n-i) := by
   nth_rewrite 1 [← Nat.sub_add_cancel h, pow_add, Nat.mul_div_mul_right _ _ (two_pow_pos i)]; rfl
 
 
-theorem helper_of_main (h0: 0<i) (H2: j < 2*n) (h2: i ≤ n) (h: ∀ k < 2*n, bitwise_mul.res x ( y % 2 ^ i) k n = testBit ( x * (y % 2 ^ i)) k ) (hij: j < i): bitwise_carry (x * 2 ^ i) (x * (y % 2 ^ i)) j = false := by 
+theorem helper_of_main (h0: 0<i) (H2: j < 2*n) (h2: i ≤ n) (hij: j < i): bitwise_carry (x * 2 ^ i) (x * (y % 2 ^ i)) j = false := by 
   induction' j with j hj
   · simp [bitwise_carry]
   · simp [bitwise_carry, hj (by linarith) (by linarith), mul_two_pow (show j < i by linarith)]
@@ -392,24 +395,24 @@ theorem helper_of_main1 (h0: 0<i) (H2: j < 2*n) (h2: i ≤ n) (h: ∀ k < 2*n, b
       rw [mul_two_pow_gen (show succ i' ≤ j by linarith)]
       simp [testBit_translate_one' H, Bool.xor_comm]
     · simp [bitwise_carry, bitwise_mul.carry, h1, mul_two_pow (lt_succ_self j)]
-      simp [helper_of_main (h1 ▸ h0) (show j < 2*n by linarith) (h1 ▸ h2) (h1 ▸ h) (lt_succ_self j)]
+      simp [helper_of_main (h1 ▸ h0) (show j < 2*n by linarith) (h1 ▸ h2) (lt_succ_self j)]
 
 theorem helper_main (h0: 0<i) (H2: j < 2*n) (h2: i ≤ n) (h: ∀ k < 2*n, bitwise_mul.res x ( y % 2 ^ i) k n = testBit ( x * (y % 2 ^ i)) k ): bitwise_mul.res x (2 ^ i + y % 2 ^ i) j n = testBit (x * 2 ^ i + x * (y % 2 ^ i)) j:= by
   have H: (y % (2^i)) < 2^i :=by simp [two_pow_pos, mod_lt]
   have ⟨i', hi'⟩ : ∃i', i =succ i' := by use pred i; simp [Nat.succ_pred_eq_of_pos h0]
   rw [hi'] at H h h2 h0 ⊢
   rw [testBit_add]
-  induction' j with j hj
+  cases' j with j
   · simp [bitwise_mul_res_zero, bitwise_mul.sh, bitwise_carry, ← testBit_translate_one, *] at * 
     simp [bitwise_mul_res_zero, bitwise_mul.sh, ← h 0 (by linarith), mul_two_pow]
   · cases' lt_trichotomy (succ j) (succ i') with h1 h1 
     · rw [(res_scale_two_pow_new (Or.inl h1)).1, h (succ j) H2, mul_two_pow h1]
-      simp [mul_two_pow _, helper_of_main h0 H2 h2 h h1]
+      simp [mul_two_pow _, helper_of_main h0 H2 h2 h1]
     · cases' h1 with h1 h1
       · rw [h1, ← h (succ i') (h1 ▸ H2), res_n_eq_res_w (by linarith)]
         rw [res_n_eq_res_w (show succ i' ≤  n by linarith), (scale_two_pow_bit_new H).1]
         simp[bitwise_carry, scale_two_pow_bit_new H, mul_two_pow]
-        simp [(succ_inj').mp h1 ▸ helper_of_main h0 (lt_trans (lt_succ_self j) H2) h2 h (by linarith)]
+        simp [(succ_inj').mp h1 ▸ helper_of_main h0 (lt_trans (lt_succ_self j) H2) h2 (by linarith)]
         simp [mul_two_pow_gen, Bool.xor_comm] 
       · rw [res_n_eq_res_w' h2 (by linarith) (by simp[two_pow_succ (succ i'), H])]
         simp [bitwise_mul.res, bitwise_mul.sh, le_of_lt h1, lt_of_succ_lt_succ h1, (show i' +1 ≤ j by linarith), helper_of_main1 h0 H2 h2 h (by linarith)]
@@ -589,7 +592,7 @@ lemma concat_size (hx : x < 2^n) (hy: y< 2^m) : y <<< n ||| x < 2^(n+m) := by
     · rw [pow_add, mul_comm]; simp[hy, mul_lt_mul_left (two_pow_pos n)]
   simp only [lor, shiftLeft_eq]; exact bitwise_lt H.2 H.1 rfl
 
-#check lt_two_pow_testBit_false
+
 theorem bitwise_concat_eq_concat (h: 0< n) (hx : x < 2^n) (hy: y< 2^m): bitwise_concat x y n m = y <<< n ||| x := by
   apply eq_of_testBit_eq_lt (bitwise_concat_size h) (concat_size hx hy)
   intros k hk
@@ -687,7 +690,138 @@ lemma bitwise_ext_zero (h: 0 < w) (hx: x < 2^w) : bitwise_ext x w 0 = x := by
   cases' (lt_or_eq_of_le (add_zero w ▸ le_pred_of_lt hj)) with h1 h1 <;> simp [h1]
 
 
-#check pow_add
+def uDivModRec (a b : Nat) (w : Nat) : (Nat × Nat) := go a b (w - 1) w
+where
+  go (a b l w: Nat) :=
+  match w with
+  | 0    => (0, 0)
+  | w + 1 =>
+    if a == 0 then (0, 0)
+    else
+      let (q1, r1) := go (a >>> 1) b l w --want to use bitwise shift right instead of a >>> 1 same thing below
+      let (q1, r1) := (q1 <<< 1, r1 <<< 1)
+      let r1ShiftAdd := bitwise_add r1 (a%2) l
+      let notB := bitwise_neg b l
+      let rMinusB := bitwise_add r1ShiftAdd notB l
+      let sign := !(bitwise_carry r1ShiftAdd notB (l + 1))
+      let q1 := if sign then q1 else (q1 + 1)
+      let r1 := if sign then r1ShiftAdd else rMinusB
+      (q1, r1)
+
+
+--Carry is 0 indexed. BVs are 0 indexed. But bitwise_operations are not :(.
+--It seems like we need to set `w` to the max length of `a` and `b`.
+
+#eval uDivModRec 1 1 4
+#eval uDivModRec.go 10 200 6 4
+#eval uDivModRec 0 15 0
+#eval bitwise_neg 15 3
+#eval bitwise_add 1 1 3
+#eval uDivModRec 277 45 9
+#eval uDivModRec 1 0 1
+#eval uDivModRec.go 10 0 12 12
+#eval testBit 10 4
+#eval !(bitwise_carry 10 (bitwise_neg 0 (4-1)) 4)
+#check bitwise_neg_eq_neg
+#check bitwise_add_eq_add
+#eval bitwise_carry (1 % 2 ^ (5 + 1)) (bitwise_neg 0 5) (5 + 1)
+#eval 1/0 --should be the BV of all 1s
+
+lemma zero_or_one_or_gt_one (n: ℕ) : n = 0 ∨ n = 1 ∨ 1 < n := by
+  cases' le_or_gt n 1 with h h
+  · interval_cases n <;> simp
+  · simp [h]
+
+lemma one_mod_lt (h: 1 < n) : 1 % n = 1 := Nat.sub_add_cancel (show 2 ≤ n by linarith) ▸ one_mod (n-2)
+
+lemma lt_carry_false (h : 0 < b) (ha : a < 2^(w+1)) (hb : b < 2^(w+1)): a < b ↔ !(bitwise_carry a (bitwise_neg b w) (w+1)) := by
+  rw [bitwise_neg_eq_neg hb]
+  rw [mod_eq_of_lt (sub_lt (two_pow_pos (w+1)) h)]
+  have h1:= @testBit_add a (2^(w+1) -b) (w + 1)
+  rw [lt_two_pow_testBit_false ha (le_refl (w+1))] at h1
+  rw [lt_two_pow_testBit_false (sub_lt (two_pow_pos (w+1)) h) (le_refl (w+1))] at h1
+  simp only [Bool.xor_false_left] at h1
+  rw [← h1]
+  apply Iff.intro
+  · intro h2
+    rw [lt_two_pow_testBit_false (by zify[le_of_lt hb] at *; linarith) (le_refl (w+1))]; simp
+  · contrapose!; intro h2
+    rw [← Nat.add_sub_assoc (le_of_lt hb), add_comm, Nat.add_sub_assoc h2]
+    rw [testBit, shiftr_eq_div_pow, Nat.add_div_of_dvd_right (dvd_refl _)]
+    simp [Nat.div_eq_zero (lt_of_le_of_lt (sub_le _ _) ha)]
+
+lemma shiftRight_eq_div_two : a >>> 1 = a / 2 := shiftRight_eq_shiftr ▸ shiftr_eq_div_pow a 1 
+lemma shiftLeft_eq_two_mul : a <<< 1 = 2*a := Nat.mul_comm _ _ ▸ shiftLeft_eq a 1
+
+lemma uDivModRec_zero : uDivModRec.go 0 b w v = (0, 0) := by
+  cases' v <;> simp [uDivModRec.go]
+
+lemma uDivModRec_one (h0 : 0 < b) (h : b < 2^w) : uDivModRec.go 1 b (w - 1) (v + 1) = (1 / b, 1 % b) := by
+  cases' w with w
+  · simp only [lt_one_iff, zero_eq, pow_zero] at h; simp [h] at h0
+  · simp only [uDivModRec.go, ite_false, bitwise_add_eq_add, shiftLeft_eq_two_mul, shiftRight_eq_div_two]
+    simp only [@Nat.div_eq_zero 1 2 (by decide), uDivModRec_zero, succ_sub_succ_eq_sub, tsub_zero]
+    simp only [← lt_carry_false h0 (mod_lt _ (two_pow_pos _)) h, mul_zero, one_mod, zero_add]
+    rw [one_mod_lt (le_self_pow (ne_zero_of_lt (succ_pos w)) 2)]
+    cases' eq_or_gt_of_le (one_le_of_lt h0) with hb hb
+    · rw [bitwise_neg_eq_neg h]
+      simp [hb, Nat.add_sub_of_le (one_le_two_pow _)]
+    · simp [hb, Nat.div_eq_zero hb, one_mod_lt hb]
+
+lemma div_mod_two_mul : a/b = 2*(a/2/b) + a/b%2 := by
+  nth_rewrite 1 [← div_add_mod (a/b) 2]
+  congr 1
+  rw [Nat.div_div_eq_div_mul, mul_comm b 2, Nat.div_div_eq_div_mul]
+
+lemma mod_two_mul : a%b + b*(a/b % 2)= a%(2*b)  := by
+  rw [← mod_mul_left_div_self, add_comm, ← mod_mul_left_mod a 2 b]
+  simp only [div_add_mod]
+
+lemma helper : a%(2*b) = 2*(a/2%b) + a%2 := by
+  rw [← mod_mul_right_div_self, ← mod_mul_right_mod a 2 b, div_add_mod]
+
+lemma helper2 (h0: 0 < b) : a%(2*b) < b ↔ a/b%2 = 0 := (mod_mul_left_div_self _ _ _).symm ▸ (Nat.div_eq_zero_iff h0).symm
+
+--this is the most annoying lemma. why is the proof so long?
+lemma lt_div_succ_pow (h : a < 2^(v+1)) : a/2 < 2^ v := by
+  have : 2^(v+1)/2 = 2^v := by
+    rw [← Nat.add_sub_cancel v 1, ← pow_div (by linarith) (by decide)]; simp
+  simpa [← this] using div_lt_div_of_lt_of_dvd ((pow_succ _ _).symm ▸ dvd_mul_left 2 (2^v)) h
+
+
+-- this induction is not clean :(
+lemma uDivModRec_ih (hb : b < 2^(w+1) ) (ha : a < 2^(v+1)) (h0 : 0 < b) (hv : v ≤ w): uDivModRec.go a b w (v + 1) = (a / b, a % b) := by
+  induction' a using Nat.strongInductionOn with a ih generalizing v
+  have H:= lt_of_lt_of_le ha (pow_le_pow_of_le_right (show 2 > 0 by decide) (add_le_add_right hv 1))
+  rcases zero_or_one_or_gt_one a with ha1 | ha2 | ha2
+  · simp [uDivModRec.go, ha1]
+  · rw [ha2, ← succ_sub_one w, uDivModRec_one h0 hb]
+  · simp only [uDivModRec.go, beq_iff_eq, (show a ≠ 0 by linarith), ite_false, Nat.add]
+    rw [div_mod_two_mul]
+    have hv1 : 1 < v+1 := (pow_lt_pow_iff (show 1 < 2 by decide)).mp (lt_of_le_of_lt (show 2^1 ≤ a by linarith) ha)
+    specialize @ih (a/2) (Nat.div_lt_self (by linarith) (by decide)) (v-1)
+    rw [Nat.sub_add_cancel (by linarith [hv1])] at ih 
+    simp only [shiftRight_eq_div_two, shiftLeft_eq_two_mul, bitwise_add_eq_add, ih (lt_div_succ_pow ha) (le_trans (sub_le v 1) hv)]
+    simp only [← lt_carry_false h0 (mod_lt _ (two_pow_pos _)) hb, ← helper]
+    simp only [mod_eq_of_lt (lt_of_le_of_lt (mod_le a (2*b)) H), helper2 h0]
+    rw [bitwise_neg_eq_neg hb]
+    have := @mod_two_mul a b
+    cases' mod_two_eq_zero_or_one (a/b) with hC hC 
+    <;> simp only [hC, one_ne_zero, ite_false, add_mod_mod, Prod.mk.injEq, ite_true, mul_zero, add_zero, true_and, mul_one] at this ⊢
+    · rw [this]
+    · rw [← Nat.add_sub_assoc (le_of_lt hb)]
+      rw [Nat.sub_add_comm (not_lt.mp (mt ((helper2 h0).mp) (ne_zero_of_eq_one hC)))]
+      simp only [add_mod_right]
+      rw [mod_eq_of_lt (lt_of_le_of_lt (le_trans (Nat.sub_le _ b) (mod_le _ _)) H)]
+      simp [← this]
+
+theorem uDivModRec_eq_div (h0 : 0 < b) (hb : b < 2^w) (ha: a < 2^w) : uDivModRec a b w = (a / b, a % b) := by
+  cases' w with w <;> simp only [uDivModRec]
+  · rw [pow_zero, lt_one_iff] at hb ha; simp [hb, ha]
+  · rw [succ_sub_succ_eq_sub, Nat.sub_zero, uDivModRec_ih hb ha h0 rfl.le]
+
+
+
 end Nat
 
 

@@ -60,7 +60,7 @@ protected def mod (x y : BitVec w) : BitVec w :=
   ⟨x.val % y.val, Nat.lt_of_le_of_lt (Nat.mod_le _ _) x.isLt⟩
 protected def div (x y : BitVec w) : BitVec w :=
   ⟨x.val / y.val, Nat.lt_of_le_of_lt (Nat.div_le_self _ _) x.isLt⟩
-
+--when y=0 its the bitvectors of all 1s
 protected def lt (x y : BitVec w) : Bool :=
   x.val < y.val
 protected def le (x y : BitVec w) : Bool :=
@@ -262,11 +262,13 @@ private lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
   rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt)), BitVec.val_bitvec_eq]
   exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
 
+--original proof
 lemma append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} : ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by 
   simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (concat_size z.isLt y.isLt)]
   simp only [append_eq_add _, y.isLt, x.isLt, z.isLt]
   ring
 
+--new proof
 theorem append_assoc' {x : BitVec a} {y : BitVec b} {z : BitVec c} :
   ((x ++ y) ++ z) = Nat.add_assoc _ _ _ ▸ (x ++ (y ++ z)) := by
   rw [← val_bitvec_eq, cast_heq, append_assoc]
@@ -1042,28 +1044,4 @@ theorem bla (x :  BitVec w) (y : BitVec (List.length (toBool x h))): False := by
 --   simp only [bit_add''', HAdd.hAdd, Add.add, BitVec.add, Fin.add]
 --   rw [go'''_correct x y]
 --   sorry
-def uDivModRec (a b : Nat) (w : Nat) : (Nat × Nat) :=
-  match w with
-  | 0    => (0, 0)
-  | w + 1 =>
-    let (q1, r1) := uDivModRec (a >>> 1) b w --want to use bitwise shift right instead of a >>> 1 same thing below
-  
-    let (q1, r1) := (q1 <<< 1, r1 <<< 1)
-    
-    let (r1ShiftAdd, _) := bitwise_add r1 0 w (a.testBit 0)
-    let notB := bitwise_negate b w
-    let (rMinusB, co1) := bitwise_add r1ShiftAdd notB w true
-    let sign := !co1
-
-    -- ...
-
-    let (aMinusB, co2) := bitwise_add a notB w true
-    let aLtB := !co2
-
-    
-
-
-
-    _
-
 end BitVec
