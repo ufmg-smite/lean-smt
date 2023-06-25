@@ -821,7 +821,6 @@ theorem uDivModRec_eq_div (h0 : 0 < b) (hb : b < 2^w) (ha: a < 2^w) : uDivModRec
   · rw [succ_sub_succ_eq_sub, Nat.sub_zero, uDivModRec_ih hb ha h0 rfl.le]
 
 
-
 end Nat
 
 
