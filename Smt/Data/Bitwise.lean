@@ -27,11 +27,9 @@ lemma shiftr_eq_testBit : Nat.shiftr x i %2 = (x.testBit i).toNat := by simp [Na
 
 lemma div_add_mod_two_pow (m n : Nat) : n = 2^m*Nat.shiftr n m + n%(2^m):= by simp_rw [Nat.shiftr_eq_div_pow, Nat.div_add_mod]
 
---there should be a quicker proof with jst one div_add_mod
 theorem mod_two_pow_succ (x i : Nat) : x % 2 ^ (i + 1) = 2^i * (Nat.testBit x i).toNat + x % (2^i):= by 
   have h1 := div_add_mod_two_pow i x
-  have h3 := div_add_mod (Nat.shiftr x i) 2 -- hmm isnt this bit_val or sth. avoid this have?
-  rw [← h3, mul_add, ←mul_assoc, ← pow_succ, shiftr_eq_testBit] at h1
+  rw [← div_add_mod (Nat.shiftr x i) 2, mul_add, ←mul_assoc, ←pow_succ, shiftr_eq_testBit] at h1
   have := lt_succ_two_pow (toNat_le_one (x.testBit i)) (mod_lt x (NeZero.pos (2^i)))
   simp [(Nat.div_mod_unique (two_pow_pos (i+1))).mpr ⟨add_rotate _ _ (x%(2^i)) ▸ h1.symm, this⟩]
 
@@ -332,9 +330,6 @@ theorem carry_n_eq_false (h: w < n ) (h0: y < 2^(w+1) ): bitwise_mul.carry x y m
   · induction' m with m ih
     · simp [bitwise_mul_carry_zero]
     · simp [bitwise_mul.carry, ih, bitwise_mul.sh, lt_two_pow_testBit_false h0 (show w+1 ≤ succ n by linarith)]
-
-
-#check Nat.sub_add_cancel
 
 theorem res_n_eq_res_w' (h: w ≤ n) (h1: w ≤ i) (h0: y< 2^(w+1)): bitwise_mul.res x y i n = bitwise_mul.res x y i w := by
   cases' lt_or_eq_of_le h with h2 h2; clear h
