@@ -67,6 +67,7 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
 
 @[tactic permutateOr] def evalPermutateOr : Tactic := fun stx =>
   withMainContext do
+    logInfo m!"test test"
     let hyp ← elabTerm stx[1] none
     let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
     let fname ← mkFreshId
