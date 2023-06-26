@@ -183,6 +183,7 @@ open Lean.Elab Lean.Elab.Command in
   | _ => throwUnsupportedSyntax
 
 def getOp : Expr → MetaM Name
+  | app (Expr.const ``Not ..) e' => getOp e'
   | app (app (app (app (app (Expr.const nm ..) ..) ..) ..) ..) .. => pure nm
   | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
   | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
