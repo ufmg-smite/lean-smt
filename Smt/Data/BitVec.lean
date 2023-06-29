@@ -238,12 +238,16 @@ def bbT (bs : List Bool) (h: 0 < bs.length): BitVec bs.length :=
 
 theorem BV_add {x y : BitVec w} : bitwise_add x.val y.val w = (x + y).val := by
   sorry
+--use the theorem `bitwise_add_eq_add`
+
 
 theorem BV_neg {x : BitVec w} : bitwise_neg x.val w = x.neg.val := by
   sorry
+--use the theorem `bitwise_neg_eq_neg`
 
 theorem BV_mul {x y : BitVec w} : bitwise_mul x.val y.val w = (x * y).val := by
   sorry
+--use the theorem `bitwise_mul_eq_mul`
 
 theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).val := by
   simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
@@ -253,8 +257,12 @@ theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val
 
 theorem BV_eq {x y : BitVec w} : bitwise_eq x.val y.val w = (x = y) := by
   sorry
+--use the theorem `bitwise_eq_eq`
 
 theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (val_bitvec_lt.mpr h1)
+
+--TODO
+-- theorem BV_slt {x y : BitVec w} (h1: x < y) : bitwise_slt x.val y.val w:= sorry
 
 theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
   induction' i with i ih 
