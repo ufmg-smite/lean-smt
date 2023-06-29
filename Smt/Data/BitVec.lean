@@ -174,12 +174,6 @@ instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
 
 open Nat
 
-theorem bV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).val := by
-  simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
-
-theorem bV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): (x ++ y).val = bitwise_concat y.val x.val v w := by
-  simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat h y.isLt x.isLt]
-
 @[simp] lemma unfold_bitwise_ext : bitwise_ext x n k = bitwise_ext.go x (n-1) 0 (n+k-1) := rfl
 
 lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
@@ -193,14 +187,14 @@ lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
 
 lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
 
-theorem bv_concat_ext {x : BitVec a} {y : BitVec b} :
+theorem concat_ext {x : BitVec a} {y : BitVec b} :
   (x ++ y).val = x.val <<< b ||| y.val := rfl
 
 --should we use `shiftr_eq_div_pow` or not?
-theorem bv_extract_ext : (extract i j x).val = x.val/2^j % (2^(i - j + 1)) := by
+theorem extract_ext : (extract i j x).val = x.val/2^j % (2^(i - j + 1)) := by
   simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow]
 
-lemma bVappend_eq_add {x: BitVec w} {y : BitVec v} : (x ++ y).val = x.val * 2^v + y.val := by
+lemma append_eq_add_val {x: BitVec w} {y : BitVec v} : (x ++ y).val = x.val * 2^v + y.val := by
   simp only [HAppend.hAppend, BitVec.append, BitVec.val_bitvec_eq, append_eq_add y.isLt, mul_comm]
 
 --this was a private lemma but had to use it for rewrite rules
@@ -209,32 +203,17 @@ lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
   exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
 
 lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (testBit (x.val) (w - 1)) := by
-  simp only [signExtend, cast_heq, bVappend_eq_add, repeat_, extract]
+  simp only [signExtend, cast_heq, append_eq_add_val, repeat_, extract]
   rw [show w - 1 - (w - 1) + 1 = 1 by simp]
   simp [cast_heq, testBit_eq_ofNat, add_mul, mul_assoc, ← pow_add, add_rotate _ _ x.val, mul_comm _ (2^(i+w))]
 
 lemma signExtend_zero {x: BitVec w} (_: 0 < w) : (signExtend 0 x).val = x.val := by
-  simp [signExtend, cast_heq, bVappend_eq_add, repeat_, extract]
-
-theorem bv_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
-  induction' i with i ih 
-  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt]
-  · rw [unfold_bitwise_ext] at *
-    rw [show w+ succ i -1 = w + i - 1 + 1 by simp [sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
-    simp only [bitwise_ext.go, bit_0]
-    rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (testBit (x.val) (w - 1))) _]
-    rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
-    simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false, add_comm (2 ^ (w + i) * Bool.toNat (testBit (x.val) (w - 1))) _] -- this add_comm super long
-    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]   
--- if use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
+  simp [signExtend, cast_heq, append_eq_add_val, repeat_, extract]
 
 theorem testBit_eq_rep {x: BitVec w} (i : Nat) (h: i< w): x[i] = testBit x.val i := by rfl
 
 theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = testBit x i := by 
   simp [BitVec.ofNat, GetElem.getElem, lsbGet, extract, Fin.ofNat', mod_eq_of_lt, h2]
-
-theorem ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (val_bitvec_lt.mpr h1)
-
 
 -- alternative toNat definition that uses lists
 -- def toNat' (bs : List Bool) : Nat := List.foldr Nat.bit 0 bs
@@ -252,5 +231,42 @@ theorem ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_u
 def bbT (bs : List Bool) (h: 0 < bs.length): BitVec bs.length :=
   ⟨toNat (λ i => bs[i]!) 0 (bs.length - 1), by 
   apply Eq.trans_gt _ (@toNat_lt _ _); simp [Nat.sub_add_cancel h]⟩
+
+
+
+/-! ### The equivalence betweeen bitwise and BitVec operations -/
+
+theorem BV_add {x y : BitVec w} : bitwise_add x.val y.val w = (x + y).val := by
+  sorry
+
+theorem BV_neg {x : BitVec w} : bitwise_neg x.val w = x.neg.val := by
+  sorry
+
+theorem BV_mul {x y : BitVec w} : bitwise_mul x.val y.val w = (x * y).val := by
+  sorry
+
+theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).val := by
+  simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
+
+theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val x.val v w  = (x ++ y).val := by
+  simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat h y.isLt x.isLt]
+
+theorem BV_eq {x y : BitVec w} : bitwise_eq x.val y.val w = (x = y) := by
+  sorry
+
+theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (val_bitvec_lt.mpr h1)
+
+theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
+  induction' i with i ih 
+  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt]
+  · rw [unfold_bitwise_ext] at *
+    rw [show w+ succ i -1 = w + i - 1 + 1 by simp [sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
+    simp only [bitwise_ext.go, bit_0]
+    rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (testBit (x.val) (w - 1))) _]
+    rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
+    simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false, add_comm (2 ^ (w + i) * Bool.toNat (testBit (x.val) (w - 1))) _] -- this add_comm super long
+    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]   
+-- if use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
+-- swap lhs and rhs
 
 end BitVec

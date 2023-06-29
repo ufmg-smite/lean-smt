@@ -685,7 +685,7 @@ lemma bitwise_ext_zero (h: 0 < w) (hx: x < 2^w) : bitwise_ext x w 0 = x := by
   cases' (lt_or_eq_of_le (add_zero w ▸ le_pred_of_lt hj)) with h1 h1 <;> simp [h1]
 
 
-def uDivModRec (a b : Nat) (w : Nat) : (Nat × Nat) := go a b (w - 1) w
+def uDivModRec (a b w : Nat) : (Nat × Nat) := go a b (w - 1) w
 where
   go (a b l w: Nat) :=
   match w with
@@ -703,6 +703,9 @@ where
       let r1 := if sign then r1ShiftAdd else rMinusB
       (q1, r1)
 
+def UdivUremBB (a b w : Nat) : (Nat × Nat) :=
+  if b == 0 then (toNat (λ _ => true) 0 (w-1), a)
+  else uDivModRec a b w
 
 --Carry is 0 indexed. BVs are 0 indexed. But bitwise_operations are not :(.
 --It seems like we need to set `w` to the max length of `a` and `b`.
@@ -814,6 +817,14 @@ theorem uDivModRec_eq_div (h0 : 0 < b) (hb : b < 2^w) (ha: a < 2^w) : uDivModRec
   cases' w with w <;> simp only [uDivModRec]
   · rw [pow_zero, lt_one_iff] at hb ha; simp [hb, ha]
   · rw [succ_sub_succ_eq_sub, Nat.sub_zero, uDivModRec_ih hb ha h0 rfl.le]
+
+theorem UdivUremBB_eq_div (hb : b < 2^(w+1)) (ha: a < 2^(w+1)) : UdivUremBB a b (w+1) = if b = 0 then (2^(w+1) - 1, a) else (a / b, a % b) := by
+  cases' b with b
+  · simp only [UdivUremBB, ite_true]; congr
+    apply eq_of_testBit_eq_lt (toNat_lt) (by simp [sub_lt])
+    intros j hj ; simp only [Nat.add_sub_cancel] at hj
+    rw [testBit_two_pow_minus_one (by linarith), Nat.add_sub_cancel, toNat_testBit (by linarith)]
+  . exact uDivModRec_eq_div (by linarith) hb ha
 
 
 end Nat
