@@ -48,8 +48,15 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
 When `fvarDeps = false`, we filter out dependencies on fvars. -/
 def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × Array Expr) := do
   let (tm, deps) ← Translator.translateExpr e
-  let unknownConsts := deps.toArray.filterMap fun nm =>
-    if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
+  let unknownConsts ← deps.toArray.filterMapM fun nm =>
+    if Util.smtConsts.contains nm.toString then return none
+    else do
+      let env ← getEnv
+      let some decl := env.find? nm | throwError "unknown name {nm}"
+      if decl.levelParams.isEmpty then
+        return some (mkConst nm)
+      else
+        return Expr.const nm [.zero]
   if fvarDeps then
     let st : CollectFVars.State := {}
     let st := collectFVars st e
