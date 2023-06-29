@@ -45,7 +45,7 @@ open Elab Tactic in
 
 -- the apply And.left is quite weird.
 theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):  (x.extract k (j + 1) ++ x.extract j i).val = (x.extract k i).val := by
-  simp only [bv_extract_ext, bVappend_eq_add]
+  simp only [extract_ext, append_eq_add_val]
   rw [mul_comm, add_comm]
   apply @And.left _ ((x.val/2^i) % 2^(j-i+1)< 2^(j-i+1)) _
   rw [← Nat.div_mod_unique (two_pow_pos (j-i+1))]
@@ -61,15 +61,15 @@ theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):
 
 @[smt_simp] theorem bv_concat_flatten {xs : BitVec a} {s : BitVec b} {ys : BitVec c} {zs : BitVec d} :
   (xs ++ (s ++ ys) ++ zs).val = (xs ++ s ++ ys ++ zs).val :=
-  bVappend_eq_add ▸ bVappend_eq_add (x := xs ++ s ++ ys) ▸ append_assoc ▸ rfl
+  append_eq_add_val ▸ append_eq_add_val (x := xs ++ s ++ ys) ▸ append_assoc ▸ rfl
 
 @[smt_simp] theorem bv_concat_extract_merge {xs : BitVec a} {s : BitVec b} {ys : BitVec c} {i j k : Nat} (hik : i ≤ k) (hjk : j + 1 ≤ k) (hij : i ≤ j) :
   (xs ++ s.extract k (j + 1) ++ s.extract j i ++ ys).val = (xs ++ s.extract k i ++ ys).val := by
-  rewrite [bVappend_eq_add (x := xs ++ s.extract k i)]
-  rewrite [bVappend_eq_add (y := s.extract k i)]
+  rewrite [append_eq_add_val (x := xs ++ s.extract k i)]
+  rewrite [append_eq_add_val (y := s.extract k i)]
   rw [←bv_extract_concat_eq hjk hij]
   rewrite [t]
-  simp only [←bVappend_eq_add, ←append_assoc]
+  simp only [← append_eq_add_val, ←append_assoc]
 where
   t : k - i + 1 = k - (j + 1) + 1 + (j - i + 1) := by
     zify [hik, hjk, hij]
@@ -77,7 +77,7 @@ where
 
 -- x[i:j] ++ x[k:l] = x[i+k:i+l]
 @[smt_simp] theorem bv_extract_extract {x : BitVec w} {hl : k ≤ l} {hk : l ≤ j - i}: ((x.extract j i).extract l k).val = (x.extract (i + l) (i + k)).val := by
-  simp only [bv_extract_ext, div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]
+  simp only [extract_ext, div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]
   rw [mod_mod_of_dvd _ (by apply pow_dvd_pow; zify [*]; linarith)]
   congr 3; zify [hl, hk, add_le_add_left hl]; ring
 
@@ -90,7 +90,7 @@ where
 
 -- Case 1: j < a so the extract is self contained
 @[smt_simp] theorem bv_extract_concat_1 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hja : j < a) : ((xs ++ y ++ x).extract j i).val = (x.extract j i).val := by
-   simp only [bv_extract_ext, bVappend_eq_add]
+   simp only [extract_ext, append_eq_add_val]
    have h1 : 2^(j-i+1) ∣ 2^a / 2^i ∧ 2^i ∣ 2^a:= by
     simp only [pow_div (show i ≤ a by linarith), pow_dvd_pow_iff_le_right]
     zify [*, (show i ≤ a by linarith)]; rw [and_true]; linarith
@@ -103,10 +103,10 @@ where
 @[smt_simp] theorem bv_extract_concat_2 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hia: i < a) (hja : a ≤ j) (ha : 0 < a) : 
 ((xs ++ y ++ x).extract j i).val = (((xs ++ y).extract (j-a) 0) ++ (x.extract (a - 1) i)).val := by
   rw [← bv_extract_concat_eq ((Nat.sub_add_cancel (one_le_of_lt ha)).symm ▸ hja) (le_pred_of_lt hia)]
-  simp only [bVappend_eq_add]
+  simp only [append_eq_add_val]
   rw [bv_extract_concat_1 (le_pred_of_lt hia) (Nat.sub_lt ha _)]
   congr 2; swap; decide
-  simp only [bv_extract_ext, bVappend_eq_add, Nat.sub_add_cancel (one_le_of_lt ha)]
+  simp only [extract_ext, append_eq_add_val, Nat.sub_add_cancel (one_le_of_lt ha)]
   rw [add_comm, add_mul_div_right _ _ (two_pow_pos a), Nat.div_eq_zero x.isLt]
   simp
 
@@ -116,7 +116,7 @@ where
   ((xs ++ y ++ x).extract j i).val = ((xs ++ y).extract (j - a) (i - a)).val := by
   have : x.val < 2^i := lt_of_lt_of_le x.isLt (pow_le_pow_of_le_right (by decide) hia)
   have h0 : 2^i = 2^(i-a) * 2^a := by rw [← pow_add]; congr 1; zify [hia]; linarith
-  simp only [bv_extract_ext, bVappend_eq_add]
+  simp only [extract_ext, append_eq_add_val]
   rw [add_div_eq_of_add_mod_lt]
   · congr 1
     · rw [Nat.div_eq_zero this, h0]
@@ -135,7 +135,7 @@ where
 
 -- Case 4: Elision from the higher portion
 theorem bv_extract_concat_4 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hj : j < b+ c) : ((x ++ xs ++ y).extract j i).val = ((xs ++ y).extract j i).val := by
-  simp only [bv_extract_ext, bVappend_eq_add]
+  simp only [extract_ext, append_eq_add_val]
   have h1 : 2^(j-i+1) ∣ 2^(b+c)/2^i ∧ 2^i ∣ 2^(b+c) := by
     simp only [pow_div (show i ≤ b+c by linarith), pow_dvd_pow_iff_le_right]
     zify [*, (show i ≤ b+c by linarith)]; rw [and_true]; linarith
