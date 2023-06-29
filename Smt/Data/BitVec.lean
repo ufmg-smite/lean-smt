@@ -234,20 +234,19 @@ def bbT (bs : List Bool) (h: 0 < bs.length): BitVec bs.length :=
 
 
 
-/-! ### The equivalence betweeen bitwise and BitVec operations -/
+/-! ### The equivalence between bitwise and BitVec operations -/
 
-theorem BV_add {x y : BitVec w} : bitwise_add x.val y.val w = (x + y).val := by
-  sorry
---use the theorem `bitwise_add_eq_add`
+theorem BV_add {x y : BitVec w} (h: 0 < w) : bitwise_add x.val y.val (w - 1) = (x + y).val := by
+  rw [bitwise_add_eq_add, Nat.sub_add_cancel h]
+  norm_cast
 
+theorem BV_neg {x : BitVec w} (h: 0 < w) : bitwise_neg x.val (w - 1) = x.neg.val := by
+  simp only [bitwise_neg_eq_neg, Nat.sub_add_cancel h, x.isLt]
+  norm_cast
 
-theorem BV_neg {x : BitVec w} : bitwise_neg x.val w = x.neg.val := by
-  sorry
---use the theorem `bitwise_neg_eq_neg`
-
-theorem BV_mul {x y : BitVec w} : bitwise_mul x.val y.val w = (x * y).val := by
-  sorry
---use the theorem `bitwise_mul_eq_mul`
+theorem BV_mul {x y : BitVec w} (h : 0 < w): bitwise_mul x.val y.val w = (x * y).val := by
+  rw [bitwise_mul_eq_mul h]
+  norm_cast
 
 theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).val := by
   simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
@@ -255,9 +254,8 @@ theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).
 theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val x.val v w  = (x ++ y).val := by
   simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat h y.isLt x.isLt]
 
-theorem BV_eq {x y : BitVec w} : bitwise_eq x.val y.val w = (x = y) := by
-  sorry
---use the theorem `bitwise_eq_eq`
+theorem BV_eq {x y : BitVec w} (h: 0< w): bitwise_eq x.val y.val w = (x = y) := by
+  simp [← bitwise_eq_eq h x.isLt y.isLt]
 
 theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (val_bitvec_lt.mpr h1)
 
