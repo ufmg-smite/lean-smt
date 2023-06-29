@@ -641,7 +641,7 @@ theorem bitwise_eq_eq_forall (h: 0 < n): bitwise_eq x y n = ∀ j ≤ n-1, x.tes
       · intro H
         exact ⟨H (n+1) rfl.le, fun j hj => H j (by linarith)⟩
 
-theorem bitwise_eq_eq_iff (h: 0 < n) (hx : x < 2^n) (hy: y < 2^n ): (x = y) = bitwise_eq x y n := by
+theorem bitwise_eq_eq (h: 0 < n) (hx : x < 2^n) (hy: y < 2^n ): (x = y) = bitwise_eq x y n := by
   rw [bitwise_eq_eq_forall h]
   apply propext; apply Iff.intro
   <;> intro H
