@@ -8,5 +8,6 @@ Authors: Tomaz Gomes Mascarenhas
 import Smt.Reconstruction.Certifying.Arith.ArithMulSign
 import Smt.Reconstruction.Certifying.Arith.MulPosNeg
 import Smt.Reconstruction.Certifying.Arith.SumBounds
-import Smt.Reconstruction.Certifying.Arith.Trichotomy
+import Smt.Reconstruction.Certifying.Arith.TangentPlane
 import Smt.Reconstruction.Certifying.Arith.TightBounds
+import Smt.Reconstruction.Certifying.Arith.Trichotomy
