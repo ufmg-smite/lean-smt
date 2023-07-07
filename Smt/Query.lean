@@ -207,8 +207,9 @@ where
       go (mkConst `Nat)
       addDependency e (mkConst `Nat)
       return
-
+    logInfo m!"[buildDependencyGraph]: e = {e}"
     let deps ← addCommandFor e et
+    logInfo m!"[buildDependencyGraph]: deps = {deps}"
 
     trace[smt.debug.translate.query] "deps: {deps}"
     for e' in deps do

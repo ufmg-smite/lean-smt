@@ -88,6 +88,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
     go (ts : List (Translator × Name)) : Translator := fun e => do
       -- First try all translators on the whole expression
       -- TODO: Use `DiscrTree` to index the translators instead of naively looping
+      logInfo m!"[applyTranslators]: e = {e}"
       for (t, nm) in ts do
         if let some tm ← t e then
           trace[smt.debug.translate.expr] "{e} =({nm})=> {tm}"
@@ -99,6 +100,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
         let ld ← fv.getDecl
         return symbolT ld.userName.toString
       | const nm _ =>
+        logInfo m!"[applyTranslators]: nameFound = {nm}"
         modify fun st => { st with depConstants := st.depConstants.insert nm }
         return symbolT nm.toString
       | app f e => return appT (← applyTranslators! f) (← applyTranslators! e)
@@ -113,6 +115,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
         let tmB ← Meta.withLetDecl n t v (fun x => applyTranslators! <| b.instantiate #[x])
         return letT n.toString (← applyTranslators! v) tmB
       | mdata _ e => go ts e
+      | sort (Level.succ Level.zero) => return some (symbolT "U")
       | e         => throwError "cannot translate {e}"
 
 end
