@@ -228,20 +228,19 @@ theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat
 -- def bbT' (bs : List Bool): BitVec bs.length :=
 --   ⟨toNat' bs, toNat'_lt⟩
 
-def bbT (bs : List Bool) (h: 0 < bs.length): BitVec bs.length :=
-  ⟨toNat (λ i => bs[i]!) 0 (bs.length - 1), by 
-  apply Eq.trans_gt _ (@toNat_lt _ _); simp [Nat.sub_add_cancel h]⟩
+def bbT (bs : List Bool) : BitVec bs.length :=
+  ⟨toNat (λ i => bs[i]!) 0 bs.length, @toNat_lt (bs.length) _⟩
 
 
 
 /-! ### The equivalence between bitwise and BitVec operations -/
 
-theorem BV_add {x y : BitVec w} (h: 0 < w) : bitwise_add x.val y.val (w - 1) = (x + y).val := by
-  rw [bitwise_add_eq_add, Nat.sub_add_cancel h]
+theorem BV_add {x y : BitVec w}: bitwise_add x.val y.val w = (x + y).val := by
+  rw [bitwise_add_eq_add]
   norm_cast
 
-theorem BV_neg {x : BitVec w} (h: 0 < w) : bitwise_neg x.val (w - 1) = x.neg.val := by
-  simp only [bitwise_neg_eq_neg, Nat.sub_add_cancel h, x.isLt]
+theorem BV_neg {x : BitVec w}: bitwise_neg x.val w = x.neg.val := by
+  simp only [bitwise_neg_eq_neg, x.isLt]
   norm_cast
 
 theorem BV_mul {x y : BitVec w} (h : 0 < w): bitwise_mul x.val y.val w = (x * y).val := by
