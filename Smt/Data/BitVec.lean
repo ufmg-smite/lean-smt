@@ -2,7 +2,7 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Harun Khan, Abdalrhman M Mohamed, Wojciech Nawrocki, Joe Hendrix
+Authors: Wojciech Nawrocki, Joe Hendrix, Harun Khan, Abdalrhman M Mohamed
 -/
 
 import Std
@@ -58,7 +58,7 @@ protected def mod (x y : BitVec w) : BitVec w :=
   ⟨x.val % y.val, Nat.lt_of_le_of_lt (Nat.mod_le _ _) x.isLt⟩
 protected def div (x y : BitVec w) : BitVec w :=
   ⟨x.val / y.val, Nat.lt_of_le_of_lt (Nat.div_le_self _ _) x.isLt⟩
---when y=0 its the bitvectors of all 1s
+--when `y = 0` its the bitvectors of all `1s`
 protected def lt (x y : BitVec w) : Bool :=
   x.val < y.val
 protected def le (x y : BitVec w) : Bool :=
@@ -254,7 +254,7 @@ theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).
 theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val x.val v w  = (x ++ y).val := by
   simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat h y.isLt x.isLt]
 
-theorem BV_eq {x y : BitVec w} (h: 0< w): bitwise_eq x.val y.val w = (x = y) := by
+theorem BV_eq {x y : BitVec w} (h: 0 < w): bitwise_eq x.val y.val w = (x = y) := by
   simp [← bitwise_eq_eq h x.isLt y.isLt]
 
 theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwise_ult_of_ult y.isLt (val_bitvec_lt.mpr h1)
