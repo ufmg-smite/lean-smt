@@ -2,7 +2,7 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Wojciech Nawrocki, Joe Hendrix, Harun Khan, Abdalrhman M Mohamed
+Authors: Harun Khan, Abdalrhman M Mohamed, Wojciech Nawrocki, Joe Hendrix, 
 -/
 
 import Std
@@ -122,7 +122,7 @@ def rotateRight (x : BitVec w) (n : Nat) : BitVec w :=
   x >>> n ||| x <<< (w - n)
 
 protected def append (x : BitVec w) (y : BitVec v) : BitVec (w+v) :=
-  ⟨x.val <<< v ||| y.val, Nat.add_comm _ _ ▸ Nat.concat_size y.isLt x.isLt⟩ -- is it swapped? why?
+  ⟨x.val <<< v ||| y.val, Nat.add_comm _ _ ▸ Nat.append_lt y.isLt x.isLt⟩ -- is it swapped? why?
 
 instance : HAppend (BitVec w) (BitVec v) (BitVec (w+v)) := ⟨BitVec.append⟩
 
@@ -174,8 +174,6 @@ instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
 
 open Nat
 
-@[simp] lemma unfold_bitwise_ext : bitwise_ext x n k = bitwise_ext.go x (n-1) 0 (n+k-1) := rfl
-
 lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
   simp only [BitVec.ofNat, Fin.ofNat', testBit, shiftRight_eq_shiftr, mod_two_of_bodd, pow_one]
   aesop
@@ -202,6 +200,7 @@ lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
   rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt)), BitVec.val_bitvec_eq]
   exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
 
+--this should be stated as 2^(i+w)*(bla) + bla instead
 lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (testBit (x.val) (w - 1)) := by
   simp only [signExtend, cast_heq, append_eq_add_val, repeat_, extract]
   rw [show w - 1 - (w - 1) + 1 = 1 by simp]
@@ -248,10 +247,12 @@ theorem BV_mul {x y : BitVec w} (h : 0 < w): bitwise_mul x.val y.val w = (x * y)
   norm_cast
 
 theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).val := by
-  simp [bitwise_extract_eq_extract, BitVec.ofNat, Fin.ofNat']
+  rw [bitwise_extract_eq_extract]
+  norm_cast
 
 theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val x.val v w  = (x ++ y).val := by
-  simp [HAppend.hAppend, BitVec.append, bitwise_concat_eq_concat h y.isLt x.isLt]
+  rw [bitwise_concat_eq_concat y.isLt x.isLt]
+  norm_cast
 
 theorem BV_eq {x y : BitVec w} (h: 0 < w): bitwise_eq x.val y.val w = (x = y) := by
   simp [← bitwise_eq_eq h x.isLt y.isLt]
@@ -263,15 +264,13 @@ theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwis
 
 theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
   induction' i with i ih 
-  · rw [signExtend_zero h, bitwise_ext_zero h x.isLt]
-  · rw [unfold_bitwise_ext] at *
-    rw [show w+ succ i -1 = w + i - 1 + 1 by simp [sub_add_comm, Nat.sub_add_cancel (show 1 ≤ w + i by linarith)]]
-    simp only [bitwise_ext.go, bit_0]
-    rw [bitwise_ext_succ, @bitwise_ext_succ _ _ (Bool.toNat (testBit (x.val) (w - 1))) _]
-    rw [Nat.sub_add_cancel (show 1 ≤ w+ i by linarith)]
-    simp only [← ih, (show ¬ w+i < w-1 by simp_arith), ite_false, add_comm (2 ^ (w + i) * Bool.toNat (testBit (x.val) (w - 1))) _] -- this add_comm super long
-    simp [signExtend_succ h, Nat.sub_add_cancel (show 1 ≤ i+ w by linarith), add_comm w i, ih]   
--- if use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
+  · rw [signExtend_zero h, bitwise_ext_zero x.isLt]
+  · simp only [bitwise_ext, toNat] at ih ⊢
+    rw [toNat_succ, add_eq]
+    simp only [add_comm, ← ih, (show ¬ w+i < w by linarith), ite_false]
+    simp [signExtend_succ h, add_comm w i, ih] 
+-- if we use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 -- swap lhs and rhs
+
 
 end BitVec
