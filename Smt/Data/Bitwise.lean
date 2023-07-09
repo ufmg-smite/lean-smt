@@ -286,9 +286,9 @@ lemma bitwise_mul_res_zero : bitwise_mul.res x y 0 n = bitwise_mul.sh x y 0 0:= 
 lemma bitwise_mul_carry_zero : bitwise_mul.carry x y 0 n = false:= by
   cases' n <;> simp [bitwise_mul.carry]
 
-def bitwise_mul' (x y n: Nat) := toNat (λ j => bitwise_mul.res x y j (n - 1)) 0 (n - 1)
+@[simp] def bitwise_mul (x y n: Nat) := toNat (λ j => bitwise_mul.res x y j (n - 1)) 0 n
 
-def bitwise_mul (x y n : Nat) : Nat := go x y 0 (n - 1)
+def bitwise_mul' (x y n : Nat) : Nat := go x y 0 (n - 1)
 where
   go (x y z : Nat) : Nat → Nat
   | 0     => z.bit (bitwise_mul.res x y 0 (n - 1))
@@ -446,23 +446,14 @@ theorem res_one : bitwise_mul.res x 1 i j = x.testBit i ∧ bitwise_mul.carry x 
   cases' j with j <;> cases' i with i
   <;> simp [bitwise_mul.sh, bitwise_mul.res, bitwise_mul.carry]
   simp [ih (k-1) (sub_lt (show 0< k by linarith) one_pos) (show k-1 = i + succ j by simp[hk, succ_add]), ih (k-1) (sub_lt (show 0< k by linarith) one_pos) (show k-1 = succ i + j by simp [hk]), (pow_zero 2) ▸ testBit_two_pow_of_ne (Ne.symm (succ_ne_zero j))]
- 
-theorem bitwise_mul_size (h: 0 < n) : bitwise_mul x y n < 2^n := by
-  rw [← Nat.sub_add_cancel h]
-  simp [bitwise_mul, rec_size (bitwise_mul.go (n-1+1) x y) (λ v => bitwise_mul.res x y v (n-1)) (by simp[bitwise_mul.go]) (by simp[bitwise_mul.go])]
-
-theorem bitwise_mul_testBit (h1: i< n) : (bitwise_mul x y n).testBit i = bitwise_mul.res x y i (n-1) := by
-  simp [bitwise_mul]
-  exact rec_testBit (λ v => bitwise_mul.res x y v (n-1)) (by simp[bitwise_mul.go]) (by simp[bitwise_mul.go]) (le_pred_of_lt h1)
 
 theorem bitwise_mul_eq_mul' (y: Nat)  (h: i ≤ n) (h1: x < 2^n): bitwise_mul x (y%(2^i)) (2*n) = x * (y%(2^i)):= by
   cases' eq_zero_or_pos n with Hn Hn
-  · simp [Hn] at h; simp [h, Hn, bitwise_mul, bitwise_mul.go, mod_one, res_zero]
-  apply eq_of_testBit_eq_lt (bitwise_mul_size (succ_mul_pos 1 Hn)) (by linarith [pow_add 2 i n, Nat.mul_lt_mul' (le_of_lt (mod_lt y (two_pow_pos i))) h1 (two_pow_pos i), (pow_le_pow (show 1 ≤ 2 by linarith) (show i+n ≤ succ 1 * n by linarith[h]))])
+  · simp [Hn] at h; simp [h, Hn, mod_one, res_zero]
+  apply eq_of_testBit_eq_lt (toNat_lt) (by linarith [pow_add 2 i n, Nat.mul_lt_mul' (le_of_lt (mod_lt y (two_pow_pos i))) h1 (two_pow_pos i), (pow_le_pow (show 1 ≤ 2 by linarith) (show i+n ≤ 2 * n by linarith[h]))])
   have H: ∀i, (y % (2^i)) + 2^i < 2^(i+1) :=by simp [two_pow_pos, mod_lt, add_lt_add, two_pow_succ]
   intros j hj
-  simp only [bitwise_mul]
-  rw [rec_testBit (λ v => bitwise_mul.res x (y % 2 ^ i) v (2*n - 1)) (by simp[bitwise_mul.go]) (by simp[bitwise_mul.go]) (le_pred_of_lt hj)]
+  rw [toNat_testBit hj]
   induction' i with i ih generalizing j
   · simp[mod_one, res_zero]
   · rw [mod_two_pow_succ y i]
@@ -507,9 +498,9 @@ theorem res_eq_of_testBit_eq (h: 0 < n) (hx: ∀ j < n, x.testBit j = z.testBit 
 theorem bitwise_mul_eq_mul (h: 0 < n) : bitwise_mul x y n = (x*y)%2^n := by
   rw [mul_mod]
   rw [← bitwise_mul_eq_mul' y rfl.ge (by simp [mod_lt, two_pow_pos])]
-  apply eq_of_testBit_eq_lt (bitwise_mul_size h) (by simp [mod_lt, two_pow_pos])
+  apply eq_of_testBit_eq_lt (toNat_lt) (by simp [mod_lt, two_pow_pos])
   intros j hj
-  rw [← testBit_eq_mod_two_pow hj, bitwise_mul_testBit hj, bitwise_mul_testBit (show j < 2*n by linarith)]
+  rw [← testBit_eq_mod_two_pow hj, toNat_testBit hj, bitwise_mul, toNat_testBit (show j < 2*n by linarith)]
   rw [res_n_eq_res_w (le_pred_of_lt hj), res_n_eq_res_w (show j ≤ 2*n-1 by rw [show 2*n-1 = n + (n-1) by simp[(show 2 = 1+1 by simp), add_mul, Nat.add_sub_assoc h]]; exact le_of_lt (Nat.lt_add_right j n (n-1) hj))]
   rw [(res_eq_of_testBit_eq h (fun k hk => (testBit_eq_mod_two_pow hk).symm) (fun k hk => (testBit_eq_mod_two_pow hk).symm) hj hj).1]
 
@@ -518,7 +509,7 @@ theorem testBit_mul : (x*y).testBit i = bitwise_mul.res x y i i := by
     set m:= max (max x y) (i+1); use m
     simp [lt_two_pow, lt_of_lt_of_le (lt_two_pow _) (pow_le_pow (by simp) (show x ≤ m by simp)), lt_of_lt_of_le (lt_two_pow _) (pow_le_pow (by simp) (show y ≤ m by simp))]
   rw [← mod_eq_of_lt hn2]
-  rw [← bitwise_mul_eq_mul' y rfl.ge hn1, bitwise_mul_testBit (by linarith)]
+  rw [← bitwise_mul_eq_mul' y rfl.ge hn1, bitwise_mul, toNat_testBit (by linarith)]
   rw [res_n_eq_res_w (show i ≤ 2*n-1 by rw [show 2*n-1 = n + (n-1) by simp[(show 2 = 1+1 by simp), add_mul, Nat.add_sub_assoc (pos_of_gt hi)]]; exact le_of_lt (Nat.lt_add_right i n (n-1) hi))]
 
 
