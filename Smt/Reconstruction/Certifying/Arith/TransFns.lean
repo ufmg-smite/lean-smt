@@ -7,11 +7,9 @@ Authors: Tomaz Gomes Mascarenhas
 
 -- implementation of rules about transcendental functions from cvc5
 
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import Mathlib.Tactic.LibrarySearch
-/- import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransPi -/
-
-#check Real.pi
-
-example : 3 < Real.pi := by library_search
+import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransExpNeg
+import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransExpPositivity
+import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransExpSuperLin
+import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransExpZero
+import Smt.Reconstruction.Certifying.Arith.TransFns.ArithTransPi
 
