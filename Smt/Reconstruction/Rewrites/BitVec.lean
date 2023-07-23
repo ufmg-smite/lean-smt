@@ -15,7 +15,7 @@ open BitVec Nat
 
 theorem append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} :
   ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by
-    simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (concat_size z.isLt y.isLt)]
+    simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (append_lt z.isLt y.isLt)]
     simp only [append_eq_add _, y.isLt, x.isLt, z.isLt]
     ring
 
@@ -42,7 +42,7 @@ open Elab Tactic in
   let mv ← Tactic.getMainGoal
   concreteSize mv (← elabTerm stx[1] none)
   Tactic.replaceMainGoal []
-
+ 
 -- the apply And.left is quite weird.
 theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):  (x.extract k (j + 1) ++ x.extract j i).val = (x.extract k i).val := by
   simp only [extract_ext, append_eq_add_val]
@@ -57,7 +57,7 @@ theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):
   
 -- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/bv/rewrites
 
--- Core Normalization Rules --
+/-! ### Core Normalization Rules -/
 
 @[smt_simp] theorem bv_concat_flatten {xs : BitVec a} {s : BitVec b} {ys : BitVec c} {zs : BitVec d} :
   (xs ++ (s ++ ys) ++ zs).val = (xs ++ s ++ ys ++ zs).val :=
@@ -89,7 +89,7 @@ where
   simp [shiftRight_eq_shiftr, shiftr_eq_div_pow]
 
 -- Case 1: j < a so the extract is self contained
-@[smt_simp] theorem bv_extract_concat_1 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hja : j < a) : ((xs ++ y ++ x).extract j i).val = (x.extract j i).val := by
+@[smt_simp] theorem bv_extract_concat₁ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hja : j < a) : ((xs ++ y ++ x).extract j i).val = (x.extract j i).val := by
    simp only [extract_ext, append_eq_add_val]
    have h1 : 2^(j-i+1) ∣ 2^a / 2^i ∧ 2^i ∣ 2^a:= by
     simp only [pow_div (show i ≤ a by linarith), pow_dvd_pow_iff_le_right]
@@ -100,11 +100,11 @@ where
 
 
 -- Case 2: j ≥ a so the extract is not self contained
-@[smt_simp] theorem bv_extract_concat_2 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hia: i < a) (hja : a ≤ j) (ha : 0 < a) : 
+@[smt_simp] theorem bv_extract_concat₂ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hia: i < a) (hja : a ≤ j) (ha : 0 < a) : 
 ((xs ++ y ++ x).extract j i).val = (((xs ++ y).extract (j-a) 0) ++ (x.extract (a - 1) i)).val := by
   rw [← bv_extract_concat_eq ((Nat.sub_add_cancel (one_le_of_lt ha)).symm ▸ hja) (le_pred_of_lt hia)]
   simp only [append_eq_add_val]
-  rw [bv_extract_concat_1 (le_pred_of_lt hia) (Nat.sub_lt ha _)]
+  rw [bv_extract_concat₁ (le_pred_of_lt hia) (Nat.sub_lt ha _)]
   congr 2; swap; decide
   simp only [extract_ext, append_eq_add_val, Nat.sub_add_cancel (one_le_of_lt ha)]
   rw [add_comm, add_mul_div_right _ _ (two_pow_pos a), Nat.div_eq_zero x.isLt]
@@ -112,7 +112,7 @@ where
 
 
 -- Case 3: i ≥ a and j ≥ a, extract elides x
-@[smt_simp] theorem bv_extract_concat_3 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hia : a ≤ i) (hij: i ≤ j):
+@[smt_simp] theorem bv_extract_concat₃ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hia : a ≤ i) (hij: i ≤ j):
   ((xs ++ y ++ x).extract j i).val = ((xs ++ y).extract (j - a) (i - a)).val := by
   have : x.val < 2^i := lt_of_lt_of_le x.isLt (pow_le_pow_of_le_right (by decide) hia)
   have h0 : 2^i = 2^(i-a) * 2^a := by rw [← pow_add]; congr 1; zify [hia]; linarith
@@ -134,7 +134,7 @@ where
     
 
 -- Case 4: Elision from the higher portion
-theorem bv_extract_concat_4 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hj : j < b+ c) : ((x ++ xs ++ y).extract j i).val = ((xs ++ y).extract j i).val := by
+@[smt_simp] theorem bv_extract_concat₄ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hj : j < b+ c) : ((x ++ xs ++ y).extract j i).val = ((xs ++ y).extract j i).val := by
   simp only [extract_ext, append_eq_add_val]
   have h1 : 2^(j-i+1) ∣ 2^(b+c)/2^i ∧ 2^i ∣ 2^(b+c) := by
     simp only [pow_div (show i ≤ b+c by linarith), pow_dvd_pow_iff_le_right]
@@ -144,6 +144,67 @@ theorem bv_extract_concat_4 {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j :
   cases' h1.1 with l hl; rw[hl, mul_comm _ l, ← mul_assoc] --shouldnt have to do this. 
   rw [Nat.mul_add_mod]
 
+/-! ### Operator Elimination Rules -/
+
+theorem bv_ugt_eliminate {x y : BitVec w} : (x > y) = (y < x) := by simp
+
+theorem bv_uge_eliminate {x y : BitVec w} : (x ≥ y) = (y ≤ x) := by simp
+
+lemma signed_bit : (x + 2^w).testBit w = !x.testBit w := by
+  simp only [testBit, shiftr_eq_div_pow, bodd_neq_mod_two, add_div_right _ (two_pow_pos w)]
+  cases' mod_two_eq_zero_or_one (x/2^w) with h1 h1
+  <;> simp [h1, succ_eq_add_one, add_mod]
+
+theorem bv_slt_eliminate {x y : BitVec (w + 1)} : (BitVec.slt x y) = ((x.val + 2^(w))%(2^(w+1)) < (y.val + 2^(w))%(2^(w+1))) := by
+  simp only [mod_two_pow_succ, signed_bit]
+  simp only [BitVec.slt, testBit_eq_shift, y.isLt, x.isLt]
+  cases' b : x.val.testBit w <;> cases' b' : y.val.testBit w
+  <;> simp [mod_lt _ (two_pow_pos w), Nat.lt_add_right, le_of_lt]
+
+theorem bv_sle_eliminate {x y : BitVec (w + 1)} : (BitVec.sle x y) = ¬ BitVec.slt y x := by
+  simp only [BitVec.slt, BitVec.sle, if_true_left_eq_or]
+  push_neg
+  simp only [le_iff_lt_or_eq]
+  aesop
+
+theorem bv_ule_eliminate {x y : BitVec w} : (x ≤ y) = ¬ (y < x) := by 
+  simp [LT.lt, BitVec.lt, LE.le, BitVec.le]
+
+theorem bv_sub_eliminate {x y : BitVec w} : (x - y) = x + (-y) := by 
+  simp only [BitVec.sub, Fin.sub, Neg.neg, BitVec.neg, HAdd.hAdd, Add.add, BitVec.add, Fin.add]
+  aesop
+
+theorem bv_repeat_eliminate₁ {x : BitVec w} : 
+  BitVec.repeat_ (n + 1) x = (show w*(n + 1) = w + w*n by ring) ▸ (x ++ (BitVec.repeat_ n x)) := by
+  simp [repeat_]; aesop
+
+theorem bv_repeat_eliminate₂ {x : BitVec w} : 
+  BitVec.repeat_ 1 x = (show w = w*1 by simp) ▸ x := by
+  simp [repeat_, eq_rec_inj, ← val_bitvec_eq, BitVec.append_eq_add_val]
+
+theorem extract_val {x : BitVec (w + 1)} (h : j ≤ w) : (BitVec.extract w j x).val = x.val >>> j := by
+  simp only [BitVec.ofNat, Fin.ofNat', extract]
+  rw [mod_eq_of_lt]
+  rw [shiftRight_eq_shiftr, shiftr_eq_div_pow, ← Nat.sub_add_comm h]
+  rw [← pow_div (by linarith) (by decide)]
+  exact Nat.div_lt_div_of_lt_of_dvd ((Nat.pow_dvd_pow_iff_le_right (by decide)).mpr (by linarith)) x.isLt
+
+
+#check mod_two_pow_succ
+#check Nat.mul_mod_mul_right
+#check shiftLeft_eq
+theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h : a % (w + 1) ≠ 0) : 
+  (BitVec.rotateLeft x (a%(w + 1))).val = (BitVec.extract (w + 1 - (1 + a%(w+1))) 0 x ++ BitVec.extract w (w+1 - a%(w + 1)) x).val := by
+  have h1: ShiftRight.shiftRight x.val 0 = x.val := sorry
+  simp only [rotateLeft, concat_ext, xor_ext]
+  rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) (pos_iff_ne_zero.mpr h)))]
+  congr
+  simp only [HShiftRight.hShiftRight, BitVec.shiftRight, extract]
+  simp only [BitVec.ofNat, Fin.ofNat', shiftLeft_eq]
+  have h2 : w + 1 - (1 + a % (w + 1)) - 0 + 1 = w + 1 - a%(w + 1) := sorry
+  have h3 : w - (w + 1 - a % (w + 1)) + 1 = a % (w + 1) := sorry
+  rw [h1, h2, h3]
+  
 
 
 

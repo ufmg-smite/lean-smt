@@ -2,7 +2,7 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Harun Khan, Abdalrhman M Mohamed, Wojciech Nawrocki, Joe Hendrix, 
+Authors: Wojciech Nawrocki, Joe Hendrix, Harun Khan, Abdalrhman M Mohamed, 
 -/
 
 import Std
@@ -71,7 +71,7 @@ instance : Mod (BitVec w) := ⟨BitVec.mod⟩
 instance : Div (BitVec w) := ⟨BitVec.div⟩
 instance : LT (BitVec w)  := ⟨fun x y => BitVec.lt x y⟩
 instance : LE (BitVec w)  := ⟨fun x y => BitVec.le x y⟩
-
+instance : Neg (BitVec w) := ⟨BitVec.neg⟩
 
 @[norm_cast, simp]
 theorem val_bitvec_eq {a b : BitVec w} : a.val = b.val ↔ a = b :=
@@ -107,6 +107,22 @@ protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
   ⟨x.val >>> n, by 
       simp only [Nat.shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
       exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩ 
+
+protected def slt (x y : BitVec (w + 1)) : Prop :=
+  if (y.val >>> w) < (x.val >>> w) then True else x.val >>> w = y.val >>> w ∧ x.val % 2^w < y.val % 2^w
+
+protected def slt' (x y : BitVec (w + 1)) : Prop :=
+  x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w) 
+
+protected def sle (x y : BitVec (w + 1)) : Prop :=
+  if (y.val >>> w) < (x.val >>> w) then True else (x.val >>> w = y.val >>> w) ∧ x.val % 2^w ≤ y.val % 2^w
+
+protected def sle' (x y : BitVec (w + 1)) : Prop :=
+  ¬ (BitVec.slt' y x)
+
+protected def sgt (x y : BitVec (w + 1)) : Prop := BitVec.slt y x
+
+protected def sge (x y : BitVec (w + 1)) : Prop := BitVec.sle y x
 
 instance : Complement (BitVec w) := ⟨BitVec.complement⟩
 instance : AndOp (BitVec w) := ⟨BitVec.and⟩
@@ -188,6 +204,12 @@ lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := 
 theorem concat_ext {x : BitVec a} {y : BitVec b} :
   (x ++ y).val = x.val <<< b ||| y.val := rfl
 
+theorem xor_ext {x y : BitVec w} :
+  (x ||| y).val = x.val ||| y.val := rfl
+
+theorem shiftLeft_ext {x : BitVec w} :
+  (x <<< n).val = (x.val <<< n) % 2^w := rfl
+
 --should we use `shiftr_eq_div_pow` or not?
 theorem extract_ext : (extract i j x).val = x.val/2^j % (2^(i - j + 1)) := by
   simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow]
@@ -230,9 +252,7 @@ theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat
 def bbT (bs : List Bool) : BitVec bs.length :=
   ⟨toNat (λ i => bs[i]!) 0 bs.length, @toNat_lt (bs.length) _⟩
 
-
-
-/-! ### The equivalence between bitwise and BitVec operations -/
+/-! ### Equivalence between bitwise and BitVec operations -/
 
 theorem BV_add {x y : BitVec w}: bitwise_add x.val y.val w = (x + y).val := by
   rw [bitwise_add_eq_add]
@@ -250,7 +270,7 @@ theorem BV_extract {x : BitVec w} : bitwise_extract x.val i j = (extract i j x).
   rw [bitwise_extract_eq_extract]
   norm_cast
 
-theorem BV_concat {x : BitVec w} {y : BitVec v} (h: 0 < v): bitwise_concat y.val x.val v w  = (x ++ y).val := by
+theorem BV_concat {x : BitVec w} {y : BitVec v} : bitwise_concat y.val x.val v w  = (x ++ y).val := by
   rw [bitwise_concat_eq_concat y.isLt x.isLt]
   norm_cast
 
@@ -271,6 +291,5 @@ theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_
     simp [signExtend_succ h, add_comm w i, ih] 
 -- if we use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 -- swap lhs and rhs
-
-
 end BitVec
+

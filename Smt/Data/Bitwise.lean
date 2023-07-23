@@ -25,7 +25,7 @@ lemma toNat_le_one (b: Bool) : b.toNat ≤ 1 := by cases' b <;> simp
 
 @[simp] lemma toNat_eq_bif {b: Bool}: cond b 1 0 = b.toNat := by simp [cond, Bool.toNat]
 
-lemma shiftr_eq_testBit : Nat.shiftr x i %2 = (x.testBit i).toNat := by simp [Nat.testBit, Nat.mod_two_of_bodd]
+lemma shiftr_eq_testBit : Nat.shiftr x i % 2 = (x.testBit i).toNat := by simp [Nat.testBit, Nat.mod_two_of_bodd]
 
 lemma div_add_mod_two_pow (m n : Nat) : n = 2^m*Nat.shiftr n m + n%(2^m):= by simp_rw [Nat.shiftr_eq_div_pow, Nat.div_add_mod]
 
@@ -35,13 +35,21 @@ theorem mod_two_pow_succ (x i : Nat) : x % 2 ^ (i + 1) = 2^i * (Nat.testBit x i)
   have := lt_succ_two_pow (toNat_le_one (x.testBit i)) (mod_lt x (NeZero.pos (2^i)))
   simp [(Nat.div_mod_unique (two_pow_pos (i+1))).mpr ⟨add_rotate _ _ (x%(2^i)) ▸ h1.symm, this⟩]
 
+--not PRed yet
+theorem bodd_eq_bodd_mod_two : bodd n = bodd (n%2) := by
+  cases' h : bodd n <;> simp [h, mod_two_of_bodd]
 
 theorem bodd_eq_mod_two : bodd x = bodd y ↔ x % 2 = y % 2 := by
   cases' hx : bodd x <;> cases' hy : bodd y 
   <;> simp [mod_two_of_bodd, hx ,hy]
 
+--not Pr'ed yet. should be PR'ed
+theorem bodd_neq_mod_two : bodd x = !bodd y ↔ x % 2 = 1 - y % 2 := by
+  cases' hx : bodd x <;> cases' hy : bodd y 
+  <;> simp [mod_two_of_bodd, hx ,hy]
+
 -- x+2^w*b or 2^w*b+x or 2^w+x decide!
-theorem testBit_translate {x w i:Nat} (h: i<w) : Nat.testBit x i = Nat.testBit (2^w* b + x) i := by
+theorem testBit_translate {x w i:Nat} (h: i<w) : Nat.testBit x i = Nat.testBit (2^w * b + x) i := by
   simp only [testBit, shiftr_eq_div_pow, bodd_eq_mod_two]
   rw [Nat.add_div_of_dvd_right (by simp [Dvd.dvd.mul_right, pow_dvd_pow, le_of_lt h]), add_mod]
   have h1: (2^w/2^i)%2 = 0 := by
@@ -51,19 +59,26 @@ theorem testBit_translate {x w i:Nat} (h: i<w) : Nat.testBit x i = Nat.testBit (
     simp [← Nat.sub_add_comm, succ_le_of_lt h]
   simp [mul_comm, Nat.mul_div_assoc b (pow_dvd_pow 2 (le_of_lt h)), mul_mod, h1]
 
-theorem testBit_translate' {x w :Nat} {b:Bool} (h: x<2^w) : Nat.testBit (2^w*b.toNat + x) w = b:= by
-  simp only [Nat.testBit, Nat.shiftr_eq_div_pow]
+theorem testBit_translate' {x w :Nat} {b:Bool} (h: x<2^w) : testBit (2^w*b.toNat + x) w = b:= by
+  simp only [testBit, shiftr_eq_div_pow]
   rw [Nat.add_div_of_dvd_right (Dvd.intro _ rfl), Nat.div_eq_zero h, add_zero]
   cases' b <;> simp 
 
 @[simp] lemma toNat_true : true.toNat = 1 := rfl
+@[simp] lemma toNat_fale : false.toNat = 0 := rfl --PR this
 
 -- what to do with these?
-theorem testBit_translate_one {x w i:Nat} (h: i<w) : Nat.testBit x i = Nat.testBit (2^w+ x) i := mul_one (2^w) ▸ (@testBit_translate 1 _ _ _ h)
+theorem testBit_translate_one {x w i:Nat} (h: i<w) : testBit x i = testBit (2^w+ x) i := mul_one (2^w) ▸ (@testBit_translate 1 _ _ _ h)
 
-theorem testBit_translate_one' {x w :Nat} (h: x<2^w) : Nat.testBit (2^w+x) w = true:= mul_one (2^w) ▸ toNat_true ▸ (@testBit_translate' x w true h)
+theorem testBit_translate_one' {x w :Nat} (h: x<2^w) : testBit (2^w+x) w = true:= mul_one (2^w) ▸ toNat_true ▸ (@testBit_translate' x w true h)
+
+-- not Pr'ed yet but probably should be
+theorem msb_eq_true {x w :Nat} (h: 2^w ≤ x) (h1 : x < 2^(w + 1)) : x.testBit w = true := by
+  rw [← Nat.sub_add_cancel h, add_comm]
+  exact testBit_translate_one' (by rw [two_pow_succ] at h1; zify [*] at *; linarith)
 
 @[simp] lemma testBit_bool : testBit b.toNat 0 = b := by cases' b <;> simp
+
 
 -- maybe jst use foldr or something?
 -- unfold twice? that's annoying
@@ -104,6 +119,19 @@ theorem eq_of_testBit_eq_lt (h0: x < 2^i) (h1: y< 2^i) (h: ∀ (j : Nat), j < i 
   intro k
   apply Nat.lt_ge_by_cases (h k) (fun h2 => by simp [lt_two_pow_testBit_false _ h2, *]) -- how to combine this line with the previous one?
 
+--not PR'ed yet
+theorem testBit_translate_one'' {x w :Nat} (h: x < 2^(w+1)) : testBit (2^w + x) (w + 1) = x.testBit w:= by
+  cases' lt_or_ge x (2^w) with hx hx
+  · rw [lt_two_pow_testBit_false hx rfl.le]
+    rw [lt_two_pow_testBit_false (show _ < 2^(w+1) by linarith [two_pow_succ w]) rfl.le]
+  · rw [msb_eq_true hx h]
+    rw [msb_eq_true] <;> linarith [two_pow_succ _]
+
+--not PR'ed yet
+theorem lt_of_tesbit_eq_false_of_lt (h : x < 2^(w + 1)) (h1 : x.testBit w = false) : x < 2^w := by
+  apply lt_of_testBit w h1 (testBit_two_pow_self w) 
+  intro j hj
+  rw [lt_two_pow_testBit_false h hj, testBit_two_pow_of_ne (by linarith)]
 
 /-! ### Unsigned less than -/
 
@@ -228,27 +256,6 @@ theorem bitwise_neg_eq_neg (h: x < 2^i) : bitwise_neg x i  = (2 ^ i - x) % 2 ^ i
   simp only [bitwise_neg, bitwise_add_eq_add]; congr
   have := bitwise_not_eq_neg_sub_one h
   zify [le_of_lt h, (one_le_of_lt (two_pow_pos i))] at * ; linarith
-
-theorem rec_succ (f : Nat → Nat → Nat) (g: Nat → Bool) (h0: ∀ y, f y 0 = y.bit (g 0) )(h: ∀y n, f y (n+1) = f (y.bit (g (n+1))) n) :  f y i = 2^(i+1)*y + f 0 i := by
-  induction' i with i ih generalizing y
-  · simp [bit_val, h0, add_comm]
-  · simp only [h]
-    rw [ih, @ih (bit (g (i+1)) 0)]
-    simp [bit_val, mul_add,(show 2^(i+1)*(2*y) = 2^(succ (i+1))*y by rw [← mul_assoc]; aesop ), add_assoc, add_comm]
-
-theorem rec_size (f: Nat → Nat → Nat) (g: Nat → Bool) (h0: ∀ y, f y 0 = y.bit (g 0) )(h: ∀y n, f y (n+1) = f (y.bit (g (n+1))) n) : f 0 j < 2^(j+1) := by
-  induction' j with j ih
-  · simp [h0]
-    cases' g 0 <;> simp
-  · rw[h, rec_succ f g h0 h]
-    cases' (g (j+1)) <;> simp [ih, two_pow_succ] at * <;> linarith
-
-theorem rec_testBit {f: Nat → Nat → Nat} (g: Nat → Bool) (h0: ∀ y, f y 0 = y.bit (g 0) )(h: ∀y n, f y (n+1) = f (y.bit (g (n+1))) n) (h1: i≤ j) : (f 0 j).testBit i = g i := by
-  induction' j with j ih generalizing i
-  · simp at h1; rw [h0, h1, testBit_zero]
-  · cases' lt_or_eq_of_le h1 with h1 h1
-    · rw [h, ← ih (show i ≤ j by linarith), rec_succ f g h0 h, ←testBit_translate h1]
-    · rw [h1, h, rec_succ f g h0 h, bit_toNat, testBit_translate' (rec_size f g h0 h)]
 
 /-! ### Multiplication -/
 
@@ -756,15 +763,8 @@ lemma helper : a%(2*b) = 2*(a/2%b) + a%2 := by
 
 lemma helper2 (h0: 0 < b) : a%(2*b) < b ↔ a/b%2 = 0 := (mod_mul_left_div_self _ _ _).symm ▸ (Nat.div_eq_zero_iff h0).symm
 
-
---this is the most annoying lemma. why is the proof so long?
-lemma lt_div_succ_pow (h : a < 2^(v+1)) : a/2 < 2^ v := by
-  have : 2^(v+1)/2 = 2^v := by
-    rw [← Nat.add_sub_cancel v 1, ← pow_div (by linarith) (by decide)]; simp
-  simpa [← this] using div_lt_div_of_lt_of_dvd ((pow_succ _ _).symm ▸ dvd_mul_left 2 (2^v)) h
-
 -- this induction is not clean :(
-#check succ_pred_eq_of_pos
+#check two_pos
 lemma uDivModRec_ih (hb : b < 2^w ) (ha : a < 2^v) (h0 : 0 < b) (hv : v ≤ w): uDivModRec.go a b w v = (a / b, a % b) := by
   cases' v with v
   · simp only [zero_eq, pow_zero, lt_one_iff] at ha; simp [uDivModRec_zero, ha]
@@ -778,7 +778,7 @@ lemma uDivModRec_ih (hb : b < 2^w ) (ha : a < 2^v) (h0 : 0 < b) (hv : v ≤ w): 
       have hv1 : 1 < succ v := (pow_lt_pow_iff (show 1 < 2 by decide)).mp (lt_of_le_of_lt (show 2^1 ≤ a by linarith) ha)
       specialize @ih (a/2) (Nat.div_lt_self (by linarith) (by decide)) (v-1)
       rw [← pred_eq_sub_one, succ_pred_eq_of_pos (by linarith [hv1])] at ih 
-      simp only [shiftRight_eq_div_two, shiftLeft_eq_two_mul, bitwise_add_eq_add, ih (lt_div_succ_pow ha) (le_trans (by linarith) hv)]
+      simp only [shiftRight_eq_div_two, shiftLeft_eq_two_mul, bitwise_add_eq_add, ih ((div_lt_iff_lt_mul _).mpr (pow_succ 2 v ▸ ha)) (le_trans (by linarith) hv)]
       simp only [← lt_carry_false h0 (mod_lt _ (two_pow_pos _)) hb, ← helper]
       simp only [mod_eq_of_lt (lt_of_le_of_lt (mod_le a (2*b)) H), helper2 h0]
       rw [bitwise_neg_eq_neg hb]
@@ -804,6 +804,17 @@ theorem UdivUremBB_eq_div (hb : b < 2^w) (ha: a < 2^w) : UdivUremBB a b w = if b
     intros j hj
     rw [testBit_two_pow_minus_one (by linarith) hj, toNat_testBit hj]
   . exact uDivModRec_eq_div (by linarith) hb ha
+
+lemma bodd_toNat (h : b < 2) : (bodd b).toNat = b := by interval_cases b <;> simp
+
+#check shiftr_eq_testBit
+lemma testBit_eq_shift (hx : x < 2^(w + 1)) : x >>> w = (x.testBit w).toNat := by
+  rw [shiftRight_eq_shiftr, testBit, bodd_toNat]
+  rw [shiftr_eq_div_pow]
+  apply Eq.trans_gt (show 2^(w+1)/2^w = 2 by simp [pow_add]) 
+  exact Nat.div_lt_div_of_lt_of_dvd (by simp [pow_add]) hx 
+
+  
 
 
 end Nat
