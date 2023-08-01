@@ -67,6 +67,7 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
 
 @[tactic permutateOr] def evalPermutateOr : Tactic := fun stx =>
   withMainContext do
+    trace[smt.debug] m!"[permutateOr] start time: {← IO.monoMsNow}ms"
     let hyp ← elabTerm stx[1] none
     let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
     let fname ← mkFreshId
@@ -74,5 +75,6 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
     let mvar' ← permutateOrMeta mvar hyp hs suffIdx fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
+    trace[smt.debug] m!"[permutateOr] end time: {← IO.monoMsNow}ms"
 
 end Smt.Reconstruction.Certifying

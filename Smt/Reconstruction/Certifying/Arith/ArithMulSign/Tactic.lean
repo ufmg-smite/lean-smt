@@ -39,6 +39,7 @@ def parseArithMulSign : Syntax → TacticM (List (Expr × Pol × Nat))
 @[tactic arithMulSign] def evalArithMulSign : Tactic := fun stx => do
   let mvar ← getMainGoal
   mvar.withContext do
+    trace[smt.profile] m!"[arithMulSign] start time: {← IO.monoMsNow}ms"
     let data ← parseArithMulSign stx
     let answer ← go true data (mkConst `empty) (mkConst `empty)
     let answerType ← inferType answer
@@ -46,6 +47,7 @@ def parseArithMulSign : Syntax → TacticM (List (Expr × Pol × Nat))
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname answerType answer
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
+    trace[smt.profile] m!"[arithMulSign] end time: {← IO.monoMsNow}ms"
 where
 -- acc is a partial proof corresponding to the sign of the prefix of the multiplication
   go (first : Bool) (xs : (List (Expr × Pol × Nat))) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=

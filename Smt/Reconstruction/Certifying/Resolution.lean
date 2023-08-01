@@ -132,7 +132,7 @@ where
 
 @[tactic resolution_1] def evalResolution_1 : Tactic := fun stx =>
   withMainContext do
-    trace[smt.profile] m!"[resolution_1] start time: {(← IO.monoMsNow)}ms"
+    trace[smt.profile] m!"[resolution_1] start time: {← IO.monoMsNow}ms"
     let firstHyp : Ident := ⟨stx[1]⟩
     let secondHyp : Ident := ⟨stx[3]⟩
     let pivotTerm : Term := ⟨stx[5]⟩
@@ -145,11 +145,11 @@ where
     let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ false fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[resolution_1] end time: {(← IO.monoMsNow)}ms"
+    trace[smt.profile] m!"[resolution_1] end time: {← IO.monoMsNow}ms"
 
 @[tactic resolution_2] def evalResolution_2 : Tactic := fun stx =>
   withMainContext do
-    trace[smt.profile] m!"[resolution_2] start time: {(← IO.monoMsNow)}ms"
+    trace[smt.profile] m!"[resolution_2] start time: {← IO.monoMsNow}ms"
     let firstHyp : Ident := ⟨stx[1]⟩
     let secondHyp : Ident := ⟨stx[3]⟩
     let pivotTerm : Term := ⟨stx[5]⟩
@@ -162,6 +162,6 @@ where
     let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ true fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    logInfo m!"[resolution_2] end time: {(← IO.monoMsNow)}ms"
+    trace[smt.profile] m!"[resolution_2] end time: {← IO.monoMsNow}ms"
 
 end Smt.Reconstruction.Certifying

@@ -42,6 +42,7 @@ syntax (name := trichotomy) "trichotomy" term "," term : tactic
 
 @[tactic trichotomy] def evalTrichotomy : Tactic := fun stx =>
   withMainContext do
+    trace[smt.profile] m!"[trichotomy] start time: {← IO.monoMsNow}ms"
     let h₁ ← notLeToLt (← elabTerm stx[1] none)
     let h₂ ← notLeToLt (← elabTerm stx[3] none)
     let fname ← mkFreshId
@@ -49,6 +50,7 @@ syntax (name := trichotomy) "trichotomy" term "," term : tactic
     let mvar' ← trichotomyMeta mvar h₁ h₂ fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
+    trace[smt.profile] m!"[trichotomy] end time: {← IO.monoMsNow}ms"
 where
   notLeToLt : Expr → MetaM Expr := λ e => do
     match ← inferType e with

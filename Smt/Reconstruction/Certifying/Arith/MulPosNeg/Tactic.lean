@@ -65,6 +65,7 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
       return mvar'
 
 @[tactic arithMulPos] def evalArithMulPos : Tactic := fun stx => do
+  trace[smt.profile] m!"[arithMulPos] start time: {← IO.monoMsNow}ms"
   let (a, b, c, compId) ← parseArithMul stx
   let fname ← mkFreshId
   let mvar ← getMainGoal
@@ -77,8 +78,10 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
                 ]
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
+  trace[smt.profile] m!"[arithMulPos] end time: {← IO.monoMsNow}ms"
 
 @[tactic arithMulNeg] def evalArithMulNeg : Tactic := fun stx => do
+  trace[smt.profile] m!"[arithMulNeg] start time: {← IO.monoMsNow}ms"
   let (a, b, c, compId) ← parseArithMul stx
   let fname ← mkFreshId
   let mvar ← getMainGoal
@@ -91,5 +94,6 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
                 ]
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
+  trace[smt.profile] m!"[arithMulNeg] end time: {← IO.monoMsNow}ms"
 
 end Smt.Reconstruction.Certifying
