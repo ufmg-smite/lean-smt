@@ -162,6 +162,6 @@ where
     let mvar' ← resolutionCoreMeta mvar val₁ val₂ pivot sufIdx₁ sufIdx₂ true fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[resolution_2] end time: {(← IO.monoMsNow)}ms"
+    logInfo m!"[resolution_2] end time: {(← IO.monoMsNow)}ms"
 
 end Smt.Reconstruction.Certifying
