@@ -106,7 +106,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
 
 @[tactic factor] def evalFactor : Tactic := fun stx =>
   withMainContext do
-    trace[smt.profile] m!"[factor] start time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[factor] start time: {← IO.monoNanosNow}ns"
     let e ← elabTerm stx[1] none
     let type ← inferType e
     let lastSuffix ← pure $ (← getLength type) - 1
@@ -119,6 +119,6 @@ def parseFactor : Syntax → TacticM (Option Nat)
     let mvar' ← factorCoreMeta mvar e type suffIdx fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[factor] end time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[factor] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

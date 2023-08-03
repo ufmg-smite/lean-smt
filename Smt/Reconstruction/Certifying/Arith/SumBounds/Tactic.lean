@@ -57,7 +57,7 @@ def parseSumBounds : Syntax → TacticM (List Expr)
 
 @[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
   withMainContext do
-    trace[smt.debug] m!"[sumBounds] start time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[sumBounds] start time: {← IO.monoNanosNow}ns"
     let (h, hs) ←
       match ← parseSumBounds stx with
       | h::hs => pure (h, hs)
@@ -67,6 +67,6 @@ def parseSumBounds : Syntax → TacticM (List Expr)
     let mvar' ← sumBoundsMeta mvar h hs fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.debug] m!"[sumBounds] end time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[sumBounds] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

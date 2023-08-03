@@ -35,25 +35,25 @@ def intTightMeta (mvar : MVarId) (h : Expr) (thmName outName : Name)
 syntax (name := intTightUb) "intTightUb" term : tactic
 @[tactic intTightUb] def evalIntTightUb : Tactic := fun stx =>
   withMainContext do
-    trace[smt.debug] m!"[intTightUb] start time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[intTightUb] start time: {← IO.monoNanosNow}ns"
     let h ← elabTerm stx[1] none
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← intTightMeta mvar h ``intTightUb' fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.debug] m!"[intTightUb] end time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[intTightUb] end time: {← IO.monoNanosNow}ns"
 
 syntax (name := intTightLb) "intTightLb" term : tactic
 @[tactic intTightLb] def evalIntTightLb : Tactic := fun stx =>
   withMainContext do
-    trace[smt.debug] m!"[intTightLb] start time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[intTightLb] start time: {← IO.monoNanosNow}ns"
     let h ← elabTerm stx[1] none
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← intTightMeta mvar h ``intTightLb' fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.debug] m!"[intTightLb] end time: {← IO.monoMsNow}"
+    trace[smt.debug] m!"[intTightLb] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

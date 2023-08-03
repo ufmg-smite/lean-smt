@@ -143,7 +143,7 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
 
 @[tactic liftOrNToImp] def evalLiftOrNToImp : Tactic :=
   fun stx => withMainContext do
-    trace[smt.profile] m!"[liftOrNToImp] start time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[liftOrNToImp] start time: {← IO.monoNanosNow}ns"
     let val ← elabTerm stx[1] none
     let prefLen ← stxToNat ⟨stx[3]⟩
     let fname ← mkFreshId
@@ -151,6 +151,6 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     let mvar' ← liftOrNToImpCore mvar fname val prefLen
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

@@ -79,13 +79,13 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
 
 @[tactic liftOrNToNeg] def evalLiftOrNToNeg : Tactic :=
   fun stx => withMainContext do
-    trace[smt.profile] m!"[liftOrNToNeg] start time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[liftOrNToNeg] start time: {← IO.monoNanosNow}ns"
     let hyp ← elabTerm stx[1] none
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← liftOrNToNegMeta mvar hyp fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[liftOrNToNeg] end time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[liftOrNToNeg] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

@@ -447,7 +447,7 @@ where
 syntax (name := andElim) "andElim" term "," term : tactic
 @[tactic andElim] def evalAndElim : Tactic := fun stx => do
   withMainContext do
-    trace[smt.profile] m!"[andElim] start time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[andElim] start time: {← IO.monoNanosNow}ns"
     let mvar ← getMainGoal
     let val ← elabTerm stx[1] none
     let idx: Term := ⟨stx[3]⟩
@@ -456,7 +456,7 @@ syntax (name := andElim) "andElim" term "," term : tactic
     let mvar' ← andElimMeta mvar val i fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[andElim] end time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[andElim] end time: {← IO.monoNanosNow}ns"
 
 def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
@@ -489,7 +489,7 @@ where
 syntax (name := notOrElim) "notOrElim" term "," term : tactic
 @[tactic notOrElim] def evalNotOrElim : Tactic := fun stx => do
   withMainContext do
-    trace[smt.profile] m!"[notOrElim] start time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[notOrElim] start time: {← IO.monoNanosNow}ns"
     let i ← stxToNat ⟨stx[3]⟩
     let val ← elabTerm stx[1] none
     let fname ← mkFreshId
@@ -497,7 +497,7 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
     let mvar' ← notOrElimMeta mvar val i fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.profile] m!"[notOrElim] end time: {← IO.monoMsNow}ms"
+    trace[smt.profile] m!"[notOrElim] end time: {← IO.monoNanosNow}ns"
 
 theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
   intros l h
