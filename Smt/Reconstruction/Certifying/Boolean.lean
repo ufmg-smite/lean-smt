@@ -390,6 +390,12 @@ theorem cnfIteNeg3 : ∀ {c a b : Prop}, (ite c a b) ∨ ¬ a ∨ ¬ b := by
                  rewrite [r] at hnite
                  exact Or.inl hnite
 
+theorem iteIntro : ∀ {c t e : Prop}, ite c ((ite c t e) = t) ((ite c t e) = e) := by
+  intros c t e
+  match Classical.em c with
+  | Or.inl hc  => rw [if_pos hc, if_pos hc]
+  | Or.inr hnc => rw [if_neg hnc, if_neg hnc]
+
 theorem congrIte {α : Type} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
     c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
   intros c₁ c₂ t₁ t₂ e₁ e₂ h₁ h₂ h₃
