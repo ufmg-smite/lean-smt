@@ -210,6 +210,9 @@ theorem xor_ext {x y : BitVec w} :
 theorem shiftLeft_ext {x : BitVec w} :
   (x <<< n).val = (x.val <<< n) % 2^w := rfl
 
+theorem shiftRight_ext {x : BitVec w} :
+  (x >>> n).val = (x.val >>> n) := rfl
+
 --should we use `shiftr_eq_div_pow` or not?
 theorem extract_ext : (extract i j x).val = x.val/2^j % (2^(i - j + 1)) := by
   simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow]

@@ -13,6 +13,8 @@ namespace Smt.Reconstruction.Rewrites.Arith
 
 open BitVec Nat
 
+theorem eq_bv_of_eq_val {x y : BitVec w} (h : x.val = y.val) : x = y := sorry
+
 theorem append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} :
   ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by
     simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (append_lt z.isLt y.isLt)]
@@ -27,7 +29,7 @@ open Lean
 
 /-- Prove equality theorem for concrete size bit-vectors -/
 def concreteSize (mv : MVarId) (heq : Expr) : MetaM Unit := do
-  let [mv] ← mv.apply (mkConst ``val_bitvec_eq)
+  let [mv] ← mv.apply (mkConst ``eq_bv_of_eq_val)
     | throwError "failed to apply `eq_bv_of_eq_val`"
   let r ← mv.rewrite (← mv.getType) heq false (.pos [1])
   let mv ← mv.replaceTargetEq r.eNew r.eqProof
@@ -42,7 +44,12 @@ open Elab Tactic in
   let mv ← Tactic.getMainGoal
   concreteSize mv (← elabTerm stx[1] none)
   Tactic.replaceMainGoal []
- 
+  
+lemma comm_bv {x : BitVec b} {y : BitVec b}: (x++y++y).val = (y ++ x++x).val := sorry
+
+example {x y z: BitVec 10}: x ++ y++y = y ++ x++x := by
+  concrete_size comm_bv
+
 -- the apply And.left is quite weird.
 theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):  (x.extract k (j + 1) ++ x.extract j i).val = (x.extract k i).val := by
   simp only [extract_ext, append_eq_add_val]
@@ -189,23 +196,51 @@ theorem extract_val {x : BitVec (w + 1)} (h : j ≤ w) : (BitVec.extract w j x).
   rw [← pow_div (by linarith) (by decide)]
   exact Nat.div_lt_div_of_lt_of_dvd ((Nat.pow_dvd_pow_iff_le_right (by decide)).mpr (by linarith)) x.isLt
 
+lemma shiftRight_zero : m >>> 0 = m := rfl
 
-#check mod_two_pow_succ
-#check Nat.mul_mod_mul_right
-#check shiftLeft_eq
-theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h : a % (w + 1) ≠ 0) : 
-  (BitVec.rotateLeft x (a%(w + 1))).val = (BitVec.extract (w + 1 - (1 + a%(w+1))) 0 x ++ BitVec.extract w (w+1 - a%(w + 1)) x).val := by
-  have h1: ShiftRight.shiftRight x.val 0 = x.val := sorry
-  simp only [rotateLeft, concat_ext, xor_ext]
-  rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) (pos_iff_ne_zero.mpr h)))]
+theorem extract_val' {x : BitVec w} : (BitVec.extract j 0 x).val = x.val % 2^(j + 1) := by
+  simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_zero]
+
+theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h0 : 0 < a) (ha : a < w + 1) : 
+  (BitVec.rotateLeft x a).val = (BitVec.extract (w + 1 - (1 + a)) 0 x ++ BitVec.extract w (w+1 - a) x).val := by
+  simp only [rotateLeft, concat_ext, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext]
+  rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) h0))]; congr
+  simp only [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.pow_zero, Nat.div_one]
+  have h2 : w + 1 - (1 + a) - 0 + 1 = w + 1 - a := by 
+    rw [Nat.sub_zero]; zify [(show 1 + a ≤ w + 1 by linarith), le_of_lt ha]; linarith
+  have h3 : w - (w + 1 - a) + 1 = a := by 
+    zify [succ_sub_one w ▸ tsub_le_tsub_left (one_le_of_lt h0) (w + 1), le_of_lt ha]; linarith
+  rw [h2, h3, ← mul_mod_mul_right, ← pow_add, Nat.sub_add_cancel (by linarith)]
+
+--this proof should be alot quicker! It's just unfolding definitions!
+theorem bv_rotate_left_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateLeft x 0).val = x.val := by
+  simp only [rotateLeft, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
+  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
+  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
+
+theorem rotate_right_rotate_left {x : BitVec w} (h : a ≤ w) : (rotateRight x a).val = (rotateLeft x (w-a)).val := by
+  simp only [rotateRight, rotateLeft, HOr.hOr, OrOp.or, lor, BitVec.or, bitwise_eq_bitwise']
+  rw [bitwise'_comm (fun b b' => by cases' b <;> cases' b' <;> simp) (by simp)]; congr --so long!
+  zify[h, tsub_le_self]; linarith
+
+theorem bv_rotate_right_eliminate₁ {x : BitVec (w + 1)} (h0 : 0 < a) (ha : a < w + 1) : 
+  (BitVec.rotateRight x a).val = (BitVec.extract (a - 1) 0 x ++ BitVec.extract w a x).val := by
+  rw [rotate_right_rotate_left (le_of_lt ha)]
+  rw [bv_rotate_left_eliminate₁ (Nat.sub_pos_of_lt ha) (Nat.sub_lt (succ_pos w) h0), concat_ext, concat_ext]
+  have H : w + 1 - (w + 1 - a) = a := by
+    zify [le_of_lt ha, Nat.sub_le]; ring
+  have H1 := add_comm 1 w ▸ add_eq ▸ (le_of_lt_succ (add_lt_add_left (sub_lt (succ_pos w) h0) 1))
+  have H2 : w + 1 - (1 + (w + 1 - a)) = a - 1 := by
+    zify [le_of_lt ha, h0, H1]
+    ring
+  simp only [H, extract_val', H2]
   congr
-  simp only [HShiftRight.hShiftRight, BitVec.shiftRight, extract]
-  simp only [BitVec.ofNat, Fin.ofNat', shiftLeft_eq]
-  have h2 : w + 1 - (1 + a % (w + 1)) - 0 + 1 = w + 1 - a%(w + 1) := sorry
-  have h3 : w - (w + 1 - a % (w + 1)) + 1 = a % (w + 1) := sorry
-  rw [h1, h2, h3]
+
+--this proof should be alot quicker! It's just unfolding definitions!
+theorem bv_rotate_right_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateRight x 0).val = x.val := by
+  simp only [rotateRight, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
+  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
+  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
   
-
-
 
 end Smt.Reconstruction.Rewrites.Arith
