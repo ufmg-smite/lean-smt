@@ -25,7 +25,7 @@ def intTightMeta (mvar : MVarId) (h : Expr) (thmName outName : Name)
     let t ← inferType h
     let arg ←
       if isIntLt t then
-        mkAppM ``castLT #[h]
+        mkAppM ``castLT.IntRat #[h]
       else pure h
     let answer ← mkAppM thmName #[arg]
     let answerType ← inferType answer

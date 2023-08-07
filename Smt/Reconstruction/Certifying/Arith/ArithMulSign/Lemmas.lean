@@ -23,7 +23,7 @@ theorem powNegEven : ∀ {k : Nat} {z : α}, z < 0 → Even k → z ^ k > 0 := b
     have k'Odd := Nat.odd_iff_not_even.mpr k'NotEven
     have rc := powNegOdd h₁ k'Odd
     simp [Pow.pow]
-    have mulZ := arith_mul_neg_lt rc h₁
+    have mulZ := arith_mul_neg_lt ⟨h₁, rc⟩
     simp at mulZ
     rw [pow_succ]
     exact mulZ
@@ -37,7 +37,7 @@ theorem powNegOdd : ∀ {k : Nat} {z : α}, z < 0 → Odd k → z ^ k < 0 := by
     have k'Even := notNotElim (mt Nat.even_add_one.mpr h₂)
     have rc := powNegEven h₁ k'Even
     simp [Int.pow]
-    have mulZ := arith_mul_neg_lt rc h₁
+    have mulZ := arith_mul_neg_lt ⟨h₁, rc⟩
     simp at mulZ
     rw [pow_succ]
     exact mulZ
@@ -51,7 +51,7 @@ theorem powPos : ∀ {k : Nat} {z : α}, z > 0 → z ^ k > 0 := by
   | succ k' =>
     have ih := @powPos k' z h
     rw [pow_succ]
-    have h₂ := arith_mul_pos_lt ih h
+    have h₂ := arith_mul_pos_lt ⟨h, ih⟩
     simp at h₂
     exact h₂
 

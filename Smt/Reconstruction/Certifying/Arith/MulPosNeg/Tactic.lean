@@ -11,6 +11,7 @@ import Smt.Reconstruction.Certifying.Util
 
 import Mathlib.Data.Rat.Order
 import Mathlib.Data.Int.Order.Basic
+import Mathlib.Tactic.LibrarySearch
 
 import Lean
 
@@ -28,8 +29,7 @@ def parseArithMulAux : Array Term → Term → TacticM (Expr × Expr × Expr × 
       hs.toList.mapM (fun h: Term => elabTerm h none)
     let i' ← stxToNat i
     match li with
-    | [a, b, c] => return (a, b, c, i')
-    | _         => throwError "[arithMul]: List must have 3 elements"
+    | [a, b, c] => return (a, b, c, i') | _         => throwError "[arithMul]: List must have 3 elements"
 
 def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
   | `(tactic| arithMulPos [ $[$hs],* ], $i) => parseArithMulAux hs i
@@ -39,27 +39,35 @@ def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
 def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
   (outName : Name) (thms : List Name) : MetaM MVarId :=
     mvar.withContext do
-      let typeC ← inferType vc
-      let type ← inferType va
+      let mut typeC ← inferType vc
+      let typeA ← inferType va
+      let typeB ← inferType vb
       let vc ←
         match typeC with
-        | const `Nat .. =>
-          match type with
+        | const `Nat .. => do
+          typeC := typeA
+          match typeA with
           | const `Int .. => pure $ mkApp (mkConst ``Int.ofNat) vc
           | const `Rat .. =>
             pure $ mkApp (mkConst ``Rat.ofInt) (mkApp (mkConst ``Int.ofNat) vc)
           | _ => throwError "[arithMul]: unexpected type for first variable"
         | _ => pure vc
-      let thmName: Name ←
+      let mut thmName: Name ←
         if compId <= 4 then
           pure (thms.get! compId) 
         else throwError "[arithMul]: unexpected second argument"
+
+      let isCornerCase :=
+        typeA == const `Int [] && typeB == const `Int [] && typeC == const `Rat []
       let inst ←
-        match type with
+        match typeA with
         | const `Int .. => pure $ mkConst ``lorInt
         | const `Rat .. => pure $ mkConst ``lorRat
         | _ => throwError "[arithMul]: unexpected type for first variable"
-      let proof := mkApp5 (mkConst thmName) type inst va vb vc
+      let proof :=
+        if isCornerCase then
+          mkApp3 (mkConst (thmName ++ `corner)) va vb vc
+        else mkApp5 (mkConst thmName) typeA inst va vb vc
       let proofType ← Meta.inferType proof
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert outName proofType proof
       return mvar'
@@ -95,5 +103,8 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
   trace[smt.profile] m!"[arithMulNeg] end time: {← IO.monoNanosNow}ns"
+
+example {a b c : Int} : 0 < 2 * c ∧ a < b → (2 * c) * a < (2 * c) * b := by
+  arithMulPos [a, b, 2 * c], 0
 
 end Smt.Reconstruction.Certifying
