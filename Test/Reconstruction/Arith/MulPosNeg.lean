@@ -2,6 +2,8 @@ import Smt
 
 open Smt.Reconstruction.Certifying
 
+example {a b c : Int} : a < b ∧ c > 0 → c * a < c * b := sorry
+
 example {a b c : Int} : a < b → c > 0 → c * a < c * b := by
   arithMulPos [a,b,c], 0
 
