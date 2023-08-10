@@ -61,8 +61,11 @@ def collectPropsInOrChain' : Nat → Expr → MetaM (List Expr)
   let li ← collectPropsInOrChain e
   let pref := List.take l li
   let suff := List.drop l li
-  let suffE ← createOrChain suff
-  pure $ pref ++ [suffE]
+  let suffE ←
+    match suff with
+    | [] => pure []
+    | _  => pure [← createOrChain suff]
+  pure (pref ++ suffE)
 
 def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
   List.join

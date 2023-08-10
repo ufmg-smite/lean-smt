@@ -52,15 +52,16 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
 
 -- pull j-th term in the orchain to i-th position
 -- (we start counting indices at 0)
-def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
+def pullToMiddleCore (mvar: MVarId) (i j suffIdx : Nat) (val type : Expr) (name : Name)
   : MetaM MVarId := mvar.withContext do
   if i == j then
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
     return mvar'
   else
-    let last := (← getLength type) == j + 1
-    let props ← collectPropsInOrChain type
-    let mid := List.take (j - i + 1) (List.drop i props)
+    let last := suffIdx == j
+    let props ← collectPropsInOrChain' suffIdx type
+    let mid := List.take (j + 1 - i) (List.drop i props)
+    let midExpr ← createOrChain mid
 
     -- step₁: group with parenthesis props in the range [i, j]
     -- example: A ∨ B ∨ C ∨ D ∨ E with (2, 4)
@@ -70,14 +71,12 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
       else do
         let lemmas := List.take (j - i) $ ← groupPrefixLemmas props j
         pure (mkAppList val lemmas)
-
-    /- -- step₂: group prefix of middle -/
+/- -- step₂: group prefix of middle -/
     /- -- example: A ∨ (B ∨ C ∨ D) ∨ E -/
     /- --       -> A ∨ ((B ∨ C) ∨ D) ∨ E -/
     let step₂: Expr ← do
       let lemmas ← groupMiddleLemmas (props.drop i) (j - i)
-      let mid ← createOrChain (subList i j props)
-      congLemmas lemmas props i i j step₁ mid last
+      congLemmas lemmas props i i j step₁ midExpr last
 
     /- -- step₃: apply commutativity on middle -/
     /- -- example: A ∨ ((B ∨ C) ∨ D) ∨ E -/
@@ -86,8 +85,8 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     let midSuff := List.getLast! mid
     let comm :=
       mkApp (mkApp (mkConst ``orComm) (← createOrChain midPref)) midSuff
-    let mid ← createOrChain [← createOrChain midPref, midSuff]
-    let step₃ ← congLemmas [comm] props i i j step₂ mid last
+    let mid' ← createOrChain [← createOrChain midPref, midSuff]
+    let step₃ ← congLemmas [comm] props i i j step₂ mid' last
   
     /- -- step₄: ungroup middle -/
     /- -- example: A ∨ (D ∨ B ∨ C) ∨ E -/
@@ -102,41 +101,55 @@ def pullToMiddleCore (mvar: MVarId) (i j : Nat) (val type : Expr) (name : Name)
     let (_, mvar₄) ← MVarId.intro1P $ ← mvar.assert name goal step₄
     return mvar₄
 
-syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term "," ident : tactic
+syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term ("," term)? : tactic
+
+def parsePullToMiddle : Syntax → TacticM (Option Nat)
+  | `(tactic| pullToMiddle $_, $_, $_, $i) =>
+    elabTerm i none >>= pure ∘ getNatLit?
+  | _                      => pure none
 
 @[tactic pullToMiddle] def evalPullToMiddle : Tactic := fun stx => withMainContext do
   let i ← stxToNat ⟨stx[1]⟩ 
   let j ← stxToNat ⟨stx[3]⟩
   let e ← elabTerm stx[5] none
   let t ← instantiateMVars (← inferType e)
+  let suffIdx ← parsePullToMiddle stx
+  let suffIdx ←
+    match suffIdx with
+    | some i => pure i
+    | none   => getLength t
   let fname ← mkFreshId
   let mvar ← getMainGoal
-  let mvar' ← pullToMiddleCore mvar i j e t fname
+  let mvar' ← pullToMiddleCore mvar i j suffIdx e t fname
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-def pullIndex (mvar: MVarId) (index : Nat) (val type : Expr)
-  (name : Name) : MetaM MVarId :=
-    pullToMiddleCore mvar 0 index val type name
+def pullIndex (mvar: MVarId) (index : Nat) (suffIdx : Option Nat) (val type : Expr)
+  (name : Name) : MetaM MVarId := do
+    let suffIdx ←
+      match suffIdx with
+      | some i => pure i
+      | none   => getLength type
+    pullToMiddleCore mvar 0 index suffIdx val type name
 
-def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
+def pullCore (mvar: MVarId) (pivot val type : Expr) (suffIdx : Option Nat)
   (name : Name) : MetaM MVarId :=
     mvar.withContext do
       let lastSuffix := (← getLength type) - 1
-      let sufIdx :=
-        match sufIdx with
+      let suffIdx :=
+        match suffIdx with
         | some i => i
         | none   => lastSuffix
-      let li ← collectPropsInOrChain' sufIdx type
+      let li ← collectPropsInOrChain' suffIdx type
       match findIndex? li pivot with
       | some i =>
-        if i == sufIdx && sufIdx != lastSuffix then
+        if i == suffIdx && suffIdx != lastSuffix then
           if i == 0 then
             let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
             return mvar'
           else
             let fname ← mkFreshId
-            let mvar' ← groupPrefixCore mvar val type sufIdx fname
+            let mvar' ← groupPrefixCore mvar val type suffIdx fname
             mvar'.withContext do
               let lctx ← getLCtx
               let groupped := (lctx.findFromUserName? fname).get!.toExpr
@@ -146,7 +159,7 @@ def pullCore (mvar: MVarId) (pivot val type : Expr) (sufIdx : Option Nat)
               let (_, mvar'') ← MVarId.intro1P $
                 ← mvar'.assert name requiredType answer
               return mvar''
-        else pullIndex mvar i val type name
+        else pullIndex mvar i suffIdx val type name
       | none   => throwError "[Pull]: couldn't find pivot"
 
 syntax (name := pull) "pull" term "," term ("," term)? : tactic
@@ -166,5 +179,10 @@ def parsePull : Syntax → TacticM (Option Nat)
   let mvar' ← pullCore mvar pivot hyp t i fname
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
+
+example : A ∨ B ∨ C ∨ D ∨ E → A ∨ B ∨ D ∨ C ∨ E := by
+  intro h
+  pullToMiddle 2, 3, h
+
 
 end Smt.Reconstruction.Certifying
