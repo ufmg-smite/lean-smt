@@ -100,6 +100,23 @@ def groupPrefixCore (mvar : MVarId) (val type : Expr) (prefLen : Nat)
       else throwError
         "[groupPrefix]: prefix length must be > 0 and < size of or-chain"
 
+syntax (name := groupClausePrefix) "groupClausePrefix" term "," term : tactic
+
+@[tactic groupClausePrefix] def evalGroupClausePrefix : Tactic := fun stx =>
+  withMainContext do
+    let mvar ← getMainGoal
+    let h ← elabTerm stx[1] none
+    let type ← inferType h
+    let i ← stxToNat ⟨stx[3]⟩
+    let fname ← mkFreshId
+    let mvar' ← groupPrefixCore mvar h type i fname
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
+
+example : A ∨ B ∨ C ∨ D ∨ E → (A ∨ B ∨ C) ∨ D ∨ E := by
+  intro h
+  groupClausePrefix h, 3
+
 def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   let propsList ← collectPropsInOrChain props
   let conclusion ← createOrChain $ List.drop prefLen propsList
