@@ -34,23 +34,11 @@ where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
         mvar.withContext do
           let fname ← mkFreshId
           let type ← Meta.inferType acc
-          let last: Bool ←
-            match (← getIndex' e type suffIdx) with
-            | some i => pure $ i == suffIdx
-            | none   => throwError "[permutateOr]: invalid permutation"
           let mvar' ← pullCore mvar e acc type suffIdx fname
-          -- we need to update the new length of the suffix after pulling
-          -- an element
-          let length ← getLength type suffIdx
-          let currLastExpr := (← getIthExpr? (length - 1) type).get!
-          let suffIdx' :=
-            if last then
-              length - (← getLength currLastExpr) 
-            else suffIdx
           mvar'.withContext do
             let ctx ← getLCtx
             let acc' := (ctx.findFromUserName? fname).get!.toExpr
-            go mvar' es suffIdx' acc' goal
+            go mvar' es suffIdx acc' goal
 
 -- TODO: find a way to remove '?' without breaking the parser
 syntax (name := permutateOr) "permutateOr" term "," ("[" term,* "]")? ("," term)? : tactic
@@ -76,5 +64,9 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.debug] m!"[permutateOr] end time: {← IO.monoNanosNow}ns"
+
+example : (D ∨ E ∨ F ∨ G) ∨  (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) → (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) ∨ (D ∨ E ∨ F ∨ G) := by
+  intro h
+  permutateOr h, [1, 2, 0], 2
 
 end Smt.Reconstruction.Certifying
