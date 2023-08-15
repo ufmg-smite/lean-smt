@@ -27,53 +27,33 @@ theorem orFalse : ∀ {A : Prop}, A ∨ False → A := by
 -/
 syntax (name := removeFalse) "removeFalse" term "," term : tactic
 
-def removeFalseCore (mvar : MVarId) (val type : Expr) (name : Name)
-  : MetaM MVarId := mvar.withContext do
+def removeFalseCore (val type : Expr) : MetaM Expr := do
   let length ← getLength type
-  let props ← collectPropsInOrChain type
-  let goal ← createOrChain $ List.dropLast props
   if length > 2 then
-    let fname ← mkFreshId
-    let mvar' ← groupPrefixCore mvar val type (length - 1) fname
-    mvar'.withContext do
-      let lctx ← getLCtx
-      let groupped := (lctx.findFromUserName? fname).get!.toExpr
-      let answer ← mkAppM ``orFalse #[groupped]
-      let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
-      return mvar''
+    let groupped ← groupPrefixCore val (length - 1)
+    mkAppM ``orFalse #[groupped]
   else
-    let answer ← mkAppM ``orFalse #[val]
-    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal answer
-    return mvar'
+    mkAppM ``orFalse #[val]
 
 @[tactic removeFalse] def evalRemoveFalse : Tactic :=
   fun stx => withMainContext do
     let hyp ← elabTerm stx[1] none
     let hypType ← inferType hyp
-    let out: Ident := ⟨stx[3]⟩
-    let mvar ← getMainGoal
-    let mvar' ← removeFalseCore mvar hyp hypType out.getId
-    replaceMainGoal [mvar']
+    let answer ← removeFalseCore hyp hypType
+    closeMainGoal answer
 
-def liftOrNToNegMeta (mvar : MVarId) (val : Expr) (name : Name)
-  : MetaM MVarId := mvar.withContext do
+def liftOrNToNegMeta (val : Expr) : MetaM Expr := do
   let type ← inferType val
-  let fname ← mkFreshId
-  let mvar' ← removeFalseCore mvar val type fname
-  mvar'.withContext do
-    let lctx ← getLCtx
-    let withoutFalse := (lctx.findFromUserName? fname).get!.toExpr
-    let type' ← instantiateMVars (← inferType withoutFalse)
-    let propsList ← collectPropsInOrChain type'
-    let notPropsList := map notExpr propsList
-    let propsListExpr := listExpr notPropsList $ Expr.sort Level.zero
-    let deMorgan := mkApp (mkConst ``deMorgan₂) propsListExpr
-    let modusTollens ← mkAppM ``mt #[deMorgan]
-    let notNotHyp ← mkAppM ``notNotIntro #[withoutFalse]
-    let goal := mkApp (mkConst ``Not) (← foldAndExpr notPropsList)
-    let answer := mkApp modusTollens notNotHyp
-    let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goal answer
-    return mvar''
+  let withoutFalse ← removeFalseCore val type
+  let type' ← instantiateMVars (← inferType withoutFalse)
+  let propsList ← collectPropsInOrChain type'
+  let notPropsList := map notExpr propsList
+  let propsListExpr := listExpr notPropsList $ Expr.sort Level.zero
+  let deMorgan := mkApp (mkConst ``deMorgan₂) propsListExpr
+  let modusTollens ← mkAppM ``mt #[deMorgan]
+  let notNotHyp ← mkAppM ``notNotIntro #[withoutFalse]
+  let answer := mkApp modusTollens notNotHyp
+  return answer
 
 syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
 
@@ -81,11 +61,8 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
   fun stx => withMainContext do
     trace[smt.profile] m!"[liftOrNToNeg] start time: {← IO.monoNanosNow}ns"
     let hyp ← elabTerm stx[1] none
-    let fname ← mkFreshId
-    let mvar ← getMainGoal
-    let mvar' ← liftOrNToNegMeta mvar hyp fname
-    replaceMainGoal [mvar']
-    evalTactic (← `(tactic| exact $(mkIdent fname)))
+    let answer ← liftOrNToNegMeta hyp
+    closeMainGoal answer
     trace[smt.profile] m!"[liftOrNToNeg] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

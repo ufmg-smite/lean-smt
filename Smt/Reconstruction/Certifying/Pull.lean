@@ -52,11 +52,9 @@ def congLemmas (lemmas props : List Expr) (i_iter i j : Nat)
 
 -- pull j-th term in the orchain to i-th position
 -- (we start counting indices at 0)
-def pullToMiddleCore (mvar: MVarId) (i j suffIdx : Nat) (val type : Expr) (name : Name)
-  : MetaM MVarId := mvar.withContext do
-  if i == j then
-    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
-    return mvar'
+def pullToMiddleCore  (i j suffIdx : Nat) (val type : Expr)
+  : MetaM Expr := do
+  if i == j then return val
   else
     let last := suffIdx == j
     let props ← collectPropsInOrChain' suffIdx type
@@ -92,14 +90,12 @@ def pullToMiddleCore (mvar: MVarId) (i j suffIdx : Nat) (val type : Expr) (name 
     /- -- example: A ∨ (D ∨ B ∨ C) ∨ E -/
     /- --       -> A ∨ D ∨ B ∨ C ∨ E -/
     let goalList := pull! i j props
-    let goal ← createOrChain goalList
     let step₄ ←
       if last then pure step₃
       else do
         let lemmas ← ungroupMiddleLemmas goalList i (j - i + 1)
         pure $ mkAppList step₃ lemmas
-    let (_, mvar₄) ← MVarId.intro1P $ ← mvar.assert name goal step₄
-    return mvar₄
+    return step₄
 
 syntax (name := pullToMiddle) "pullToMiddle" term "," term "," term ("," term)? : tactic
 
@@ -117,50 +113,36 @@ def parsePullToMiddle : Syntax → TacticM (Option Nat)
   let suffIdx ←
     match suffIdx with
     | some i => pure i
-    | none   => getLength t
-  let fname ← mkFreshId
-  let mvar ← getMainGoal
-  let mvar' ← pullToMiddleCore mvar i j suffIdx e t fname
-  replaceMainGoal [mvar']
-  evalTactic (← `(tactic| exact $(mkIdent fname)))
+    | none   => pure ((← getLength t) - 1) 
+  let answer ← pullToMiddleCore i j suffIdx e t
+  closeMainGoal answer
 
-def pullIndex (mvar: MVarId) (index : Nat) (suffIdx : Option Nat) (val type : Expr)
-  (name : Name) : MetaM MVarId := do
-    let suffIdx ←
-      match suffIdx with
-      | some i => pure i
-      | none   => getLength type
-    pullToMiddleCore mvar 0 index suffIdx val type name
+def pullIndex (index : Nat) (suffIdx : Option Nat) (val type : Expr) :
+    MetaM Expr := do
+  let suffIdx ←
+    match suffIdx with
+    | some i => pure i
+    | none   => getLength type
+  pullToMiddleCore 0 index suffIdx val type
 
-def pullCore (mvar: MVarId) (pivot val type : Expr) (suffIdx : Option Nat)
-  (name : Name) : MetaM MVarId :=
-    mvar.withContext do
-      let lastSuffix := (← getLength type) - 1
-      let suffIdx :=
-        match suffIdx with
-        | some i => i
-        | none   => lastSuffix
-      let li ← collectPropsInOrChain' suffIdx type
-      match findIndex? li pivot with
-      | some i =>
-        if i == suffIdx && suffIdx != lastSuffix then
-          if i == 0 then
-            let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type val
-            return mvar'
-          else
-            let fname ← mkFreshId
-            let mvar' ← groupPrefixCore mvar val type suffIdx fname
-            mvar'.withContext do
-              let lctx ← getLCtx
-              let groupped := (lctx.findFromUserName? fname).get!.toExpr
-              let answer: Expr ←
-                mkAppM ``orComm #[groupped]
-              let requiredType ← inferType answer
-              let (_, mvar'') ← MVarId.intro1P $
-                ← mvar'.assert name requiredType answer
-              return mvar''
-        else pullIndex mvar i suffIdx val type name
-      | none   => throwError "[Pull]: couldn't find pivot"
+def pullCore (pivot val type : Expr) (suffIdx : Option Nat) :
+    MetaM Expr := do
+  let lastSuffix := (← getLength type) - 1
+  let suffIdx :=
+    match suffIdx with
+    | some i => i
+    | none   => lastSuffix
+  let li ← collectPropsInOrChain' suffIdx type
+  match findIndex? li pivot with
+  | some i =>
+    if i == suffIdx && suffIdx != lastSuffix then
+      if i == 0 then return val
+      else
+        let groupped ← groupPrefixCore val suffIdx
+        let answer: Expr ← mkAppM ``orComm #[groupped]
+        return answer
+    else pullIndex i suffIdx val type
+  | none   => throwError "[Pull]: couldn't find pivot"
 
 syntax (name := pull) "pull" term "," term ("," term)? : tactic
 
@@ -174,15 +156,52 @@ def parsePull : Syntax → TacticM (Option Nat)
   let t ← instantiateMVars (← inferType hyp)
   let pivot ← elabTerm stx[3] none
   let i ← parsePull stx
-  let fname ← mkFreshId
-  let mvar ← getMainGoal
-  let mvar' ← pullCore mvar pivot hyp t i fname
-  replaceMainGoal [mvar']
-  evalTactic (← `(tactic| exact $(mkIdent fname)))
+  let answer ← pullCore pivot hyp t i
+  closeMainGoal answer
 
 example : A ∨ B ∨ C ∨ D ∨ E → A ∨ B ∨ D ∨ C ∨ E := by
   intro h
   pullToMiddle 2, 3, h
 
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G → A ∨ B ∨ C ∨ F ∨ D ∨ E ∨ G := by
+  intro h
+  pullToMiddle 3, 5, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I ∨ J →
+          A ∨ J ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H ∨ I := by
+  intro h
+  pullToMiddle 1, 9, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ C ∨ G ∨ D ∨ E ∨ F ∨ H := by
+  intro h
+  pullToMiddle 3, 6, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ B ∨ E ∨ C ∨ D ∨ F ∨ G ∨ H := by
+  intro h
+  pullToMiddle 2, 4, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → E ∨ A ∨ B ∨ C ∨ D ∨ F ∨ G ∨ H := by
+  intro h
+  pullToMiddle 0, 4, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → A ∨ G ∨ B ∨ C ∨ D ∨ E ∨ F ∨ H := by
+  intro h
+  pullToMiddle 1, 6, h
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F → A ∨ B ∨ C ∨ F ∨ D ∨ E := by
+  intro h
+  pullToMiddle 3, 5, h
+
+example : A ∨ B ∨ C ∨ D → A ∨ D ∨ B ∨ C := by
+  intro h
+  pullToMiddle 1, 3, h
+
+example : A ∨ B ∨ C ∨ D ∨ E → (D ∨ E) ∨ A ∨ B ∨ C := by
+  intro h
+  pull h, (D ∨ E),  3
+
+example : A ∨ B ∨ C ∨ D ∨ E ∨ F ∨ G ∨ H → F ∨ A ∨ B ∨ C ∨ D ∨ E ∨ G ∨ H := by
+  intro h
+  pull h, F
 
 end Smt.Reconstruction.Certifying

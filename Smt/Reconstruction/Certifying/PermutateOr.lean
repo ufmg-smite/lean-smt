@@ -14,31 +14,22 @@ open Lean Elab Tactic
 
 namespace Smt.Reconstruction.Certifying
 
-def permutateOrMeta (mvar : MVarId) (val : Expr) (perm : List Nat)
-  (suffIdx : Option Nat) (name : Name) : MetaM MVarId :=
-  mvar.withContext do
-    let type ← instantiateMVars (← Meta.inferType val)
-    let suffIdx: Nat ←
-      match suffIdx with
-      | some i => pure i
-      | none   => pure $ (← getLength type) - 1
-    let props ← collectPropsInOrChain' suffIdx type
-    let goal ← createOrChain (permutateList props perm)
-    let props := permutateList props perm.reverse
-    go mvar props suffIdx val goal
-where go : MVarId → List Expr → Nat → Expr → Expr → MetaM MVarId
-      | mvar, [], _, acc, goal => mvar.withContext do
-        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal acc
-        return mvar'
-      | mvar, e::es, suffIdx, acc, goal =>
-        mvar.withContext do
-          let fname ← mkFreshId
+def permutateOrMeta (val : Expr) (perm : List Nat)
+    (suffIdx : Option Nat) : MetaM Expr := do
+  let type ← instantiateMVars (← Meta.inferType val)
+  let suffIdx: Nat ←
+    match suffIdx with
+    | some i => pure i
+    | none   => pure $ (← getLength type) - 1
+  let props ← collectPropsInOrChain' suffIdx type
+  let props := permutateList props perm.reverse
+  go props suffIdx val
+where go : List Expr → Nat → Expr → MetaM Expr
+      | [], _, acc => return acc
+      | e::es, suffIdx, acc => do
           let type ← Meta.inferType acc
-          let mvar' ← pullCore mvar e acc type suffIdx fname
-          mvar'.withContext do
-            let ctx ← getLCtx
-            let acc' := (ctx.findFromUserName? fname).get!.toExpr
-            go mvar' es suffIdx acc' goal
+          let pulled ← pullCore e acc type suffIdx
+          go es suffIdx pulled
 
 -- TODO: find a way to remove '?' without breaking the parser
 syntax (name := permutateOr) "permutateOr" term "," ("[" term,* "]")? ("," term)? : tactic
@@ -50,19 +41,15 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
     hs.toList.mapM stxToNat >>= λ li =>
       elabTerm i none >>= λ i' =>
         return ⟨li, getNatLit? i'⟩
-  | _ =>
-    throwError "[permutateOr]: wrong usage"
+  | _ => throwError "[permutateOr]: wrong usage"
 
 @[tactic permutateOr] def evalPermutateOr : Tactic := fun stx =>
   withMainContext do
     trace[smt.debug] m!"[permutateOr] start time: {← IO.monoNanosNow}ns"
     let hyp ← elabTerm stx[1] none
     let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
-    let fname ← mkFreshId
-    let mvar ← getMainGoal
-    let mvar' ← permutateOrMeta mvar hyp hs suffIdx fname
-    replaceMainGoal [mvar']
-    evalTactic (← `(tactic| exact $(mkIdent fname)))
+    let answer ← permutateOrMeta hyp hs suffIdx
+    closeMainGoal answer
     trace[smt.debug] m!"[permutateOr] end time: {← IO.monoNanosNow}ns"
 
 example : (D ∨ E ∨ F ∨ G) ∨  (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) → (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) ∨ (D ∨ E ∨ F ∨ G) := by
