@@ -32,26 +32,27 @@ def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
 -- i: the index fixed in the original list
 -- j: the index of li.head! in the original list
 def loop (i j n suffIdx : Nat) (val pivot : Expr) (li : List Expr)
-    (name : Name) : MetaM Expr := do
+    (name : Name) : MetaM (Nat × Expr) := do
   let type ← instantiateMVars $ ← inferType val
   match li with
-  | []    => return val
+  | []    => return (suffIdx, val)
   | e::es =>
     if e == pivot then
       let step₁ ← 
         if j > i + 1 then
-          pullToMiddleCore (i + 1) j suffIdx val type
+          let answer ← pullToMiddleCore (i + 1) j suffIdx val type
+          pure answer
         else pure val
 
-        let step₂ ← do
-          let last := i + 1 == n - 1
-          -- we are never trying to get the last prop
-          -- so we don't need to use the function that
-          -- produces the list considering the last suffix
-          let type₁ ← inferType step₁
-          let props ← collectPropsInOrChain type₁
-          congDupOr props step₁ i 0 last
-        loop i j (n - 1) (suffIdx - 1) step₂ pivot es name
+      let step₂ ← do
+        let last := i + 1 == n - 1
+        -- we are never trying to get the last prop
+        -- so we don't need to use the function that
+        -- produces the list considering the last suffix
+        let type₁ ← inferType step₁
+        let props ← collectPropsInOrChain type₁
+        congDupOr props step₁ i 0 last
+      loop i j (n - 1) (suffIdx - 1) step₂ pivot es name
     else loop i (j + 1) n suffIdx val pivot es name
 
 def lastDiff  : Expr → List Expr → Option Expr := fun a as =>
@@ -62,11 +63,13 @@ where
     | [] => none
     | a'::as' => if a == a' then some a' else go a as'
 
-def factorCoreMeta (val type : Expr) (suffIdx : Nat) : MetaM Expr := do
+def factorCoreMeta (val type : Expr) (suffIdx : Nat)
+    : MetaM Expr := do
   let li ← collectPropsInOrChain' suffIdx type
-  go li (li.length - 1) li.length suffIdx ((← getLength type) - suffIdx) val
+  let answer ← go li (li.length - 1) li.length suffIdx val
+  return answer
 where
-  go (li : List Expr) (i n suffIdx lastExprLen : Nat)
+  go  (li : List Expr) (i n suffIdx : Nat)
      (answer : Expr) : MetaM Expr :=
        match i with
        | 0 => pure answer
@@ -76,18 +79,11 @@ where
          | [] => pure answer
          | e::es => do
            let fname ← mkFreshId
-           let answer' ← loop idx (idx + 1) li.length suffIdx answer e es fname
-           let prevLast := List.getLast! (e::es)
-           let lastExprLen' ←
-             if i' > 0 && prevLast == e then
-               match lastDiff e es with
-               | none    => pure lastExprLen
-               | some e' => getLength e'
-             else pure lastExprLen
+           let (suffIdx', answer') ←
+             loop idx (idx + 1) li.length suffIdx answer e es fname
            let newLiExpr ← instantiateMVars (← inferType answer')
-           let suffIdx := (← getLength newLiExpr) - lastExprLen'
-           let newLi ← collectPropsInOrChain' suffIdx newLiExpr
-           go newLi i' n suffIdx lastExprLen' answer'
+           let newLi ← collectPropsInOrChain' suffIdx' newLiExpr
+           go newLi i' n suffIdx' answer'
 
 syntax (name := factor) "factor" term ("," term)? : tactic
 
@@ -108,7 +104,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
       | some i => i
     let answer ← factorCoreMeta e type suffIdx
     let mvar ← getMainGoal
-    let type ← Meta.inferType answer
+    let type ← inferType answer
     let fname ← mkFreshId
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
     replaceMainGoal [mvar']
@@ -119,5 +115,9 @@ example :
   (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
   by intro h
      factor h, 3
+
+example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
+  intro h
+  factor h, 4
 
 end Smt.Reconstruction.Certifying
