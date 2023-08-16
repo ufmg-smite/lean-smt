@@ -102,7 +102,12 @@ syntax (name := groupClausePrefix) "groupClausePrefix" term "," term : tactic
     let pf ← elabTerm stx[1] none
     let i ← stxToNat ⟨stx[3]⟩
     let answer ← groupPrefixCore pf i
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D ∨ E → (A ∨ B ∨ C) ∨ D ∨ E := by
   intro h
@@ -142,7 +147,12 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     let val ← elabTerm stx[1] none
     let prefLen ← stxToNat ⟨stx[3]⟩
     let answer ← liftOrNToImpCore val prefLen
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

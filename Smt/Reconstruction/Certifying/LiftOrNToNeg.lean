@@ -40,7 +40,12 @@ def removeFalseCore (val type : Expr) : MetaM Expr := do
     let hyp ← elabTerm stx[1] none
     let hypType ← inferType hyp
     let answer ← removeFalseCore hyp hypType
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 def liftOrNToNegMeta (val : Expr) : MetaM Expr := do
   let type ← inferType val
@@ -62,7 +67,12 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
     trace[smt.profile] m!"[liftOrNToNeg] start time: {← IO.monoNanosNow}ns"
     let hyp ← elabTerm stx[1] none
     let answer ← liftOrNToNegMeta hyp
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[liftOrNToNeg] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

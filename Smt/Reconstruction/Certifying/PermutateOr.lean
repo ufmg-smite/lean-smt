@@ -49,7 +49,12 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
     let hyp ← elabTerm stx[1] none
     let ⟨hs, suffIdx⟩ ← parsePermuteOr stx
     let answer ← permutateOrMeta hyp hs suffIdx
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← instantiateMVars (← Meta.inferType answer) 
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.debug] m!"[permutateOr] end time: {← IO.monoNanosNow}ns"
 
 example : (D ∨ E ∨ F ∨ G) ∨  (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) → (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) ∨ (D ∨ E ∨ F ∨ G) := by

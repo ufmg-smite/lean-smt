@@ -107,7 +107,12 @@ def parseFactor : Syntax → TacticM (Option Nat)
       | none => lastSuffix
       | some i => i
     let answer ← factorCoreMeta e type suffIdx
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[factor] end time: {← IO.monoNanosNow}ns"
 
 example :

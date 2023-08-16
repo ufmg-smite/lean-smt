@@ -129,7 +129,12 @@ where
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
     let answer ← resolutionCoreMeta val₁ val₂ pivot sufIdx₁ sufIdx₂ false
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[resolution_1] end time: {← IO.monoNanosNow}ns"
 
 @[tactic resolution_2] def evalResolution_2 : Tactic := fun stx =>
@@ -142,9 +147,13 @@ where
     let val₁ ← elabTerm firstHyp none
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
-    let fname ← mkFreshId
     let answer ← resolutionCoreMeta val₁ val₂ pivot sufIdx₁ sufIdx₂ true
-    closeMainGoal answer
+    let mvar ← getMainGoal
+    let type ← inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[resolution_2] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying

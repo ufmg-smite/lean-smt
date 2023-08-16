@@ -115,7 +115,12 @@ def parsePullToMiddle : Syntax → TacticM (Option Nat)
     | some i => pure i
     | none   => pure ((← getLength t) - 1) 
   let answer ← pullToMiddleCore i j suffIdx e t
-  closeMainGoal answer
+  let mvar ← getMainGoal
+  let type ← Meta.inferType answer
+  let fname ← mkFreshId
+  let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+  replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 def pullIndex (index : Nat) (suffIdx : Option Nat) (val type : Expr) :
     MetaM Expr := do
@@ -157,7 +162,12 @@ def parsePull : Syntax → TacticM (Option Nat)
   let pivot ← elabTerm stx[3] none
   let i ← parsePull stx
   let answer ← pullCore pivot hyp t i
-  closeMainGoal answer
+  let mvar ← getMainGoal
+  let type ← Meta.inferType answer
+  let fname ← mkFreshId
+  let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+  replaceMainGoal [mvar']
+  evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 example : A ∨ B ∨ C ∨ D ∨ E → A ∨ B ∨ D ∨ C ∨ E := by
   intro h
