@@ -67,7 +67,7 @@ syntax (name := timed) "timed" term : tactic
   if stx[1].getNumArgs > 0 then
     trace[smt.profile] s!"[{stx[1][0]}]  end time: {← IO.monoNanosNow}ns"
   else
-    trace[smt.profile] s!"[{stx[1]}] start time: {← IO.monoNanosNow}ns"
+    trace[smt.profile] s!"[{stx[1]}] end time: {← IO.monoNanosNow}ns"
 
 example (a b : Prop) : ¬ (a → b) → a := by
   intro h
