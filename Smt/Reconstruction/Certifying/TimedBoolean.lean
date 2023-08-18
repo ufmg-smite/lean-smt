@@ -7,6 +7,8 @@ open Meta hiding contradiction
 
 open Smt.Reconstruction.Certifying
 
+set_option trace.smt.profile true
+
 syntax (name := cnfAndNegT) "cnfAndNegT" ("[" term,* "]")? : tactic
 
 def parseCnfAndNeg : Syntax → TacticM Expr
@@ -56,11 +58,22 @@ variable {s : Syntax}
 
 syntax (name := timed) "timed" term : tactic
 @[tactic timed] def evalTimed : Tactic := fun stx => do
-  trace[smt.profile] m!"[{stx[1][0]}] start time: {← IO.monoNanosNow}ns"
+  if stx[1].getNumArgs > 0 then
+    trace[smt.profile] s!"[{stx[1][0]}] start time: {← IO.monoNanosNow}ns"
+  else
+    trace[smt.profile] s!"[{stx[1]}] start time: {← IO.monoNanosNow}ns"
   let tstx : Term := ⟨stx[1]⟩
   evalTactic (← `(tactic| exact $tstx))
-  trace[smt.profile] m!"[{stx[1][0]}]  end time: {← IO.monoNanosNow}ns"
+  if stx[1].getNumArgs > 0 then
+    trace[smt.profile] s!"[{stx[1][0]}]  end time: {← IO.monoNanosNow}ns"
+  else
+    trace[smt.profile] s!"[{stx[1]}] start time: {← IO.monoNanosNow}ns"
 
 example (a b : Prop) : ¬ (a → b) → a := by
   intro h
   timed notImplies1 h
+
+example (a b : Prop) : a = a := by
+  have h : b = b := by timed rfl
+  timed rfl
+
