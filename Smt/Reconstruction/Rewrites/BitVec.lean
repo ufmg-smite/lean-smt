@@ -203,7 +203,7 @@ theorem extract_val' {x : BitVec w} : (BitVec.extract j 0 x).val = x.val % 2^(j 
 
 theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h0 : 0 < a) (ha : a < w + 1) : 
   (BitVec.rotateLeft x a).val = (BitVec.extract (w + 1 - (1 + a)) 0 x ++ BitVec.extract w (w+1 - a) x).val := by
-  simp only [rotateLeft, concat_ext, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext]
+  simp only [rotateLeft, concat_ext, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext]
   rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) h0))]; congr
   simp only [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.pow_zero, Nat.div_one]
   have h2 : w + 1 - (1 + a) - 0 + 1 = w + 1 - a := by 
@@ -214,7 +214,7 @@ theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h0 : 0 < a) (ha : a < w
 
 --this proof should be alot quicker! It's just unfolding definitions!
 theorem bv_rotate_left_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateLeft x 0).val = x.val := by
-  simp only [rotateLeft, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
+  simp only [rotateLeft, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
   simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
   simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
 
@@ -238,9 +238,48 @@ theorem bv_rotate_right_eliminate₁ {x : BitVec (w + 1)} (h0 : 0 < a) (ha : a <
 
 --this proof should be alot quicker! It's just unfolding definitions!
 theorem bv_rotate_right_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateRight x 0).val = x.val := by
-  simp only [rotateRight, xor_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
+  simp only [rotateRight, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
   simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
   simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
+
+
+def bv_nand (x y : BitVec w) := ~~~ (x &&& y)
+
+def bv_nor (x y : BitVec w) := ~~~ (x ||| y)
+
+def bv_xnor (x y : BitVec w) := ~~~ (x ^^^ y)
+
+def bv_xnor' (x y : BitVec w) : BitVec w := 
+  ⟨toNat (fun i => x.val.testBit i == y.val.testBit i) 0 w, toNat_lt⟩ 
+
+theorem bitwise_not_eq_not {x : BitVec (w + 1)} : bitwise_not x.val (w + 1) = (~~~x).val := by
+  simp only [Complement.complement, BitVec.complement, sub_ext, add_ext]
+  have H := one_lt_two_pow _ (succ_pos w)
+  rw [val_to_ofNat H, zero_ext, zero_add]
+  apply (add_left_inj x.val).mp
+  rw [bitwise_not_eq_neg_sub_one x.isLt]
+  cases' eq_or_lt_of_le (show x.val + 1 ≤ 2^(w + 1) by linarith [x.isLt]) with h h
+  · simp [← h]
+  · rw [mod_eq_of_lt h, mod_eq_of_lt (sub_lt (two_pow_pos _) (succ_pos _))]
+    zify [le_of_lt H, le_of_lt h]; linarith
   
 
+theorem xor_eq_xor' {m n : Nat} : m ^^^ n = Nat.lxor' m n := by
+  simp only [Nat.xor, bitwise_eq_bitwise' bne (by simp), HXor.hXor, Xor.xor, lxor']
+  congr; aesop
+
+theorem bv_xnor_eliminate {x y : BitVec (w + 1)} : (bv_xnor' x y).val = (bv_xnor x y).val := by
+  simp only [bv_xnor', bv_xnor, ← bitwise_not_eq_not, bitwise_not]
+  apply eq_of_testBit_eq_lt toNat_lt toNat_lt; intro j hj
+  rw [toNat_testBit hj, toNat_testBit hj, xor_ext, xor_eq_xor', lxor']
+  simp [testBit_bitwise']
+  cases' x.val.testBit j <;> cases' y.val.testBit j <;> simp
+
+  -- simp only [bv_xnor', bv_xnor, Complement.complement, BitVec.complement, sub_ext, add_ext]
+  -- rw [val_to_ofNat, zero_ext, zero_add]
+  -- apply eq_of_testBit_eq_lt toNat_lt (mod_lt _ (two_pow_pos w))
+  -- intro j hj
+  -- rw [toNat_testBit hj]
+  -- rw [← bitwise_neg_eq_neg, bitwise_neg, bitwise_not, bitwise_add, toNat_testBit hj]
+  
 end Smt.Reconstruction.Rewrites.Arith

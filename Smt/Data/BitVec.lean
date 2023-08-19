@@ -201,11 +201,21 @@ lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
 
 lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
 
+theorem zero_ext : (0 : BitVec w).val = 0 := rfl
+
+theorem add_ext {x y : BitVec w} :  (x + y).val = (x.val + y.val)%2^w := rfl
+
+theorem neg_ext {x : BitVec w} : (-x).val = (2^w - x.val) % 2^w := rfl
+
+theorem sub_ext {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl  
+
 theorem concat_ext {x : BitVec a} {y : BitVec b} :
   (x ++ y).val = x.val <<< b ||| y.val := rfl
 
-theorem xor_ext {x y : BitVec w} :
+theorem or_ext {x y : BitVec w} :
   (x ||| y).val = x.val ||| y.val := rfl
+
+theorem xor_ext {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
 
 theorem shiftLeft_ext {x : BitVec w} :
   (x <<< n).val = (x.val <<< n) % 2^w := rfl
