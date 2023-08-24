@@ -7,7 +7,6 @@ Authors: Harun Khan
 
 import Lean
 import Std
-import Mathlib.Tactic.LibrarySearch
 import Aesop
 
 open Lean Elab.Tactic Meta Expr Syntax 
@@ -30,6 +29,10 @@ namespace Smt.Data.tactic
 
 theorem and_assoc_eq : ((a ∧ b) ∧ c) = (a ∧ (b ∧ c)) := by simp [and_assoc]
 
+theorem or_assoc_eq : ((a ∨ b) ∨ c) = (a ∨ (b ∨ c)) := by simp [or_assoc]
+
+theorem and_assoc' : a ∧ (b ∧ c) ↔ (a ∧ b) ∧ c  := by aesop
+
 theorem bool_and_flatten : (xs ∧ (b ∧ ys) ∧ zs) = (xs ∧ b ∧ ys ∧ zs) := by
   rw [← @and_assoc b ys zs]
 
@@ -49,6 +52,10 @@ theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
   rw [← @and_assoc b b ys]
   rw [and_self]
   rw [and_assoc]
+
+
+theorem bool_or_dup : (xs ∨ b ∨ ys ∨ b ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by aesop
+
 
 -- def countArgs (a b : Prop): Expr := mkAppN (.const `And []) #[a.toExpr, b.toExpr]
 
@@ -150,9 +157,9 @@ example : (x1 ∧ x2 ∧ True ∧ z1 ∧ z2 ∧ z3 ∧ True) = (x1 ∧ x2 ∧ z1
   rw [and_assoc]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  rewrite [← @and_assoc x2 _ _]
-  rw [← @and_assoc x1 _ _]
-  rw [← @and_assoc y1 _ _]
+  rewrite [← @and_assoc x2]
+  rw [← @and_assoc x1]
+  rw [← @and_assoc y1]
   rw [bool_and_dup]
   rw [@and_assoc x1 _ _]
   rw [@and_assoc x2 _ _]
@@ -182,34 +189,37 @@ def opAssoc' (op : Name) : Expr :=
     (mkAppN (.const ``Iff []) #[mkAppN (.const op []) #[.bvar 2, mkAppN (.const op []) #[.bvar 1, .bvar 0]], 
                                 mkAppN (.const op []) #[mkAppN (.const op []) #[.bvar 2, .bvar 1], .bvar 0]]) BinderInfo.default) BinderInfo.default) BinderInfo.default
 
+
+
 #eval show MetaM _ from do
   let o := opAssoc `And
   dbg_trace s!"{o}"
-  
-#check show True from by
-  exact?
-
-def smtSimps (mv : MVarId) (op : Name) (null : Name) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
+#check assignExprMVar
+def smtSimps (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
   let n := arr.size
   let mut mv' := mv
   for i in [: n] do
     let mut m := arr[i]!.size
     if m > 1 then
       for j in [: m-1] do
-        let r ← mv'.rewrite (← mv'.getType) (.app (.const ``and_assoc' []) arr[i]![m-j-2]!)
+        let r ← mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true
         mv' ← mv'.replaceTargetEq r.eNew r.eqProof
-  let r ← mv'.rewrite (← mv'.getType) (rule)
+  let r ← mv'.rewrite (← mv'.getType) rule
   mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
+    mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
     let mut m := arr[i]!.size
     for j in [: m-1] do
-      let r ← mv'.rewrite (← mv'.getType) (.app (.const ``and_assoc []) arr[i]![j]!)
+      let some r ← observing? (mv'.rewrite (← mv'.getType) (.app assoc arr[i]![j]!)) | break
       mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   mv'.refl
 
+#check Option
+
 syntax inner := "[" term,* "]"
 syntax outer := "[" inner,* "]"
-syntax (name := smt_simps) "smt_simps" ident ident ident ident ident outer : tactic
+syntax (name := smt_simps) "smt_simps" ident ident ident outer : tactic
 
 def parseInner : TSyntax ``inner → TacticM (Array Expr)
   | `(inner| [$ts,*]) => ts.getElems.mapM (elabTerm · none)
@@ -223,10 +233,10 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   let mv : MVarId ← Elab.Tactic.getMainGoal
   let rr ← elabTerm stx[3] none
   let xs ← parseOuter ⟨stx[4]⟩ 
-  let op := stx[1].getId
-  let nul := stx[2].getId
-  logInfo m!"{op}"
-  smtSimps mv op nul rr xs
+  let op  ← elabTermForApply stx[1]
+  let nu  ← elabTermForApply stx[2]
+  let r := Expr.const ``and_assoc_eq []
+  smtSimps mv op nu rr xs
   Elab.Tactic.replaceMainGoal [mv]
 
 #check getNameOfIdent'
@@ -236,14 +246,24 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   IO.println m
 
 
-
-example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_simps And True and_assoc and_true bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
+#check and_assoc_eq
+example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
+  smt_simps and_assoc_eq and_true bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_simps And True bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_simps and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+
+example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
+  smt_simps or_assoc_eq or_false bool_or_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+
+example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
+  smt_simps and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+
+example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
+  smt_simps or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
 
-#check and_assoc
-#check Iff.symm (@and_assoc True False True)
+#check Eq.symm (@and_assoc_eq True _ _)
 #check and_true
+
+#check mkAppM
