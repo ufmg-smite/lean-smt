@@ -31,6 +31,7 @@ theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 
 theorem bool_or_dup : (xs ∨ b ∨ ys ∨ b ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by aesop
 
+
 def opsAssocNull : Name → Array Expr
 |  ``or => #[Expr.const ``or_assoc_eq [], Expr.const ``or_false []]
 | ``and => #[Expr.const ``and_assoc_eq [], Expr.const ``and_true []]
@@ -60,6 +61,7 @@ def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : M
 
 syntax inner := "[" term,* "]"
 syntax outer := "[" inner,* "]"
+
 
 syntax (name := smt_rw) "smt_rw" ident ident outer : tactic
 
