@@ -275,11 +275,11 @@ theorem bv_xnor_eliminate {x y : BitVec (w + 1)} : (bv_xnor' x y).val = (bv_xnor
   simp [testBit_bitwise']
   cases' x.val.testBit j <;> cases' y.val.testBit j <;> simp
 
-  -- simp only [bv_xnor', bv_xnor, Complement.complement, BitVec.complement, sub_ext, add_ext]
-  -- rw [val_to_ofNat, zero_ext, zero_add]
-  -- apply eq_of_testBit_eq_lt toNat_lt (mod_lt _ (two_pow_pos w))
-  -- intro j hj
-  -- rw [toNat_testBit hj]
-  -- rw [← bitwise_neg_eq_neg, bitwise_neg, bitwise_not, bitwise_add, toNat_testBit hj]
+def bv_sdiv {x y : BitVec (w + 1)} := 
+  let xlt0 := x.extract w w ==  BitVec.ofNat (w - w + 1) 1
+  let ylt0 := y.extract w w == BitVec.ofNat (w - w + 1) 1
+  let rUdiv := (UdivUremBB (if xlt0 then (~~~x).val else x.val) (if ylt0 then (~~~y).val else y.val) (w + 1)).snd
+  let rUdivbv := BitVec.ofNat (w + 1) rUdiv
+  if (xlt0 ^^ ylt0) then (~~~ rUdivbv) else rUdivbv
   
 end Smt.Reconstruction.Rewrites.Arith

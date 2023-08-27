@@ -77,13 +77,13 @@ example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ Tru
   smt_rw and_assoc_eq and_true bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
-  smt_rw or_assoc_eq or_false bool_or_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw or_assoc_eq or_false bool_or_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
