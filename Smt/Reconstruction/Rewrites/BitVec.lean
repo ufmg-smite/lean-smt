@@ -275,11 +275,22 @@ theorem bv_xnor_eliminate {x y : BitVec (w + 1)} : (bv_xnor' x y).val = (bv_xnor
   simp [testBit_bitwise']
   cases' x.val.testBit j <;> cases' y.val.testBit j <;> simp
 
-def bv_sdiv {x y : BitVec (w + 1)} := 
+def bv_sdiv (x y : BitVec (w + 1)) := 
   let xlt0 := x.extract w w ==  BitVec.ofNat (w - w + 1) 1
   let ylt0 := y.extract w w == BitVec.ofNat (w - w + 1) 1
   let rUdiv := (UdivUremBB (if xlt0 then (~~~x).val else x.val) (if ylt0 then (~~~y).val else y.val) (w + 1)).snd
   let rUdivbv := BitVec.ofNat (w + 1) rUdiv
   if (xlt0 ^^ ylt0) then (~~~ rUdivbv) else rUdivbv
+
+def bv_sdiv_fewer (x y : BitVec (w + 1)) :=
+  let xlt0 := x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 1).val
+  let ylt0 := y.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 1).val
+  let rUdiv := (UdivUremBB (if xlt0 then (~~~x).val else x.val) (if ylt0 then (~~~y).val else y.val) (w + 1)).snd
+  let rUdivbv := BitVec.ofNat (w + 1) rUdiv
+  if (xlt0 ^^ ylt0) then (~~~ rUdivbv) else rUdivbv  
+
+theorem bv_sdiv_fewer_ops {x y : BitVec (w + 1)}: bv_sdiv x y = bv_sdiv_fewer x y := by
+  unfold bv_sdiv bv_sdiv_fewer
+  sorry
   
 end Smt.Reconstruction.Rewrites.Arith
