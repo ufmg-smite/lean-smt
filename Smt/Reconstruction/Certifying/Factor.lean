@@ -34,6 +34,7 @@ def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
 def loop (i j n suffIdx : Nat) (val pivot : Expr) (li : List Expr)
     (name : Name) : MetaM (Nat × Expr) := do
   let type ← instantiateMVars $ ← inferType val
+  let type ← expandLet type
   match li with
   | []    => return (suffIdx, val)
   | e::es =>
@@ -50,18 +51,11 @@ def loop (i j n suffIdx : Nat) (val pivot : Expr) (li : List Expr)
         -- so we don't need to use the function that
         -- produces the list considering the last suffix
         let type₁ ← inferType step₁
+        let type₁ ← expandLet step₁
         let props ← collectPropsInOrChain type₁
         congDupOr props step₁ i 0 last
       loop i j (n - 1) (suffIdx - 1) step₂ pivot es name
     else loop i (j + 1) n suffIdx val pivot es name
-
-def lastDiff  : Expr → List Expr → Option Expr := fun a as =>
-  go a as.reverse
-where
-  go a as :=
-    match as with
-    | [] => none
-    | a'::as' => if a == a' then some a' else go a as'
 
 def factorCoreMeta (val type : Expr) (suffIdx : Nat)
     : MetaM Expr := do
@@ -69,7 +63,7 @@ def factorCoreMeta (val type : Expr) (suffIdx : Nat)
   let answer ← go li (li.length - 1) li.length suffIdx val
   return answer
 where
-  go  (li : List Expr) (i n suffIdx : Nat)
+  go (li : List Expr) (i n suffIdx : Nat)
      (answer : Expr) : MetaM Expr :=
        match i with
        | 0 => pure answer
@@ -82,6 +76,7 @@ where
            let (suffIdx', answer') ←
              loop idx (idx + 1) li.length suffIdx answer e es fname
            let newLiExpr ← instantiateMVars (← inferType answer')
+           let newLiExpr ← expandLet newLiExpr
            let newLi ← collectPropsInOrChain' suffIdx' newLiExpr
            go newLi i' n suffIdx' answer'
 
@@ -96,7 +91,7 @@ def parseFactor : Syntax → TacticM (Option Nat)
   withMainContext do
     trace[smt.profile] m!"[factor] start time: {← IO.monoNanosNow}ns"
     let e ← elabTerm stx[1] none
-    let type ← inferType e
+    let type ← expandLet (← inferType e)
     let lastSuffix ← pure $ (← getLength type) - 1
     let suffIdx :=
       match (← parseFactor stx) with

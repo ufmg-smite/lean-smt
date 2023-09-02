@@ -425,7 +425,7 @@ def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
       let mut pf ← getProof i val
-      let type ← inferType val
+      let type ← expandLet (← inferType val)
       let binderName ← getFirstBinderName type
       let env ← getEnv
       let andProp : Expr := 
@@ -466,7 +466,7 @@ syntax (name := andElim) "andElim" term "," term : tactic
 def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
-      let type ← inferType val
+      let type ← expandLet (← inferType val)
       let orChain := notExpr type
       let props ← collectPropsInOrChain orChain
       let prop := props.get! i

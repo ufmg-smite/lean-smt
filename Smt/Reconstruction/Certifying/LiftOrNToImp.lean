@@ -85,11 +85,11 @@ def getGroupOrPrefixGoal : Expr → Nat → MetaM Expr
   pure $ app (app (mkConst ``Or) left) right
 
 def groupPrefixCore (pf : Expr) (i : Nat) : MetaM Expr := do
-  let clause  : Expr      ← inferType pf
-  let props   : List Expr ← collectPropsInOrChain clause
+  let clause ← expandLet (← inferType pf)
+  let props ← collectPropsInOrChain clause
   if i > 0 && i < List.length props then
-    let lemmas : List Expr ← groupPrefixLemmas props (i - 1)
-    let answer : Expr :=
+    let lemmas ← groupPrefixLemmas props (i - 1)
+    let answer :=
       List.foldl (fun acc l => Expr.app l acc) pf lemmas
     return answer
   else throwError
@@ -103,15 +103,11 @@ syntax (name := groupClausePrefix) "groupClausePrefix" term "," term : tactic
     let i ← stxToNat ⟨stx[3]⟩
     let answer ← groupPrefixCore pf i
     let mvar ← getMainGoal
-    let type ← Meta.inferType answer
+    let type ← inferType answer
     let fname ← mkFreshId
     let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-
-example : A ∨ B ∨ C ∨ D ∨ E → (A ∨ B ∨ C) ∨ D ∨ E := by
-  intro h
-  groupClausePrefix h, 3
 
 def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   let propsList ← collectPropsInOrChain props
@@ -120,18 +116,17 @@ def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   pure $ mkForall' premiss conclusion
 
 def liftOrNToImpCore (pf : Expr) (prefLen : Nat) : MetaM Expr := do
-    /- let type ← (expandTypesInOrChain' mvar) $ ← inferType pf -/
-    let type ← inferType pf
+    let clause ← expandLet (← inferType pf)
     let newPf ←
       if prefLen > 1 then
         groupPrefixCore pf prefLen
       else pure pf
-    let negArgs := collectOrNNegArgs type prefLen
+    let negArgs := collectOrNNegArgs clause prefLen
     let deMorganArgs :=
       listExpr negArgs (sort Level.zero)
     let dmHyp :=
       mkApp (mkApp (mkConst ``deMorgan₂) deMorganArgs) (bvar 0)
-    let props  ← collectPropsInOrChain type
+    let props  ← collectPropsInOrChain clause
     let l      ← createOrChain $ List.take prefLen props
     let r      ← createOrChain $ List.drop prefLen props
     let answer :=
@@ -155,4 +150,11 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoNanosNow}ns"
 
-end Smt.Reconstruction.Certifying
+example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → ((A ∧ B) → C ∨ D ∨ E) := fun h => by
+  liftOrNToImp h, 2
+
+example :
+  let p1 := ¬ A ∨ ¬ B ∨ C ∨ D ∨ E
+  let p2 := ((A ∧ B) → C ∨ D ∨ E)
+  p1 → p2 := fun h => by
+  liftOrNToImp h, 2

@@ -141,36 +141,6 @@ def mkLam (type body : Expr) : Expr :=
 def mkForall' (t b : Expr) : Expr :=
   forallE Name.anonymous t b BinderInfo.default
 
-partial def expandType' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
-  match e with
-  | fvar fid => mvar.withContext do
-    let lctx ← getLCtx
-    match lctx.find? fid with
-    | some ldcl => expandType' mvar ldcl.value
-    | none      => pure e
-  | _ => pure e
-
-def expandTypesInOrChain' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
-  do let es ← collectPropsInOrChain e
-     let esExpanded ← List.mapM (expandType' mvar) es
-     let e' ← createOrChain esExpanded
-     pure e'
-
-partial def expandType : Expr → TacticM Expr := fun e =>
-  match e with
-  | fvar fid => withMainContext do
-    let lctx ← getLCtx
-    match lctx.find? fid with
-    | some ldcl => expandType ldcl.value
-    | none      => pure e
-  | _ => pure e
-
-def expandTypesInOrChain : Expr → TacticM Expr := fun e => do
-  let es         ← collectPropsInOrChain e
-  let esExpanded ← List.mapM expandType es
-  let e'         ← createOrChain esExpanded
-  pure e'
-
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
   let currGoalType ← MVarId.getType currGoal
@@ -191,5 +161,20 @@ def getOp : Expr → MetaM Name
   | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
   | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
   | _ => throwError "[getOp] invalid parameter"
+
+partial def expandLet : Expr → MetaM Expr
+| fvar fid => do
+    let lctx ← getLCtx
+    match lctx.find? fid with
+    | some (.ldecl _ _ _ _ value _ _) => expandLet value
+    | _ => pure (fvar fid)
+| app f x => do pure (app (← expandLet f) (← expandLet x))
+| lam bn bt body bi => do pure (lam bn (← expandLet bt) (← expandLet body) bi)
+| forallE bn bt body bi => do
+    pure (lam bn (← expandLet bt) (← expandLet body) bi)
+| letE nm tp val bd nDep => do
+    pure (letE nm (← expandLet tp) (← expandLet val) (← expandLet bd) nDep)
+| e => pure e
+
 
 end Smt.Reconstruction.Certifying
