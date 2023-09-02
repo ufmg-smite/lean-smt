@@ -51,7 +51,7 @@ def loop (i j n suffIdx : Nat) (val pivot : Expr) (li : List Expr)
         -- so we don't need to use the function that
         -- produces the list considering the last suffix
         let type₁ ← inferType step₁
-        let type₁ ← expandLet step₁
+        let type₁ ← expandLet type₁
         let props ← collectPropsInOrChain type₁
         congDupOr props step₁ i 0 last
       loop i j (n - 1) (suffIdx - 1) step₂ pivot es name
