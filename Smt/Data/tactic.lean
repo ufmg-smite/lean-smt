@@ -8,6 +8,7 @@ Authors: Harun Khan
 import Lean
 import Std
 import Aesop
+import Smt.Data.BitVec
 
 open Lean Elab.Tactic Meta Expr Syntax 
 
@@ -35,7 +36,7 @@ def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array 
   let n := arr.size
   let mut mv' := mv
   for i in [: n] do
-    let mut m := arr[i]!.size
+    let m := arr[i]!.size
     if m > 1 then
       for j in [: m-1] do
         let r ← mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true
@@ -45,7 +46,7 @@ def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array 
   if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
-    let mut m := arr[i]!.size
+    let m := arr[i]!.size
     for j in [: m-1] do
       let some r ← observing? (mv'.rewrite (← mv'.getType) (.app assoc arr[i]![j]!)) | break
       mv' ← mv'.replaceTargetEq r.eNew r.eqProof
@@ -71,7 +72,6 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   let op  ← elabTermForApply stx[1]
   let nu  ← elabTermForApply stx[2]
   smtRw mv op nu rr xs
-  replaceMainGoal [mv]
 
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
   smt_rw and_assoc_eq and_true bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
@@ -87,3 +87,24 @@ example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = 
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
+
+open BitVec
+
+theorem append_assoc' {x : BitVec a} {y : BitVec b} {z : BitVec c} :
+  ((x ++ y) ++ z) = Nat.add_assoc _ _ _ ▸ (x ++ (y ++ z)) := sorry
+
+theorem append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} :
+  ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := sorry
+
+theorem bv_concat_flatten {xs : BitVec a} {s : BitVec b} {ys : BitVec c} {zs : BitVec d} :
+  (xs ++ (s ++ ys) ++ zs) = (show a+b+c+d = a + (b+c) + d by ring) ▸ (xs ++ s ++ ys ++ zs) := sorry
+
+
+
+example {x1 : BitVec 10} {x2 : BitVec 7} {y1 : BitVec 6} {y2: BitVec 9} {s : BitVec 5} {z1 : BitVec 4} {z2 : BitVec 11}: 
+  (x1 ++ x2 ++ (s ++ y1 ++ y2) ++ z1 ++ z2) = (x1 ++ x2 ++ s ++ y1 ++ y2 ++ z1 ++ z2) := by
+  smt_rw append_assoc' or_false bv_concat_flatten [[x1, x2], [y1, y2], [z1, z2]]
+
+example {x1 : BitVec 10} {x2 : BitVec 7} {y1 : BitVec 6} {y2: BitVec 9} {s : BitVec 5} {z1 : BitVec 4} {z2 : BitVec 11}: 
+  (x1 ++ x2 ++ (s ++ y1 ++ y2) ++ z1 ++ z2).val = (x1 ++ x2 ++ s ++ y1 ++ y2 ++ z1 ++ z2).val := by
+  smt_rw append_assoc' or_false bv_concat_flatten [[x1, x2], [y1, y2], [z1, z2]]

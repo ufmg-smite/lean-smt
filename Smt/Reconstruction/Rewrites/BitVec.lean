@@ -174,6 +174,8 @@ theorem bv_sle_eliminate {x y : BitVec (w + 1)} : (BitVec.sle x y) = ¬ BitVec.s
   simp only [le_iff_lt_or_eq]
   aesop
 
+def bv_redor (x : BitVec w) := ~~~(BitVec.ofNat w 0)
+
 theorem bv_ule_eliminate {x y : BitVec w} : (x ≤ y) = ¬ (y < x) := by 
   simp [LT.lt, BitVec.lt, LE.le, BitVec.le]
 
@@ -276,21 +278,46 @@ theorem bv_xnor_eliminate {x y : BitVec (w + 1)} : (bv_xnor' x y).val = (bv_xnor
   cases' x.val.testBit j <;> cases' y.val.testBit j <;> simp
 
 def bv_sdiv (x y : BitVec (w + 1)) := 
-  let xlt0 := x.extract w w ==  BitVec.ofNat (w - w + 1) 1
-  let ylt0 := y.extract w w == BitVec.ofNat (w - w + 1) 1
+  let xlt0 := (x.extract w w).val = (BitVec.ofNat 1 1).val
+  let ylt0 := (y.extract w w).val = (BitVec.ofNat 1 1).val
   let rUdiv := (UdivUremBB (if xlt0 then (~~~x).val else x.val) (if ylt0 then (~~~y).val else y.val) (w + 1)).snd
   let rUdivbv := BitVec.ofNat (w + 1) rUdiv
   if (xlt0 ^^ ylt0) then (~~~ rUdivbv) else rUdivbv
 
 def bv_sdiv_fewer (x y : BitVec (w + 1)) :=
-  let xlt0 := x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 1).val
-  let ylt0 := y.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 1).val
+  let xlt0 := x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val
+  let ylt0 := y.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val
   let rUdiv := (UdivUremBB (if xlt0 then (~~~x).val else x.val) (if ylt0 then (~~~y).val else y.val) (w + 1)).snd
   let rUdivbv := BitVec.ofNat (w + 1) rUdiv
   if (xlt0 ^^ ylt0) then (~~~ rUdivbv) else rUdivbv  
 
-theorem bv_sdiv_fewer_ops {x y : BitVec (w + 1)}: bv_sdiv x y = bv_sdiv_fewer x y := by
-  unfold bv_sdiv bv_sdiv_fewer
-  sorry
-  
+#check BitVec.ofNat
+
+lemma zero_shiftRight : 0 >>> n = 0 := by simp [shiftRight_eq_shiftr, shiftr_eq_div_pow, div_zero]
+
+-- lemma lt_zero_eq_extract {x : BitVec (w + 1)} : 
+--   ((x.extract w w).val = (BitVec.ofNat 1 1).val) = (BitVec.slt x (BitVec.ofNat (w + 1) 0)) := by
+--   simp only [extract, BitVec.slt, tsub_eq_zero_of_le (le_refl w)]
+--   have : x.val >>> w ≤ 1 := by
+--     simp [testBit_eq_shift x.isLt, toNat_le_one]
+--   rw [val_to_ofNat (show 1 < 2^1 by norm_num), val_to_ofNat (by simp [this]; linarith), val_to_ofNat (two_pow_pos _)]
+--   rw [zero_shiftRight, zero_mod]
+--   interval_cases x.val >>> w <;> aesop
+
+lemma lt_zero_concat_extract {x : BitVec (w + 1)} : 
+  (x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val) = ((x.extract w w).val = (BitVec.ofNat 1 1).val) := by
+  simp only [extract, BitVec.slt, tsub_eq_zero_of_le (le_refl w), append_eq_add_val, testBit_eq_shift x.isLt]
+  rw [val_to_ofNat (by norm_num), val_to_ofNat (two_pow_pos w), val_to_ofNat (by simp; linarith [toNat_le_one _] )]
+  rw [one_mul, add_zero]
+  by_cases (x.val).testBit w
+  <;> simp only [toNat_true, h, eq_iff_iff, iff_false, iff_true]
+  <;> push_neg at *
+  · linarith [ge_of_testBit_eq_true x.isLt h]
+  · exact lt_of_testbit_eq_false_of_lt x.isLt (by simp [h])
+
+theorem bv_sdiv_fewer_ops {x y : BitVec (w + 1)} : (bv_sdiv x y) = (bv_sdiv_fewer x y) := by
+  simp only [bv_sdiv, bv_sdiv_fewer, ← lt_zero_concat_extract]
+
+
+
 end Smt.Reconstruction.Rewrites.Arith

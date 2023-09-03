@@ -65,7 +65,7 @@ theorem testBit_translate' {x w :Nat} {b:Bool} (h: x<2^w) : testBit (2^w*b.toNat
   cases' b <;> simp 
 
 @[simp] lemma toNat_true : true.toNat = 1 := rfl
-@[simp] lemma toNat_fale : false.toNat = 0 := rfl --PR this
+@[simp] lemma toNat_false : false.toNat = 0 := rfl --PR this
 
 -- what to do with these?
 theorem testBit_translate_one {x w i:Nat} (h: i<w) : testBit x i = testBit (2^w+ x) i := mul_one (2^w) ▸ (@testBit_translate 1 _ _ _ h)
@@ -128,7 +128,7 @@ theorem testBit_translate_one'' {x w :Nat} (h: x < 2^(w+1)) : testBit (2^w + x) 
     rw [msb_eq_true] <;> linarith [two_pow_succ _]
 
 --not PR'ed yet
-theorem lt_of_tesbit_eq_false_of_lt (h : x < 2^(w + 1)) (h1 : x.testBit w = false) : x < 2^w := by
+theorem lt_of_testbit_eq_false_of_lt (h : x < 2^(w + 1)) (h1 : x.testBit w = false) : x < 2^w := by
   apply lt_of_testBit w h1 (testBit_two_pow_self w) 
   intro j hj
   rw [lt_two_pow_testBit_false h hj, testBit_two_pow_of_ne (by linarith)]
@@ -814,8 +814,12 @@ lemma testBit_eq_shift (hx : x < 2^(w + 1)) : x >>> w = (x.testBit w).toNat := b
   apply Eq.trans_gt (show 2^(w+1)/2^w = 2 by simp [pow_add]) 
   exact Nat.div_lt_div_of_lt_of_dvd (by simp [pow_add]) hx 
 
-  
-
+--not Pr'ed yet
+theorem ge_of_testBit_eq_true (h: x < 2^(w + 1)) (h1 : x.testBit w = true) : 2^w ≤ x := by
+  replace h1 := congr_arg (fun x => x.toNat) h1
+  simp only [← testBit_eq_shift h, toNat_true, shiftRight_eq_shiftr, shiftr_eq_div_pow] at h1
+  rw [← one_mul (2^w), ← (Nat.le_div_iff_mul_le (by norm_num))]
+  linarith
 
 end Nat
 
