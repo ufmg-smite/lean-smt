@@ -78,7 +78,6 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   let op := stx[1].getId
   smtRw mv op rr xs
 
-
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
   smt_rw and bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
 
