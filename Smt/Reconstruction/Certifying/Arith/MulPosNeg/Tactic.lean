@@ -9,9 +9,9 @@ import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Instances
 import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
 import Smt.Reconstruction.Certifying.Util
 
-import Mathlib.Data.Rat.Order
 import Mathlib.Data.Int.Order.Basic
-import Mathlib.Tactic.LibrarySearch
+import Mathlib.Data.Rat.Order
+import Mathlib.Data.Vector.Basic
 
 import Lean
 
@@ -29,61 +29,89 @@ def parseArithMulAux : Array Term → Term → TacticM (Expr × Expr × Expr × 
       hs.toList.mapM (fun h: Term => elabTerm h none)
     let i' ← stxToNat i
     match li with
-    | [a, b, c] => return (a, b, c, i') | _         => throwError "[arithMul]: List must have 3 elements"
+    | [a, b, c] => return (a, b, c, i')
+    | _ => throwError "[arithMul]: List must have 3 elements"
 
 def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
   | `(tactic| arithMulPos [ $[$hs],* ], $i) => parseArithMulAux hs i
   | `(tactic| arithMulNeg [ $[$hs],* ], $i) => parseArithMulAux hs i
   | _ => throwError "[arithMul]: wrong usage"
 
-def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
-  (outName : Name) (thms : List Name) : MetaM MVarId :=
-    mvar.withContext do
-      let mut typeC ← inferType vc
-      let typeA ← inferType va
-      let typeB ← inferType vb
-      let vc ←
-        match typeC with
-        | const `Nat .. => do
-          typeC := typeA
-          match typeA with
-          | const `Int .. => pure $ mkApp (mkConst ``Int.ofNat) vc
-          | const `Rat .. =>
-            pure $ mkApp (mkConst ``Rat.ofInt) (mkApp (mkConst ``Int.ofNat) vc)
-          | _ => throwError "[arithMul]: unexpected type for first variable"
-        | _ => pure vc
-      let mut thmName: Name ←
-        if compId <= 4 then
-          pure (thms.get! compId) 
-        else throwError "[arithMul]: unexpected second argument"
+def operators : Vector Name 5 :=
+  ⟨[``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``Eq], rfl⟩  
 
-      let isCornerCase :=
-        typeA == const `Int [] && typeB == const `Int [] && typeC == const `Rat []
-      let inst ←
-        match typeA with
-        | const `Int .. => pure $ mkConst ``lorInt
-        | const `Rat .. => pure $ mkConst ``lorRat
-        | _ => throwError "[arithMul]: unexpected type for first variable"
-      let proof :=
-        if isCornerCase then
-          mkApp3 (mkConst (thmName ++ `corner)) va vb vc
-        else mkApp5 (mkConst thmName) typeA inst va vb vc
-      let proofType ← Meta.inferType proof
-      let (_, mvar') ← MVarId.intro1P $ ← mvar.assert outName proofType proof
-      return mvar'
+def castFsts : List Name :=
+  [``castFstLT , ``castFstLE , ``castFstGT , ``castFstGE , ``castFstEQ]
+
+def castSnds : List Name :=
+  [``castSndLT , ``castSndLE , ``castSndGT , ``castSndGE , ``castSndEQ]
+
+def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Name 5) :
+    MetaM Expr := do
+  let mut typeA ← inferType va
+  let mut typeB ← inferType vb
+  let mut va := va
+  let mut vb := vb
+  if typeA != typeB then
+    if typeA == mkConst ``Int then
+      va := mkApp (mkConst ``Rat.ofInt) va
+      typeA := mkConst ``Rat
+    else
+      vb := mkApp (mkConst ``Rat.ofInt) vb
+      typeB := mkConst ``Rat
+  let typeC ← inferType vc
+  let thmName ←
+    if lt: compId < 5 then
+      pure (thms.get ⟨compId, lt⟩)
+    else throwError "[arithMul]: index too large"
+
+  let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
+  let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
+  let zeroC := if typeC == mkConst ``Int then zeroI else zeroR
+  let premiseLeft ←
+    if pos then mkAppM ``GT.gt #[vc, zeroC]
+    else mkAppM ``LT.lt #[vc, zeroC]
+
+  let operator ←
+    if ltPf: compId < 5 then
+      pure $ operators.get ⟨compId, ltPf⟩ 
+    else throwError "[arithMul]: index too large"
+  let premiseRight ← mkAppM operator #[va, vb]
+
+  let premiseType :=
+    mkApp2 (mkConst ``And) premiseLeft premiseRight
+
+  match typeA, typeC with
+    | const ``Int _, const ``Int _ =>
+      mkAppM thmName #[]
+    | const ``Int _, const ``Rat _ =>
+      withLocalDeclD (← mkFreshId) premiseType $ fun bv => do
+        let e₁ ← mkAppM (castSnds.get! compId) #[bv]
+        let e₂ ← mkAppM thmName #[e₁]
+        mkLambdaFVars #[bv] e₂
+    | const ``Rat _, const ``Int _ =>
+      withLocalDeclD (← mkFreshId) premiseType $ fun bv => do
+        let e₁ ← mkAppM (castFsts.get! compId) #[bv]
+        let e₂ ← mkAppM thmName #[e₁]
+        mkLambdaFVars #[bv] e₂
+    | const ``Rat _, const ``Rat _ =>
+      mkAppM thmName #[]
+    | _, _ => throwError "[arithMul]: unexpected variable type"
 
 @[tactic arithMulPos] def evalArithMulPos : Tactic := fun stx => do
   trace[smt.profile] m!"[arithMulPos] start time: {← IO.monoNanosNow}ns"
   let (a, b, c, compId) ← parseArithMul stx
-  let fname ← mkFreshId
   let mvar ← getMainGoal
-  let mvar' ← arithMulMeta mvar a b c compId fname
-                [ ``arith_mul_pos_lt
-                , ``arith_mul_pos_le
-                , ``arith_mul_pos_gt
-                , ``arith_mul_pos_ge
-                , ``arith_mul_pos_eq
-                ]
+  let pf ← arithMulMeta a b c true compId
+                ⟨[ ``arith_mul_pos_lt
+                 , ``arith_mul_pos_le
+                 , ``arith_mul_pos_gt
+                 , ``arith_mul_pos_ge
+                 , ``arith_mul_pos_eq
+                 ], rfl⟩
+  let type ← inferType pf
+  let fname ← mkFreshId
+  let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type pf
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
   trace[smt.profile] m!"[arithMulPos] end time: {← IO.monoNanosNow}ns"
@@ -91,20 +119,53 @@ def arithMulMeta (mvar : MVarId) (va vb vc : Expr) (compId : Nat)
 @[tactic arithMulNeg] def evalArithMulNeg : Tactic := fun stx => do
   trace[smt.profile] m!"[arithMulNeg] start time: {← IO.monoNanosNow}ns"
   let (a, b, c, compId) ← parseArithMul stx
-  let fname ← mkFreshId
   let mvar ← getMainGoal
-  let mvar' ← arithMulMeta mvar a b c compId fname
-                [ ``arith_mul_neg_lt
-                , ``arith_mul_neg_le
-                , ``arith_mul_neg_gt
-                , ``arith_mul_neg_ge
-                , ``arith_mul_neg_eq
-                ]
+  let pf ← arithMulMeta a b c false compId
+                ⟨[ ``arith_mul_neg_lt
+                 , ``arith_mul_neg_le
+                 , ``arith_mul_neg_gt
+                 , ``arith_mul_neg_ge
+                 , ``arith_mul_neg_eq
+                 ], rfl⟩
+  let type ← inferType pf
+  let fname ← mkFreshId
+  let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type pf
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
   trace[smt.profile] m!"[arithMulNeg] end time: {← IO.monoNanosNow}ns"
 
+
 example {a b c : Int} : 0 < 2 * c ∧ a < b → (2 * c) * a < (2 * c) * b := by
   arithMulPos [a, b, 2 * c], 0
+
+example {a b c : Int} : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a b c : Rat}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a b : Rat} {c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a b : Rat} {c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a c : Rat} {b : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a : Rat} {b c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {b c : Rat} {a : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {b : Rat} {a c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {c : Rat} {a b : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
+
+example {a b c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
+  arithMulPos [a, b, c], 0
 
 end Smt.Reconstruction.Certifying
