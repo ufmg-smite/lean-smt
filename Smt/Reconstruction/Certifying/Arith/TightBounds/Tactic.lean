@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
+import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
 
 import Mathlib.Algebra.Order.Floor
@@ -22,7 +23,7 @@ def isIntLt : Expr → Bool
 def intTightMeta (mvar : MVarId) (h : Expr) (thmName outName : Name)
   : MetaM MVarId :=
   mvar.withContext do
-    let t ← inferType h
+    let t ← expandLet (← inferType h)
     let arg ←
       if isIntLt t then
         mkAppM ``castLT.IntRat #[h]
@@ -37,6 +38,7 @@ syntax (name := intTightUb) "intTightUb" term : tactic
   withMainContext do
     trace[smt.debug] m!"[intTightUb] start time: {← IO.monoNanosNow}ns"
     let h ← elabTerm stx[1] none
+    let h ← expandLet h
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← intTightMeta mvar h ``intTightUb' fname
@@ -49,6 +51,7 @@ syntax (name := intTightLb) "intTightLb" term : tactic
   withMainContext do
     trace[smt.debug] m!"[intTightLb] start time: {← IO.monoNanosNow}ns"
     let h ← elabTerm stx[1] none
+    let h ← expandLet h
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← intTightMeta mvar h ``intTightLb' fname

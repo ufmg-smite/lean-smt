@@ -54,9 +54,9 @@ def getCastRelThm (rel : Name) : Name :=
 
 def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h₂ =>
   mvar.withContext do
-    let t₁ ← inferType h₁
+    let t₁ ← expandLet (← inferType h₁)
     let rel₁ ← getOp t₁
-    let t₂ ← inferType h₂
+    let t₂ ← expandLet (← inferType h₂)
     let rel₂ ← getOp t₂
     let tp₁ ← getOpType t₁
     let tp₂ ← getOpType t₂
@@ -120,7 +120,7 @@ syntax (name := sumBounds) "sumBounds" "[" term,* "]" : tactic
 
 def parseSumBounds : Syntax → TacticM (List Expr)
   | `(tactic| sumBounds [$[$hs],*]) =>
-    hs.toList.mapM (λ stx => elabTerm stx.raw none)
+    hs.toList.mapM (fun stx => do expandLet (← elabTerm stx.raw none))
   | _ => throwError "[sumBounds]: expects a list of premisses"
 
 @[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
@@ -139,15 +139,9 @@ def parseSumBounds : Syntax → TacticM (List Expr)
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.debug] m!"[sumBounds] end time: {← IO.monoNanosNow}ns"
 
-end Smt.Reconstruction.Certifying
-
-variable {e f g hh : Int}
-variable {i j k l : Rat}
-variable {h : e < f}
-variable {h2 : i < j}
-variable {h3 : g < hh}
-
 example {a b c d e f : Nat} : a < d → b < e → c < f → a + (b + c) < d + (e + f) := by
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
+
+end Smt.Reconstruction.Certifying
 
