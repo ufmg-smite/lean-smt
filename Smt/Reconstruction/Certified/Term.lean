@@ -176,171 +176,171 @@ open sort
 open value
 
 -- Sort definitions
-@[matchPattern] def boolSort := atom boolNum
-@[matchPattern] def intSort := atom intNum
-@[matchPattern] def strSort := atom strNum
-@[matchPattern] def RESort := atom RENum
+@[match_pattern] def boolSort := atom boolNum
+@[match_pattern] def intSort := atom intNum
+@[match_pattern] def strSort := atom strNum
+@[match_pattern] def RESort := atom RENum
 
 -- Interpreted constants
-@[matchPattern] def botConst := const botNum boolSort
-@[matchPattern] def notConst := const notNum (arrow boolSort boolSort)
-@[matchPattern] def orConst :=
+@[match_pattern] def botConst := const botNum boolSort
+@[match_pattern] def notConst := const notNum (arrow boolSort boolSort)
+@[match_pattern] def orConst :=
   const orNum (arrow boolSort (arrow boolSort boolSort))
-@[matchPattern] def andConst :=
+@[match_pattern] def andConst :=
   const andNum (arrow boolSort (arrow boolSort boolSort))
-@[matchPattern] def impliesConst :=
+@[match_pattern] def impliesConst :=
   const impliesNum (arrow boolSort (arrow boolSort boolSort))
-@[matchPattern] def xorConst :=
+@[match_pattern] def xorConst :=
   const xorNum (arrow boolSort (arrow boolSort boolSort))
-@[matchPattern] def bIteConst :=
+@[match_pattern] def bIteConst :=
   const bIteNum (arrow boolSort (arrow boolSort (arrow boolSort boolSort)))
 
-@[matchPattern] def eqConst := const eqNum dep
-@[matchPattern] def distinctConst := const distinctNum dep
-@[matchPattern] def fIteConst := const fIteNum dep
+@[match_pattern] def eqConst := const eqNum dep
+@[match_pattern] def distinctConst := const distinctNum dep
+@[match_pattern] def fIteConst := const fIteNum dep
 
 
-@[matchPattern] def plusConst :=
+@[match_pattern] def plusConst :=
   const plusNum (arrow intSort (arrow intSort intSort))
-@[matchPattern] def minusConst :=
+@[match_pattern] def minusConst :=
   const minusNum (arrow intSort (arrow intSort intSort))
-@[matchPattern] def multConst :=
+@[match_pattern] def multConst :=
   const multNum (arrow intSort (arrow intSort intSort))
-@[matchPattern] def gtConst :=
+@[match_pattern] def gtConst :=
   const gtNum (arrow intSort (arrow intSort boolSort))
-@[matchPattern] def gteConst :=
+@[match_pattern] def gteConst :=
   const gteNum (arrow intSort (arrow intSort boolSort))
-@[matchPattern] def ltConst :=
+@[match_pattern] def ltConst :=
   const ltNum (arrow intSort (arrow intSort boolSort))
-@[matchPattern] def lteConst :=
+@[match_pattern] def lteConst :=
   const lteNum (arrow intSort (arrow intSort boolSort))
 
-@[matchPattern] def selectConst := const selectNum dep
-@[matchPattern] def storeConst := const storeNum dep
+@[match_pattern] def selectConst := const selectNum dep
+@[match_pattern] def storeConst := const storeNum dep
 
-@[matchPattern] def bitOfConst :=
+@[match_pattern] def bitOfConst :=
   const bvBitOfNum dep
-@[matchPattern] def bbTConst :=
+@[match_pattern] def bbTConst :=
   const bvBbTNum dep
-@[matchPattern] def bvNotConst := const bvNotNum dep
-@[matchPattern] def bvAndConst :=
+@[match_pattern] def bvNotConst := const bvNotNum dep
+@[match_pattern] def bvAndConst :=
   const bvAndNum dep
-@[matchPattern] def bvOrConst :=
+@[match_pattern] def bvOrConst :=
   const bvOrNum dep
-@[matchPattern] def bvXorConst :=
+@[match_pattern] def bvXorConst :=
   const bvXorNum dep
-@[matchPattern] def bvNandConst :=
+@[match_pattern] def bvNandConst :=
   const bvNandNum dep
-@[matchPattern] def bvNorConst :=
+@[match_pattern] def bvNorConst :=
   const bvNorNum dep
-@[matchPattern] def bvXnorConst :=
+@[match_pattern] def bvXnorConst :=
   const bvXnorNum dep
-@[matchPattern] def bvCompConst :=
+@[match_pattern] def bvCompConst :=
   const bvCompNum dep
-@[matchPattern] def bvUltConst :=
+@[match_pattern] def bvUltConst :=
   const bvUltNum dep
-@[matchPattern] def bvUleConst :=
+@[match_pattern] def bvUleConst :=
   const bvUleNum dep
-@[matchPattern] def bvUgtConst :=
+@[match_pattern] def bvUgtConst :=
   const bvUgtNum dep
-@[matchPattern] def bvUgeConst :=
+@[match_pattern] def bvUgeConst :=
   const bvUgeNum dep
-@[matchPattern] def bvSltConst :=
+@[match_pattern] def bvSltConst :=
   const bvSltNum dep
-@[matchPattern] def bvSleConst :=
+@[match_pattern] def bvSleConst :=
   const bvSleNum dep
-@[matchPattern] def bvSgtConst :=
+@[match_pattern] def bvSgtConst :=
   const bvSgtNum dep
-@[matchPattern] def bvSgeConst :=
+@[match_pattern] def bvSgeConst :=
   const bvSgeNum dep
-@[matchPattern] def bvAddConst :=
+@[match_pattern] def bvAddConst :=
   const bvAddNum dep
-@[matchPattern] def bvNegConst :=
+@[match_pattern] def bvNegConst :=
   const bvNegNum dep
-@[matchPattern] def bvSubConst :=
+@[match_pattern] def bvSubConst :=
   const bvSubNum dep
-@[matchPattern] def bvMulConst :=
+@[match_pattern] def bvMulConst :=
   const bvMulNum dep
-@[matchPattern] def bvShlConst :=
+@[match_pattern] def bvShlConst :=
   const bvShlNum dep
-@[matchPattern] def bvLShrConst :=
+@[match_pattern] def bvLShrConst :=
   const bvLShrNum dep
-@[matchPattern] def bvAShrConst :=
+@[match_pattern] def bvAShrConst :=
   const bvAShrNum dep
-@[matchPattern] def bvExtractConst :=
+@[match_pattern] def bvExtractConst :=
   const bvExtractNum dep
-@[matchPattern] def bvConcatConst :=
+@[match_pattern] def bvConcatConst :=
   const bvConcatNum dep
-@[matchPattern] def bvZeroExtConst :=
+@[match_pattern] def bvZeroExtConst :=
   const bvZeroExtNum dep
-@[matchPattern] def bvSignExtConst :=
+@[match_pattern] def bvSignExtConst :=
   const bvSignExtNum dep
-@[matchPattern] def bvRepeatConst :=
+@[match_pattern] def bvRepeatConst :=
   const bvRepeatNum dep
 
 /-
-@[matchPattern] def bvNotConst (n : Nat) := const bvNotNum (arrow (bv n) (bv n))
-@[matchPattern] def bvAndConst (n : Nat) :=
+@[match_pattern] def bvNotConst (n : Nat) := const bvNotNum (arrow (bv n) (bv n))
+@[match_pattern] def bvAndConst (n : Nat) :=
   const bvAndNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvOrConst (n : Nat) :=
+@[match_pattern] def bvOrConst (n : Nat) :=
   const bvOrNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvXorConst (n : Nat) :=
+@[match_pattern] def bvXorConst (n : Nat) :=
   const bvXorNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvNandConst (n : Nat) :=
+@[match_pattern] def bvNandConst (n : Nat) :=
   const bvNandNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvNorConst (n : Nat) :=
+@[match_pattern] def bvNorConst (n : Nat) :=
   const bvNorNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvXnorConst (n : Nat) :=
+@[match_pattern] def bvXnorConst (n : Nat) :=
   const bvXnorNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvCompConst (n : Nat) :=
+@[match_pattern] def bvCompConst (n : Nat) :=
   const bvCompNum (arrow (bv n) (arrow (bv n) (bv 1)))
-@[matchPattern] def bvUltConst (n : Nat) :=
+@[match_pattern] def bvUltConst (n : Nat) :=
   const bvUltNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvUleConst (n : Nat) :=
+@[match_pattern] def bvUleConst (n : Nat) :=
   const bvUleNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvUgtConst (n : Nat) :=
+@[match_pattern] def bvUgtConst (n : Nat) :=
   const bvUgtNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvUgeConst (n : Nat) :=
+@[match_pattern] def bvUgeConst (n : Nat) :=
   const bvUgeNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvSltConst (n : Nat) :=
+@[match_pattern] def bvSltConst (n : Nat) :=
   const bvSltNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvSleConst (n : Nat) :=
+@[match_pattern] def bvSleConst (n : Nat) :=
   const bvSleNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvSgtConst (n : Nat) :=
+@[match_pattern] def bvSgtConst (n : Nat) :=
   const bvSgtNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvSgeConst (n : Nat) :=
+@[match_pattern] def bvSgeConst (n : Nat) :=
   const bvSgeNum (arrow (bv n) (arrow (bv n) boolSort))
-@[matchPattern] def bvAddConst (n : Nat) :=
+@[match_pattern] def bvAddConst (n : Nat) :=
   const bvAddNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvNegConst (n : Nat) :=
+@[match_pattern] def bvNegConst (n : Nat) :=
   const bvNegNum (arrow (bv n) (bv n))
-@[matchPattern] def bvSubConst (n : Nat) :=
+@[match_pattern] def bvSubConst (n : Nat) :=
   const bvSubNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvMulConst (n : Nat) :=
+@[match_pattern] def bvMulConst (n : Nat) :=
   const bvMulNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvShlConst (n : Nat) :=
+@[match_pattern] def bvShlConst (n : Nat) :=
   const bvShlNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvLShrConst (n : Nat) :=
+@[match_pattern] def bvLShrConst (n : Nat) :=
   const bvLShrNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvAShrConst (n : Nat) :=
+@[match_pattern] def bvAShrConst (n : Nat) :=
   const bvAShrNum (arrow (bv n) (arrow (bv n) (bv n)))
-@[matchPattern] def bvExtractConst (n i j : Nat) :=
+@[match_pattern] def bvExtractConst (n i j : Nat) :=
   const bvExtractNum (arrow (bv n) (arrow intSort (arrow intSort (bv (i - j + 1)))))
-@[matchPattern] def bvConcatConst (m n : Nat) :=
+@[match_pattern] def bvConcatConst (m n : Nat) :=
   const bvConcatNum (arrow (bv m) (arrow (bv n) (bv (m+n))))
-@[matchPattern] def bvZeroExtConst (n i : Nat) :=
+@[match_pattern] def bvZeroExtConst (n i : Nat) :=
   const bvZeroExtNum (arrow (bv n) (arrow intSort (bv (n + i))))
-@[matchPattern] def bvSignExtConst (n i : Nat) :=
+@[match_pattern] def bvSignExtConst (n i : Nat) :=
   const bvSignExtNum (arrow (bv n) (arrow intSort (bv (n + i))))
-@[matchPattern] def bvRepeatConst (n i : Nat) :=
+@[match_pattern] def bvRepeatConst (n i : Nat) :=
   const bvRepeatNum (arrow intSort (arrow (bv n) (bv (n * i))))
 -/
 
-@[matchPattern] def emptyStrConst := const emptyStrNum strSort
-@[matchPattern] def strPlusConst := const strPlusNum (arrow strSort (arrow strSort strSort))
-@[matchPattern] def strLengthConst := const strLengthNum (arrow strSort intSort)
-@[matchPattern] def inREConst := const strLengthNum (arrow RESort (arrow strSort boolSort))
-@[matchPattern] def REInterConst := const REInterNum (arrow RESort (arrow RESort RESort))
+@[match_pattern] def emptyStrConst := const emptyStrNum strSort
+@[match_pattern] def strPlusConst := const strPlusNum (arrow strSort (arrow strSort strSort))
+@[match_pattern] def strLengthConst := const strLengthNum (arrow strSort intSort)
+@[match_pattern] def inREConst := const strLengthNum (arrow RESort (arrow strSort boolSort))
+@[match_pattern] def REInterConst := const REInterNum (arrow RESort (arrow RESort RESort))
 
 instance : Inhabited term where
   default := botConst
@@ -348,108 +348,108 @@ instance : Inhabited term where
 deriving instance Inhabited for term
 
 -- macros for creating terms with interpreted constants
-@[matchPattern] def bot : term := val (bool false) boolSort
-@[matchPattern] def top : term := val (bool true) boolSort
-@[matchPattern] def not : term → term := λ t => notConst • t
-@[matchPattern] def or : term → term → term := λ t₁ t₂ => orConst • t₁ • t₂
-@[matchPattern] def and : term → term → term := λ t₁ t₂ => andConst • t₁ • t₂
-@[matchPattern] def implies : term → term → term :=
+@[match_pattern] def bot : term := val (bool false) boolSort
+@[match_pattern] def top : term := val (bool true) boolSort
+@[match_pattern] def not : term → term := λ t => notConst • t
+@[match_pattern] def or : term → term → term := λ t₁ t₂ => orConst • t₁ • t₂
+@[match_pattern] def and : term → term → term := λ t₁ t₂ => andConst • t₁ • t₂
+@[match_pattern] def implies : term → term → term :=
   λ t₁ t₂ => impliesConst • t₁ • t₂
-@[matchPattern] def iff : term → term → term :=
+@[match_pattern] def iff : term → term → term :=
   λ t₁ t₂ => andConst • (impliesConst • t₁ • t₂) • (impliesConst • t₂ • t₁)
-@[matchPattern] def xor : term → term → term := λ t₁ t₂ => xorConst • t₁ • t₂
-@[matchPattern] def nand : term → term → term := λ t₁ t₂ => notConst • (andConst • t₁ • t₂)
-@[matchPattern] def nor : term → term → term := λ t₁ t₂ => notConst • (orConst • t₁ • t₂)
-@[matchPattern] def bIte : term → term → term → term :=
+@[match_pattern] def xor : term → term → term := λ t₁ t₂ => xorConst • t₁ • t₂
+@[match_pattern] def nand : term → term → term := λ t₁ t₂ => notConst • (andConst • t₁ • t₂)
+@[match_pattern] def nor : term → term → term := λ t₁ t₂ => notConst • (orConst • t₁ • t₂)
+@[match_pattern] def bIte : term → term → term → term :=
   λ c t₁ t₂ => bIteConst • c • t₁ • t₂
 
-@[matchPattern] def plus : term → term → term := λ t₁ t₂ => plusConst • t₁ • t₂
-@[matchPattern] def minus : term → term → term :=
+@[match_pattern] def plus : term → term → term := λ t₁ t₂ => plusConst • t₁ • t₂
+@[match_pattern] def minus : term → term → term :=
   λ t₁ t₂ => minusConst • t₁ • t₂
-@[matchPattern] def mult : term → term → term := λ t₁ t₂ => multConst • t₁ • t₂
-@[matchPattern] def gt : term → term → term := λ t₁ t₂ => gtConst • t₁ • t₂
-@[matchPattern] def gte : term → term → term := λ t₁ t₂ => gteConst • t₁ • t₂
-@[matchPattern] def lt : term → term → term := λ t₁ t₂ => ltConst • t₁ • t₂
-@[matchPattern] def lte : term → term → term := λ t₁ t₂ => lteConst • t₁ • t₂
+@[match_pattern] def mult : term → term → term := λ t₁ t₂ => multConst • t₁ • t₂
+@[match_pattern] def gt : term → term → term := λ t₁ t₂ => gtConst • t₁ • t₂
+@[match_pattern] def gte : term → term → term := λ t₁ t₂ => gteConst • t₁ • t₂
+@[match_pattern] def lt : term → term → term := λ t₁ t₂ => ltConst • t₁ • t₂
+@[match_pattern] def lte : term → term → term := λ t₁ t₂ => lteConst • t₁ • t₂
 
-@[matchPattern] def fIte : term → term → term → term :=
+@[match_pattern] def fIte : term → term → term → term :=
   λ t₁ t₂ t₃ => fIteConst • t₁ • t₂ • t₃
-@[matchPattern] def eq : term → term → term := λ t₁ t₂ => eqConst • t₁ • t₂
-@[matchPattern] def distinct : term → term → term :=
+@[match_pattern] def eq : term → term → term := λ t₁ t₂ => eqConst • t₁ • t₂
+@[match_pattern] def distinct : term → term → term :=
   λ t₁ t₂ => distinctConst • t₁ • t₂
 
-@[matchPattern] def select : term → term → term :=
+@[match_pattern] def select : term → term → term :=
   λ t₁ t₂ => selectConst • t₁ • t₂
 
-@[matchPattern] def store : term → term → term → term :=
+@[match_pattern] def store : term → term → term → term :=
   λ t₁ t₂ t₃ => storeConst • t₁ • t₂ • t₃
 
-@[matchPattern] def bitOf : term → term → term :=
+@[match_pattern] def bitOf : term → term → term :=
   λ t₁ t₂ => bitOfConst • t₁ • t₂
-@[matchPattern] def bbT : term := bbTConst
-@[matchPattern] def bvNot : term → term :=
+@[match_pattern] def bbT : term := bbTConst
+@[match_pattern] def bvNot : term → term :=
   λ t => bvNotConst • t
-@[matchPattern] def bvAnd : term → term → term :=
+@[match_pattern] def bvAnd : term → term → term :=
   λ t₁ t₂ => bvAndConst • t₁ • t₂
-@[matchPattern] def bvOr : term → term → term :=
+@[match_pattern] def bvOr : term → term → term :=
   λ t₁ t₂ => bvOrConst • t₁ • t₂
-@[matchPattern] def bvXor : term → term → term :=
+@[match_pattern] def bvXor : term → term → term :=
   λ t₁ t₂ => bvXorConst • t₁ • t₂
-@[matchPattern] def bvNand : term → term → term :=
+@[match_pattern] def bvNand : term → term → term :=
   λ t₁ t₂ => bvNandConst • t₁ • t₂
-@[matchPattern] def bvNor : term → term → term :=
+@[match_pattern] def bvNor : term → term → term :=
   λ t₁ t₂ => bvNorConst • t₁ • t₂
-@[matchPattern] def bvXnor : term → term → term :=
+@[match_pattern] def bvXnor : term → term → term :=
   λ t₁ t₂ => bvXnorConst • t₁ • t₂
-@[matchPattern] def bvComp : term → term → term :=
+@[match_pattern] def bvComp : term → term → term :=
   λ t₁ t₂ => bvCompConst • t₁ • t₂
-@[matchPattern] def bvUlt : term → term → term :=
+@[match_pattern] def bvUlt : term → term → term :=
   λ t₁ t₂ => bvUltConst • t₁ • t₂
-@[matchPattern] def bvUle : term → term → term :=
+@[match_pattern] def bvUle : term → term → term :=
   λ t₁ t₂ => bvUleConst • t₁ • t₂
-@[matchPattern] def bvUgt : term → term → term :=
+@[match_pattern] def bvUgt : term → term → term :=
   λ t₁ t₂ => bvUgtConst • t₁ • t₂
-@[matchPattern] def bvUge : term → term → term :=
+@[match_pattern] def bvUge : term → term → term :=
   λ t₁ t₂ => bvUgeConst • t₁ • t₂
-@[matchPattern] def bvSlt : term → term → term :=
+@[match_pattern] def bvSlt : term → term → term :=
   λ t₁ t₂ => bvSltConst • t₁ • t₂
-@[matchPattern] def bvSle : term → term → term :=
+@[match_pattern] def bvSle : term → term → term :=
   λ t₁ t₂ => bvSleConst • t₁ • t₂
-@[matchPattern] def bvSgt : term → term → term :=
+@[match_pattern] def bvSgt : term → term → term :=
   λ t₁ t₂ => bvSgtConst • t₁ • t₂
-@[matchPattern] def bvSge : term → term → term :=
+@[match_pattern] def bvSge : term → term → term :=
   λ t₁ t₂ => bvSgeConst • t₁ • t₂
-@[matchPattern] def bvAdd : term → term → term :=
+@[match_pattern] def bvAdd : term → term → term :=
   λ t₁ t₂ => bvAddConst • t₁ • t₂
-@[matchPattern] def bvNeg : term → term :=
+@[match_pattern] def bvNeg : term → term :=
   λ t => bvNegConst • t
-@[matchPattern] def bvSub : term → term → term :=
+@[match_pattern] def bvSub : term → term → term :=
   λ t₁ t₂ => bvSubConst • t₁ • t₂
-@[matchPattern] def bvMul : term → term → term :=
+@[match_pattern] def bvMul : term → term → term :=
   λ t₁ t₂ => bvMulConst • t₁ • t₂
-@[matchPattern] def bvShl : term → term → term :=
+@[match_pattern] def bvShl : term → term → term :=
   λ t₁ t₂ => bvShlConst • t₁ • t₂
-@[matchPattern] def bvLShr : term → term → term :=
+@[match_pattern] def bvLShr : term → term → term :=
   λ t₁ t₂ => bvLShrConst • t₁ • t₂
-@[matchPattern] def bvAShr : term → term → term :=
+@[match_pattern] def bvAShr : term → term → term :=
   λ t₁ t₂ => bvAShrConst • t₁ • t₂
-@[matchPattern] def bvExtract :
+@[match_pattern] def bvExtract :
   term → term → term → term :=
   λ t₁ t₂ t₃ => bvExtractConst • t₁ • t₂ • t₃
-@[matchPattern] def bvConcat : term → term → term :=
+@[match_pattern] def bvConcat : term → term → term :=
   λ t₁ t₂ => bvConcatConst • t₁ • t₂
-@[matchPattern] def bvZeroExt : term → term → term :=
+@[match_pattern] def bvZeroExt : term → term → term :=
   λ t₁ t₂ => bvZeroExtConst • t₁ • t₂
-@[matchPattern] def bvSignExt : term → term → term :=
+@[match_pattern] def bvSignExt : term → term → term :=
   λ t₁ t₂ => bvSignExtConst • t₁ • t₂
-@[matchPattern] def bvRepeat : term → term → term :=
+@[match_pattern] def bvRepeat : term → term → term :=
   λ t₁ t₂ => bvRepeatConst • t₁ • t₂
-@[matchPattern] def emptyStr : term := emptyStrConst
-@[matchPattern] def strPlus : term → term → term :=
+@[match_pattern] def emptyStr : term := emptyStrConst
+@[match_pattern] def strPlus : term → term → term :=
   λ t₁ t₂ => strPlusConst • t₁ • t₂
-@[matchPattern] def strLength : term → term := λ t => strLengthConst • t
-@[matchPattern] def inRE : term → term → term := λ t₁ t₂ => inREConst • t₁ • t₂
-@[matchPattern] def REInter : term → term → term := λ t₁ t₂ => REInterConst • t₁ • t₂
+@[match_pattern] def strLength : term → term := λ t => strLengthConst • t
+@[match_pattern] def inRE : term → term → term := λ t₁ t₂ => inREConst • t₁ • t₂
+@[match_pattern] def REInter : term → term → term := λ t₁ t₂ => REInterConst • t₁ • t₂
 
 def termToString : term → String
 | undef => "undef"
@@ -596,7 +596,7 @@ def mkForall (v : Nat) (body : term) : term :=
   qforall v body
 
 /- Aux functions to create values -/
-@[matchPattern] def mkValInt : Int → term :=
+@[match_pattern] def mkValInt : Int → term :=
 λ i => val (value.integer i) intSort
 
 def mkValChar : Char → term := λ c =>

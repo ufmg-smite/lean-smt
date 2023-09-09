@@ -1,5 +1,5 @@
-import Smt.Reconstruction.Types
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Types
+import Smt.Reconstruction.Certified.Term
 
 open Types
 open Coe

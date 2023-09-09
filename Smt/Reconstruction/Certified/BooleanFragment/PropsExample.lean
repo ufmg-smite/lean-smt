@@ -1,9 +1,7 @@
-import Cdclt.Term
-import Cdclt.Boolean
+import Smt.Reconstruction.Certified.Term
 
 open proof
 open term
-open rules
 
 def Interpretation: Type := Nat → Prop
 

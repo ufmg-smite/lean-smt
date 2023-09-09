@@ -29,6 +29,9 @@ def congDupOr (props : List Expr) (val : Expr) (i j : Nat) (last : Bool)
         let lambda ← mkLambdaFVars #[bv] r
         mkAppM ``congOrLeft #[lambda, val]
 
+
+
+
 -- i: the index fixed in the original list
 -- j: the index of li.head! in the original list
 def loop (i j n suffIdx : Nat) (val pivot : Expr) (li : List Expr)
