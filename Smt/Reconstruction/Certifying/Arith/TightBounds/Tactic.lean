@@ -8,8 +8,8 @@ Authors: Tomaz Gomes Mascarenhas
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
 
-import Mathlib.Algebra.Order.Floor
 import Lean
+import Mathlib.Algebra.Order.Floor
 
 open Lean hiding Rat
 open Meta Elab.Tactic Expr
@@ -26,7 +26,7 @@ def intTightMeta (mvar : MVarId) (h : Expr) (thmName outName : Name)
     let t ← expandLet (← inferType h)
     let arg ←
       if isIntLt t then
-        mkAppM ``castLT.IntRat #[h]
+        mkAppM ``castLT #[h]
       else pure h
     let answer ← mkAppM thmName #[arg]
     let answerType ← inferType answer
