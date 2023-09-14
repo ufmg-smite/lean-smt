@@ -83,9 +83,7 @@ theorem contradiction': ∀ {t: term},
     impliesIn (and (not t) t) bot := by
   intros t I h
   simp at *
-  have h' := eqTrue h
-  have hna := h'.1
-  have ha := h'.2
+  have ⟨hna, ha⟩  := eqTrue h
   exact hna ha
 
 theorem R1' : ∀ {t₁ t₂ : term},
