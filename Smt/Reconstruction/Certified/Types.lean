@@ -1,4 +1,4 @@
-import Smt.Reconstruction.Certified.Term
+import Smt.Reconstruction.Term
 
 open proof
 open sort
@@ -22,11 +22,11 @@ def Interpretation: Type 1 :=
   Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
 
 
-/- def interpSort' : sort → Type := fun s => -/
-/-   match s with -/
-/-   | sort.arrow s₁ s₂ => interpSort s₁ → interpSort s₂ -/
-/-   | sort.atom 1 => Prop -/
-/-   | _ => Prop -/
+def interpSort' : sort → Type := fun s =>
+  match s with
+  | sort.arrow s₁ s₂ => interpSort s₁ → interpSort s₂
+  | sort.atom 1 => Prop
+  | _ => Prop
 
 end Types
 

@@ -1,6 +1,6 @@
-import Smt.Reconstruction.Certified.Env
-import Smt.Reconstruction.Certified.Rules
-import Smt.Reconstruction.Certified.Term
+import Smt.Reconstruction.Env
+import Smt.Reconstruction.Rules
+import Smt.Reconstruction.Term
 
 open Types
 open Rules
