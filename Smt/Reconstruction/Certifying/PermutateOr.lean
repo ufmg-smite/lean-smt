@@ -57,8 +57,4 @@ def parsePermuteOr : Syntax → TacticM (List Nat × Option Nat)
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.debug] m!"[permutateOr] end time: {← IO.monoNanosNow}ns"
 
-example : (D ∨ E ∨ F ∨ G) ∨  (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) → (A ∨ B ∨ C ∨ Z ∨ W ∨ J ∨ L) ∨ (K ∨ I) ∨ (D ∨ E ∨ F ∨ G) := by
-  intro h
-  permutateOr h, [1, 2, 0], 2
-
 end Smt.Reconstruction.Certifying

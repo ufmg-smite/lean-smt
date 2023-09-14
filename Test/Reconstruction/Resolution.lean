@@ -21,3 +21,12 @@ example : ¬ (A ∧ B) ∨ C ∨ ¬ D ∨ ¬ A → A ∨ ¬ (A ∧ B) → ¬ (A 
 example : A ∨ B ∨ C ∨ D → ¬ A → B ∨ C ∨ D := by
   intros h₁ h₂
   R1 h₁, h₂, A
+
+example : B ∨ A ∨ C ∨ A → D ∨ ¬ A ∨ E ∨ ¬ A ∨ F → B ∨ C ∨ A ∨ D ∨ E ∨ ¬ A ∨ F  := by
+  intros h₁ h₂
+  R1 h₁, h₂, A
+
+example : A → ¬ A → False := by
+  intros h₁ h₂
+  R1 h₁, h₂, A
+

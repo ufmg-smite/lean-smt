@@ -15,3 +15,7 @@ example {a b c d e f : ℚ} : a < d → b ≤ e → c ≤ f → a + (b + c) < d 
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
 
+example {a b c d e f : Nat} : a < d → b < e → c < f → a + (b + c) < d + (e + f) := by
+  intros h₁ h₂ h₃
+  sumBounds [h₁, h₂, h₃]
+

@@ -149,12 +149,3 @@ syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoNanosNow}ns"
-
-example : ¬ A ∨ ¬ B ∨ C ∨ D ∨ E → ((A ∧ B) → C ∨ D ∨ E) := fun h => by
-  liftOrNToImp h, 2
-
-example :
-  let p1 := ¬ A ∨ ¬ B ∨ C ∨ D ∨ E
-  let p2 := ((A ∧ B) → C ∨ D ∨ E)
-  p1 → p2 := fun h => by
-  liftOrNToImp h, 2

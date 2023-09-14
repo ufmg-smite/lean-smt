@@ -26,3 +26,13 @@ example :
   A ∨ B ∨ (E ∨ F) ∨ A ∨ B ∨ (E ∨ F) → A ∨ B ∨ (E ∨ F) :=
   by intro h
      factor h, 5
+
+example :
+  (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
+  by intro h
+     factor h, 3
+
+example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
+  intro h
+  factor h, 4
+

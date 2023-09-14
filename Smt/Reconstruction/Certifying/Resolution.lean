@@ -158,12 +158,4 @@ where
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[resolution_2] end time: {← IO.monoNanosNow}ns"
 
-example : B ∨ A ∨ C ∨ A → D ∨ ¬ A ∨ E ∨ ¬ A ∨ F → B ∨ C ∨ A ∨ D ∨ E ∨ ¬ A ∨ F  := by
-  intros h₁ h₂
-  R1 h₁, h₂, A
-
-example : A → ¬ A → False := by
-  intros h₁ h₂
-  R1 h₁, h₂, A
-
 end Smt.Reconstruction.Certifying

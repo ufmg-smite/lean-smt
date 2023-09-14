@@ -139,9 +139,5 @@ def parseSumBounds : Syntax → TacticM (List Expr)
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.debug] m!"[sumBounds] end time: {← IO.monoNanosNow}ns"
 
-example {a b c d e f : Nat} : a < d → b < e → c < f → a + (b + c) < d + (e + f) := by
-  intros h₁ h₂ h₃
-  sumBounds [h₁, h₂, h₃]
-
 end Smt.Reconstruction.Certifying
 

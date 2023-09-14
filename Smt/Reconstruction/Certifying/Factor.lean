@@ -106,13 +106,4 @@ def parseFactor : Syntax → TacticM (Option Nat)
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile] m!"[factor] end time: {← IO.monoNanosNow}ns"
 
-example :
-  (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
-  by intro h
-     factor h, 3
-
-example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
-  intro h
-  factor h, 4
-
 end Smt.Reconstruction.Certifying
