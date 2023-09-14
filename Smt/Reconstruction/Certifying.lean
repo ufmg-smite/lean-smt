@@ -6,7 +6,7 @@ import Smt.Reconstruction.Certifying.PermutateOr
 import Smt.Reconstruction.Certifying.Pull
 import Smt.Reconstruction.Certifying.Quant
 import Smt.Reconstruction.Certifying.Resolution
-import Smt.Reconstruction.Certifying.TimedBoolean
+import Smt.Reconstruction.Certifying.Timed
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Arith
 import Smt.Reconstruction.Rewrites.Arith
