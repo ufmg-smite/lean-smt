@@ -5,10 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
-
-import Mathlib.Data.Rat.Basic
+import Mathlib.Algebra.Order.Floor
 import Mathlib.Algebra.Order.Ring.Lemmas
+import Mathlib.Data.Rat.Basic
+import Mathlib.Data.Rat.Floor
 
 namespace Smt.Reconstruction.Certifying
 
