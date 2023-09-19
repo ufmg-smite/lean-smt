@@ -7,9 +7,9 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
+import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
-import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
 import Smt.Reconstruction.Certifying.Util
 
 open Lean hiding Rat
@@ -17,39 +17,15 @@ open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying
 
-theorem castLT.NatRat : ∀ {a b : Nat}, a < b → Rat.ofInt (Int.ofNat a) < Rat.ofInt (Int.ofNat b) := by
-  intros a b
-  simp
-
-theorem castLT.NatInt : ∀ {a b : Nat}, a < b → Int.ofNat a < Int.ofNat b := by
-  intros a b
-  simp
-
-theorem castLE.NatRat : ∀ {a b : Nat}, a ≤ b → Rat.ofInt (Int.ofNat a) ≤ Rat.ofInt (Int.ofNat b) := by
-  intros a b
-  simp
-
-theorem castLE.NatInt : ∀ {a b : Nat}, a ≤ b → Int.ofNat a ≤ Int.ofNat b := by
-  intros a b
-  simp
-
-theorem castEQ.NatRat : ∀ {a b : Nat}, a = b → Rat.ofInt (Int.ofNat a) = Rat.ofInt (Int.ofNat b) := by
-  intros a b h
-  rw [h]
-
-theorem castEQ.NatInt : ∀ {a b : Nat}, a = b → Int.ofNat a = Int.ofNat b := by
-  intros a b h
-  rw [h]
-
-theorem Int.castEQ : ∀ {a b : Int}, a = b → Rat.ofInt a = Rat.ofInt b := by
+theorem castEQ : ∀ {a b : Int}, a = b → Rat.ofInt a = Rat.ofInt b := by
   intros a b h
   rw [h]
 
 def getCastRelThm (rel : Name) : Name :=
   match rel with
-  | ``LT.lt => `castLT
-  | ``LE.le => `castLE
-  | ``Eq    => `castEQ
+  | ``LT.lt => ``castLT
+  | ``LE.le => ``castLE
+  | ``Eq    => ``castEQ
   | _ => `unreachable
 
 def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h₂ =>
@@ -62,23 +38,11 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
     let tp₂ ← getOpType t₂
     let (h₁, h₂) ←
       match tp₁, tp₂ with
-      | const `Nat .., const `Int .. =>
-        let thm := getCastRelThm rel₁ ++ `NatInt
-        pure (← mkAppM thm #[h₁], h₂)
-      | const `Nat .., const `Rat .. =>
-        let thm := getCastRelThm rel₁ ++ `NatRat
-        pure (← mkAppM thm #[h₁], h₂)
       | const `Int .., const `Rat .. =>
-        let thm := getCastRelThm rel₁ ++ `IntRat
+        let thm := getCastRelThm rel₁
         pure (← mkAppM thm #[h₁], h₂)
-      | const `Int .., const `Nat .. =>
-        let thm := getCastRelThm rel₂ ++ `NatInt
-        pure (h₁, ← mkAppM thm #[h₂])
-      | const `Rat .., const `Nat .. =>
-        let thm := getCastRelThm rel₂ ++ `NatRat
-        pure (h₁, ← mkAppM thm #[h₂])
       | const `Rat .., const `Int .. =>
-        let thm := getCastRelThm rel₂ ++ `IntRat
+        let thm := getCastRelThm rel₂
         pure (h₁, ← mkAppM thm #[h₂])
       | _, _ => pure (h₁, h₂)
     let thmName : Name ←
