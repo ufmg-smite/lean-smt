@@ -395,7 +395,7 @@ theorem iteIntro {α : Type} {c : Prop} {t e : α} : ite c ((ite c t e) = t) ((i
   | Or.inl hc  => rw [if_pos hc, if_pos hc]
   | Or.inr hnc => rw [if_neg hnc, if_neg hnc]
 
-theorem congrIte {α : Type} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
+theorem congrIte {α : Type u} : ∀ {c₁ c₂ : Prop} {t₁ t₂ e₁ e₂ : α} ,
     c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by
   intros c₁ c₂ t₁ t₂ e₁ e₂ h₁ h₂ h₃
   rw [h₁, h₂, h₃]
