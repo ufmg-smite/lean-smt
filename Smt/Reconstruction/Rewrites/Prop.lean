@@ -6,17 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Smt.Reconstruction.Rewrites.Simp
-
-private theorem And.assoc : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := .intro
-  (let ⟨⟨hp, hq⟩, hr⟩ := ·; .intro hp (.intro hq hr))
-  (let ⟨hp, ⟨hq, hr⟩⟩ := ·; .intro (.intro hp hq) hr)
-
-private theorem Or.comm : p ∨ q ↔ q ∨ p :=
-  .intro (·.elim Or.inr Or.inl) (·.elim Or.inr Or.inl)
-
-private theorem Or.assoc : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := .intro
-  (·.elim (·.elim .inl (.inr ∘ .inl)) (.inr ∘ .inr))
-  (·.elim (.inl ∘ .inl) (·.elim (.inl ∘ .inr) .inr))
+import Std.Logic
 
 namespace Smt.Reconstruction.Rewrites.Prop
 
@@ -52,8 +42,8 @@ open Function
 @[smt_simp] theorem bool_or_flatten : (xs ∨ (b ∨ ys) ∨ zs) = (xs ∨ zs ∨ b ∨ ys) :=
   propext (@Or.comm b ys) ▸ propext (@Or.comm _ zs) ▸ rfl
 @[smt_simp] theorem bool_or_dup : (xs ∨ b ∨ ys ∨ b ∨ zs) = (xs ∨ b ∨ ys ∨ zs) :=
-  propext (@Or.assoc ys b zs) ▸ propext (@Or.comm ys b) ▸ propext (@Or.assoc b _ zs) ▸
-  propext (@Or.assoc b b ys) ▸ or_self _ ▸ propext (@Or.assoc b ys zs) ▸ rfl
+  propext (@or_assoc ys b zs) ▸ propext (@Or.comm ys b) ▸ propext (@or_assoc b _ zs) ▸
+  propext (@or_assoc b b ys) ▸ or_self _ ▸ propext (@or_assoc b ys zs) ▸ rfl
 
 @[smt_simp] theorem bool_and_true : (xs ∧ True ∧ ys) = (xs ∧ ys) :=
   (true_and _).symm ▸ rfl
@@ -62,8 +52,8 @@ open Function
 @[smt_simp] theorem bool_and_flatten : (xs ∧ (b ∧ ys) ∧ zs) = (xs ∧ zs ∧ b ∧ ys) :=
   propext (@And.comm b ys) ▸ propext (@And.comm _ zs) ▸ rfl
 @[smt_simp] theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs) :=
-  propext (@And.assoc ys b zs) ▸ propext (@And.comm ys b) ▸ propext (@And.assoc b _ zs) ▸
-  propext (@And.assoc b b ys) ▸ and_self _ ▸ propext (@And.assoc b ys zs) ▸ rfl
+  propext (@and_assoc ys b zs) ▸ propext (@And.comm ys b) ▸ propext (@and_assoc b _ zs) ▸
+  propext (@and_assoc b b ys) ▸ and_self _ ▸ propext (@and_assoc b ys zs) ▸ rfl
 
 @[smt_simp] theorem bool_and_conf : (xs ∧ w ∧ ys ∧ ¬w ∧ zs) = False :=
   propext ⟨fun ⟨_, hw, _, hnw, _⟩ => absurd hw hnw, False.elim⟩

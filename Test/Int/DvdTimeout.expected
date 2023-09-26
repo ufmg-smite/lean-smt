@@ -1,15 +1,15 @@
 goal: dvd a (b + c + d) = true
 
 query:
-(declare-const d Int)
-(declare-const a Int)
 (declare-fun dvd (Int Int) Bool)
-(assert (= (dvd a d) true))
-(declare-const c Int)
-(assert (= (dvd a c) true))
+(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
+(declare-const a Int)
 (declare-const b Int)
 (assert (= (dvd a b) true))
-(assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
+(declare-const c Int)
+(assert (= (dvd a c) true))
+(declare-const d Int)
+(assert (= (dvd a d) true))
 (assert (not (= (dvd a (+ (+ b c) d)) true)))
 (check-sat)
 Test/Int/DvdTimeout.lean:13:4: error: could not parse solver output: incomplete input: expected a token, got none

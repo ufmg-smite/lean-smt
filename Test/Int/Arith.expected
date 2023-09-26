@@ -38,12 +38,12 @@ Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
 goal: n + k ≤ m + l
 
 query:
-(declare-const l Int)
-(declare-const k Int)
-(assert (<= k l))
 (declare-const n Int)
 (declare-const m Int)
 (assert (<= n m))
+(declare-const l Int)
+(declare-const k Int)
+(assert (<= k l))
 (assert (not (<= (+ n k) (+ m l))))
 (check-sat)
 

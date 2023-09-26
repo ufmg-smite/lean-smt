@@ -2,9 +2,9 @@ goal: q = true
 
 query:
 (declare-const p Bool)
+(assert (= p true))
 (declare-const q Bool)
 (assert (=> (= p true) (= q true)))
-(assert (= p true))
 (assert (not (= q true)))
 (check-sat)
 
