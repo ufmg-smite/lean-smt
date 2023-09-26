@@ -31,7 +31,7 @@ variable {xs w ys zs t x s r : α}
 @[smt_simp] theorem arith_neg_neg_one : -1 * (-1 * t) = t :=
   neg_mul _ t ▸ (one_mul t).symm ▸ neg_mul_neg _ t ▸ (one_mul t).symm ▸ rfl
 
--- -- Eliminations
+-- Eliminations
 
 @[smt_simp] theorem arith_elim_uminus : -t = -1 * t :=
   neg_eq_neg_one_mul t ▸ rfl
