@@ -10,6 +10,6 @@ result: unsat
 failed to reconstruct proof: tactic 'apply' failed, failed to unify
   ¬Implies ((?p = True) = (?q = True)) ((?p = ?q) = True) → False
 with
-  ¬¬((p = true ↔ q = true) → (p == q) = true)
+  ¬¬((p = true) = (q = true) → (p == q) = true)
 p q : Bool
-⊢ ¬¬((p = true ↔ q = true) → (p == q) = true)
+⊢ ¬¬((p = true) = (q = true) → (p == q) = true)
