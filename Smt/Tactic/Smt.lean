@@ -137,6 +137,7 @@ def rconsProof (hints : List Expr) : TacticM Unit := do
     thms ← addDeclToUnfoldOrTheorem thms h
   evalAnyGoals do
     let (result?, _) ← Meta.simpGoal (← Tactic.getMainGoal) {
+      config := { { : Lean.Meta.Simp.Config } with failIfUnchanged := false }
       simpTheorems := #[thms],
       congrTheorems := (← Meta.getSimpCongrTheorems)
     }

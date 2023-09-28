@@ -71,12 +71,13 @@ def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
       iota := false
       proj := false
       decide := false
+      failIfUnchanged := false
     }
     simpTheorems
   }
   _ ← Tactic.simpLocation ctx (loc := loc.toTacticLocation)
   let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
-  Tactic.dsimpLocation ctx (loc := loc.toTacticLocation)
+  Tactic.dsimpLocation { ctx with config := { ctx.config with failIfUnchanged := false } } (loc := loc.toTacticLocation)
 
 end Lean.Meta
 
