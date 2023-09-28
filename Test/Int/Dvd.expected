@@ -2,8 +2,8 @@ goal: dvd a c = true
 
 query:
 (declare-const a Int)
-(declare-fun dvd (Int Int) Bool)
 (declare-const b Int)
+(declare-fun dvd (Int Int) Bool)
 (assert (= (dvd a b) true))
 (declare-const c Int)
 (assert (= (dvd b c) true))
@@ -27,8 +27,8 @@ goal: dvd c e = true
 
 query:
 (declare-fun dvd (Int Int) Bool)
-(declare-const d Int)
 (declare-const c Int)
+(declare-const d Int)
 (assert (= (dvd c d) true))
 (declare-const e Int)
 (assert (= (dvd d e) true))

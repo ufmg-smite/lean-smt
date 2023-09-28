@@ -201,7 +201,6 @@ theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
                   | inr ntt => exact False.elim (h ntt)
      | h₁::h₂::t => by simp [orN, notList, map] at h
                        have ⟨ t₁, t₂ ⟩ := deMorganSmall h
-                       simp [orN] at t₂
                        have ih := @deMorgan (h₂::t) t₂
                        simp [andN]
                        have t₁' := notNotElim t₁

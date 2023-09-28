@@ -38,8 +38,8 @@ goal: partCurryAdd' a b = partCurryAdd' b a
 
 query:
 (define-fun |partCurryAdd'| ((a Int) (n Int)) Int (+ a n))
-(declare-const a Int)
 (declare-const b Int)
+(declare-const a Int)
 (assert (not (= (|partCurryAdd'| a b) (|partCurryAdd'| b a))))
 (check-sat)
 

@@ -3,7 +3,7 @@ goal: x ≤ max' x y ∧ y ≤ max' x y
 query:
 (define-sort Nat () Int)
 (declare-fun |Nat.max'| (Nat Nat) Nat)
-(assert (forall ((_uniq.225 Nat)) (=> (>= _uniq.225 0) (forall ((_uniq.226 Nat)) (=> (>= _uniq.226 0) (>= (|Nat.max'| _uniq.225 _uniq.226) 0))))))
+(assert (forall ((_uniq.217 Nat)) (=> (>= _uniq.217 0) (forall ((_uniq.218 Nat)) (=> (>= _uniq.218 0) (>= (|Nat.max'| _uniq.217 _uniq.218) 0))))))
 (declare-const y Nat)
 (assert (>= y 0))
 (declare-const x Nat)
@@ -18,7 +18,7 @@ goal: x ≤ max' x y ∧ y ≤ max' x y
 query:
 (define-sort Nat () Int)
 (define-fun |Nat.max'| ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
-(assert (forall ((_uniq.267 Nat)) (=> (>= _uniq.267 0) (forall ((_uniq.268 Nat)) (=> (>= _uniq.268 0) (>= (|Nat.max'| _uniq.267 _uniq.268) 0))))))
+(assert (forall ((_uniq.257 Nat)) (=> (>= _uniq.257 0) (forall ((_uniq.258 Nat)) (=> (>= _uniq.258 0) (>= (|Nat.max'| _uniq.257 _uniq.258) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-const y Nat)
