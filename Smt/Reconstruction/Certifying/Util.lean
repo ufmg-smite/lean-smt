@@ -166,7 +166,12 @@ partial def expandLet : Expr → MetaM Expr
 | fvar fid => do
     let lctx ← getLCtx
     match lctx.find? fid with
-    | some (.ldecl _ _ _ _ value _ _) => expandLet value
+    | some (.ldecl _ _ userName _ value _ _) =>
+      match userName with
+      | .str _ ⟨userNameStr⟩ =>
+        let userNamePref: String := ⟨List.take 3 userNameStr⟩
+        if userNamePref = "let" then expandLet value else pure (fvar fid)
+      | _ => pure (fvar fid)
     | _ => pure (fvar fid)
 | app f x => do pure (app (← expandLet f) (← expandLet x))
 | lam bn bt body bi => do pure (lam bn (← expandLet bt) (← expandLet body) bi)
@@ -176,5 +181,18 @@ partial def expandLet : Expr → MetaM Expr
     pure (letE nm (← expandLet tp) (← expandLet val) (← expandLet bd) nDep)
 | e => pure e
 
+
+syntax (name := printType) "printType" term : tactic
+
+@[tactic printType] def evalPrintType : Tactic := fun stx =>
+  withMainContext do
+    let e ← elabTerm stx[1] none
+    let t ← inferType e
+    logInfo m!"t = {t}"
+    let e' ← expandLet e
+    logInfo m!"e' = {e'}"
+    let t ← inferType e'
+    let t' ← expandLet t
+    logInfo m!"t' = {t'}"
 
 end Smt.Reconstruction.Certifying
