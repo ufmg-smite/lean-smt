@@ -7,9 +7,3 @@ query:
 (check-sat)
 
 result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Implies (?p = ?q) (?p = ?q) → False
-with
-  ¬¬((p ↔ q) → p = q)
-p q : Prop
-⊢ ¬¬((p ↔ q) → p = q)

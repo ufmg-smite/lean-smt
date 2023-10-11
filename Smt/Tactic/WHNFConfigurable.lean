@@ -4,18 +4,7 @@ and their institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Leonardo de Moura, Wojciech Nawrocki
 -/
-import Lean.ToExpr
-import Lean.AuxRecursor
-import Lean.ProjFns
-import Lean.Structure
-import Lean.Util.Recognizers
 import Lean.Meta.WHNF
-import Lean.Meta.Basic
-import Lean.Meta.GetConst
-import Lean.Meta.Match.MatcherInfo
-import Lean.Meta.Match.MatchPatternAttr
-import Lean.Meta.FunInfo
-import Lean.Util.MonadCache
 
 import Smt.Tactic.WHNFConfigurableRef
 
@@ -98,7 +87,7 @@ def isAuxDef (constName : Name) : MetaM Bool := do
 @[inline] private def matchConstAux {α} (e : Expr) (failK : Unit → ReductionM α) (k : ConstantInfo → List Level → ReductionM α) : ReductionM α :=
   match e with
   | Expr.const name lvls => do
-    let (some cinfo) ← getConst? name | failK ()
+    let (some cinfo) ← getUnfoldableConst? name | failK ()
     k cinfo lvls
   | _ => failK ()
 
@@ -107,7 +96,7 @@ def isAuxDef (constName : Name) : MetaM Bool := do
    =========================== -/
 
 private def getFirstCtor (d : Name) : MetaM (Option Name) := do
-  let some (ConstantInfo.inductInfo { ctors := ctor::_, ..}) ← getConstNoEx? d | pure none
+  let some (ConstantInfo.inductInfo { ctors := ctor::_, ..}) ← getUnfoldableConstNoEx? d | pure none
   return some ctor
 
 private def mkNullaryCtor (type : Expr) (nparams : Nat) : MetaM (Option Expr) := do
@@ -259,7 +248,7 @@ private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : 
       let major ← whnf major
       match major with
       | Expr.app (Expr.app (Expr.app (Expr.const majorFn _) _) _) majorArg => do
-        let some (ConstantInfo.quotInfo { kind := QuotKind.ctor, .. }) ← getConstNoEx? majorFn | failK ()
+        let some (ConstantInfo.quotInfo { kind := QuotKind.ctor, .. }) ← getUnfoldableConstNoEx? majorFn | failK ()
         let f := recArgs[argPos]!
         let r := mkApp f majorArg
         let recArity := majorPos + 1
@@ -318,7 +307,7 @@ mutual
       match f with
       | Expr.mvar mvarId   => return some mvarId
       | Expr.const fName _ =>
-        let cinfo? ← getConstNoEx? fName
+        let cinfo? ← getUnfoldableConstNoEx? fName
         match cinfo? with
         | some $ ConstantInfo.recInfo recVal  => isRecStuck? recVal e.getAppArgs
         | some $ ConstantInfo.quotInfo recVal => isQuotRecStuck? recVal e.getAppArgs
@@ -824,7 +813,7 @@ mutual
       if smartUnfolding.get (← getOptions) && (← getEnv).contains (mkSmartUnfoldingNameFor declName) then
         return none
       else
-        let (some (cinfo@(ConstantInfo.defnInfo _))) ← getConstNoEx? declName | pure none
+        let (some (cinfo@(ConstantInfo.defnInfo _))) ← getUnfoldableConstNoEx? declName | pure none
         deltaDefinition cinfo lvls
           (fun _ => pure none)
           (fun e => pure (some e))

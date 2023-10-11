@@ -12,6 +12,6 @@ query:
 result: unsat
 failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Examples/Demo.lean:17:19: error: incorrect number of universe levels GE.ge
-Test/Examples/Demo.lean:27:18: error: expected ']'
-Test/Examples/Demo.lean:31:13: error: expected ']'
-Test/Examples/Demo.lean:34:13: error: expected ']'
+Test/Examples/Demo.lean:27:17: error: unexpected identifier; expected ']'
+Test/Examples/Demo.lean:31:17: error: unexpected identifier; expected ']'
+Test/Examples/Demo.lean:35:17: error: unexpected identifier; expected ']'
