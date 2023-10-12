@@ -12,6 +12,44 @@ query:
 result: unsat
 failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Examples/Demo.lean:17:19: error: incorrect number of universe levels GE.ge
-Test/Examples/Demo.lean:27:17: error: unexpected identifier; expected ']'
-Test/Examples/Demo.lean:31:17: error: unexpected identifier; expected ']'
-Test/Examples/Demo.lean:35:17: error: unexpected identifier; expected ']'
+goal: ∀ (a : G), op a (inv a) = e
+
+query:
+(declare-sort G 0)
+(declare-const e G)
+(declare-fun op (G G) G)
+(assert (forall ((a G)) (= (op e a) a)))
+(declare-fun inv (G) G)
+(assert (forall ((a G)) (= (op (inv a) a) e)))
+(assert (forall ((a G)) (forall ((b G)) (forall ((c G)) (= (op a (op b c)) (op (op a b) c))))))
+(assert (not (forall ((a G)) (= (op a (inv a)) e))))
+(check-sat)
+Test/Examples/Demo.lean:25:8: warning: declaration uses 'sorry'
+goal: ∀ (a : G), op a e = a
+
+query:
+(declare-sort G 0)
+(declare-fun inv (G) G)
+(declare-const e G)
+(declare-fun op (G G) G)
+(assert (forall ((a G)) (= (op a (inv a)) e)))
+(assert (forall ((a G)) (= (op e a) a)))
+(assert (forall ((a G)) (= (op (inv a) a) e)))
+(assert (forall ((a G)) (forall ((b G)) (forall ((c G)) (= (op a (op b c)) (op (op a b) c))))))
+(assert (not (forall ((a G)) (= (op a e) a))))
+(check-sat)
+Test/Examples/Demo.lean:30:8: warning: declaration uses 'sorry'
+goal: (∀ (z : G), op e' z = z) → e' = e
+
+query:
+(declare-sort G 0)
+(declare-fun op (G G) G)
+(declare-const e G)
+(assert (forall ((a G)) (= (op e a) a)))
+(declare-fun inv (G) G)
+(assert (forall ((a G)) (= (op (inv a) a) e)))
+(assert (forall ((a G)) (forall ((b G)) (forall ((c G)) (= (op a (op b c)) (op (op a b) c))))))
+(declare-const |e'| G)
+(assert (not (=> (forall ((z G)) (= (op |e'| z) z)) (= |e'| e))))
+(check-sat)
+Test/Examples/Demo.lean:34:8: warning: declaration uses 'sorry'
