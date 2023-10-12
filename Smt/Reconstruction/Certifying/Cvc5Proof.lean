@@ -3,43 +3,27 @@ import Lean
 
 open Lean Parser Elab Tactic Meta
 
--- Example: turning a String into a Tactic (typed Syntax for Tactic)
-syntax (name := tmp) "tmp" : tactic
+def foo : String := "trivial"
 
-@[tactic tmp] def evalTmp : Tactic := fun _ =>
+syntax (name := test) "test" : tactic
+
+@[tactic test] def evalTest : Tactic := fun _ =>
   withMainContext do
-    let ictx: InputContext := {
-      input := "trivial"
-      fileName := default
-      fileMap := default
-    }
-    let dummyEnv ← mkEmptyEnvironment
-    let parserState := tacticParser.fn.run ictx { env := dummyEnv, options := {} } default (mkParserState ictx.input)
-    let arrStx := SyntaxStack.extract parserState.stxStack 0 1
-    let stx := arrStx.get! 0
-    let stx: TSyntax `tactic := ⟨stx⟩ 
-    evalTactic $ ← `(tactic| $stx)
+    match runParserCategory (← getEnv) `tactic foo with
+    | .error e => throwError e
+    | .ok stx => evalTactic $ ← `(tactic| $(⟨stx⟩))
+
+example : True := by
+  test
 
 structure Tac where
-  stx : String -- syntax for the tactic, including all parameters
+  stx : String
 
-structure Thm where
-  thmName : Name
-  args    : List Name
-
-structure Step (Pf : Type) where
-  name : Name
-  type : String -- avoid building Exprs on C++, lets build the string and run the parser
-  pf   : Pf
-
-mutual
-  inductive Pf where
-    | tac : Tac → Pf
-    | thm : Thm → Pf
-    | scope (name : Name) (type : Expr) : Cvc5Proof → Pf
-  inductive Cvc5Proof where
-    | steps : List (Step Pf) → Cvc5Proof
-end
+inductive Step where
+  | tac (name : Name) (type : String) : Tac → Step
+  | thm (name : Name) (type : String) (args : List Name) : Step
+  | scope (name : Name) (type : String) (steps : List Step) : Step
 
 -- we will define a function that takes a step and introduces the Name
 -- with the given type in the context, using pf
+abbrev Proof := List Step
