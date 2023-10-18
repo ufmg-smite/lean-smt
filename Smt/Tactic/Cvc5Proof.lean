@@ -1,12 +1,9 @@
 import Lean
 import Smt.Reconstruction.Certifying.Util
 
-
 open Lean Meta Elab Tactic Parser
 
 open Smt.Reconstruction.Certifying
-
-def lastStepName : Name := `lastStepCvc5
 
 structure Tac where
   tacCode : String
