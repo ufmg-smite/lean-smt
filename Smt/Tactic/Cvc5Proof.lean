@@ -73,12 +73,12 @@ syntax (name := test) "test" term : tactic
       | 1 => pure cvc5Proof1
       | 2 => pure cvc5Proof2
       | _ => throwError "unreachable"
-    let mvar' ← runProof goal cvc5Proof1
+    let mvar' ← runProof goal pf
     replaceMainGoal [mvar']
     withMainContext do
       let lctx ← getLCtx
       let some ldecl :=
-        lctx.findFromUserName? cvc5Proof1.name | throwError "final step not defined"
+        lctx.findFromUserName? pf.name | throwError "final step not defined"
       closeMainGoal ldecl.value
 
 example : True := by test 1
