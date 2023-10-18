@@ -11,12 +11,11 @@ inductive Step where
   | tac (name : Name) (goalStr : String) (tacStr : Tac) : Step
   | thm (name : Name) (goalStr : String) (thmName : Name) (args : List String) : Step
   -- the name in scope must match the last name in the list of steps
-  | scope (name : Name) (goalStr : String) (steps : List Step) : Step
+  | scope (name : Name) (steps : List Step) : Step
 
 structure Cvc5Proof where
   steps: List Step
-  -- again, must match the name and type of the last step
-  goalStr: String
+  -- again, must match the name of the last step
   name: Name
 
 def strToStx (cat: Name) (str : String) : MetaM Syntax := do
@@ -42,8 +41,8 @@ partial def runStep (mvar: MVarId) : Step → TacticM MVarId
   let pf ← mkAppM thmName argsExpr.toArray
   let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type pf
   pure mvar'
-| .scope name goalStr steps => do
-  let cvc5Pf := { steps, name, goalStr }
+| .scope name steps => do
+  let cvc5Pf := { steps, name }
   runProof mvar cvc5Pf
 
 partial def runProof (mvar: MVarId) (pf : Cvc5Proof): TacticM MVarId := do
@@ -56,13 +55,11 @@ end
 def cvc5Proof1 : Cvc5Proof := {
   steps := [Step.tac `blah "True" "exact True.intro"]
   name := `blah
-  goalStr := "True"
 }
 
 def cvc5Proof2 : Cvc5Proof := {
   steps := [Step.thm `blah "True" `True.intro []]
   name := `blah
-  goalStr := "True"
 }
 
 syntax (name := test) "test" term : tactic
