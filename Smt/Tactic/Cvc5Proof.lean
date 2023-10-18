@@ -48,7 +48,7 @@ partial def runStep (mvar: MVarId) : Step → TacticM MVarId
   runProof mvar cvc5Pf
 
 partial def runProof (mvar: MVarId) (pf : Cvc5Proof): TacticM MVarId := do
-  pf.steps.foldlM (fun acc step => (runStep acc step)) mvar
+  pf.steps.foldlM runStep mvar
 
 end
 
