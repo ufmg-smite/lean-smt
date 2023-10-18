@@ -5,13 +5,12 @@ open Lean Meta Elab Tactic Parser
 
 open Smt.Reconstruction.Certifying
 
-structure Tac where
-  tacCode : String
+abbrev Tac := String
 
 inductive Step where
-  | tac (name : Name) (goalStr : String) (tacCode : Tac) : Step
+  | tac (name : Name) (goalStr : String) (tacStr : Tac) : Step
   | thm (name : Name) (goalStr : String) (thmName : Name) (args : List String) : Step
-  -- the name in scope must match the list name in the list of steps
+  -- the name in scope must match the last name in the list of steps
   | scope (name : Name) (goalStr : String) (steps : List Step) : Step
 
 structure Cvc5Proof where
@@ -31,7 +30,7 @@ mutual
 partial def runStep (mvar: MVarId) : Step → TacticM MVarId
 | .tac name goalStr tacStr => do
   let typeStx ← strToStx `term goalStr
-  let tacStx ← strToStx `tactic tacStr.tacCode
+  let tacStx ← strToStx `tactic tacStr
   let haveStx ← `(tactic| have $(mkIdent name) : $(⟨typeStx⟩) := by $(⟨tacStx⟩))
   let mvars ← evalTacticAt haveStx mvar
   pure mvars.head!
@@ -55,7 +54,7 @@ end
 -- Testing
 
 def cvc5Proof1 : Cvc5Proof := {
-  steps := [Step.tac `blah "True" ⟨"exact True.intro"⟩]
+  steps := [Step.tac `blah "True" "exact True.intro"]
   name := `blah
   goalStr := "True"
 }
