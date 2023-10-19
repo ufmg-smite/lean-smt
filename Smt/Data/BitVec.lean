@@ -38,6 +38,8 @@ namespace BitVec
 protected def zero (w : Nat) : BitVec w :=
   ⟨0, Nat.two_pow_pos w⟩
 
+lemma isLt (x : BitVec w) : x.val < 2^w := by simp
+
 /-- The bitvector `n mod 2^w`. -/
 protected def ofNat (w : Nat) (n : Nat) : BitVec w :=
   Fin.ofNat' n (Nat.two_pow_pos w)
@@ -83,6 +85,9 @@ theorem val_bitvec_eq {a b : BitVec w} : a.val = b.val ↔ a = b :=
 theorem val_bitvec_lt {a b : BitVec w} : (a.val : ℕ) < (b.val : ℕ) ↔ a < b := by
   simp [LT.lt, BitVec.lt]
 
+@[norm_cast, simp]
+theorem val_bitvec_beq {a b : BitVec w} : (a.val == b.val) ↔ (a == b) := by simp
+
 /-- `a ≠ b` as natural numbers if and only if `a != b` in `Fin n`. -/
 @[norm_cast, simp]
 theorem val_bitvec_bne {a b : BitVec w} : a.val ≠ b.val ↔ a != b := by
@@ -109,13 +114,13 @@ protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
       exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩ 
 
 protected def slt (x y : BitVec (w + 1)) : Prop :=
-  if (y.val >>> w) < (x.val >>> w) then True else x.val >>> w = y.val >>> w ∧ x.val % 2^w < y.val % 2^w
+  ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x < y)
 
 protected def slt' (x y : BitVec (w + 1)) : Prop :=
   x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w) 
 
 protected def sle (x y : BitVec (w + 1)) : Prop :=
-  if (y.val >>> w) < (x.val >>> w) then True else (x.val >>> w = y.val >>> w) ∧ x.val % 2^w ≤ y.val % 2^w
+  ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x ≤ y)
 
 protected def sle' (x y : BitVec (w + 1)) : Prop :=
   ¬ (BitVec.slt' y x)
@@ -188,8 +193,10 @@ instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
 @[simp] lemma bit_1 (b : Bool) (_ : Nat) : Nat.bit b 1 = 2+b.toNat:= by
   cases' b <;> simp
 
+
 open Nat
 
+--this is weird
 lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
   simp only [BitVec.ofNat, Fin.ofNat', testBit, shiftRight_eq_shiftr, mod_two_of_bodd, pow_one]
   aesop
@@ -201,30 +208,48 @@ lemma ofNat_to_val (x : BitVec w) : BitVec.ofNat w x.val = x := by
 
 lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := h ▸ heq_of_eq (ofNat_to_val x).symm
 
-theorem zero_ext : (0 : BitVec w).val = 0 := rfl
+@[simp] lemma length_zero_eq_zero {x : BitVec 0} : x = 0 := by simp [← val_bitvec_eq]
 
-theorem add_ext {x y : BitVec w} :  (x + y).val = (x.val + y.val)%2^w := rfl
+@[simp] theorem zero_ext : (0 : BitVec w).val = 0 := rfl
+
+
+theorem lt_ext {x y : BitVec w} : (x < y) = decide (x.val < y.val) := rfl
+
+theorem add_ext {x y : BitVec w} :  (x + y).val = (x.val + y.val) % 2^w := rfl
 
 theorem neg_ext {x : BitVec w} : (-x).val = (2^w - x.val) % 2^w := rfl
 
 theorem sub_ext {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl  
 
-theorem concat_ext {x : BitVec a} {y : BitVec b} :
+lemma not_ext {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w := by
+  cases' w with w
+  · simp
+  · simp [Complement.complement, BitVec.complement, sub_ext, add_ext, val_to_ofNat (one_lt_two_pow _ (succ_pos w))]
+
+@[simp] lemma zero_eq_ofNat : BitVec.ofNat w 0 = (0 : BitVec w)  := rfl
+
+@[simp] lemma not_zero : (~~~(0 : BitVec w)).val = 2^w - 1 := by
+  cases' w with w 
+  <;> simp [not_ext, one_mod_lt (one_lt_two_pow' _), mod_eq_of_lt (sub_lt (two_pow_pos _) (Nat.one_pos))]
+
+lemma concat_ext {x : BitVec a} {y : BitVec b} :
   (x ++ y).val = x.val <<< b ||| y.val := rfl
 
-theorem or_ext {x y : BitVec w} :
+lemma or_ext {x y : BitVec w} :
   (x ||| y).val = x.val ||| y.val := rfl
 
-theorem xor_ext {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
+lemma and_ext {x y : BitVec w} : (x &&& y).val = x.val &&& y.val := rfl
 
-theorem shiftLeft_ext {x : BitVec w} :
+lemma xor_ext {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
+
+lemma shiftLeft_ext {x : BitVec w} :
   (x <<< n).val = (x.val <<< n) % 2^w := rfl
 
-theorem shiftRight_ext {x : BitVec w} :
+lemma shiftRight_ext {x : BitVec w} :
   (x >>> n).val = (x.val >>> n) := rfl
 
 --should we use `shiftr_eq_div_pow` or not?
-theorem extract_ext : (extract i j x).val = x.val/2^j % (2^(i - j + 1)) := by
+theorem extract_ext : (extract i j x).val = x.val / 2^j % (2^(i - j + 1)) := by
   simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow]
 
 lemma append_eq_add_val {x: BitVec w} {y : BitVec v} : (x ++ y).val = x.val * 2^v + y.val := by

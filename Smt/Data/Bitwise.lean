@@ -17,6 +17,9 @@ theorem two_pow_pos (w : Nat) : 0 < 2^w := Nat.pos_pow_of_pos _ (by decide)
 
 theorem two_pow_succ (w : Nat) : 2^(w+1) = 2^w + 2^w := by simp [pow_succ, mul_two] --should be in mathlib
 
+lemma two_pow_lt_two_pow (w : Nat) : 2^w < 2^(w + 1) := 
+  pow_lt_pow (one_lt_succ_succ 0) (lt.base w)
+
 lemma lt_succ_two_pow {y b i : Nat} (h: b ≤ 1) (hy : y < 2^i) : 2^i * b + y < 2^(i+1) := by 
   rw [two_pow_succ]
   exact add_lt_add_of_le_of_lt (mul_le_of_le_one_right' h) hy
@@ -111,6 +114,8 @@ theorem toNat_testBit {f: Nat → Bool} (h1: i < j) : (toNat f 0 j).testBit i = 
     · rw [← ih h1, toNat, toNat_succ, ←testBit_translate h1]
     · rw [h1, toNat, toNat_succ, bit_toNat, testBit_translate' (toNat_lt)]
 
+
+
 theorem lt_two_pow_testBit_false (h: x < 2^i) (h1: i ≤ j) : x.testBit j = false:= by 
   simp [testBit, shiftr_eq_div_pow, Nat.div_eq_zero (lt_of_lt_of_le h (pow_le_pow_of_le_right (by decide) h1))]
 
@@ -148,7 +153,7 @@ where
     | 0     => ¬ x.testBit 0  ∧ y.testBit 0
     | i + 1 => (¬ x.testBit (i + 1) ∧ y.testBit (i+1)) ∨ (¬(x.testBit (i + 1) ∧ ¬ y.testBit (i + 1)) ∧ go x y i)
 
-theorem lt_of_testbit (h: n<m) : ∃ i, Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ ∀j, i <j → Nat.testBit m j = Nat.testBit n j := by
+theorem lt_of_testbit (h: n < m) : ∃ i, Nat.testBit n i = false ∧ Nat.testBit m i = true ∧ ∀j, i <j → Nat.testBit m j = Nat.testBit n j := by
   induction' n using Nat.binaryRec with b n ih generalizing m
   · have ⟨i, _, _⟩ := exists_most_significant_bit (ne_of_lt h).symm
     use i; simpa [*] --combine use and simp?
@@ -256,6 +261,10 @@ theorem bitwise_neg_eq_neg (h: x < 2^i) : bitwise_neg x i  = (2 ^ i - x) % 2 ^ i
   simp only [bitwise_neg, bitwise_add_eq_add]; congr
   have := bitwise_not_eq_neg_sub_one h
   zify [le_of_lt h, (one_le_of_lt (two_pow_pos i))] at * ; linarith
+
+theorem toNat_self (hx : x < 2^w) : (toNat (fun i => x.testBit i) 0 w) = x := by
+  apply eq_of_testBit_eq_lt (toNat_lt) hx
+  exact fun j hj => by rw [toNat_testBit hj]
 
 /-! ### Multiplication -/
 
