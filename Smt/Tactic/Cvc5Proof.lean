@@ -1,8 +1,12 @@
 import Lean
+
+import Smt.Reconstruction.Certifying.Resolution
 import Smt.Reconstruction.Certifying.Util
 import Smt.Reconstruction.Certifying.Boolean
 
-open Lean Meta Elab Tactic Parser
+open Lean
+open Meta hiding contradiction
+open Elab Tactic Parser
 
 open Smt.Reconstruction.Certifying
 
@@ -47,11 +51,11 @@ partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
         args.mapM (strToStx `term · >>= (elabTerm · none))
       let lctx ← getLCtx
       let pf ←
-      match lctx.findFromUserName? thmName with
-      | some ldecl => do
-        pure (mkAppN ldecl.value argsExpr.toArray)
-      | none =>
-        mkAppM thmName argsExpr.toArray
+        match lctx.findFromUserName? thmName with
+        | some ldecl => do
+          pure (mkAppN ldecl.value argsExpr.toArray)
+        | none => do
+          mkAppM thmName argsExpr.toArray
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type pf
       pure mvar'
     | .scope name steps => do
@@ -82,21 +86,16 @@ def cvc5Proof3 : Cvc5Proof := {
   name := `pf
 }
 
-  /- theorem cvc5_th0 {P Q : Prop} : (Not (P → ((P → Q) → Q))) → False := -/
-  /-   fun lean_a0 : (Not (P → ((P → Q) → Q))) => by -/
-  /-     have lean_s0 : (Not ((P → Q) → Q)) := notImplies2 lean_a0 -/
-  /-     have lean_s1 : (P → Q)             := notImplies1 lean_s0 -/
-  /-     have lean_s2 : (Or (Not P) Q)      := impliesElim lean_s1 -/
-  /-     have lean_s3 : P                   := notImplies1 lean_a0 -/
-  /-     have lean_s4 : Q                   := -/
-  /-       by R2 lean_s2, lean_s3, P, [1, 0] -/
-  /-     have lean_s5 : (Not ((P → Q) → Q)) := notImplies2 lean_a0 -/
-  /-     have lean_s6 : (Not Q)             := notImplies2 lean_s5 -/
-  /-     exact (show False from contradiction lean_s4 lean_s6) -/
-
 def cvc5Proof4: Cvc5Proof := {
   steps := [ .intro `lean_a0
-           , .thm `pf "Not ((P -> Q) -> Q)" ``notImplies2 ["lean_a0"]
+           , .thm `lean_s0 "Not ((P -> Q) -> Q)" ``notImplies2 ["lean_a0"]
+           , .thm `lean_s1 "P -> Q" ``notImplies1 ["lean_s0"]
+           , .thm `lean_s2 "Or (Not P) Q" ``impliesElim ["lean_s1"]
+           , .thm `lean_s3 "P" ``notImplies1 ["lean_a0"]
+           , .tac `lean_s4 "Q" "R2 lean_s2, lean_s3, P, [1, 0]"
+           , .thm `lean_s5 "Not ((P -> Q) -> Q)" ``notImplies2 ["lean_a0"]
+           , .thm `lean_s6 "Not Q" ``notImplies2 ["lean_s5"]
+           , .thm `pf "False" ``contradiction ["lean_s4", "lean_s6"]
            ]
   name := `pf
 }
@@ -122,13 +121,11 @@ syntax (name := test) "test" term : tactic
         lctx.findFromUserName? pf.name | throwError "final step not defined"
       closeMainGoal ldecl.value
 
+example (P Q : Prop) : Not (P → ((P → Q) → Q)) → False := by
+  test 4
+
 example : True := by test 1
 
 example : True := by test 2
 
 example : False → False := by test 3
-
-example : Not (P -> ((P -> Q) -> Q)) -> Not ((P -> Q) -> Q) := by test 4 -- ?
-  /- intro h -/
-  /- have h' := notImplies2 h -/
-
