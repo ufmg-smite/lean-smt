@@ -135,11 +135,6 @@ def cvc5Proof4: Cvc5Proof := {
   lastName := `pf
 }
 
-example (P Q : Prop) : Q → ¬ P ∨ Q := by
-  intro lean_a0
-  have lean_a1: ¬ P ∨ Q := scope (fun hp => lean_a0)
-  exact lean_a1
-
 def cvc5Proof5: Cvc5Proof := {
   steps := [ .intro `lean_a0
            , .scope `lean_a1 "P" "Q" `hp `inner_pf 
@@ -176,6 +171,3 @@ example (P Q : Prop) : Not (P → ((P → Q) → Q)) → False := by
 example (P Q : Prop) : Q → ¬ P ∨ Q := by
   test 5
 
-  /- intro lean_a0 -/
-  /- have lean_a1: ¬ P ∨ Q := scope (fun hp => lean_a0) -/
-  /- exact lean_a1 -/
