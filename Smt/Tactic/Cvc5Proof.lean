@@ -59,6 +59,8 @@ partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
         args.mapM strToExpr
       let lctx ← getLCtx
       let pf ←
+      -- different treatment depending on whether thmName is a theorem
+      -- or a hypothesis (lean_sx etc)
         match lctx.findFromUserName? thmName with
         | some ldecl => do
           pure (mkAppN (Expr.fvar ldecl.fvarId) argsExpr.toArray)
