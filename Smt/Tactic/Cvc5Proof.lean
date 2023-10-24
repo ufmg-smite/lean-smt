@@ -13,21 +13,29 @@ open Smt.Reconstruction.Certifying
 abbrev Tac := String
 
 inductive Step where
+  -- intro $name
   | intro (name : Name) : Step
+  -- have $name : $goal := by $tac
   | tac (name : Name) (goalStr : String) (tacStr : Tac) : Step
+  -- have $name : $goal := $thmName $args
   | thm (name : Name) (goalStr : String) (thmName : Name) (args : List String) : Step
-  -- the name in scope must match the last name in the list of steps
-  | scope (name : Name) (steps : List Step) : Step
+  -- have $name : ¬ $paramType ∨ $retType := scope (fun $scopedName => ...)
+  -- NOTE: lastName must match the name introduced in the last step
+  | scope (name : Name) (paramTypeStr retTypeStr : String) (scopedName lastName : Name) (steps : List Step) : Step
 
 structure Cvc5Proof where
   steps: List Step
-  -- again, must match the name of the last step
-  name: Name
+  -- must match the name introduced in the last step
+  lastName: Name
 
-def strToStx (cat: Name) (str : String) : MetaM Syntax := do
+def strToStx (cat: Name) (str: String) : MetaM Syntax := do
   match runParserCategory (← getEnv) cat str with
   | .error e => throwError e
   | .ok stx  => pure stx
+
+def strToExpr (str: String) : TacticM Expr := do
+  let stx ← strToStx `term str
+  elabTerm stx none
 
 mutual
 
@@ -42,48 +50,75 @@ partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
       let typeStx ← strToStx `term goalStr
       let tacStx ← strToStx `tactic tacStr
       let haveStx ← `(tactic| have $(mkIdent name) : $(⟨typeStx⟩) := by $(⟨tacStx⟩))
-      let mvars ← evalTacticAt haveStx mvar
-      pure mvars.head!
-    | .thm name goalStr thmName args => mvar.withContext do
-      let typeStx ← strToStx `term goalStr
-      let type ← elabTerm typeStx none
+      let [mvar'] ←
+        evalTacticAt haveStx mvar | throwError "tactic generated many goals"
+      pure mvar'
+    | .thm name goalStr thmName args => do
+      let type ← strToExpr goalStr
       let argsExpr: List Expr ←
-        args.mapM (strToStx `term · >>= (elabTerm · none))
+        args.mapM strToExpr
       let lctx ← getLCtx
       let pf ←
         match lctx.findFromUserName? thmName with
         | some ldecl => do
-          pure (mkAppN ldecl.value argsExpr.toArray)
+          pure (mkAppN (Expr.fvar ldecl.fvarId) argsExpr.toArray)
         | none => do
           mkAppM thmName argsExpr.toArray
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type pf
-      pure mvar'
-    | .scope name steps => do
-      let cvc5Pf := { steps, name }
-      runProof mvar cvc5Pf
+      return mvar'
+    | .scope name paramTypeStr retTypeStr scopedName lastName steps => do
+      let paramType ← strToExpr paramTypeStr
+      let retType ← strToExpr retTypeStr
+      let goalExpr :=
+        mkApp2 (mkConst ``Or) (mkApp (mkConst ``Not) paramType) retType
+      withLocalDeclD scopedName paramType fun bv => do
+        -- register scoped variable in context to make it visible in inner proof
+        let (_, mvarTmp) ← MVarId.intro1P $ ← mvar.assert scopedName paramType bv
+        let mvar' ← runProof mvarTmp steps
+        mvar'.withContext do
+          -- hack to recover bv after changing contexts
+          let lctx ← getLCtx
+          let some ldecl1 := lctx.findFromUserName? scopedName |
+            throwError "[scope]: lost bv"
+          let some ldecl2 := lctx.findFromUserName? lastName |
+            throwError "[scope]: did not find final proof in context"
+          let lambda ← mkLambdaFVars #[.fvar ldecl1.fvarId] (.fvar ldecl2.fvarId)
+          let pf := mkApp3 (mkConst ``scope) paramType retType lambda
+          let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goalExpr pf
+          return mvar''
 
-partial def runProof (mvar: MVarId) (pf : Cvc5Proof): TacticM MVarId := do
-  pf.steps.foldlM runStep mvar
+partial def runProof (mvar: MVarId) (pf : List Step): TacticM MVarId := do
+  pf.foldlM runStep mvar
 
 end
+
+def closeGoalWithCvc5Proof (pf: Cvc5Proof): TacticM Unit := do
+  let goal ← getMainGoal
+  let goal' ← runProof goal pf.steps
+  goal'.withContext do
+    let lctx ← getLCtx
+    let some ldecl := lctx.findFromUserName? pf.lastName |
+      throwError "final proof not defined in context"
+    goal'.assign ldecl.value
+    replaceMainGoal []
 
 -- Testing
 
 def cvc5Proof1 : Cvc5Proof := {
-  steps := [Step.tac `pf "True" "exact True.intro"]
-  name := `pf
+  steps := [.tac `pf "True" "exact True.intro"]
+  lastName := `pf
 }
 
 def cvc5Proof2 : Cvc5Proof := {
-  steps := [Step.thm `pf "True" `True.intro []]
-  name := `pf
+  steps := [.thm `pf "True" `True.intro []]
+  lastName := `pf
 }
 
 def cvc5Proof3 : Cvc5Proof := {
   steps := [ .intro `lean_a0
            , .thm `pf "True" `lean_a0 []
            ]
-  name := `pf
+  lastName := `pf
 }
 
 def cvc5Proof4: Cvc5Proof := {
@@ -97,14 +132,27 @@ def cvc5Proof4: Cvc5Proof := {
            , .thm `lean_s6 "Not Q" ``notImplies2 ["lean_s5"]
            , .thm `pf "False" ``contradiction ["lean_s4", "lean_s6"]
            ]
-  name := `pf
+  lastName := `pf
+}
+
+example (P Q : Prop) : Q → ¬ P ∨ Q := by
+  intro lean_a0
+  have lean_a1: ¬ P ∨ Q := scope (fun hp => lean_a0)
+  exact lean_a1
+
+def cvc5Proof5: Cvc5Proof := {
+  steps := [ .intro `lean_a0
+           , .scope `lean_a1 "P" "Q" `hp `inner_pf 
+               [ .thm `inner_pf "Q" `lean_a0 [] ]
+           , .thm `pf "¬ P ∨ Q" `lean_a1 []
+           ]
+  lastName := `pf
 }
 
 syntax (name := test) "test" term : tactic
 
 @[tactic test] def evalTest : Tactic := fun stx =>
   withMainContext do
-    let goal ← getMainGoal
     let id ← stxToNat ⟨stx[1]⟩
     let pf ←
       match id with
@@ -112,20 +160,22 @@ syntax (name := test) "test" term : tactic
       | 2 => pure cvc5Proof2
       | 3 => pure cvc5Proof3
       | 4 => pure cvc5Proof4
+      | 5 => pure cvc5Proof5
       | _ => throwError "unreachable"
-    let mvar' ← runProof goal pf
-    replaceMainGoal [mvar']
-    withMainContext do
-      let lctx ← getLCtx
-      let some ldecl :=
-        lctx.findFromUserName? pf.name | throwError "final step not defined"
-      closeMainGoal ldecl.value
-
-example (P Q : Prop) : Not (P → ((P → Q) → Q)) → False := by
-  test 4
+    closeGoalWithCvc5Proof pf
 
 example : True := by test 1
 
 example : True := by test 2
 
 example : False → False := by test 3
+
+example (P Q : Prop) : Not (P → ((P → Q) → Q)) → False := by
+  test 4
+
+example (P Q : Prop) : Q → ¬ P ∨ Q := by
+  test 5
+
+  /- intro lean_a0 -/
+  /- have lean_a1: ¬ P ∨ Q := scope (fun hp => lean_a0) -/
+  /- exact lean_a1 -/
