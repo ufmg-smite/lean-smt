@@ -118,7 +118,7 @@ def cvc5Proof2 : Cvc5Proof := {
 
 def cvc5Proof3 : Cvc5Proof := {
   steps := [ .intro `lean_a0
-           , .thm `pf "True" `lean_a0 []
+           , .thm `pf "False" `lean_a0 []
            ]
   lastName := `pf
 }
