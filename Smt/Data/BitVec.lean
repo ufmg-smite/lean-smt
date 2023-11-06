@@ -2,7 +2,7 @@
 Copyright (c) 2022 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Wojciech Nawrocki, Joe Hendrix, Harun Khan, Abdalrhman M Mohamed, 
+Authors: Wojciech Nawrocki, Joe Hendrix, Harun Khan, Abdalrhman M Mohamed,
 -/
 
 import Std
@@ -109,15 +109,15 @@ protected def shiftLeft (x : BitVec w) (n : Nat) : BitVec w :=
   .ofNat w (x.val <<< n)
 
 protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
-  ⟨x.val >>> n, by 
+  ⟨x.val >>> n, by
       simp only [Nat.shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
-      exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩ 
+      exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩
 
 protected def slt (x y : BitVec (w + 1)) : Prop :=
   ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x < y)
 
 protected def slt' (x y : BitVec (w + 1)) : Prop :=
-  x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w) 
+  x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w)
 
 protected def sle (x y : BitVec (w + 1)) : Prop :=
   ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x ≤ y)
@@ -219,7 +219,7 @@ theorem add_ext {x y : BitVec w} :  (x + y).val = (x.val + y.val) % 2^w := rfl
 
 theorem neg_ext {x : BitVec w} : (-x).val = (2^w - x.val) % 2^w := rfl
 
-theorem sub_ext {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl  
+theorem sub_ext {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl
 
 lemma not_ext {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w := by
   cases' w with w
@@ -229,7 +229,7 @@ lemma not_ext {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w := 
 @[simp] lemma zero_eq_ofNat : BitVec.ofNat w 0 = (0 : BitVec w)  := rfl
 
 @[simp] lemma not_zero : (~~~(0 : BitVec w)).val = 2^w - 1 := by
-  cases' w with w 
+  cases' w with w
   <;> simp [not_ext, one_mod_lt (one_lt_two_pow' _), mod_eq_of_lt (sub_lt (two_pow_pos _) (Nat.one_pos))]
 
 lemma concat_ext {x : BitVec a} {y : BitVec b} :
@@ -241,6 +241,8 @@ lemma or_ext {x y : BitVec w} :
 lemma and_ext {x y : BitVec w} : (x &&& y).val = x.val &&& y.val := rfl
 
 lemma xor_ext {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
+
+lemma mod_ext {x y : BitVec w} : (x % y).val = x.val % y.val := rfl
 
 lemma shiftLeft_ext {x : BitVec w} :
   (x <<< n).val = (x.val <<< n) % 2^w := rfl
@@ -258,7 +260,7 @@ lemma append_eq_add_val {x: BitVec w} {y : BitVec v} : (x ++ y).val = x.val * 2^
 --this was a private lemma but had to use it for rewrite rules
 lemma cast_heq {x : BitVec w} (h: w=v) : (h ▸ x).val = x.val := by
   rw [← val_to_ofNat (show x.val < 2^v from (h.symm ▸ x.isLt)), BitVec.val_bitvec_eq]
-  exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm)) 
+  exact eq_of_heq (rec_heq_iff_heq.mpr (ofNat_to_val' _ h.symm))
 
 --this should be stated as 2^(i+w)*(bla) + bla instead
 lemma signExtend_succ {x: BitVec w} (h: 0 < w) : (signExtend (succ i) x).val =  (signExtend i x).val + 2 ^ (i+w) * Bool.toNat (testBit (x.val) (w - 1)) := by
@@ -271,7 +273,7 @@ lemma signExtend_zero {x: BitVec w} (_: 0 < w) : (signExtend 0 x).val = x.val :=
 
 theorem testBit_eq_rep {x: BitVec w} (i : Nat) (h: i< w): x[i] = testBit x.val i := by rfl
 
-theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = testBit x i := by 
+theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = testBit x i := by
   simp [BitVec.ofNat, GetElem.getElem, lsbGet, extract, Fin.ofNat', mod_eq_of_lt, h2]
 
 -- alternative toNat definition that uses lists
@@ -282,7 +284,7 @@ theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat
 --   induction' bs with b l ih
 --   · simp
 --   · simp only [List.foldr, bit_val, List.length_cons]
---     cases' b <;> simp [two_pow_succ, two_mul (List.foldr bit 0 l)] at * <;> linarith [ih] 
+--     cases' b <;> simp [two_pow_succ, two_mul (List.foldr bit 0 l)] at * <;> linarith [ih]
 
 -- def bbT' (bs : List Bool): BitVec bs.length :=
 --   ⟨toNat' bs, toNat'_lt⟩
@@ -321,13 +323,12 @@ theorem BV_ult {x y : BitVec w} (h1: x < y) : bitwise_ult x.val y.val w:= bitwis
 -- theorem BV_slt {x y : BitVec w} (h1: x < y) : bitwise_slt x.val y.val w:= sorry
 
 theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_ext x.val w i := by
-  induction' i with i ih 
+  induction' i with i ih
   · rw [signExtend_zero h, bitwise_ext_zero x.isLt]
   · simp only [bitwise_ext, toNat] at ih ⊢
     rw [toNat_succ, add_eq]
     simp only [add_comm, ← ih, (show ¬ w+i < w by linarith), ite_false]
-    simp [signExtend_succ h, add_comm w i, ih] 
+    simp [signExtend_succ h, add_comm w i, ih]
 -- if we use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 -- swap lhs and rhs
 end BitVec
-
