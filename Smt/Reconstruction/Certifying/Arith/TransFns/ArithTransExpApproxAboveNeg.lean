@@ -9,49 +9,39 @@ Authors: Tomaz Gomes Mascarenhas
 -- https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule32ARITH_TRANS_EXP_APPROX_ABOVE_NEGE
 import Mathlib
 
-variable (d : ℕ)
-variable (l r : ℝ)
-
-theorem exp_contDiffOn : ContDiffOn ℝ d rexp (Set.Icc l r) := by
+theorem exp_contDiffOn : ∀ (d : ℕ) (l r : ℝ),
+    ContDiffOn ℝ d Real.exp (Set.Icc l r) := by
+  intros d l r
   apply ContDiff.contDiffOn
   exact Real.contDiff_exp
 
-theorem exp_Diff : DifferentiableOn ℝ rexp (Set.Icc l r) :=
-  DifferentiableOn.exp (f := id) (s := Set.Icc l r) (by exact differentiableOn_id)
+theorem t2 : ∀ (l r : ℝ), l < r → UniqueDiffOn ℝ (Set.Icc l r) := by
+  intros l r h
+  refine uniqueDiffOn_Icc ?hab
+  exact h
 
-theorem exp_eq_iteratedDeriv : ∀ n x, iteratedDeriv n rexp x = rexp x := by
-  intros n x
-  rw [iteratedDeriv_eq_iterate, Real.iter_deriv_exp]
+theorem t1 : ∀ (n : ℕ) (l r : ℝ), ContDiffOn ℝ n Real.exp (Set.Icc l r) := by
+  intros n l r
+  exact exp_contDiffOn n l r
 
-#check iteratedDerivWithin_univ
-
-theorem exp_eq_iteratedDerivWithin : ∀ n x s, iteratedDerivWithin n rexp s x = rexp x := by
-  intros n x s
-  rw [iteratedDerivWithin, iteratedFDerivWithin]
-  simp
-  have h := exp_eq_iteratedDeriv n x
-  rw [← h]
-  rw [iteratedDeriv, iteratedFDeriv]
-  simp
-  admit
+theorem exp_DiffOn : ∀ (d : ℕ) (l r : ℝ), l < r →
+    DifferentiableOn ℝ (iteratedDerivWithin d Real.exp (Set.Icc l r)) (Set.Ioo l r) := by
+  intros d l r h
+  have d_lt_succ_d := Nat.lt.base d
+  have h' := ContDiffOn.differentiableOn_iteratedDerivWithin (m := d) (n := d + 1) (t1 (d + 1) l r) (StrictMono.imp Nat.strictMono_cast d_lt_succ_d) (t2 l r h)
+  have o : Set.Ioo l r ⊆ Set.Icc l r := by exact Set.Ioo_subset_Icc_self
+  exact DifferentiableOn.mono h' o
   
-
--- I am using expSeries instead of rexp because it allows me to take partial sums
--- can I use it with taylor's theorem? Yes!
--- Probably will be a good idea to change the other rules to use expSeries instead of rexp as well
--- doesnt really matter, we can use this: Real.exp_eq_exp_ℝ
--- Coming back to rexp because taylorWithinEval is the way of taking taylor polynomial used by taylor's theorem
+-- If you need a theorem for expSeries, use use this: Real.exp_eq_exp_ℝ
+-- Coming back to Real.exp because taylorWithinEval is the way of taking taylor polynomial used by taylor's theorem
 -- Assuming strict bounds for now
 theorem arithTransExpApproxAboveNeg (d : ℕ) (l u t : ℝ) :
-    let p: ℝ → ℝ := taylorWithinEval rexp d (Set.Ioo l u) 0
+    let p: ℝ → ℝ := taylorWithinEval Real.exp d (Set.Ioo l u) 0
     let secant := ((p l - p u) / (l - u)) * (t - l) + p l
-    t > l ∧ t < u → rexp t ≤ secant := by
+    t > l ∧ t < u → Real.exp t ≤ secant := by
   rintro p secant ⟨l_bound, u_bound⟩ 
+  have taylor := taylor_mean_remainder_lagrange (f := Real.exp) (x := t) (x₀ := l)
+    (hx := l_bound) (hf := exp_contDiffOn d l t) (hf' := exp_DiffOn d l t l_bound)
   simp
-  have taylor := taylor_mean_remainder_lagrange (f := rexp) (x := t) (x₀ := l)
-    (hx := l_bound) (hf := exp_contDiffOn d l t) (hf' := by admit)
-
-  sorry
-  /- library_search -/
-
+  admit
 
