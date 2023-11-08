@@ -1,5 +1,4 @@
 import Lean
-import Mathlib.Tactic.LibrarySearch
 
 open Lean Elab Tactic Meta
 
