@@ -2,12 +2,12 @@
  "packagesDir": "lake-packages",
  "packages":
  [{"git":
-   {"url": "https://github.com/leanprover-community/mathlib4",
+   {"url": "https://github.com/leanprover-community/mathlib4.git",
     "subDir?": null,
     "rev": "926c0c5f20491ed64320fa1067d8cba516740647",
     "opts": {},
     "name": "mathlib",
-    "inputRev?": null,
+    "inputRev?": "926c0c5f20491ed64320fa1067d8cba516740647",
     "inherited": false}},
   {"git":
    {"url": "https://github.com/gebner/quote4",
