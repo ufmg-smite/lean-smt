@@ -16,7 +16,7 @@ namespace Smt.Reconstruction.Certifying
 
 def permutateOrMeta (val : Expr) (perm : List Nat)
     (suffIdx : Option Nat) : MetaM Expr := do
-  let type ← instantiateMVars (← expandLet (← Meta.inferType val))
+  let type ← instantiateMVars (← Meta.inferType val)
   let suffIdx: Nat ←
     match suffIdx with
     | some i => pure i
@@ -27,7 +27,7 @@ def permutateOrMeta (val : Expr) (perm : List Nat)
 where go : List Expr → Nat → Expr → MetaM Expr
       | [], _, acc => return acc
       | e::es, suffIdx, acc => do
-          let type ← expandLet (← Meta.inferType acc)
+          let type ← Meta.inferType acc
           let pulled ← pullCore e acc type suffIdx
           go es suffIdx pulled
 
