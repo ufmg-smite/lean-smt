@@ -43,17 +43,17 @@ mutual
 partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
   mvar.withContext do
     match step with
-    | .intro name => do
+    | .intro name =>
       let (_, mvar') ← mvar.intro name
       return mvar'
-    | .tac name goalStr tacStr => do
+    | .tac name goalStr tacStr =>
       let typeStx ← strToStx `term goalStr
       let tacStx ← strToStx `tactic tacStr
       let haveStx ← `(tactic| have $(mkIdent name) : $(⟨typeStx⟩) := by $(⟨tacStx⟩))
       let [mvar'] ←
         evalTacticAt haveStx mvar | throwError "tactic generated many goals"
       pure mvar'
-    | .thm name goalStr thmName args => do
+    | .thm name goalStr thmName args =>
       let type ← strToExpr goalStr
       let argsExpr: List Expr ←
         args.mapM strToExpr
@@ -62,13 +62,13 @@ partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
       -- different treatment depending on whether thmName is a theorem
       -- or a hypothesis (lean_sx etc)
         match lctx.findFromUserName? thmName with
-        | some ldecl => do
+        | some ldecl =>
           pure (mkAppN (Expr.fvar ldecl.fvarId) argsExpr.toArray)
-        | none => do
+        | none =>
           mkAppM thmName argsExpr.toArray
       let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name type pf
       return mvar'
-    | .scope name paramTypeStr retTypeStr scopedName lastName steps => do
+    | .scope name paramTypeStr retTypeStr scopedName lastName steps =>
       let paramType ← strToExpr paramTypeStr
       let retType ← strToExpr retTypeStr
       let goalExpr :=
@@ -89,7 +89,7 @@ partial def runStep (mvar: MVarId) (step: Step) : TacticM MVarId :=
           let (_, mvar'') ← MVarId.intro1P $ ← mvar'.assert name goalExpr pf
           return mvar''
 
-partial def runProof (mvar: MVarId) (pf : List Step): TacticM MVarId := do
+partial def runProof (mvar: MVarId) (pf : List Step): TacticM MVarId :=
   pf.foldlM runStep mvar
 
 end
@@ -107,12 +107,12 @@ def closeGoalWithCvc5Proof (pf: Cvc5Proof): TacticM Unit := do
 -- Testing
 
 def cvc5Proof1 : Cvc5Proof := {
-  steps := [.tac `pf "True" "exact True.intro"]
+  steps := [ .tac `pf "True" "exact True.intro" ]
   lastName := `pf
 }
 
 def cvc5Proof2 : Cvc5Proof := {
-  steps := [.thm `pf "True" `True.intro []]
+  steps := [ .thm `pf "True" `True.intro [] ]
   lastName := `pf
 }
 
