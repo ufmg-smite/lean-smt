@@ -8,7 +8,7 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 import Lean
 import Smt.Translator
 
-namespace Smt.Prop
+namespace Smt.«Prop»
 
 open Lean Expr
 open Translator Term
@@ -85,4 +85,4 @@ def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
     return none
   | _ => return none
 
-end Smt.Prop
+end Smt.«Prop»

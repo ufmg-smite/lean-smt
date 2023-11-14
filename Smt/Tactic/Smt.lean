@@ -9,7 +9,8 @@ import Lean
 
 import Smt.Dsl.Sexp
 import Smt.Query
-import Smt.Reconstruction.Certifying
+-- import Smt.Reconstruction.Certifying
+import Mathlib.Lean.Expr
 import Smt.Solver
 import Smt.Util
 
@@ -130,6 +131,7 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
+/-
 open Reconstruction.Certifying in
 def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
   let mvar' ← Smt.Util.rewriteIffMeta (← Tactic.getMainGoal)
@@ -159,6 +161,7 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
     match result? with
     | none => replaceMainGoal []
     | some (_, mvarId) => replaceMainGoal [mvarId]
+-/
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget
@@ -188,6 +191,7 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   if res = .unknown then
     throwError "unable to prove goal"
+  /-
   try
     -- 4b. Reconstruct proof.
     let (.expr [.atom "proof", .atom nnp], _) ← StateT.run getProof ss
@@ -198,6 +202,8 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
     rconsProof name hs
   catch e =>
     logInfo m!"failed to reconstruct proof: {e.toMessageData}"
+  -/
+/-
 where
   unquote s := s.extract ⟨1⟩ (s.endPos - ⟨1⟩)
   skipImports (s : String) := Id.run do
@@ -206,6 +212,7 @@ where
       s := s.dropWhile (· != '\n')
       s := s.drop 1
     return s
+-/
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let goalType ← Tactic.getMainTarget

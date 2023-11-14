@@ -8,7 +8,7 @@ Authors: Abdalrhman Mohamed
 import Smt.Reconstruction.Rewrites.Simp
 import Std.Logic
 
-namespace Smt.Reconstruction.Rewrites.Prop
+namespace Smt.Reconstruction.Rewrites.«Prop»
 
 -- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/booleans/rewrites
 
@@ -100,4 +100,4 @@ open Function
   (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
   (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_false hnc)
 
-end Smt.Reconstruction.Rewrites.Prop
+end Smt.Reconstruction.Rewrites.«Prop»
