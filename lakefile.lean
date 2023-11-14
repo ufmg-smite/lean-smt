@@ -6,7 +6,7 @@ package smt where
   precompileModules := true
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "926c0c5f20491ed64320fa1067d8cba516740647"
+  "https://github.com/leanprover-community/mathlib4.git" @ "stable"
 
 @[default_target]
 lean_lib Smt
