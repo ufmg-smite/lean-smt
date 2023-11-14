@@ -71,8 +71,6 @@ set_option trace.smt.debug.translate.query true
 set_option trace.smt.debug.translate.expr true
 
 
-example (x : ℝ) : x ≤  x + 1 := by
-  smt
 
 theorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + x * y = 80) : x = 26 := by
   norm_num at *
@@ -86,8 +84,11 @@ theorem mathd_numbertheory_780 (m x : ℤ) (h₀ : 0 ≤ x) (h₁ : 10 ≤ m ∧
   smt [h₀, h₁, h₂, h₃]
   sorry
 
+
 theorem amc12a_2009_p9 (a b c : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f (x + 3) = 3 * x ^ 2 + 7 * x + 4)
     (h₁ : ∀ x, f x = a * x ^ 2 + b * x + c) : a + b + c = 2 := by
+  -- norm_num at *
+  -- fails with norm_num
   smt [h₀, h₁]
 
 theorem mathd_algebra_13 (a b : ℝ)
@@ -96,15 +97,9 @@ theorem mathd_algebra_13 (a b : ℝ)
   smt [h₀]
   sorry
 
-set_option smt.solver.kind "z3" in
-theorem imo_1984_p2 (a b : ℤ) (h₀ : 0 < a ∧ 0 < b) (h₁ : ¬7 ∣ a) (h₂ : ¬7 ∣ b) (h₃ : ¬7 ∣ a + b)
-    (h₄ : 7 ^ 7 ∣ (a + b) ^ 7 - a ^ 7 - b ^ 7) : 19 ≤ a + b := by
-  norm_num at *
-  smt [h₀, h₁, h₂, h₃, h₄] (timeout := 60)
-  sorry
-
 theorem mathd_algebra_267 (x : ℝ) (h₀ : x ≠ 1) (h₁ : x ≠ -2)
     (h₂ : (x + 1) / (x - 1) = (x - 2) / (x + 2)) : x = 0 := by
+  norm_num at *
   smt [h₀, h₁, h₂]
   sorry
 
@@ -117,16 +112,20 @@ theorem imo_1977_p5 (a b q r : ℕ) (h₀ : r < a + b) (h₁ : a ^ 2 + b ^ 2 = (
     (h₂ : q ^ 2 + r = 1977) :
     abs ((a : ℤ) - 22) = 15 ∧ abs ((b : ℤ) - 22) = 28 ∨
       abs ((a : ℤ) - 22) = 28 ∧ abs ((b : ℤ) - 22) = 15 := by
+  norm_num at *
   smt [h₀, h₁, h₂]
   sorry
 
 theorem amc12a_2010_p11 (x b : ℝ) (h₀ : 0 < b) (h₁ : (7 : ℝ) ^ (x + 7) = 8 ^ x)
     (h₂ : x = Real.logb b (7 ^ 7)) : b = 8 / 7 := by
+  norm_num at *
   smt [h₀, h₁, h₂]
   sorry
 
 theorem mathd_algebra_206 (a b : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^ 2 + a * x + b) (h₁ : 2 * a ≠ b)
     (h₂ : f (2 * a) = 0) (h₃ : f b = 0) : a + b = -1 := by
+  -- norm_num at *
+  -- fails with norm_num
   smt [h₀, h₁, h₂, h₃]
   sorry
 
@@ -140,11 +139,20 @@ theorem mathd_algebra_247 (t s : ℝ) (n : ℤ) (h₀ : t = 2 * s - s ^ 2) (h₁
   smt [h₀, h₁, h₂]
   sorry
 
+set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_2unitcircatblt1 (a b : ℝ) (h₀ : a ^ 2 + b ^ 2 = 2) : a * b ≤ 1 := by
   smt [h₀]
   sorry
 
 theorem algebra_amgm_sumasqdivbsqgeqsumbdiva (a b c : ℝ) (h₀ : 0 < a ∧ 0 < b ∧ 0 < c) :
     a ^ 2 / b ^ 2 + b ^ 2 / c ^ 2 + c ^ 2 / a ^ 2 ≥ b / a + c / b + a / c := by
+  norm_num at *
   smt [h₀]
+  sorry
+
+set_option smt.solver.kind "z3" in
+theorem imo_1984_p2 (a b : ℤ) (h₀ : 0 < a ∧ 0 < b) (h₁ : ¬7 ∣ a) (h₂ : ¬7 ∣ b) (h₃ : ¬7 ∣ a + b)
+    (h₄ : 7 ^ 7 ∣ (a + b) ^ 7 - a ^ 7 - b ^ 7) : 19 ≤ a + b := by
+  norm_num at *
+  smt [h₀, h₁, h₂, h₃, h₄] (timeout := 60)
   sorry
