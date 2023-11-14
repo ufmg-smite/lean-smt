@@ -68,9 +68,10 @@ import Smt
 set_option autoImplicit false
 
 set_option trace.smt.debug.translate.query true
+set_option trace.smt.debug.translate.expr true
 
--- TODO: Handle ℝ
-example (x : ℝ) : ¬(x > x) := by
+
+example (x : ℝ) : x ≤  x + 1 := by
   smt
 
 theorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + x * y = 80) : x = 26 := by

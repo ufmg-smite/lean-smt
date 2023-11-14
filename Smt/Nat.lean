@@ -22,8 +22,9 @@ open Translator Term
   | const `Nat.lt _                             => return symbolT "<"
   | const `Nat.ge _                             => return symbolT ">="
   | const `Nat.gt _                             => return symbolT ">"
+  | app (app (const ``GT.gt _) (const ``Nat _)) _ => return symbolT ">"
   -- TODO: why is this not removed at unfoldProjInsts ?
-  | app (app (const `GE.ge _) (const `Nat _)) _ => return symbolT ">="
+  | app (app (const `GE.ge _) (const ``Nat _)) _ => return symbolT ">="
   | _                                           => return none
 
 @[smtTranslator] def replaceNatLit : Translator
