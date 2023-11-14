@@ -70,6 +70,30 @@ set_option autoImplicit false
 set_option trace.smt.debug.translate.query true
 set_option trace.smt.debug.translate.expr true
 
+theorem imo_1964_p1_2 (n : ℕ) : ¬7 ∣ 2 ^ n + 1 := by
+  smt
+  sorry
+
+theorem imo_2006_p6 (a b c : ℝ) :
+  a * b * (a ^ 2 - b ^ 2) + b * c * (b ^ 2 - c ^ 2) + c * a * (c ^ 2 - a ^ 2) ≤
+  9 * Real.sqrt 2 / 32 * (a ^ 2 + b ^ 2 + c ^ 2) ^ 2 := by
+  smt
+  sorry
+
+theorem imo_2006_p6 (a b c : ℝ) :
+  a * b * (a ^ 2 - b ^ 2) + b * c * (b ^ 2 - c ^ 2) + c * a * (c ^ 2 - a ^ 2) ≤
+    9 * Real.sqrt 2 / 32 * (a ^ 2 + b ^ 2 + c ^ 2) ^ 2 := by
+  smt
+  sorry
+
+theorem imo_1987_p4 (f : ℕ → ℕ) : ∃ n, f (f n) ≠ n + 1987 := by
+  smt
+  sorry
+
+theorem mathd_numbertheory_33 (n : ℕ) (h₀ : n < 398) (h₁ : n * 7 % 398 = 1) : n = 57 := by
+  norm_num at *
+  smt [h₀, h₁]
+  sorry
 
 
 theorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + x * y = 80) : x = 26 := by
