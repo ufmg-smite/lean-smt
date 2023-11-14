@@ -82,7 +82,7 @@ where
   countLams : Expr → Nat
     | lam _ _ t _ => 1 + countLams t
     | _ => 0
-  
+
 /-- Given a local (`let`) or global (`const`) definition, translate its body applied to `params`.
 We expect `params` to contain enough free variables to make this a ground term. For example, given
 `def foo (x : Int) : Int → Int := t`, we need `params = #[x, y]` and translate `t[x/x] y`.

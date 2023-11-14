@@ -61,17 +61,27 @@ import Mathlib.Order.LocallyFinite
 import Mathlib.Order.WellFounded
 import Mathlib.Topology.Basic
 import Mathlib.Topology.Instances.NNReal
+
 import Smt
 
 
 set_option autoImplicit false
 
+set_option trace.smt.debug.translate.query true
+
+-- TODO: Handle ℝ
+example (x : ℝ) : ¬(x > x) := by
+  smt
+
 theorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + x * y = 80) : x = 26 := by
+  norm_num at *
   smt [h₀, h₁, h₂]
   sorry
 
-theorem mathd_numbertheory_780 (m x : ℕ) (h₀ : 10 ≤ m) (h₁ : m ≤ 99) (h₂ : 6 * x % m = 1)
-    (h₃ : (x - 6 ^ 2) % m = 0) : m = 43 := by
+set_option smt.solver.kind "z3" in
+theorem mathd_numbertheory_780 (m x : ℤ) (h₀ : 0 ≤ x) (h₁ : 10 ≤ m ∧ m ≤ 99) (h₂ : 6 * x % m = 1)
+  (h₃ : (x - 6 ^ 2) % m = 0) : m = 43 := by
+  norm_num at *
   smt [h₀, h₁, h₂, h₃]
   sorry
 
@@ -85,9 +95,11 @@ theorem mathd_algebra_13 (a b : ℝ)
   smt [h₀]
   sorry
 
-theorem imo_1984_p2 (a b : ℕ) (h₀ : 0 < a ∧ 0 < b) (h₁ : ¬7 ∣ a) (h₂ : ¬7 ∣ b) (h₃ : ¬7 ∣ a + b)
+set_option smt.solver.kind "z3" in
+theorem imo_1984_p2 (a b : ℤ) (h₀ : 0 < a ∧ 0 < b) (h₁ : ¬7 ∣ a) (h₂ : ¬7 ∣ b) (h₃ : ¬7 ∣ a + b)
     (h₄ : 7 ^ 7 ∣ (a + b) ^ 7 - a ^ 7 - b ^ 7) : 19 ≤ a + b := by
-  smt [h₀, h₁, h₂, h₃, h₄]
+  norm_num at *
+  smt [h₀, h₁, h₂, h₃, h₄] (timeout := 60)
   sorry
 
 theorem mathd_algebra_267 (x : ℝ) (h₀ : x ≠ 1) (h₁ : x ≠ -2)
@@ -96,7 +108,9 @@ theorem mathd_algebra_267 (x : ℝ) (h₀ : x ≠ 1) (h₁ : x ≠ -2)
   sorry
 
 theorem induction_seq_mul2pnp1 (n : ℕ) (u : ℕ → ℕ) (h₀ : u 0 = 0)
-    (h₁ : ∀ n, u (n + 1) = 2 * u n + (n + 1)) : u n = 2 ^ (n + 1) - (n + 2) := by smt [h₀, h₁]
+    (h₁ : ∀ n, u (n + 1) = 2 * u n + (n + 1)) : u n = 2 ^ (n + 1) - (n + 2) := by
+  norm_num at *
+  smt [h₀, h₁]
 
 theorem imo_1977_p5 (a b q r : ℕ) (h₀ : r < a + b) (h₁ : a ^ 2 + b ^ 2 = (a + b) * q + r)
     (h₂ : q ^ 2 + r = 1977) :
@@ -115,9 +129,10 @@ theorem mathd_algebra_206 (a b : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^
   smt [h₀, h₁, h₂, h₃]
   sorry
 
-theorem mathd_numbertheory_412 (x y : ℕ) (h₀ : x % 19 = 4) (h₁ : y % 19 = 7) :
+theorem mathd_numbertheory_412 (x y : ℤ) (h₀ : 0 ≤ x ∧ 0 ≤ y) (h₁ : x % 19 = 4) (h₂ : y % 19 = 7) :
     (x + 1) ^ 2 * (y + 5) ^ 3 % 19 = 13 := by
-  smt [h₀, h₁]
+  norm_num at *
+  smt [h₀, h₁, h₂]  -- Suprisingly difficult for z3 and cvc5.
   sorry
 
 theorem mathd_algebra_247 (t s : ℝ) (n : ℤ) (h₀ : t = 2 * s - s ^ 2) (h₁ : s = n ^ 2 - 2 ^ n + 1) (h₂ : n = 3) : t = 0 := by

@@ -167,7 +167,6 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
   let goalType ← Tactic.getMainTarget
   -- 1. Get the hints passed to the tactic.
   let mut hs ← parseHints ⟨stx[1]⟩
-  hs := hs.eraseDups
   withProcessedHints hs fun hs => do
   -- 2. Generate the SMT query.
   let cmds ← prepareSmtQuery hs

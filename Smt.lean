@@ -11,6 +11,7 @@ import Smt.Int
 import Smt.Nat
 import Smt.«Prop»
 import Smt.Rat
+import Smt.Real
 import Smt.Solver
 import Smt.String
 import Smt.Tactic

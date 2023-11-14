@@ -26,6 +26,9 @@ open Translator Term
   | const ``Int.emod _ => return symbolT "mod"
   | const ``Int.le _   => return symbolT "<="
   | const ``Int.lt _   => return symbolT "<"
+  | const ``Int.pow _  => return symbolT "^"
+  | app (app (const ``GE.ge _) (const ``Int _)) _ => return symbolT ">="
+  | app (app (const ``GT.gt _) (const ``Int _)) _ => return symbolT ">"
   | app (const ``Int.ofNat _) e => applyTranslators! e
   | app (app (app (const ``Nat.cast _) (const ``Int _)) _) e => applyTranslators! e
   | _                          => return none
