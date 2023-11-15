@@ -16,7 +16,7 @@ import Smt.Util
 
 namespace Smt
 
-open Lean Elab Tactic
+open Lean Meta Elab Tactic
 open Smt Query Solver
 
 initialize
@@ -167,6 +167,7 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
   let goalType ← Tactic.getMainTarget
   -- 1. Get the hints passed to the tactic.
   let mut hs ← parseHints ⟨stx[1]⟩
+  hs := hs.eraseDups
   withProcessedHints hs fun hs => do
   -- 2. Generate the SMT query.
   let cmds ← prepareSmtQuery hs
@@ -221,5 +222,89 @@ where
   let cmds ← prepareSmtQuery hs
   let cmds := .checkSat :: cmds
   logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
+
+def elimDvd : TacticM Unit := do
+  return ()
+
+def elimPrime : TacticM Unit := do
+  return ()
+
+def elimLog : TacticM Unit := do
+  return ()
+
+-- pow
+def elimSqrt : TacticM Unit := do
+  return ()
+
+def elimAbs : TacticM Unit := do
+  return ()
+
+def elimOddEven : TacticM Unit := do
+  return ()
+
+def smtPreprocess : TacticM Unit := do
+  logInfo "smtPreprocess"
+  elimDvd
+  elimPrime
+  return ()
+
+def getLocalHypotheses : MetaM (List Expr) := do
+  let ctx ← getLCtx
+  let mut hs := #[]
+  for localDecl in ctx do
+    if localDecl.isImplementationDetail then
+      continue
+    let e ← instantiateMVars localDecl.toExpr
+    let et ← inferType e >>= instantiateMVars
+    if (← isProp et) then
+      hs := hs.push localDecl.toExpr
+  return hs.toList.eraseDups
+
+axiom SMT_VERIF (P : Prop) : P
+
+/-
+  Close the current goal using the above axiom.
+  It is crucial to ensure that this is only invoked when an `unsat` result is returned
+-/
+def closeWithAxiom : TacticM Unit := do
+  let _ ← evalTactic (← `(tactic| apply SMT_VERIF))
+
+def smtSolve : TacticM Unit := withMainContext do
+  let goalType ← Tactic.getMainTarget
+  -- 1. Get the hints passed to the tactic.
+  let hs ← getLocalHypotheses
+  logInfo hs
+  withProcessedHints hs fun hs => do
+    -- 2. Generate the SMT query.
+    let cmds ← prepareSmtQuery hs
+    let query := setOption "produce-models" "true"
+              *> emitCommands cmds.reverse
+              *> checkSat
+    logInfo m!"goal: {goalType}"
+    logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
+    -- 3. Run the solver.
+    let kind := smt.solver.kind.get (← getOptions)
+    let path := smt.solver.path.get? (← getOptions)
+    let timeout := some 200
+    let ss ← createFromKind kind path timeout
+    let (res, ss) ← (StateT.run query ss : MetaM _)
+    -- 4. Print the result.
+    logInfo m!"\nresult: {res}"
+    match res with
+    | .sat =>
+      -- 4a. Print model.
+      let (model, _) ← StateT.run getModel ss
+      logInfo m!"\ncounter-model:\n{model}\n"
+      throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
+    | .unknown => throwError "unable to prove goal"
+    | .unsat => closeWithAxiom
+
+syntax "smt_preprocess" : tactic
+syntax "smt!" : tactic
+
+elab_rules : tactic
+  | `(tactic | smt_preprocess) => smtPreprocess
+  | `(tactic | smt!) => smtSolve
+
 
 end Smt
