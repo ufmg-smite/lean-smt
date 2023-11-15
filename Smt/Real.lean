@@ -15,6 +15,7 @@ namespace Smt.Real
 open Lean Expr
 open Translator Term
 
+#check @DivInvMonoid.div'
 
 @[smtTranslator] def replaceConst : Translator
   | const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "add") _ => return symbolT "+"
@@ -27,7 +28,11 @@ open Translator Term
   | const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "le") _ => return symbolT "<="
   | const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "one") _ => return literalT "1"
   | const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "zero") _ => return literalT "0"
+  | app (const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "inv'") _)  x => do return Term.mkApp2 (symbolT "/") (literalT "1") (← applyTranslators! x)
   | const `Real.rpow _ => return symbolT "^"
+  | app (app (app (app (app (const ``npowRec _) (const `Real _)) _) _) n) a => do return Term.mkApp2 (symbolT "^") (← applyTranslators! a) (← applyTranslators! n)
+  | app (app (app (const ``DivInvMonoid.div' _) (const `Real _)) _) _ => return symbolT "/"
+  | lam (body := lam (body := app (app (const (Name.str (Name.str (Name.num `_private.Mathlib.Data.Real.Basic 0) "Real") "mul")  _) _) _) ..) .. => return symbolT "*"
   | app (app (const ``LE.le _) (const `Real _)) _ => return symbolT "<="
   | app (app (const ``GT.gt _) (const `Real _)) _ => return symbolT ">"
   | app (app (const ``GE.ge _) (const `Real _)) _ => return symbolT ">="
