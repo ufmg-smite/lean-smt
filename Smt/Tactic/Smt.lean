@@ -246,7 +246,10 @@ def smtPreprocess : TacticM Unit := do
   logInfo "smtPreprocess"
   elimDvd
   elimPrime
-  return ()
+  elimLog
+  elimSqrt
+  elimAbs
+  elimOddEven
 
 def getLocalHypotheses : MetaM (List Expr) := do
   let ctx ← getLCtx
@@ -304,7 +307,9 @@ syntax "smt!" : tactic
 
 elab_rules : tactic
   | `(tactic | smt_preprocess) => smtPreprocess
-  | `(tactic | smt!) => smtSolve
+  | `(tactic | smt!) => do
+    smtPreprocess
+    smtSolve
 
 
 end Smt
