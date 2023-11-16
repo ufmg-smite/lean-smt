@@ -184,13 +184,15 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
   let (res, ss) ← (StateT.run query ss : MetaM _)
   -- 4. Print the result.
   logInfo m!"\nresult: {res}"
-  if res = .sat then
+  match res with
+  | .sat =>
     -- 4a. Print model.
     let (model, _) ← StateT.run getModel ss
     logInfo m!"\ncounter-model:\n{model}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
-  if res = .unknown then
-    throwError "unable to prove goal"
+  | .unknown => throwError "unable to prove goal"
+  | .timeout => throwError "the SMT solver timed out"
+  | .unsat => return ()
   /-
   try
     -- 4b. Reconstruct proof.
@@ -276,7 +278,6 @@ def smtSolve : TacticM Unit := withMainContext do
   let goalType ← Tactic.getMainTarget
   -- 1. Get the hints passed to the tactic.
   let hs ← getLocalHypotheses
-  logInfo hs
   withProcessedHints hs fun hs => do
     -- 2. Generate the SMT query.
     let cmds ← prepareSmtQuery hs
@@ -288,7 +289,7 @@ def smtSolve : TacticM Unit := withMainContext do
     -- 3. Run the solver.
     let kind := smt.solver.kind.get (← getOptions)
     let path := smt.solver.path.get? (← getOptions)
-    let timeout := some 10
+    let timeout := some 2
     let ss ← createFromKind kind path timeout
     let (res, ss) ← (StateT.run query ss : MetaM _)
     -- 4. Print the result.
@@ -300,6 +301,7 @@ def smtSolve : TacticM Unit := withMainContext do
       logInfo m!"\ncounter-model:\n{model}\n"
       throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
     | .unknown => throwError "unable to prove goal"
+    | .timeout => throwError "the SMT solver timed out"
     | .unsat => closeWithAxiom
 
 syntax "smt_preprocess" : tactic

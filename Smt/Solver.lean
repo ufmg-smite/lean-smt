@@ -61,6 +61,7 @@ inductive Result where
   | sat     : Result
   | unsat   : Result
   | unknown : Result
+  | timeout : Result
 deriving DecidableEq
 
 instance : ToString Result where
@@ -68,6 +69,7 @@ instance : ToString Result where
     | .sat     => "sat"
     | .unsat   => "unsat"
     | .unknown => "unknown"
+    | .timeout => "timeout"
 
 /-- The data-structure for the state of the generic SMT-LIB solver. -/
 structure SolverState where
@@ -189,6 +191,7 @@ def checkSat : SolverT m Result := do
     | "sat"     => return .sat
     | "unsat"   => return .unsat
     | "unknown" => return .unknown
+    | "timeout" => return .timeout
     | _ => (throw (IO.userError s!"unexpected solver output: {repr out}") : IO _)
   return res
 
