@@ -19,6 +19,7 @@ inductive Command where
   | declareSort (nm : String) (arity : Nat)
   | defineSort (nm : String) (ps : List Term) (tm : Term)
   | declare (nm : String) (st : Term)
+  | declareFun (nm : String) (ps : List Term) (cod : Term)
   | defineFun (nm : String) (ps : List (String × Term)) (cod : Term) (tm : Term) (rec : Bool)
   | assert (tm : Term)
   | checkSat
@@ -52,6 +53,8 @@ protected def toSexp : Command → Sexp
     sexp!{(declare-sort {quoteSymbol nm} {toString arity})}
   | .defineSort nm ps tm          =>
     sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {tm})}
+  | .declareFun nm ps cod =>
+    sexp!{(declare-fun {quoteSymbol nm} (...{ps.map toSexp}) {cod})}
   | .defineFun nm ps cod tm false =>
     sexp!{(define-fun {quoteSymbol nm} {paramsToSexp ps} {cod} {tm})}
   | .defineFun nm ps cod tm true  =>
