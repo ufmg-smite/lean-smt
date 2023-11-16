@@ -74,16 +74,16 @@ set_option trace.smt.debug.translate.expr true
 #eval (1:ℤ)/2
 #eval (4:ℚ)^(1/2)
 
+set_option smt.solver.kind "z3" in
 theorem mathd_algebra_206 (a b : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^ 2 + a * x + b) (h₁ : 2 * a ≠ b)
   (h₂ : f (2 * a) = 0) (h₃ : f b = 0) : a + b = -1 := by
   -- smt [h₀, h₁, h₂, h₃]
   smt!
 
+set_option smt.solver.kind "z3" in
 theorem mathd_algebra_437 (x y : ℝ) (n : ℤ) (h₀ : x ^ 3 = -45) (h₁ : y ^ 3 = -101) (h₂ : x < n)
   (h₃ : ↑n < y) : n = -4 := by
   smt!
-
-#check Nat.mod
 
 set_option smt.solver.kind "z3" in
 theorem mathd_algebra_267 (x : ℝ) (h₀ : x ≠ 1) (h₁ : x ≠ -2)
@@ -143,6 +143,7 @@ theorem mathd_algebra_410 (x y : ℝ) (h₀ : y = x ^ 2 - 6 * x + 13) : 4 ≤ y 
 set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_4bap1lt4bsqpap1sq (a b : ℝ) : 4 * b * (a + 1) ≤ 4 * b ^ 2 + (a + 1) ^ 2 := by
   smt!
+
 
 theorem mathd_algebra_493 (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^ 2 - 4 * Real.sqrt x + 1) :
   f (f 4) = 70 := by
@@ -251,7 +252,8 @@ theorem aime_1984_p15 (x y z w : ℝ)
     x ^ 2 + y ^ 2 + z ^ 2 + w ^ 2 = 36 := by
   smt!
 
-theorem mathd_algebra_433 (f : ℝ → ℝ) (h₀ : ∀ x, f x = 3 * (2 * x - 7) - 8) : f 8 = 1 := by
+set_option smt.solver.kind "z3" in
+theorem mathd_algebra_433 (f : ℝ → ℝ) (h₀ : ∀ x, f x = 3 * (2 * x - 7) - 8) : f 8 = 19 := by
   smt!
   sorry
 
@@ -348,6 +350,7 @@ theorem amc12a_2010_p11 (x b : ℝ) (h₀ : 0 < b) (h₁ : (7 : ℝ) ^ (x + 7) =
   smt!
   sorry
 
+set_option smt.solver.kind "z3" in
 theorem mathd_numbertheory_412 (x y : ℤ) (h₀ : 0 ≤ x ∧ 0 ≤ y) (h₁ : x % 19 = 4) (h₂ : y % 19 = 7) :
     (x + 1) ^ 2 * (y + 5) ^ 3 % 19 = 13 := by
   norm_num at *
@@ -383,5 +386,5 @@ theorem amc12a_2010_p10 (p q : ℝ) (a : ℕ → ℝ) (h₀ : ∀ n, a (n + 2) -
   smt!
 
 theorem imo_1987_p4 (f : ℕ → ℕ) : ∃ n, f (f n) ≠ n + 1987 := by
-  -- smt!
+  smt!
   sorry

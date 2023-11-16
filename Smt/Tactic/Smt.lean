@@ -288,7 +288,7 @@ def smtSolve : TacticM Unit := withMainContext do
     -- 3. Run the solver.
     let kind := smt.solver.kind.get (← getOptions)
     let path := smt.solver.path.get? (← getOptions)
-    let timeout := some 200
+    let timeout := some 10
     let ss ← createFromKind kind path timeout
     let (res, ss) ← (StateT.run query ss : MetaM _)
     -- 4. Print the result.
