@@ -72,4 +72,5 @@ theorem sumBounds₉ : a = b → c = d → a + c ≤ b + d := by
   rewrite [h₁, h₂]
   exact le_refl (b + d)
 
+
 end Smt.Reconstruction.Certifying

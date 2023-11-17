@@ -11,6 +11,7 @@ import Smt.Dsl.Sexp
 import Smt.Query
 import Smt.Reconstruction.Certifying
 import Smt.Solver
+import Smt.Util
 
 namespace Smt
 
@@ -116,6 +117,8 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
 
 open Reconstruction.Certifying in
 def rconsProof (hints : List Expr) : TacticM Unit := do
+  let mvar' ← Smt.Util.rewriteIffMeta (← Tactic.getMainGoal)
+  replaceMainGoal [mvar']
   let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
   Tactic.replaceMainGoal gs
   let th0 ← Meta.mkConstWithFreshMVarLevels `th0

@@ -61,8 +61,11 @@ def collectPropsInOrChain' : Nat → Expr → MetaM (List Expr)
   let li ← collectPropsInOrChain e
   let pref := List.take l li
   let suff := List.drop l li
-  let suffE ← createOrChain suff
-  pure $ pref ++ [suffE]
+  let suffE ←
+    match suff with
+    | [] => pure []
+    | _  => pure [← createOrChain suff]
+  pure (pref ++ suffE)
 
 def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
   List.join
@@ -138,36 +141,6 @@ def mkLam (type body : Expr) : Expr :=
 def mkForall' (t b : Expr) : Expr :=
   forallE Name.anonymous t b BinderInfo.default
 
-partial def expandType' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
-  match e with
-  | fvar fid => mvar.withContext do
-    let lctx ← getLCtx
-    match lctx.find? fid with
-    | some ldcl => expandType' mvar ldcl.value
-    | none      => pure e
-  | _ => pure e
-
-def expandTypesInOrChain' (mvar : MVarId) : Expr → MetaM Expr := fun e =>
-  do let es ← collectPropsInOrChain e
-     let esExpanded ← List.mapM (expandType' mvar) es
-     let e' ← createOrChain esExpanded
-     pure e'
-
-partial def expandType : Expr → TacticM Expr := fun e =>
-  match e with
-  | fvar fid => withMainContext do
-    let lctx ← getLCtx
-    match lctx.find? fid with
-    | some ldcl => expandType ldcl.value
-    | none      => pure e
-  | _ => pure e
-
-def expandTypesInOrChain : Expr → TacticM Expr := fun e => do
-  let es         ← collectPropsInOrChain e
-  let esExpanded ← List.mapM expandType es
-  let e'         ← createOrChain esExpanded
-  pure e'
-
 def printGoal : TacticM Unit := do
   let currGoal ← getMainGoal
   let currGoalType ← MVarId.getType currGoal
@@ -188,5 +161,38 @@ def getOp : Expr → MetaM Name
   | app (app (app (app (Expr.const nm ..) ..) ..) ..) .. => pure nm
   | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
   | _ => throwError "[getOp] invalid parameter"
+
+partial def expandLet : Expr → MetaM Expr
+| fvar fid => do
+    let lctx ← getLCtx
+    match lctx.find? fid with
+    | some (.ldecl _ _ userName _ value _ _) =>
+      match userName with
+      | .str _ ⟨userNameStr⟩ =>
+        let userNamePref: String := ⟨List.take 3 userNameStr⟩
+        if userNamePref = "let" then expandLet value else pure (fvar fid)
+      | _ => pure (fvar fid)
+    | _ => pure (fvar fid)
+| app f x => do pure (app (← expandLet f) (← expandLet x))
+| lam bn bt body bi => do pure (lam bn (← expandLet bt) (← expandLet body) bi)
+| forallE bn bt body bi => do
+    pure (lam bn (← expandLet bt) (← expandLet body) bi)
+| letE nm tp val bd nDep => do
+    pure (letE nm (← expandLet tp) (← expandLet val) (← expandLet bd) nDep)
+| e => pure e
+
+
+syntax (name := printType) "printType" term : tactic
+
+@[tactic printType] def evalPrintType : Tactic := fun stx =>
+  withMainContext do
+    let e ← elabTerm stx[1] none
+    let t ← inferType e
+    logInfo m!"t = {t}"
+    let e' ← expandLet e
+    logInfo m!"e' = {e'}"
+    let t ← inferType e'
+    let t' ← expandLet t
+    logInfo m!"t' = {t'}"
 
 end Smt.Reconstruction.Certifying

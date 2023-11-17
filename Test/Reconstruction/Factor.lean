@@ -14,11 +14,25 @@ example : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B �
   by intro h
      factor h
 
+example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
+  intro h
+  factor h, 4
+
 example : (A ∨ B ∨ C) ∨ (A ∨ B ∨ C) → A ∨ B ∨ C := by
   intro h
   factor h, 1
 
 example :
+  A ∨ B ∨ (E ∨ F) ∨ A ∨ B ∨ (E ∨ F) → A ∨ B ∨ (E ∨ F) :=
+  by intro h
+     factor h, 5
+
+example :
   (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ (E ∨ F) → (A ∨ B ∨ C) ∨ (E ∨ F) :=
   by intro h
      factor h, 3
+
+example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
+  intro h
+  factor h, 4
+

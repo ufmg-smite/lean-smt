@@ -7,6 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
+import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Lemmas
 import Smt.Reconstruction.Certifying.Arith.SumBounds.Instances
 import Smt.Reconstruction.Certifying.Util
@@ -16,12 +17,36 @@ open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying
 
+theorem castEQ : ∀ {a b : Int}, a = b → Rat.ofInt a = Rat.ofInt b := by
+  intros a b h
+  rw [h]
+
+def getCastRelThm (rel : Name) : Name :=
+  match rel with
+  | ``LT.lt => ``castLT
+  | ``LE.le => ``castLE
+  | ``Eq    => ``castEQ
+  | _ => `unreachable
+
 def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h₂ =>
   mvar.withContext do
-    let t₁ ← inferType h₁
-    let t₂ ← inferType h₂
+    let t₁ ← expandLet (← inferType h₁)
+    let rel₁ ← getOp t₁
+    let t₂ ← expandLet (← inferType h₂)
+    let rel₂ ← getOp t₂
+    let tp₁ ← getOpType t₁
+    let tp₂ ← getOpType t₂
+    let (h₁, h₂) ←
+      match tp₁, tp₂ with
+      | const `Int .., const `Rat .. =>
+        let thm := getCastRelThm rel₁
+        pure (← mkAppM thm #[h₁], h₂)
+      | const `Rat .., const `Int .. =>
+        let thm := getCastRelThm rel₂
+        pure (h₁, ← mkAppM thm #[h₂])
+      | _, _ => pure (h₁, h₂)
     let thmName : Name ←
-      match ← getOp t₁, ← getOp t₂ with
+      match rel₂, rel₁ with
       | ``LT.lt , ``LT.lt => pure ``sumBounds₁
       | ``LT.lt , ``LE.le => pure ``sumBounds₂
       | ``LT.lt , ``Eq    => pure ``sumBounds₃
@@ -32,10 +57,17 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
       | ``Eq    , ``LE.le => pure ``sumBounds₈
       | ``Eq    , ``Eq    => pure ``sumBounds₉
       | _      , _      => throwError "[sumBounds] invalid operation"
-    mkAppM thmName #[h₁, h₂]
+    mkAppM thmName #[h₂, h₁]
+where 
+  getOpType : Expr → MetaM Expr
+  | app (Expr.const ``Not ..) e' => getOpType e'
+  | app (app (app (app (app (Expr.const _ ..) tp) ..) ..) ..) .. => pure tp
+  | app (app (app (app (Expr.const _ ..) tp) ..) ..) .. => pure tp
+  | app (app (app (Expr.const _ ..) tp) ..) .. => pure tp
+  | _ => throwError "[getOp] invalid parameter"
 
 def sumBoundsMeta (mvar : MVarId) (h : Expr) (hs : List Expr) (name : Name)
-  : MetaM MVarId :=
+    : MetaM MVarId :=
   mvar.withContext do
     go h hs
 where
@@ -52,19 +84,24 @@ syntax (name := sumBounds) "sumBounds" "[" term,* "]" : tactic
 
 def parseSumBounds : Syntax → TacticM (List Expr)
   | `(tactic| sumBounds [$[$hs],*]) =>
-    hs.toList.mapM (λ stx => elabTerm stx.raw none)
+    hs.toList.mapM (fun stx => do expandLet (← elabTerm stx.raw none))
   | _ => throwError "[sumBounds]: expects a list of premisses"
 
 @[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
   withMainContext do
+    trace[smt.debug] m!"[sumBounds] start time: {← IO.monoNanosNow}ns"
     let (h, hs) ←
       match ← parseSumBounds stx with
-      | h::hs => pure (h, hs)
+      | h::hs =>
+        let h'::hs' := List.reverse (h::hs) | throwError "unreachable"
+        pure (h', hs')
       | [] => throwError "[sumBounds]: empty list of premisses"
     let mvar ← getMainGoal
     let fname ← mkFreshId
     let mvar' ← sumBoundsMeta mvar h hs fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
+    trace[smt.debug] m!"[sumBounds] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruction.Certifying
+

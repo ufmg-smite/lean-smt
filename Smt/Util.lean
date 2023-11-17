@@ -19,6 +19,7 @@ namespace Smt.Util
 
 open Lean
 open Lean.Expr
+open Elab.Tactic
 
 /-- Prints the given expression in AST format. -/
 def exprToString : Expr → String
@@ -106,5 +107,34 @@ where
   pre e : MetaM TransformStep := return match ← Meta.unfoldProjInst? e with
     | some e => .visit e
     | none   => .continue
+
+theorem iff_eq_eq : (p ↔ q) = (p = q) := propext ⟨propext, (· ▸ ⟨(·), (·)⟩)⟩
+
+def rewriteIffGoal (mvar : MVarId) : MetaM MVarId :=
+  mvar.withContext do
+    let t ← mvar.getType
+    let r ← mvar.rewrite t (mkConst ``iff_eq_eq)
+    let mvar' ← mvar.replaceTargetEq r.eNew r.eqProof
+    pure mvar'
+
+def rewriteIffDecl (decl : LocalDecl) (mvar : MVarId) : MetaM MVarId :=
+  mvar.withContext do
+    let rwRes ← mvar.rewrite decl.type (mkConst ``iff_eq_eq)
+    let repRes ← mvar.replaceLocalDecl decl.fvarId rwRes.eNew rwRes.eqProof
+    pure repRes.mvarId
+
+partial def fixRewriteIff (mvar : MVarId) (f : MVarId → MetaM MVarId) : MetaM MVarId :=
+  mvar.withContext do
+    try
+      let mvar' ← f mvar
+      fixRewriteIff mvar' f
+    catch _ => return mvar
+
+def rewriteIffMeta (mvar : MVarId) : MetaM MVarId :=
+  mvar.withContext do
+    let mvar' ← fixRewriteIff mvar rewriteIffGoal
+    let lctx ← getLCtx
+    lctx.foldrM
+      (fun decl mvar'' => fixRewriteIff mvar'' (rewriteIffDecl decl)) mvar'
 
 namespace Smt.Util

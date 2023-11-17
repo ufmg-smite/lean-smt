@@ -5,6 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
+import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
+
 import Mathlib.Data.Rat.Floor
 import Mathlib.Algebra.Order.Floor
 
@@ -17,10 +19,6 @@ theorem Rat.neg_lt_neg {a b : ℚ} (h : a < b) : -a > -b := by
 theorem Rat.neg_le_neg {a b : ℚ} (h : a ≤ b) : -a ≥ -b := by
   simp
   exact h
-
-theorem castLE : ∀ {a b : Int}, a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by simp
-
-theorem castLT : ∀ {a b : Int}, a < b → Rat.ofInt a < Rat.ofInt b := by simp
 
 theorem intTightLb' : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h

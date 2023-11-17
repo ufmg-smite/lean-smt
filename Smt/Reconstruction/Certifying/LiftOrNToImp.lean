@@ -84,21 +84,30 @@ def getGroupOrPrefixGoal : Expr → Nat → MetaM Expr
   let right ← createOrChain (drop n props)
   pure $ app (app (mkConst ``Or) left) right
 
-def groupPrefixCore (mvar : MVarId) (val type : Expr) (prefLen : Nat)
-  (name : Name) : MetaM MVarId :=
-    mvar.withContext do
-      let l ← getLength type
-      if prefLen > 0 && prefLen < l then
-        let props ← collectPropsInOrChain type
-        let goal ← getGroupOrPrefixGoal type prefLen
-        let mut answer := val
-        let lemmas ← groupPrefixLemmas props (prefLen - 1)
-        for l in lemmas do
-          answer := mkApp l answer
-        let (_, mvar') ← MVarId.intro1P $ ← mvar.assert name goal answer
-        return mvar'
-      else throwError
-        "[groupPrefix]: prefix length must be > 0 and < size of or-chain"
+def groupPrefixCore (pf : Expr) (i : Nat) : MetaM Expr := do
+  let clause ← expandLet (← inferType pf)
+  let props ← collectPropsInOrChain clause
+  if i > 0 && i < List.length props then
+    let lemmas ← groupPrefixLemmas props (i - 1)
+    let answer :=
+      List.foldl (fun acc l => Expr.app l acc) pf lemmas
+    return answer
+  else throwError
+    "[groupPrefix]: prefix length must be > 0 and < size of or-chain"
+
+syntax (name := groupClausePrefix) "groupClausePrefix" term "," term : tactic
+
+@[tactic groupClausePrefix] def evalGroupClausePrefix : Tactic := fun stx =>
+  withMainContext do
+    let pf ← elabTerm stx[1] none
+    let i ← stxToNat ⟨stx[3]⟩
+    let answer ← groupPrefixCore pf i
+    let mvar ← getMainGoal
+    let type ← inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
+    replaceMainGoal [mvar']
+    evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   let propsList ← collectPropsInOrChain props
@@ -106,49 +115,37 @@ def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   let premiss ← foldAndExpr $ List.map notExpr $ List.take prefLen propsList
   pure $ mkForall' premiss conclusion
 
-def liftOrNToImpCore (mvar : MVarId) (name : Name) (val : Expr)
-  (prefLen : Nat) : MetaM MVarId :=
-    mvar.withContext do
-      /- let type ← (expandTypesInOrChain' mvar) $ ← inferType val -/
-      let type ← inferType val
-      let goal ← liftOrNToImpGoal type prefLen
-      let fname1 ← mkFreshId
-      let newMVar ←
-        if prefLen > 1 then
-          groupPrefixCore mvar val type prefLen fname1
-        else do
-          let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname1 type val
-          pure mvar'
-      newMVar.withContext do
-        let negArgs := collectOrNNegArgs type prefLen
-        let deMorganArgs :=
-          listExpr negArgs (sort Level.zero)
-        let dmHyp :=
-          mkApp (mkApp (mkConst ``deMorgan₂) deMorganArgs) (bvar 0)
-        let lctx ← getLCtx
-        let hyp ←
-          match lctx.findFromUserName? fname1 with
-          | none => throwError "[LiftOrNToImp]: Could not find declaration"
-          | some ldcl => pure ldcl.toExpr
-        let props  ← collectPropsInOrChain type
-        let l      ← createOrChain $ List.take prefLen props
-        let r      ← createOrChain $ List.drop prefLen props
-        let answer :=
-          mkApp (mkApp (mkApp (mkApp (mkConst ``orImplies₃) l) r) hyp) dmHyp
-        let answer := mkLam (← foldAndExpr negArgs) answer
-        let (_, newMVar') ← MVarId.intro1P $ ← newMVar.assert name goal answer
-        return newMVar'
+def liftOrNToImpCore (pf : Expr) (prefLen : Nat) : MetaM Expr := do
+    let clause ← expandLet (← inferType pf)
+    let newPf ←
+      if prefLen > 1 then
+        groupPrefixCore pf prefLen
+      else pure pf
+    let negArgs := collectOrNNegArgs clause prefLen
+    let deMorganArgs :=
+      listExpr negArgs (sort Level.zero)
+    let dmHyp :=
+      mkApp (mkApp (mkConst ``deMorgan₂) deMorganArgs) (bvar 0)
+    let props  ← collectPropsInOrChain clause
+    let l      ← createOrChain $ List.take prefLen props
+    let r      ← createOrChain $ List.drop prefLen props
+    let answer :=
+      mkApp (mkApp (mkApp (mkApp (mkConst ``orImplies₃) l) r) newPf) dmHyp
+    let answer := mkLam (← foldAndExpr negArgs) answer
+    return answer
 
 syntax (name := liftOrNToImp) "liftOrNToImp" term "," term : tactic
 
 @[tactic liftOrNToImp] def evalLiftOrNToImp : Tactic :=
   fun stx => withMainContext do
+    trace[smt.profile] m!"[liftOrNToImp] start time: {← IO.monoNanosNow}ns"
     let val ← elabTerm stx[1] none
     let prefLen ← stxToNat ⟨stx[3]⟩
-    let fname ← mkFreshId
+    let answer ← liftOrNToImpCore val prefLen
     let mvar ← getMainGoal
-    let mvar' ← liftOrNToImpCore mvar fname val prefLen
+    let type ← Meta.inferType answer
+    let fname ← mkFreshId
+    let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type answer
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-
-end Smt.Reconstruction.Certifying
+    trace[smt.profile] m!"[liftOrNToImp] end time: {← IO.monoNanosNow}ns"
