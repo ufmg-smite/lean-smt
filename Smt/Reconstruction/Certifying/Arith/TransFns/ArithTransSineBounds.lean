@@ -7,13 +7,15 @@ Authors: Tomaz Gomes Mascarenhas
 
 /-
 Implementation of:
-https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_EXP_SUPER_LINE
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule23ARITH_TRANS_SINE_BOUNDSE
 -/
 
 import Mathlib.Data.Complex.Exponential
 
-theorem arithTransExpZero (t : ℝ) :
-    t = 0 ↔ Real.exp t = 1 := by
-  apply Iff.intro
-  · intro h; rw [h]; simp
-  · intro h; simp at h; assumption
+open Real
+
+theorem arithTransSineBounds : ∀ (t : ℝ), sin t ≤ 1 ∧ sin t ≥ -1 := by
+  intro t
+  apply And.intro
+  · exact sin_le_one t
+  · exact neg_one_le_sin t

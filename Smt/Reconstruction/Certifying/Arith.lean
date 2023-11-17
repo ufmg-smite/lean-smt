@@ -10,5 +10,5 @@ import Smt.Reconstruction.Certifying.Arith.MulPosNeg
 import Smt.Reconstruction.Certifying.Arith.SumBounds
 import Smt.Reconstruction.Certifying.Arith.TangentPlane
 import Smt.Reconstruction.Certifying.Arith.TightBounds
-/- import Smt.Reconstruction.Certifying.Arith.TransFns -/
+import Smt.Reconstruction.Certifying.Arith.TransFns
 import Smt.Reconstruction.Certifying.Arith.Trichotomy
