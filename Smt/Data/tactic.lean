@@ -10,7 +10,7 @@ import Std
 import Aesop
 import Smt.Data.BitVec
 
-open Lean Elab.Tactic Meta Expr Syntax 
+open Lean Elab.Tactic Meta Expr Syntax
 
 namespace Smt.Data.tactic
 
@@ -23,7 +23,7 @@ theorem bool_and_flatten : (xs ∧ (b ∧ ys) ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 
 theorem bool_or_flatten : (xs ∨ (b ∨ ys) ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by
   rw [← @or_assoc b ys zs]
-  
+
 theorem bool_and_false : (xs ∧ False ∧ ys) = False := by rw [false_and, and_false]
 
 theorem bool_and_true : (xs ∧ True ∧ ys) = (xs ∧ ys) := by rw [true_and]
@@ -87,4 +87,5 @@ example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = 
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
-  
+
+#check List

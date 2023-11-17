@@ -28,6 +28,8 @@ TODO(WN): This is planned to go into mathlib4 once we:
 /-- A bitvector of the specified width. This is represented as the underlying `Nat` number
 in both the runtime and the kernel, inheriting all the special support for `Nat`. -/
 
+/- ### Definitions -/
+
 def BitVec (w : Nat) := Fin (2^w)
 
 instance : DecidableEq (BitVec w) :=
@@ -113,22 +115,6 @@ protected def shiftRight (x : BitVec w) (n : Nat) : BitVec w :=
       simp only [Nat.shiftRight_eq_shiftr, Nat.shiftr_eq_div_pow]
       exact lt_of_le_of_lt (Nat.div_le_self' _ _) (x.isLt) ⟩
 
-protected def slt (x y : BitVec (w + 1)) : Prop :=
-  ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x < y)
-
-protected def slt' (x y : BitVec (w + 1)) : Prop :=
-  x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w)
-
-protected def sle (x y : BitVec (w + 1)) : Prop :=
-  ((x.val >>> w = 1) ∧ (y.val >>> w = 0)) ∨ ((x.val >>> w = y.val >>> w) ∧ x ≤ y)
-
-protected def sle' (x y : BitVec (w + 1)) : Prop :=
-  ¬ (BitVec.slt' y x)
-
-protected def sgt (x y : BitVec (w + 1)) : Prop := BitVec.slt y x
-
-protected def sge (x y : BitVec (w + 1)) : Prop := BitVec.sle y x
-
 instance : Complement (BitVec w) := ⟨BitVec.complement⟩
 instance : AndOp (BitVec w) := ⟨BitVec.and⟩
 instance : OrOp (BitVec w) := ⟨BitVec.or⟩
@@ -179,6 +165,112 @@ def shrink (v : Nat) (x : BitVec w) : BitVec v :=
 @[simp] def lsbGet (x : BitVec w) (i : Nat) : Bool :=
   x.extract i i != 0
 
+/-- Return the `i`-th least significant bit or `false` if `i ≥ w`. -/
+@[inline] def getLsb : BitVec w -> Nat -> Bool | ⟨x,_⟩, i => x.testBit i
+
+/-- Return the `i`-th most significant bit or `false` if `i ≥ w`. -/
+@[inline] def getMsb (x : BitVec w) (i : Nat) : Bool := i < w && getLsb x (w-1-i)
+
+/-- Return most-significant bit in bitvector. -/
+@[inline] def msb (a : BitVec n) : Bool := getMsb a 0
+
+/-- Interpret the bitvector as an integer stored in two's complement form. -/
+def toInt (a : BitVec n) : Int :=
+  if msb a then Int.ofNat a.val - Int.ofNat (2^n) else a.val
+
+protected def slt (x y : BitVec n) : Bool := x.toInt < y.toInt
+
+-- alternative defn
+-- protected def slt' (x y : BitVec (w + 1)) : Prop :=
+--   x + BitVec.ofNat (w + 1) (2^w) < y + BitVec.ofNat (w + 1) (2^w)
+
+protected def sle (x y : BitVec n) : Bool := x.toInt ≤ y.toInt
+
+-- alternative defn
+-- protected def sle' (x y : BitVec (w + 1)) : Prop :=
+--   ¬ (BitVec.slt' y x)
+
+protected def sgt (x y : BitVec (w + 1)) : Prop := BitVec.slt y x
+
+protected def sge (x y : BitVec (w + 1)) : Prop := BitVec.sle y x
+
+def bv_xnor (x y : BitVec w) : BitVec w := (x &&& y) ||| (~~~x &&& ~~~y)
+
+def bv_comp (x y : BitVec w) : BitVec 1 := BitVec.ofNat 1 ((decide (x = y)).toNat)
+
+--define it this way?
+def bv_redor (x w : Nat) := BitVec.ofNat 1 (helper w).toNat where
+  helper : Nat → Bool
+  | 0 => false
+  | i + 1 => (x.testBit i) || (helper i)
+
+--define it this way?
+def bv_redand (x w : Nat) := BitVec.ofNat 1 (helper w).toNat where
+  helper : Nat → Bool
+  | 0 => true
+  | i + 1 =>  (x.testBit i) && (helper i)
+
+def bv_nand (x y : BitVec w) := ~~~ (x &&& y)
+
+def bv_nor (x y : BitVec w) := ~~~ (x ||| y)
+
+def sdiv (s t : BitVec n) : BitVec n :=
+  match s.msb, t.msb with
+  | false, false =>  s/t
+  | false, true  => - (s / (-t))
+  | true,  false => - ((- s) / t)
+  | true,  true  => (- s) / (- t)
+
+--similar to (but not the same as) Std
+def smod (s t : BitVec (w + 1)) :=
+  let msb_s := (s.extract w w).val
+  let msb_t := (t.extract w w).val
+  let abs_s := if msb_s == 0 then s else  -s
+  let abs_t := if msb_t == 0 then t else -t
+  let u := abs_s % abs_t
+  match u, msb_s, msb_t with
+  | (0 : BitVec (w + 1)), _, _ => u
+  | _, 0, 0 => u
+  | _, 1, 0 => (-u) + t
+  | _, 0, 1 => u + t
+  | _, _, _ => -u
+
+--similar (but not the same) to Std
+def bv_srem (x y : BitVec (w + 1)) :=
+  let msb_x := (x.extract w w).val
+  let msb_y := (y.extract w w).val
+  match msb_x, msb_y with
+  | 0, 0 => x % y
+  | 1, 0 => -((-x) % y)
+  | 0, 1 => x % (-y)
+  | _, _ => -((-x) % (-y))
+
+-- def bv_ite (c : BitVec 1) (t e : BitVec w) :=
+--   BitVec.ofNat w (toNat (fun i => ((!(c.val.testBit 0)) || (t.val.testBit i)) && ((c.val.testBit 0) || (e.val.testBit i))) 0 w)
+def ite (c : BitVec 1) (t e : BitVec w) := if msb c then t else e
+
+-- alternative toNat definition that uses lists
+-- def toNat' (bs : List Bool) : Nat := List.foldr Nat.bit 0 bs
+
+-- lemma toNat'_lt : toNat' bs < 2^bs.length := by
+--   simp only [toNat']
+--   induction' bs with b l ih
+--   · simp
+--   · simp only [List.foldr, bit_val, List.length_cons]
+--     cases' b <;> simp [two_pow_succ, two_mul (List.foldr bit 0 l)] at * <;> linarith [ih]
+
+-- def bbT' (bs : List Bool): BitVec bs.length :=
+--   ⟨toNat' bs, toNat'_lt⟩
+
+def bbT (bs : List Bool) : BitVec bs.length :=
+  ⟨Nat.toNat (λ i => bs[i]!) 0 bs.length, @Nat.toNat_lt (bs.length) _⟩
+
+
+
+/-! ### Lemmas -/
+
+open Nat
+
 theorem lsbGet_eq_testBit {x : BitVec w} : x.lsbGet i = x.val.testBit i := by
   cases' h: Nat.bodd (Nat.shiftr (x.val) i)
   <;> simp [Nat.testBit, BitVec.ofNat, Fin.ofNat', h, Nat.mod_two_of_bodd, Nat.shiftRight, Nat.shiftRight_eq_shiftr] --probably some API missing here.. shouldnt have to take cases
@@ -192,9 +284,6 @@ instance : GetElem (BitVec w) Nat Bool (fun _ i => i < w) where
 
 @[simp] lemma bit_1 (b : Bool) (_ : Nat) : Nat.bit b 1 = 2+b.toNat:= by
   cases' b <;> simp
-
-
-open Nat
 
 --this is weird
 lemma testBit_eq_ofNat {x: BitVec w} : Bool.toNat (testBit (x.val) k) = (BitVec.ofNat 1 (x.val >>> k)).val:= by
@@ -210,48 +299,51 @@ lemma ofNat_to_val' (x : BitVec w) (h : v = w): HEq x (BitVec.ofNat v x.val) := 
 
 @[simp] lemma length_zero_eq_zero {x : BitVec 0} : x = 0 := by simp [← val_bitvec_eq]
 
-@[simp] theorem zero_ext : (0 : BitVec w).val = 0 := rfl
+@[simp] lemma zero_cast : (0 : BitVec w).val = 0 := rfl
 
 
-theorem lt_ext {x y : BitVec w} : (x < y) = decide (x.val < y.val) := rfl
+lemma lt_cast {x y : BitVec w} : (x < y) = decide (x.val < y.val) := rfl
 
-theorem add_ext {x y : BitVec w} :  (x + y).val = (x.val + y.val) % 2^w := rfl
+lemma add_cast {x y : BitVec w} :  (x + y).val = (x.val + y.val) % 2^w := rfl
 
-theorem neg_ext {x : BitVec w} : (-x).val = (2^w - x.val) % 2^w := rfl
+lemma neg_cast {x : BitVec w} : (-x).val = (2^w - x.val) % 2^w := rfl
 
-theorem sub_ext {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl
+lemma sub_cast {x y : BitVec w} : (x - y).val = (x.val + (2^w - y.val)) % 2^w := rfl
 
-lemma not_ext {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w := by
+lemma not_cast {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w := by
   cases' w with w
   · simp
-  · simp [Complement.complement, BitVec.complement, sub_ext, add_ext, val_to_ofNat (one_lt_two_pow _ (succ_pos w))]
+  · simp [Complement.complement, BitVec.complement, sub_cast, add_cast, val_to_ofNat (one_lt_two_pow _ (succ_pos w))]
 
 @[simp] lemma zero_eq_ofNat : BitVec.ofNat w 0 = (0 : BitVec w)  := rfl
 
 @[simp] lemma not_zero : (~~~(0 : BitVec w)).val = 2^w - 1 := by
   cases' w with w
-  <;> simp [not_ext, one_mod_lt (one_lt_two_pow' _), mod_eq_of_lt (sub_lt (two_pow_pos _) (Nat.one_pos))]
+  <;> simp [not_cast, one_mod_lt (one_lt_two_pow' _), mod_eq_of_lt (sub_lt (two_pow_pos _) (Nat.one_pos))]
 
-lemma concat_ext {x : BitVec a} {y : BitVec b} :
+lemma concat_cast {x : BitVec a} {y : BitVec b} :
   (x ++ y).val = x.val <<< b ||| y.val := rfl
 
-lemma or_ext {x y : BitVec w} :
+lemma or_cast {x y : BitVec w} :
   (x ||| y).val = x.val ||| y.val := rfl
 
-lemma and_ext {x y : BitVec w} : (x &&& y).val = x.val &&& y.val := rfl
+lemma and_cast {x y : BitVec w} : (x &&& y).val = x.val &&& y.val := rfl
 
-lemma xor_ext {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
+lemma xor_cast {x y : BitVec w} : (x ^^^ y).val = x.val ^^^ y.val := rfl
 
-lemma mod_ext {x y : BitVec w} : (x % y).val = x.val % y.val := rfl
+lemma rem_cast {x y : BitVec w} : (x % y).val = x.val % y.val := rfl
 
-lemma shiftLeft_ext {x : BitVec w} :
+lemma div_cast {x y : BitVec w} : (x / y).val = x.val / y.val := rfl
+
+
+lemma shiftLeft_cast {x : BitVec w} :
   (x <<< n).val = (x.val <<< n) % 2^w := rfl
 
-lemma shiftRight_ext {x : BitVec w} :
+lemma shiftRight_cast {x : BitVec w} :
   (x >>> n).val = (x.val >>> n) := rfl
 
 --should we use `shiftr_eq_div_pow` or not?
-theorem extract_ext : (extract i j x).val = x.val / 2^j % (2^(i - j + 1)) := by
+theorem extract_cast : (extract i j x).val = x.val / 2^j % (2^(i - j + 1)) := by
   simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow]
 
 lemma append_eq_add_val {x: BitVec w} {y : BitVec v} : (x ++ y).val = x.val * 2^v + y.val := by
@@ -275,22 +367,6 @@ theorem testBit_eq_rep {x: BitVec w} (i : Nat) (h: i< w): x[i] = testBit x.val i
 
 theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = testBit x i := by
   simp [BitVec.ofNat, GetElem.getElem, lsbGet, extract, Fin.ofNat', mod_eq_of_lt, h2]
-
--- alternative toNat definition that uses lists
--- def toNat' (bs : List Bool) : Nat := List.foldr Nat.bit 0 bs
-
--- lemma toNat'_lt : toNat' bs < 2^bs.length := by
---   simp only [toNat']
---   induction' bs with b l ih
---   · simp
---   · simp only [List.foldr, bit_val, List.length_cons]
---     cases' b <;> simp [two_pow_succ, two_mul (List.foldr bit 0 l)] at * <;> linarith [ih]
-
--- def bbT' (bs : List Bool): BitVec bs.length :=
---   ⟨toNat' bs, toNat'_lt⟩
-
-def bbT (bs : List Bool) : BitVec bs.length :=
-  ⟨toNat (λ i => bs[i]!) 0 bs.length, @toNat_lt (bs.length) _⟩
 
 /-! ### Equivalence between bitwise and BitVec operations -/
 
@@ -331,4 +407,6 @@ theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_
     simp [signExtend_succ h, add_comm w i, ih]
 -- if we use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 -- swap lhs and rhs
+
+#check decide
 end BitVec

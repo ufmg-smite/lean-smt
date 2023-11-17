@@ -12,6 +12,8 @@ namespace Smt.Reconstruction.Rewrites.Arith
 
 open BitVec Nat
 
+theorem eq_bv_of_eq_val {x y : BitVec w} (h : x.val = y.val) : x = y := sorry
+
 theorem append_assoc {x : BitVec a} {y : BitVec b} {z : BitVec c} :
   ((x ++ y) ++ z).val = (x ++ (y ++ z)).val := by
     simp only [HAppend.hAppend, BitVec.append, add_comm b c, append_eq_add (append_lt z.isLt y.isLt)]
@@ -24,9 +26,32 @@ theorem append_assoc' {x : BitVec a} {y : BitVec b} {z : BitVec c} :
 
 open Lean
 
+/-- Prove equality theorem for concrete size bit-vectors -/
+def concreteSize (mv : MVarId) (heq : Expr) : MetaM Unit := do
+  let [mv] ← mv.apply (mkConst ``eq_bv_of_eq_val)
+    | throwError "failed to apply `eq_bv_of_eq_val`"
+  let r ← mv.rewrite (← mv.getType) heq false (.pos [1])
+  let mv ← mv.replaceTargetEq r.eNew r.eqProof
+  mv.refl
+
+/-- The `concrete_size` tactic. -/
+syntax (name := bv_append_assoc) "concrete_size" ident : tactic
+
+open Elab Tactic in
+/-- Implementation of the `bv_append_assoc` tactic. -/
+@[tactic bv_append_assoc] def evalBVAppendAssoc : Tactic := fun stx => do
+  let mv ← Tactic.getMainGoal
+  concreteSize mv (← elabTerm stx[1] none)
+  Tactic.replaceMainGoal []
+
+lemma comm_bv {x : BitVec b} {y : BitVec b}: (x++y++y).val = (y ++ x++x).val := sorry
+
+example {x y _ : BitVec 10}: x ++ y ++ y = y ++ x ++ x := by
+  concrete_size comm_bv
+
 -- the apply And.left is quite weird.
 theorem bv_extract_concat_eq {x : BitVec w} (hjk : j + 1 ≤ k) (hij : i ≤ j):  (x.extract k (j + 1) ++ x.extract j i).val = (x.extract k i).val := by
-  simp only [extract_ext, append_eq_add_val]
+  simp only [extract_cast, append_eq_add_val]
   rw [mul_comm, add_comm]
   apply @And.left _ ((x.val/2^i) % 2^(j-i+1)< 2^(j-i+1)) _
   rw [← Nat.div_mod_unique (two_pow_pos (j-i+1))]
@@ -58,7 +83,7 @@ where
 
 -- x[i:j] ++ x[k:l] = x[i+k:i+l]
 @[smt_simp] theorem bv_extract_extract {x : BitVec w} {hl : k ≤ l} {hk : l ≤ j - i}: ((x.extract j i).extract l k).val = (x.extract (i + l) (i + k)).val := by
-  simp only [extract_ext, div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]
+  simp only [extract_cast, div_mod_eq_mod_mul_div, Nat.div_div_eq_div_mul, ← pow_add]
   rw [mod_mod_of_dvd _ (by apply pow_dvd_pow; zify [*]; linarith)]
   congr 3; zify [hl, hk, add_le_add_left hl]; ring
 
@@ -71,7 +96,7 @@ where
 
 -- Case 1: j < a so the extract is self contained
 @[smt_simp] theorem bv_extract_concat₁ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hja : j < a) : ((xs ++ y ++ x).extract j i).val = (x.extract j i).val := by
-   simp only [extract_ext, append_eq_add_val]
+   simp only [extract_cast, append_eq_add_val]
    have h1 : 2^(j-i+1) ∣ 2^a / 2^i ∧ 2^i ∣ 2^a:= by
     simp only [pow_div (show i ≤ a by linarith), pow_dvd_pow_iff_le_right]
     zify [*, (show i ≤ a by linarith)]; rw [and_true]; linarith
@@ -87,7 +112,7 @@ where
   simp only [append_eq_add_val]
   rw [bv_extract_concat₁ (le_pred_of_lt hia) (Nat.sub_lt ha _)]
   congr 2; swap; decide
-  simp only [extract_ext, append_eq_add_val, Nat.sub_add_cancel (one_le_of_lt ha)]
+  simp only [extract_cast, append_eq_add_val, Nat.sub_add_cancel (one_le_of_lt ha)]
   rw [add_comm, add_mul_div_right _ _ (two_pow_pos a), Nat.div_eq_zero x.isLt]
   simp
 
@@ -97,7 +122,7 @@ where
   ((xs ++ y ++ x).extract j i).val = ((xs ++ y).extract (j - a) (i - a)).val := by
   have : x.val < 2^i := lt_of_lt_of_le x.isLt (pow_le_pow_of_le_right (by decide) hia)
   have h0 : 2^i = 2^(i-a) * 2^a := by rw [← pow_add]; congr 1; zify [hia]; linarith
-  simp only [extract_ext, append_eq_add_val]
+  simp only [extract_cast, append_eq_add_val]
   rw [add_div_eq_of_add_mod_lt]
   · congr 1
     · rw [Nat.div_eq_zero this, h0]
@@ -117,7 +142,7 @@ where
 -- Case 4: Elision from the higher portion
 -- in the rewrite rule, inequality on i missing?
 @[smt_simp] theorem bv_extract_concat₄ {x : BitVec a} {xs : BitVec b} {y : BitVec c} {i j : Nat} (hij: i ≤ j) (hj : j < b+ c) : ((x ++ xs ++ y).extract j i).val = ((xs ++ y).extract j i).val := by
-  simp only [extract_ext, append_eq_add_val]
+  simp only [extract_cast, append_eq_add_val]
   have h1 : 2^(j-i+1) ∣ 2^(b+c)/2^i ∧ 2^i ∣ 2^(b+c) := by
     simp only [pow_div (show i ≤ b+c by linarith), pow_dvd_pow_iff_le_right]
     zify [*, (show i ≤ b+c by linarith)]; rw [and_true]; linarith
@@ -140,6 +165,8 @@ lemma signed_bit : (x + 2^w).testBit w = !x.testBit w := by
 theorem bv_sgt_eliminate {x y : BitVec (w + 1)} : (BitVec.sgt x y) = (BitVec.slt y x) := by
   simp [BitVec.sgt, BitVec.slt]
 
+
+
 def slt' (x y : BitVec (w + 1)) :=
   let one := BitVec.ofNat (w + 1) 1
   let nm1 := BitVec.ofNat (w + 1) w
@@ -147,7 +174,7 @@ def slt' (x y : BitVec (w + 1)) :=
 
 theorem bv_slt_eliminate {x y : BitVec (w + 1)} : (BitVec.slt x y) = slt' x y := by
   simp only [slt', BitVec.shiftLeft, shiftLeft_eq]
-  simp only [BitVec.slt, testBit_eq_shift, y.isLt, x.isLt, lt_ext, add_ext]
+  simp only [BitVec.slt, testBit_eq_shift, y.isLt, x.isLt, lt_cast, add_cast]
   simp only [val_to_ofNat, one_mul, one_lt_two_pow _ (succ_pos w), lt_trans (lt.base w) (lt_two_pow _), two_pow_lt_two_pow w]
   simp only [mod_two_pow_succ, signed_bit]
   cases' b : x.val.testBit w <;> cases' b' : y.val.testBit w; rotate_left
@@ -155,7 +182,7 @@ theorem bv_slt_eliminate {x y : BitVec (w + 1)} : (BitVec.slt x y) = slt' x y :=
   · simp [mod_lt _ (two_pow_pos w), Nat.lt_add_right, le_of_lt]
   all_goals
   rw [(show decide (x.val < y.val) = decide (x.val % (2^(w + 1)) < (y.val) % 2^(w + 1)) by simp [mod_eq_of_lt, x.isLt, y.isLt])]
-  simp [lt_ext, mod_two_pow_succ, signed_bit, b, b']
+  simp [lt_cast, mod_two_pow_succ, signed_bit, b, b']
 
 -- theorem bv_slt_eliminate' {x y : BitVec (w + 1)} : (BitVec.slt x y) = ((x.val + 2^(w))%(2^(w+1)) < (y.val + 2^(w))%(2^(w+1))) := by
 --   simp only [BitVec.slt, testBit_eq_shift, y.isLt, x.isLt]
@@ -164,8 +191,8 @@ theorem bv_slt_eliminate {x y : BitVec (w + 1)} : (BitVec.slt x y) = slt' x y :=
 --   · simp [mod_lt _ (two_pow_pos w), Nat.lt_add_right, le_of_lt]
 --   · simp [mod_lt _ (two_pow_pos w), Nat.lt_add_right, le_of_lt]
 --   all_goals
---   rw [lt_ext, (show decide (x.val < y.val) = decide (x.val % (2^(w + 1)) < (y.val) % 2^(w + 1)) by simp [mod_eq_of_lt, x.isLt, y.isLt])]
---   simp [lt_ext, mod_two_pow_succ, signed_bit, b, b']
+--   rw [lt_cast, (show decide (x.val < y.val) = decide (x.val % (2^(w + 1)) < (y.val) % 2^(w + 1)) by simp [mod_eq_of_lt, x.isLt, y.isLt])]
+--   simp [lt_cast, mod_two_pow_succ, signed_bit, b, b']
 
 theorem bv_ule_eliminate {x y : BitVec w} : (x ≤ y) = ¬ (y < x) := by
   simp [LT.lt, BitVec.lt, LE.le, BitVec.le]
@@ -176,14 +203,6 @@ theorem bv_sle_eliminate {x y : BitVec (w + 1)} : (BitVec.sle x y) = ¬ BitVec.s
   simp only [le_iff_lt_or_eq, ← bv_ule_eliminate, testBit_eq_shift, x.isLt, y.isLt]
   cases' y.val.testBit w <;> cases' x.val.testBit w <;> aesop
 
-def bv_xnor (x y : BitVec w) : BitVec w := (x &&& y) ||| (~~~x &&& ~~~y)
-
-def bv_comp (x y : BitVec w) : BitVec 1 := BitVec.ofNat 1 ((decide (x = y)).toNat)
-
-def bv_redor (x w : Nat) := BitVec.ofNat 1 (helper w).toNat where
-  helper : Nat → Bool
-  | 0 => false
-  | i + 1 => (x.testBit i) || (helper i)
 
 lemma exists_true_bit (h1 : x < 2^w) : (bv_redor.helper x w) = decide (x ≠ 0) := by
   by_cases (x = 0)
@@ -200,12 +219,7 @@ lemma exists_true_bit (h1 : x < 2^w) : (bv_redor.helper x w) = decide (x ≠ 0) 
 theorem bv_redor_eliminate {x : BitVec w} :
   (bv_redor x.val w) = ~~~(bv_comp x (BitVec.ofNat w 0)) := by
   by_cases (x.val = 0)
-  <;> simp [exists_true_bit, ← val_bitvec_eq, not_ext, bv_redor, h, val_to_ofNat, bv_comp]
-
-def bv_redand (x w : Nat) := BitVec.ofNat 1 (helper w).toNat where
-  helper : Nat → Bool
-  | 0 => true
-  | i + 1 =>  (x.testBit i) && (helper i)
+  <;> simp [exists_true_bit, ← val_bitvec_eq, not_cast, bv_redor, h, val_to_ofNat, bv_comp]
 
 lemma exists_false_bit (h1 : x < 2^w) : (bv_redand.helper x w) = decide (x = 2^w - 1) := by
   by_cases (x = 2^w - 1)
@@ -241,83 +255,18 @@ theorem bv_repeat_eliminate₂ {x : BitVec w} :
   BitVec.repeat_ 1 x = (show w = w*1 by simp) ▸ x := by
   simp [repeat_, eq_rec_inj, ← val_bitvec_eq, BitVec.append_eq_add_val]
 
-theorem extract_val {x : BitVec (w + 1)} (h : j ≤ w) : (BitVec.extract w j x).val = x.val >>> j := by
-  simp only [BitVec.ofNat, Fin.ofNat', extract]
-  rw [mod_eq_of_lt]
-  rw [shiftRight_eq_shiftr, shiftr_eq_div_pow, ← Nat.sub_add_comm h]
-  rw [← pow_div (by linarith) (by decide)]
-  exact Nat.div_lt_div_of_lt_of_dvd ((Nat.pow_dvd_pow_iff_le_right (by decide)).mpr (by linarith)) x.isLt
-
-lemma shiftRight_zero : m >>> 0 = m := rfl
-
-theorem extract_val' {x : BitVec w} : (BitVec.extract j 0 x).val = x.val % 2^(j + 1) := by
-  simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_zero]
-
-theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h0 : 0 < a) (ha : a < w + 1) :
-  (BitVec.rotateLeft x a).val = (BitVec.extract (w + 1 - (1 + a)) 0 x ++ BitVec.extract w (w+1 - a) x).val := by
-  simp only [rotateLeft, concat_ext, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext]
-  rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) h0))]; congr
-  simp only [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.pow_zero, Nat.div_one]
-  have h2 : w + 1 - (1 + a) - 0 + 1 = w + 1 - a := by
-    rw [Nat.sub_zero]; zify [(show 1 + a ≤ w + 1 by linarith), le_of_lt ha]; linarith
-  have h3 : w - (w + 1 - a) + 1 = a := by
-    zify [succ_sub_one w ▸ tsub_le_tsub_left (one_le_of_lt h0) (w + 1), le_of_lt ha]; linarith
-  rw [h2, h3, ← mul_mod_mul_right, ← pow_add, Nat.sub_add_cancel (by linarith)]
-
---this proof should be alot quicker! It's just unfolding definitions!
-theorem bv_rotate_left_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateLeft x 0).val = x.val := by
-  simp only [rotateLeft, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
-  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
-  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
-
-theorem rotate_right_rotate_left {x : BitVec w} (h : a ≤ w) : (rotateRight x a).val = (rotateLeft x (w-a)).val := by
-  simp only [rotateRight, rotateLeft, HOr.hOr, OrOp.or, lor, BitVec.or, bitwise_eq_bitwise']
-  rw [bitwise'_comm (fun b b' => by cases' b <;> cases' b' <;> simp) (by simp)]; congr --so long!
-  zify[h, tsub_le_self]; linarith
-
-theorem bv_rotate_right_eliminate₁ {x : BitVec (w + 1)} (h0 : 0 < a) (ha : a < w + 1) :
-  (BitVec.rotateRight x a).val = (BitVec.extract (a - 1) 0 x ++ BitVec.extract w a x).val := by
-  rw [rotate_right_rotate_left (le_of_lt ha)]
-  rw [bv_rotate_left_eliminate₁ (Nat.sub_pos_of_lt ha) (Nat.sub_lt (succ_pos w) h0), concat_ext, concat_ext]
-  have H : w + 1 - (w + 1 - a) = a := by
-    zify [le_of_lt ha, Nat.sub_le]; ring
-  have H1 := add_comm 1 w ▸ add_eq ▸ (le_of_lt_succ (add_lt_add_left (sub_lt (succ_pos w) h0) 1))
-  have H2 : w + 1 - (1 + (w + 1 - a)) = a - 1 := by
-    zify [le_of_lt ha, h0, H1]
-    ring
-  simp only [H, extract_val', H2]
-  congr
-
---this proof should be alot quicker! It's just unfolding definitions!
-theorem bv_rotate_right_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateRight x 0).val = x.val := by
-  simp only [rotateRight, or_ext, shiftLeft_ext, shiftLeft_eq, shiftRight_ext, Nat.sub_zero]
-  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
-  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
-
-
-def bv_nand (x y : BitVec w) := ~~~ (x &&& y)
-
-def bv_nor (x y : BitVec w) := ~~~ (x ||| y)
-
-def bv_xnor' (x y : BitVec w) := ~~~ (x ^^^ y)
-
-def bv_xnor'' (x y : BitVec w) : BitVec w :=
-  ⟨toNat (fun i => x.val.testBit i == y.val.testBit i) 0 w, toNat_lt⟩
-
-
 theorem bitwise_not_eq_not {x : BitVec w} : bitwise_not x.val w = (~~~x).val := by
   cases' w with w
   · simp
-  simp only [Complement.complement, BitVec.complement, sub_ext, add_ext]
+  simp only [Complement.complement, BitVec.complement, sub_cast, add_cast]
   have H := one_lt_two_pow _ (succ_pos w)
-  rw [val_to_ofNat H, zero_ext, zero_add]
+  rw [val_to_ofNat H, zero_cast, zero_add]
   apply (add_left_inj x.val).mp
   rw [bitwise_not_eq_neg_sub_one x.isLt]
   cases' eq_or_lt_of_le (show x.val + 1 ≤ 2^(succ w) by linarith [x.isLt]) with h h
   · simp [← h]
   · rw [mod_eq_of_lt h, mod_eq_of_lt (sub_lt (two_pow_pos _) (succ_pos _))]
     zify [le_of_lt H, le_of_lt h]; linarith
-
 
 theorem xor_eq_xor' {m n : Nat} : m ^^^ n = Nat.lxor' m n := by
   simp only [Nat.xor, bitwise_eq_bitwise' bne (by simp), HXor.hXor, Xor.xor, lxor']
@@ -332,10 +281,74 @@ lemma or_eq_or' : m ||| n = lor' m n := by
 lemma testBit_not {x : BitVec w} (h : j < w) : (~~~x).val.testBit j = !(x.val.testBit j) := by
   rw [← bitwise_not_eq_not, bitwise_not, toNat_testBit h]
 
+theorem extract_val {x : BitVec (w + 1)} (h : j ≤ w) : (BitVec.extract w j x).val = x.val >>> j := by
+  simp only [BitVec.ofNat, Fin.ofNat', extract]
+  rw [mod_eq_of_lt]
+  rw [shiftRight_eq_shiftr, shiftr_eq_div_pow, ← Nat.sub_add_comm h]
+  rw [← pow_div (by linarith) (by decide)]
+  exact Nat.div_lt_div_of_lt_of_dvd ((Nat.pow_dvd_pow_iff_le_right (by decide)).mpr (by linarith)) x.isLt
+
+lemma shiftRight_zero : m >>> 0 = m := rfl
+
+theorem extract_val' {x : BitVec w} : (BitVec.extract j 0 x).val = x.val % 2^(j + 1) := by
+  simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_zero]
+
+lemma extract_eq_testBit {x : BitVec w} : (x.extract j j).val = (x.val.testBit j).toNat := by
+  simp [extract_cast, testBit, BitVec.ofNat, Fin.ofNat', shiftr_eq_div_pow, shiftRight_eq_shiftr, mod_two_of_bodd]
+
+theorem extract_eq_msb {x : BitVec (w + 1)} : (x.extract w w).val = (msb x).toNat := by
+  simp only [msb, getMsb, getLsb, extract_eq_testBit, succ_pos] ; congr
+
+theorem bv_rotate_left_eliminate₁ {x : BitVec (w +1)} (h0 : 0 < a) (ha : a < w + 1) :
+  (BitVec.rotateLeft x a).val = (BitVec.extract (w + 1 - (1 + a)) 0 x ++ BitVec.extract w (w+1 - a) x).val := by
+  simp only [rotateLeft, concat_cast, or_cast, shiftLeft_cast, shiftLeft_eq, shiftRight_cast]
+  rw [extract_val (lt_succ_iff.mp (tsub_lt_self (succ_pos w) h0))]; congr
+  simp only [extract, BitVec.ofNat, Fin.ofNat', shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.pow_zero, Nat.div_one]
+  have h2 : w + 1 - (1 + a) - 0 + 1 = w + 1 - a := by
+    rw [Nat.sub_zero]; zify [(show 1 + a ≤ w + 1 by linarith), le_of_lt ha]; linarith
+  have h3 : w - (w + 1 - a) + 1 = a := by
+    zify [succ_sub_one w ▸ tsub_le_tsub_left (one_le_of_lt h0) (w + 1), le_of_lt ha]; linarith
+  rw [h2, h3, ← mul_mod_mul_right, ← pow_add, Nat.sub_add_cancel (by linarith)]
+
+--this proof should be alot quicker! It's just unfolding definitions!
+theorem bv_rotate_left_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateLeft x 0).val = x.val := by
+  simp only [rotateLeft, or_cast, shiftLeft_cast, shiftLeft_eq, shiftRight_cast, Nat.sub_zero]
+  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
+  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
+
+theorem rotate_right_rotate_left {x : BitVec w} (h : a ≤ w) : (rotateRight x a).val = (rotateLeft x (w-a)).val := by
+  simp only [rotateRight, rotateLeft, HOr.hOr, OrOp.or, lor, BitVec.or, bitwise_eq_bitwise']
+  rw [bitwise'_comm (fun b b' => by cases' b <;> cases' b' <;> simp) (by simp)]; congr --so long!
+  zify[h, tsub_le_self]; linarith
+
+theorem bv_rotate_right_eliminate₁ {x : BitVec (w + 1)} (h0 : 0 < a) (ha : a < w + 1) :
+  (BitVec.rotateRight x a).val = (BitVec.extract (a - 1) 0 x ++ BitVec.extract w a x).val := by
+  rw [rotate_right_rotate_left (le_of_lt ha)]
+  rw [bv_rotate_left_eliminate₁ (Nat.sub_pos_of_lt ha) (Nat.sub_lt (succ_pos w) h0), concat_cast, concat_cast]
+  have H : w + 1 - (w + 1 - a) = a := by
+    zify [le_of_lt ha, Nat.sub_le]; ring
+  have H1 := add_comm 1 w ▸ add_eq ▸ (le_of_lt_succ (add_lt_add_left (sub_lt (succ_pos w) h0) 1))
+  have H2 : w + 1 - (1 + (w + 1 - a)) = a - 1 := by
+    zify [le_of_lt ha, h0, H1]
+    ring
+  simp only [H, extract_val', H2]
+  congr
+
+--this proof should be alot quicker! It's just unfolding definitions!
+theorem bv_rotate_right_eliminate₂ {x : BitVec (w + 1)} : (BitVec.rotateRight x 0).val = x.val := by
+  simp only [rotateRight, or_cast, shiftLeft_cast, shiftLeft_eq, shiftRight_cast, Nat.sub_zero]
+  simp only [shiftRight_eq_shiftr, shiftr_eq_div_pow, Nat.div_eq_zero x.isLt]
+  simp [HOr.hOr, OrOp.or, lor, bitwise_eq_bitwise', bitwise'_zero_right, mod_eq_of_lt x.isLt]
+
+def bv_xnor' (x y : BitVec w) := ~~~ (x ^^^ y)
+
+def bv_xnor'' (x y : BitVec w) : BitVec w :=
+  ⟨toNat (fun i => x.val.testBit i == y.val.testBit i) 0 w, toNat_lt⟩
+
 theorem bv_xnor_eliminate {x y : BitVec w} : (bv_xnor x y).val = (bv_xnor' x y).val := by
   apply eq_of_testBit_eq_lt (bv_xnor x y).isLt (bv_xnor' x y).isLt; intro j; intro hj
-  simp only [bv_xnor, bv_xnor', or_ext, and_ext, xor_ext]
-  rw [or_eq_or', and_eq_and', and_eq_and', testBit_not hj, xor_ext, xor_eq_xor']
+  simp only [bv_xnor, bv_xnor', or_cast, and_cast, xor_cast]
+  rw [or_eq_or', and_eq_and', and_eq_and', testBit_not hj, xor_cast, xor_eq_xor']
   simp only [testBit_lor', testBit_land', testBit_lxor', testBit_not hj]
   cases' x.val.testBit j <;> cases' y.val.testBit j
   <;> simp
@@ -343,38 +356,26 @@ theorem bv_xnor_eliminate {x y : BitVec w} : (bv_xnor x y).val = (bv_xnor' x y).
 theorem bv_xnor_eliminate' {x y : BitVec w} : (bv_xnor' x y).val = (bv_xnor'' x y).val := by
   simp only [bv_xnor', bv_xnor'', ← bitwise_not_eq_not, bitwise_not]
   apply eq_of_testBit_eq_lt toNat_lt toNat_lt; intro j hj
-  rw [toNat_testBit hj, toNat_testBit hj, xor_ext, xor_eq_xor', lxor']
+  rw [toNat_testBit hj, toNat_testBit hj, xor_cast, xor_eq_xor', lxor']
   simp [testBit_bitwise']
   cases' x.val.testBit j <;> cases' y.val.testBit j <;> simp
 
-def bv_sdiv (x y : BitVec (w + 1)) :=
-  let s := (x.extract w w).val == (BitVec.ofNat 1 1).val
-  let t := (y.extract w w).val == (BitVec.ofNat 1 1).val
-  match s, t with
-  | false, false => BitVec.ofNat (w + 1) (UdivUremBB x.val y.val (w + 1)).1
-  | true, false => BitVec.neg (BitVec.ofNat (w + 1) (UdivUremBB (BitVec.neg x).val y.val (w + 1)).1)
-  | false, true => BitVec.neg (BitVec.ofNat (w + 1) (UdivUremBB x.val (BitVec.neg y).val (w + 1)).1)
-  | true, true => BitVec.ofNat (w + 1) (UdivUremBB (BitVec.neg x).val (BitVec.neg y).val (w + 1)).1
-
 def bv_sdiv' (x y : BitVec (w + 1)) :=
-  let xlt0 := (x.extract w w).val == (BitVec.ofNat 1 1).val
-  let ylt0 := (y.extract w w).val == (BitVec.ofNat 1 1).val
-  let rUdiv := (UdivUremBB (if xlt0 then (BitVec.neg x).val else x.val) (if ylt0 then (BitVec.neg y).val else y.val) (w + 1)).1
-  let rUdivbv := BitVec.ofNat (w + 1) rUdiv
-  if (xlt0 ^^ ylt0) then (BitVec.neg rUdivbv) else rUdivbv
+  let xlt0 := decide ((x.extract w w).val = (BitVec.ofNat 1 1).val)
+  let ylt0 := decide ((y.extract w w).val = (BitVec.ofNat 1 1).val)
+  let rUdiv := (ite xlt0 (-x) x) / (ite ylt0 (- y) y)
+  if (xlt0 ^^ ylt0) then (- rUdiv) else rUdiv
 
-theorem bv_sdiv_eliminate {x y : BitVec (w + 1)} : bv_sdiv x y = bv_sdiv' x y := by
-  simp only [bv_sdiv, bv_sdiv']
-  cases' ((x.extract w w).val == (BitVec.ofNat 1 1).val)
-  <;> cases' ((y.extract w w).val == (BitVec.ofNat 1 1).val)
-  <;> aesop
+theorem bv_sdiv_eliminate {x y : BitVec (w + 1)} : sdiv x y = bv_sdiv' x y := by
+  rw [← val_bitvec_eq]
+  simp only [sdiv, bv_sdiv', extract_eq_msb]
+  aesop
 
 def bv_sdiv_fewer (x y : BitVec (w + 1)) :=
   let xlt0 := decide (x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val)
   let ylt0 := decide (y.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val)
-  let rUdiv := (UdivUremBB (if xlt0 then (BitVec.neg x).val else x.val) (if ylt0 then (BitVec.neg y).val else y.val) (w + 1)).1
-  let rUdivbv := BitVec.ofNat (w + 1) rUdiv
-  if (xlt0 ^^ ylt0) then (BitVec.neg rUdivbv) else rUdivbv
+  let rUdiv := (ite xlt0 (-x) x) / (ite ylt0 (-y) y)
+  if (xlt0 ^^ ylt0) then (- rUdiv) else rUdiv
 
 lemma zero_shiftRight : 0 >>> n = 0 := by simp [shiftRight_eq_shiftr, shiftr_eq_div_pow, div_zero]
 
@@ -388,7 +389,7 @@ lemma zero_shiftRight : 0 >>> n = 0 := by simp [shiftRight_eq_shiftr, shiftr_eq_
 --   interval_cases x.val >>> w <;> aesop
 
 lemma lt_zero_concat_extract {x : BitVec (w + 1)} :
-  decide (x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val) = ((x.extract w w).val == (BitVec.ofNat 1 1).val) := by
+  decide (x.val ≥ (BitVec.ofNat 1 1 ++ BitVec.ofNat w 0).val) = decide ((x.extract w w).val = (BitVec.ofNat 1 1).val) := by
   simp only [extract, BitVec.slt, tsub_eq_zero_of_le (le_refl w), append_eq_add_val, testBit_eq_shift x.isLt]
   rw [val_to_ofNat (by norm_num), val_to_ofNat (two_pow_pos w), val_to_ofNat (by simp; linarith [toNat_le_one _] )]
   rw [one_mul, add_zero]
@@ -398,9 +399,8 @@ lemma lt_zero_concat_extract {x : BitVec (w + 1)} :
   · simp [ge_of_testBit_eq_true x.isLt h]
   · simp [decide_eq_false, lt_of_testbit_eq_false_of_lt x.isLt (by simp [h])]
 
-theorem bv_sdiv_fewer_ops {x y : BitVec (w + 1)} : (bv_sdiv x y) = (bv_sdiv_fewer x y) := by
+theorem bv_sdiv_fewer_ops {x y : BitVec (w + 1)} : (sdiv x y) = (bv_sdiv_fewer x y) := by
   simp only [bv_sdiv_eliminate, bv_sdiv', bv_sdiv_fewer, lt_zero_concat_extract]
-
 
 theorem zero_extend_eliminate {x : BitVec w} : (zeroExtend n x).val = ((0 : BitVec n) ++ x).val := by
   simp [zeroExtend, BitVec.cast_heq]
@@ -408,18 +408,6 @@ theorem zero_extend_eliminate {x : BitVec w} : (zeroExtend n x).val = ((0 : BitV
 theorem sign_extend_eliminate {x : BitVec (w + 1)} : (signExtend n x).val = (repeat_ n (x.extract w w) ++ x).val := by
   simp only [signExtend, BitVec.cast_heq]; congr
 
-def smod (s t : BitVec (w + 1)) :=
-  let msb_s := (s.extract w w).val
-  let msb_t := (t.extract w w).val
-  let abs_s := if msb_s == 0 then s else  -s
-  let abs_t := if msb_t == 0 then t else -t
-  let u := abs_s % abs_t
-  match u, msb_s, msb_t with
-  | (0 : BitVec (w + 1)), _, _ => u
-  | _, 0, 0 => u
-  | _, 1, 0 => (-u) + t
-  | _, 0, 1 => u + t
-  | _, _, _ => -u
 
 def smod' (x y : BitVec (w + 1)) :=
   let xLt0 := (x.extract w w).val == (BitVec.ofNat 1 1).val
@@ -432,8 +420,6 @@ def smod' (x y : BitVec (w + 1)) :=
       if xLt0 && !yLt0 then (-u + y) else
         if !xLt0 && yLt0 then (u + y) else -u
 
-lemma extract_eq_testBit {x : BitVec w} : (x.extract j j).val = (x.val.testBit j).toNat := by
-  simp [extract_ext, testBit, BitVec.ofNat, Fin.ofNat', shiftr_eq_div_pow, shiftRight_eq_shiftr, mod_two_of_bodd]
 
 theorem smod_eliminate {x y : BitVec (w + 1)} : smod x y = smod' x y := by
   simp only [smod, smod', extract_eq_testBit]
@@ -460,15 +446,6 @@ def smod_fewer (x y: BitVec (w + 1)) :=
 
 theorem bv_smod_fewer_ops {x y : BitVec (w + 1)} : smod x y = smod_fewer x y := by
   simp only [smod_eliminate, smod', smod_fewer, lt_zero_concat_extract]
-
-def bv_srem (x y : BitVec (w + 1)) :=
-  let msb_x := (x.extract w w).val
-  let msb_y := (y.extract w w).val
-  match msb_x, msb_y with
-  | 0, 0 => x % y
-  | 1, 0 => -((-x) % y)
-  | 0, 1 => x % (-y)
-  | _, _ => -((-x) % (-y))
 
 def bv_srem' (x y : BitVec (w + 1)) :=
   let xLt0 := (x.extract w w).val == (BitVec.ofNat 1 1).val
@@ -500,18 +477,34 @@ theorem bv_srem_fewer_ops {x y : BitVec (w + 1)} : bv_srem x y = bv_srem_fewer x
 
 /-! ### Simplification Rules -/
 
-def bv_ite (c : BitVec 1) (t e : BitVec w) :=
-  BitVec.ofNat w (toNat (fun i => ((!(c.val.testBit 0)) || (t.val.testBit i)) && ((c.val.testBit 0) || (e.val.testBit i))) 0 w)
-
 theorem bv_ite_equal_children (c : BitVec 1) {x : BitVec w} : bv_ite c x x = x := by
-  cases h : c.val.testBit 0
-  <;> simp [h, bv_ite, toNat_self, ofNat_to_val x]
+  simp [bv_ite]
+
+lemma bv_ite_cast {c : BitVec 1} {x y : BitVec w} :
+  (bv_ite c x y).val = if msb c then x.val else y.val := by
+  by_cases msb c
+  <;> simp only [bv_ite, h, ite_true, ite_false]
+
+lemma msb_eq_val (c : BitVec 1) : (msb c).toNat = c.val := by
+  simp only [msb, getMsb, getLsb]
+  have := c.isLt
+  interval_cases c.val
+  <;> simp
 
 theorem bv_ite_const_children₁
   (c : BitVec 1) : bv_ite c (0 : BitVec 1) (BitVec.ofNat 1 1) = ~~~c := by
-  cases h : c.val.testBit 0
-  <;> simp [h, bv_ite, toNat_self, ofNat_to_val]
-  <;> sorry
+  simp only [← val_bitvec_eq, not_cast, bv_ite_cast, ← msb_eq_val c]
+  cases' msb c <;> simp
+
+theorem bv_ite_const_children₂
+  (c : BitVec 1) : bv_ite c (BitVec.ofNat 1 1) (0 : BitVec 1) = c := by
+  simp only [← val_bitvec_eq, not_cast, bv_ite_cast, ← msb_eq_val c]
+  cases' msb c <;> simp
+
+theorem bv_ite_eq_cond₁ (c : BitVec 1) {t0 e0 e1 : BitVec w} :
+  bv_ite c0 (bv_ite c0 t0 e0) e1 = bv_ite c0 t0 e1 := by
+  simp only [bv_ite]
+  cases' (msb c0) <;> simp
 
 
 end Smt.Reconstruction.Rewrites.Arith
