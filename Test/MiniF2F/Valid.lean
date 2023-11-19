@@ -74,18 +74,15 @@ set_option trace.smt.debug.translate.expr true
 #eval (1:ℤ)/2
 #eval (4:ℚ)^(1/2)
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_206 (a b : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^ 2 + a * x + b) (h₁ : 2 * a ≠ b)
   (h₂ : f (2 * a) = 0) (h₃ : f b = 0) : a + b = -1 := by
   -- smt [h₀, h₁, h₂, h₃]
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_437 (x y : ℝ) (n : ℤ) (h₀ : x ^ 3 = -45) (h₁ : y ^ 3 = -101) (h₂ : x < n)
   (h₃ : ↑n < y) : n = -4 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_267 (x : ℝ) (h₀ : x ≠ 1) (h₁ : x ≠ -2)
   (h₂ : (x + 1) / (x - 1) = (x - 2) / (x + 2)) : x = 0 := by
   smt!
@@ -95,7 +92,6 @@ theorem numbertheory_prmdvsneqnsqmodpeq0 (n : ℤ) (p : ℕ) (h₀ : Nat.Prime p
   smt!
   sorry
 
-
 theorem mathd_algebra_123 (a b : ℕ) (h₀ : 0 < a ∧ 0 < b) (h₁ : a + b = 20) (h₂ : a = 3 * b) :
   a - b = 10 := by
   smt!
@@ -103,7 +99,6 @@ theorem mathd_algebra_123 (a b : ℕ) (h₀ : 0 < a ∧ 0 < b) (h₁ : a + b = 2
 theorem mathd_numbertheory_326 (n : ℤ) (h₀ : (n - 1) * n * (n + 1) = 720 ) : n + 1 = 10 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_89 (b : ℝ) (h₀ : b ≠ 0) :
   (7 * b ^ 3) ^ 2 * (4 * b ^ 2) ^ (-(3 : ℤ)) = 49 / 64 := by
   smt!
@@ -111,14 +106,12 @@ theorem mathd_algebra_89 (b : ℝ) (h₀ : b ≠ 0) :
 theorem mathd_numbertheory_370 (n : ℕ) (h₀ : n % 7 = 3) : (2 * n + 1) % 7 = 0 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem imo_1961_p1 (x y z a b : ℝ) (h₀ : 0 < x ∧ 0 < y ∧ 0 < z) (h₁ : x ≠ y) (h₂ : y ≠ z)
   (h₃ : z ≠ x) (h₄ : x + y + z = a) (h₅ : x ^ 2 + y ^ 2 + z ^ 2 = b ^ 2) (h₆ : x * y = z ^ 2) :
   0 < a ∧ b ^ 2 < a ^ 2 ∧ a ^ 2 < 3 * b ^ 2 := by
   smt!
 
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_421 (a b c d : ℝ) (h₀ : b = a ^ 2 + 4 * a + 6)
   (h₁ : b = 1 / 2 * a ^ 2 + a + 6) (h₂ : d = c ^ 2 + 4 * c + 6) (h₃ : d = 1 / 2 * c ^ 2 + c + 6)
   (h₄ : a < c) : c - a = 6 := by
@@ -136,21 +129,17 @@ theorem mathd_algebra_77 (a b : ℝ) (f : ℝ → ℝ) (h₀ : a ≠ 0 ∧ b ≠
   (h₂ : ∀ x, f x = x ^ 2 + a * x + b) (h₃ : f a = 0) (h₄ : f b = 0) : a = 1 ∧ b = -2 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_410 (x y : ℝ) (h₀ : y = x ^ 2 - 6 * x + 13) : 4 ≤ y := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_4bap1lt4bsqpap1sq (a b : ℝ) : 4 * b * (a + 1) ≤ 4 * b ^ 2 + (a + 1) ^ 2 := by
   smt!
-
 
 theorem mathd_algebra_493 (f : ℝ → ℝ) (h₀ : ∀ x, f x = x ^ 2 - 4 * Real.sqrt x + 1) :
   f (f 4) = 70 := by
   smt!
   sorry
 
-set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_36azm9asqle36zsq (z a : ℝ) : 36 * (a * z) - 9 * a ^ 2 ≤ 36 * z ^ 2 := by
   smt!
 
@@ -175,7 +164,6 @@ theorem amc12b_2020_p5 (a b : ℕ) (h₀ : (5 : ℚ) / 8 * b = 2 / 3 * a + 7)
   smt!
   sorry
 
-set_option smt.solver.kind "z3" in
 theorem imo_1973_p3 (a b : ℝ) (h₀ : ∃ x, x ^ 4 + a * x ^ 3 + b * x ^ 2 + a * x + 1 = 0) :
   4 / 5 ≤ a ^ 2 + b ^ 2 := by
   smt!
@@ -183,7 +171,6 @@ theorem imo_1973_p3 (a b : ℝ) (h₀ : ∃ x, x ^ 4 + a * x ^ 3 + b * x ^ 2 + a
 theorem mathd_algebra_234 (d : ℝ) (h₀ : 27 / 125 * d = 9 / 25) : 3 / 5 * d ^ 3 = 25 / 9 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem amc12a_2013_p8 (x y : ℝ) (h₀ : x ≠ 0) (h₁ : y ≠ 0) (h₂ : x ≠ y)
   (h₃ : x + 2 / x = y + 2 / y) : x * y = 2 := by
   smt!
@@ -195,7 +182,6 @@ theorem mathd_numbertheory_284 (a b : ℕ) (h₀ : 1 ≤ a ∧ a ≤ 9 ∧ b ≤
 theorem algebra_binomnegdiscrineq_10alt28asqp1 (a : ℝ) : 10 * a ≤ 28 * a ^ 2 + 1 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_2at2pclta2c2p41pc (a c : ℝ) :
   2 * a * (2 + c) ≤ a ^ 2 + c ^ 2 + 4 * (1 + c) := by
   smt!
@@ -209,7 +195,6 @@ theorem amc12a_2011_p18 (x y : ℝ) (h₀ : abs (x + y) + abs (x - y) = 2) :
   smt!
   sorry
 
-set_option smt.solver.kind "z3" in
 theorem amc12b_2004_p3 (x y : ℕ) (h₀ : 2 ^ x * 3 ^ y = 1296) : x + y = 8 := by
   smt!
 
@@ -252,25 +237,20 @@ theorem aime_1984_p15 (x y z w : ℝ)
     x ^ 2 + y ^ 2 + z ^ 2 + w ^ 2 = 36 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_433 (f : ℝ → ℝ) (h₀ : ∀ x, f x = 3 * (2 * x - 7) - 8) : f 8 = 19 := by
   smt!
-  sorry
 
 theorem mathd_algebra_69 (rows seats : ℕ) (h₀ : rows * seats = 450)
   (h₁ : (rows + 5) * (seats - 3) = 450) : rows = 25 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_28 (c : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f x = 2 * x ^ 2 + 5 * x + c)
   (h₁ : ∃ x, f x ≤ 0) : c ≤ 25 / 8 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem algebra_apb4leq8ta4pb4 (a b : ℝ) (h₀ : 0 < a ∧ 0 < b) : (a + b) ^ 4 ≤ 8 * (a ^ 4 + b ^ 4) := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_245 (x : ℝ) (h₀ : x ≠ 0) :
   (4 / x)⁻¹ * (3 * x ^ 3 / x) ^ 2 * (1 / (2 * x))⁻¹ ^ 3 = 18 * x ^ 8 := by
   smt!
@@ -280,7 +260,6 @@ theorem mathd_algebra_140 (a b c : ℝ) (h₀ : 0 < a ∧ 0 < b ∧ 0 < c)
   smt!
 
 -- TODO: Handle sqrt
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_547 (x y : ℝ) (h₀ : x = 5) (h₁ : y = 2) : Real.sqrt (x ^ 3 - 2 ^ y) = 11 := by
   -- norm_num at *
   smt!
@@ -292,7 +271,6 @@ theorem mathd_algebra_224 (S : Finset ℕ)
 theorem amc12a_2009_p5 (x : ℝ) (h₀ : x ^ 3 - (x + 1) * (x - 1) * x = 5) : x ^ 3 = 125 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem amc12_2001_p9 (f : ℝ → ℝ) (h₀ : ∀ x > 0, ∀ y > 0, f (x * y) = f x / y) (h₁ : f 500 = 3) :
     f 600 = 5 / 2 := by
   smt!
@@ -312,7 +290,6 @@ theorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y 
   norm_num at *
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_numbertheory_780 (m x : ℤ) (h₀ : 0 ≤ x) (h₁ : 10 ≤ m ∧ m ≤ 99) (h₂ : 6 * x % m = 1)
   (h₃ : (x - 6 ^ 2) % m = 0) : m = 43 := by
   norm_num at *
@@ -325,7 +302,6 @@ theorem amc12a_2009_p9 (a b c : ℝ) (f : ℝ → ℝ) (h₀ : ∀ x, f (x + 3) 
   -- fails with norm_num
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem mathd_algebra_13 (a b : ℝ)
     (h₀ : ∀ x, x - 3 ≠ 0 ∧ x - 5 ≠ 0 → 4 * x / (x ^ 2 - 8 * x + 15) = a / (x - 3) + b / (x - 5)) :
     a = -6 ∧ b = 10 := by
@@ -350,37 +326,36 @@ theorem amc12a_2010_p11 (x b : ℝ) (h₀ : 0 < b) (h₁ : (7 : ℝ) ^ (x + 7) =
   smt!
   sorry
 
-set_option smt.solver.kind "z3" in
 theorem mathd_numbertheory_412 (x y : ℤ) (h₀ : 0 ≤ x ∧ 0 ≤ y) (h₁ : x % 19 = 4) (h₂ : y % 19 = 7) :
     (x + 1) ^ 2 * (y + 5) ^ 3 % 19 = 13 := by
   norm_num at *
-  -- smt!  -- Suprisingly difficult for z3 and cvc5.
+  smt!  -- Suprisingly difficult for z3 and cvc5.
   sorry
 
 theorem mathd_algebra_247 (t s : ℝ) (n : ℤ) (h₀ : t = 2 * s - s ^ 2) (h₁ : s = n ^ 2 - 2 ^ n + 1) (h₂ : n = 3) : t = 0 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem algebra_sqineq_2unitcircatblt1 (a b : ℝ) (h₀ : a ^ 2 + b ^ 2 = 2) : a * b ≤ 1 := by
   smt!
 
-set_option smt.solver.kind "z3" in
 theorem algebra_amgm_sumasqdivbsqgeqsumbdiva (a b c : ℝ) (h₀ : 0 < a ∧ 0 < b ∧ 0 < c) :
     a ^ 2 / b ^ 2 + b ^ 2 / c ^ 2 + c ^ 2 / a ^ 2 ≥ b / a + c / b + a / c := by
   norm_num at *
   smt!
 
+-- Need a few minutes
 theorem imo_1974_p5 (a b c d s : ℝ) (h₀ : 0 < a ∧ 0 < b ∧ 0 < c ∧ 0 < d)
   (h₁ : s = a / (a + b + d) + b / (a + b + c) + c / (b + c + d) + d / (a + c + d)) :
   1 < s ∧ s < 2 := by
   smt!
 
-set_option smt.solver.kind "z3" in
+-- Need a few minutes
 theorem imo_1984_p2 (a b : ℤ) (h₀ : 0 < a ∧ 0 < b) (h₁ : ¬7 ∣ a) (h₂ : ¬7 ∣ b) (h₃ : ¬7 ∣ a + b)
     (h₄ : 7 ^ 7 ∣ (a + b) ^ 7 - a ^ 7 - b ^ 7) : 19 ≤ a + b := by
   norm_num at *
   smt!
 
+-- Need a few minutes
 theorem amc12a_2010_p10 (p q : ℝ) (a : ℕ → ℝ) (h₀ : ∀ n, a (n + 2) - a (n + 1) = a (n + 1) - a n)
   (h₁ : a 1 = p) (h₂ : a 2 = 9) (h₃ : a 3 = 3 * p - q) (h₄ : a 4 = 3 * p + q) : a 2010 = 8041 := by
   smt!

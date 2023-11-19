@@ -171,24 +171,18 @@ def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
   withProcessedHints hs fun hs => do
   -- 2. Generate the SMT query.
   let cmds ← prepareSmtQuery hs
-  let query := setOption "produce-models" "true"
-            *> emitCommands cmds.reverse
-            *> checkSat
+  let query := addCommands cmds.reverse *> checkSat
   logInfo m!"goal: {goalType}"
   logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
   -- 3. Run the solver.
-  let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get? (← getOptions)
   let timeout ← parseTimeout ⟨stx[2]⟩
-  let ss ← createFromKind kind path timeout
-  let (res, ss) ← (StateT.run query ss : MetaM _)
+  let ss ← create timeout.get!
+  let res ← StateT.run' query ss
   -- 4. Print the result.
   logInfo m!"\nresult: {res}"
   match res with
   | .sat =>
     -- 4a. Print model.
-    let (model, _) ← StateT.run getModel ss
-    logInfo m!"\ncounter-model:\n{model}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .unknown => throwError "unable to prove goal"
   | .timeout => throwError "the SMT solver timed out"
@@ -281,24 +275,18 @@ def smtSolve : TacticM Unit := withMainContext do
   withProcessedHints hs fun hs => do
     -- 2. Generate the SMT query.
     let cmds ← prepareSmtQuery hs
-    let query := setOption "produce-models" "true"
-              *> emitCommands cmds.reverse
-              *> checkSat
+    let query := addCommands cmds.reverse *> checkSat
     logInfo m!"goal: {goalType}"
     logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
     -- 3. Run the solver.
-    let kind := smt.solver.kind.get (← getOptions)
-    let path := smt.solver.path.get? (← getOptions)
-    let timeout := some 200
-    let ss ← createFromKind kind path timeout
-    let (res, ss) ← (StateT.run query ss : MetaM _)
+    let timeout := some 10
+    let ss ← create timeout.get!
+    let res ← StateT.run' query ss
     -- 4. Print the result.
     logInfo m!"\nresult: {res}"
     match res with
     | .sat =>
       -- 4a. Print model.
-      let (model, _) ← StateT.run getModel ss
-      logInfo m!"\ncounter-model:\n{model}\n"
       throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
     | .unknown => throwError "unable to prove goal"
     | .timeout => throwError "the SMT solver timed out"

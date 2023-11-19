@@ -6,55 +6,53 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
+import Std.Data.HashMap
 import Smt.Commands
 import Smt.Data.Sexp
 import Smt.Term
 
+open Std
+
 namespace Smt
 
 inductive Kind where
-  | boolector
-  | cvc4
+  --| boolector
   | cvc5
   | vampire
-  | yices
+  --| yices
   | z3
-deriving DecidableEq, Inhabited
+deriving DecidableEq, Inhabited, Hashable
+
+def allKinds : List Kind := [
+  -- Kind.boolector,
+  Kind.cvc5,
+  Kind.vampire,
+  -- Kind.yices,
+  Kind.z3
+]
 
 instance : ToString Kind where
   toString
-    | .boolector => "boolector"
-    | .cvc4      => "cvc4"
+    --| .boolector => "boolector"
     | .cvc5      => "cvc5"
     | .vampire   => "vampire"
-    | .yices     => "yices"
+    --| .yices     => "yices"
     | .z3        => "z3"
 
 instance : Lean.KVMap.Value Kind where
   toDataValue k := toString k
   ofDataValue?
-    | "boolector" => Kind.boolector
-    | "cvc4"      => Kind.cvc4
+    --| "boolector" => Kind.boolector
     | "cvc5"      => Kind.cvc5
     | "vampire"   => Kind.vampire
-    | "yices"     => Kind.yices
+    --| "yices"     => Kind.yices
     | "z3"        => Kind.z3
     | _           => none
 
 /-- What the binary for a given solver is usually called. -/
 def Kind.toDefaultPath : Kind → String
-  | .yices => "yices-smt2"
+  --| .yices => "yices-smt2"
   | k      => toString k
-
-register_option smt.solver.kind : Kind := {
-  defValue := Kind.cvc5
-  descr := "The solver to use for solving the SMT query."
-}
-
-register_option smt.solver.path : String := {
-  defValue := "cvc5"
-  descr := "The path to the solver used for solving the SMT query."
-}
 
 /-- Result of an SMT query. -/
 inductive Result where
@@ -62,7 +60,7 @@ inductive Result where
   | unsat   : Result
   | unknown : Result
   | timeout : Result
-deriving DecidableEq
+deriving DecidableEq, Inhabited
 
 instance : ToString Result where
   toString : Result → String
@@ -74,7 +72,7 @@ instance : ToString Result where
 /-- The data-structure for the state of the generic SMT-LIB solver. -/
 structure SolverState where
   commands : List Command
-  proc : IO.Process.Child ⟨.piped, .piped, .piped⟩
+  args : HashMap Kind (Array String)
 
 abbrev SolverT (m) [Monad m] [MonadLiftT IO m] := StateT SolverState m
 
@@ -82,144 +80,88 @@ abbrev SolverM := SolverT IO
 
 namespace Solver
 
-variable [Monad m] [MonadLiftT IO m]
+variable [Monad m] [MonadLiftT IO m] [MonadLiftT BaseIO m]
 
-def emitCommand (c : Command) : SolverT m Unit := do
+def addCommand (c : Command) : SolverT m Unit := do
   let state ← get
   set { state with commands := c :: state.commands }
-  state.proc.stdin.putStr s!"{c}\n"
-  state.proc.stdin.flush
 
-def emitCommands : List Command → SolverT m Unit := (List.forM · emitCommand)
-
-private def getSexp : SolverT m Sexp := do
-  let state ← get
-  let mut line ← state.proc.stdout.getLine
-  let mut out := line
-  let mut parseRes := Sexp.parseOne out
-  while !line.isEmpty && parseRes matches .error (.incomplete _) do
-    line ← state.proc.stdout.getLine
-    out := out ++ line
-    parseRes := Sexp.parseOne out
-  match parseRes with
-  | .ok sexp!{(error {.atom e})} => (throw (IO.userError (unquote e)) : IO _)
-  | .ok sexp => return sexp
-  | .error e =>
-    let err ← state.proc.stderr.readToEnd
-    (throw (IO.userError (parseErrMsg e out err)) : IO _)
-where
-  unquote s := s.extract ⟨1⟩ ⟨s.length - 1⟩
-  parseErrMsg (e : Sexp.ParseError) (out err : String) :=
-    s!"could not parse solver output: {e}\nsolver stdout:\n{out}\nsolver stderr:\n{err}"
-
-/-- Create an instance of a generic SMT solver.
-    Note: `args` is only for enabling interactive SMT-LIB interface for solvers. To set other
-          options, use `setOption` command. -/
-def create (path : String) (args : Array String) : IO SolverState := do
-  let proc ← IO.Process.spawn {
-    stdin := .piped
-    stdout := .piped
-    stderr := .piped
-    cmd := path
-    args := args
-  }
-  return ⟨[], proc⟩
+def addCommands : List Command → SolverT m Unit := (List.forM · addCommand)
 
 /-- Create an instance of a pre-configured SMT solver. -/
-def createFromKind (kind : Kind) (path : Option String) (timeoutSecs : Option Nat) :
-  IO SolverState := do
-  let mut args := kindToArgs kind
-  if let some secs := timeoutSecs then
-    args := args ++ timeoutArgs secs kind
-  create (path.getD kind.toDefaultPath) args
-where
-  kindToArgs : Kind → Array String
-    | .boolector => #["--smt2"]
-    | .cvc4      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0"]
-    | .cvc5      => #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0",
-                      -- "--produce-proofs", "--proof-granularity=theory-rewrite",
-                      -- "--proof-format=lean", "--enum-inst"]
-                      "--enum-inst"]
-    | .vampire   => #["--input_syntax", "smtlib2", "--output_mode", "smtcomp"]
-    | .yices     => #[]
-    | .z3        => #["-in", "-smt2"]
-  timeoutArgs (secs : Nat): Kind → Array String
-    | .boolector => #["--time", toString secs]
-    | .cvc4      => #["--tlimit", toString (1000*secs)]
-    | .cvc5      => #["--tlimit", toString (1000*secs)]
-    | .vampire   => #["--time_limit", toString secs]
-    | .yices     => #["--timeout", toString secs]
-    | .z3        => #[s!"-T:{secs}"]
+def create (timeoutSecs : Nat) : IO SolverState := do
+  let args : HashMap Kind (Array String) := HashMap.ofList [
+    --(.boolector, #["--smt2", "--time", toString timeoutSecs]),
+    (.cvc5,      #["--quiet", "--incremental", "--lang", "smt", "--dag-thresh=0", "--enum-inst", "--tlimit", toString (1000 * timeoutSecs)]),
+    (.vampire,   #["--input_syntax", "smtlib2", "--output_mode", "smtcomp", "--time_limit", toString timeoutSecs]),
+    --(.yices,     #["--timeout", toString timeoutSecs]),
+    (.z3,        #["-smt2", s!"-T:{timeoutSecs}"])
+  ]
+  return ⟨[], args⟩
 
 /-- Set the SMT query logic to `l`. -/
-def setLogic (l : String) : SolverT m Unit := emitCommand (.setLogic l)
+def setLogic (l : String) : SolverT m Unit := addCommand (.setLogic l)
 
 /-- Set option `k` to value `v`. -/
-def setOption (k : String) (v : String) : SolverT m Unit := emitCommand (.setOption k v)
+def setOption (k : String) (v : String) : SolverT m Unit := addCommand (.setOption k v)
 
 /-- Define a sort with name `id` and arity `n`. -/
-def declareSort (id : String) (n : Nat) : SolverT m Unit := emitCommand (.declareSort id n)
+def declareSort (id : String) (n : Nat) : SolverT m Unit := addCommand (.declareSort id n)
 
 /-- Define a sort with name `id`. -/
 def defineSort (id : String) (ss : List Term) (s : Term) : SolverT m Unit :=
-  emitCommand (.defineSort id ss s)
+  addCommand (.defineSort id ss s)
 
 /-- Declare a symbolic constant with name `id` and sort `s`. -/
-def declareConst (id : String) (s : Term) : SolverT m Unit := emitCommand (.declare id s)
+def declareConst (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
 
 /-- Declare an uninterpreted function with name `id` and sort `s`. -/
-def declareFun (id : String) (s : Term) : SolverT m Unit := emitCommand (.declare id s)
+def declareFun (id : String) (s : Term) : SolverT m Unit := addCommand (.declare id s)
 
 /-- Define a function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
 def defineFun (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
-  SolverT m Unit := emitCommand (.defineFun id ps s t false)
+  SolverT m Unit := addCommand (.defineFun id ps s t false)
 
 /-- Define a recursive function with name `id`, parameters `ps`, co-domain `s`,
     and body `t`. -/
 def defineFunRec (id : String) (ps : List (String × Term)) (s : Term) (t : Term) :
-  SolverT m Unit := emitCommand (.defineFun id ps s t true)
+  SolverT m Unit := addCommand (.defineFun id ps s t true)
 
 /-- Assert that proposition `t` is true. -/
-def assert (t : Term) : SolverT m Unit := emitCommand (.assert t)
+def assert (t : Term) : SolverT m Unit := addCommand (.assert t)
 
 /-- Check if the query given so far is satisfiable and return the result. -/
 def checkSat : SolverT m Result := do
-  emitCommand .checkSat
-  let out ← getSexp
-  let res ← match out with
-    | "sat"     => return .sat
-    | "unsat"   => return .unsat
-    | "unknown" => return .unknown
-    | "timeout" => return .timeout
-    | _ => (throw (IO.userError s!"unexpected solver output: {repr out}") : IO _)
-  return res
-
-/- TODO: We should probably parse the returned string into `Command`s or `String × Term`s. This is
-   bit tricky because we need to differentiate between literals and (user-defined) symbols. It
-   should be possible, however, because we store a list of all executed commands. -/
-/-- Return the model for a `sat` result. -/
-def getModel : SolverT m String := do
-  emitCommand .getModel
-  prettyPrint <$> getSexp
-where
-  prettyPrint : Sexp → String
-    | .atom _  => unreachable!
-    | .expr es => match es with
-      | [] => "()"
-      | es => "(\n" ++ String.intercalate "\n" (es.map toString) ++ "\n)"
-
-/-- Return the proof for an `unsat` result. -/
-def getProof : SolverT m Sexp := do
-  emitCommand .getProof
-  getSexp
-
-/-- Check if the query given so far is satisfiable and return the result. -/
-def exit : SolverT m UInt32 := do
-  emitCommand .exit
+  addCommand .checkSat
   let state ← get
-  -- Close stdin to signal EOF to the solver.
-  let (_, proc) ← state.proc.takeStdin
-  proc.wait
+
+  let mut args : Array String := #[]
+
+  for kind in allKinds do
+    args := args.push s!"--{kind.toDefaultPath}"
+    args := args.push $ state.args[kind].get!.foldl (fun r s => r ++ " " ++ s) ""
+
+  let proc ← IO.Process.spawn {
+    cmd := "smt-portfolio"
+    args := args
+    stdin := .piped
+    stdout := .piped
+    stderr := .piped
+  }
+
+  for c in state.commands.reverse ++ [.exit] do
+    proc.stdin.putStr s!"{c}\n"
+
+  proc.stdin.flush
+  let (_, proc) ← proc.takeStdin
+  let _ ← proc.wait
+
+  match (← proc.stdout.readToEnd).trim with
+  | "sat"     => return .sat
+  | "unsat"   => return .unsat
+  | "unknown" => return .unknown
+  | "timeout" => return .timeout
+  | out => (throw (IO.userError s!"unexpected solver output\nstdout: {out}\nstderr:{← proc.stderr.readToEnd}") : IO _)
 
 end Smt.Solver

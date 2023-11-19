@@ -33,7 +33,7 @@ abbrev QueryBuilderM := ReaderT QueryBuilderM.Config <| StateT QueryBuilderM.Sta
 
 namespace QueryBuilderM
 
-def addCommand (e : Expr) (cmd : Command) : QueryBuilderM Unit :=
+private def addCommand (e : Expr) (cmd : Command) : QueryBuilderM Unit :=
   modify fun st => { st with
     graph := st.graph.addVertex e
     commands := st.commands.insert e cmd
@@ -235,7 +235,7 @@ def natConstAssert (n : String) (args : List Name) : Term → MetaM Term
       | t :: ts => appT (applyList n ts) (symbolT t.toString)
 
 /-- TODO: Remove this function and its `Nat` those hacks. -/
-def addCommand (cmd : Command) (cmds : List Command) : MetaM (List Command) := do
+private def addCommand (cmd : Command) (cmds : List Command) : MetaM (List Command) := do
   let mut cmds := cmds
   cmds := cmd :: cmds
   match cmd with
