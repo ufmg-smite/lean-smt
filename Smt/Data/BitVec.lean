@@ -222,7 +222,7 @@ def sdiv (s t : BitVec n) : BitVec n :=
   | true,  true  => (- s) / (- t)
 
 --similar to (but not the same as) Std
-def smod (s t : BitVec (w + 1)) :=
+def smod''' (s t : BitVec (w + 1)) :=
   let msb_s := (s.extract w w).val
   let msb_t := (t.extract w w).val
   let abs_s := if msb_s == 0 then s else  -s
@@ -235,19 +235,27 @@ def smod (s t : BitVec (w + 1)) :=
   | _, 0, 1 => u + t
   | _, _, _ => -u
 
---similar (but not the same) to Std
-def bv_srem (x y : BitVec (w + 1)) :=
-  let msb_x := (x.extract w w).val
-  let msb_y := (y.extract w w).val
-  match msb_x, msb_y with
-  | 0, 0 => x % y
-  | 1, 0 => -((-x) % y)
-  | 0, 1 => x % (-y)
-  | _, _ => -((-x) % (-y))
+def smod (s t : BitVec m) : BitVec m :=
+  match s.msb, t.msb with
+  | false, false => s % t
+  | false, true =>
+    let u := s % (-t)
+    (if u = BitVec.ofNat m 0 then u else u + t)
+  | true, false =>
+    let u := (-s) % t
+    (if u = BitVec.ofNat m 0 then u else t - u)
+  | true, true => -((-s) % (-t))
+
+def srem (s t : BitVec n) : BitVec n :=
+  match s.msb, t.msb with
+  | false, false => s % t
+  | false, true  => s % (-t)
+  | true,  false => -((-s) % t)
+  | true,  true  => -((-s) % (-t))
 
 -- def bv_ite (c : BitVec 1) (t e : BitVec w) :=
 --   BitVec.ofNat w (toNat (fun i => ((!(c.val.testBit 0)) || (t.val.testBit i)) && ((c.val.testBit 0) || (e.val.testBit i))) 0 w)
-def ite (c : BitVec 1) (t e : BitVec w) := if msb c then t else e
+protected def ite (c : BitVec 1) (t e : BitVec w) := if msb c then t else e
 
 -- alternative toNat definition that uses lists
 -- def toNat' (bs : List Bool) : Nat := List.foldr Nat.bit 0 bs
@@ -317,6 +325,16 @@ lemma not_cast {x : BitVec w} : (~~~ x).val = (2^w - (x.val + 1) % 2^w) % 2^w :=
 
 @[simp] lemma zero_eq_ofNat : BitVec.ofNat w 0 = (0 : BitVec w)  := rfl
 
+@[simp] protected lemma neg_zero : -(0 : BitVec w) = 0 := by
+  rw [← val_bitvec_eq, neg_cast]; simp
+
+lemma bvneg_add_eq_sub {x y : BitVec w} : -x + y = y - x := by
+  rw [← val_bitvec_eq]
+  simp only [add_cast, neg_cast, sub_cast]
+  cases' x.val
+  · simp
+  · rw [mod_eq_of_lt (sub_lt (two_pow_pos w) (succ_pos _))]; ring_nf
+
 @[simp] lemma not_zero : (~~~(0 : BitVec w)).val = 2^w - 1 := by
   cases' w with w
   <;> simp [not_cast, one_mod_lt (one_lt_two_pow' _), mod_eq_of_lt (sub_lt (two_pow_pos _) (Nat.one_pos))]
@@ -367,6 +385,45 @@ theorem testBit_eq_rep {x: BitVec w} (i : Nat) (h: i< w): x[i] = testBit x.val i
 
 theorem testBit_eq_rep' {x: Nat} (i : Nat) (h: i< w) (h2: x< 2^w): (BitVec.ofNat w x)[i] = testBit x i := by
   simp [BitVec.ofNat, GetElem.getElem, lsbGet, extract, Fin.ofNat', mod_eq_of_lt, h2]
+
+theorem xor_eq_xor' {m n : Nat} : m ^^^ n = Nat.lxor' m n := by
+  simp only [Nat.xor, bitwise_eq_bitwise' bne (by simp), HXor.hXor, Xor.xor, lxor']
+  congr; aesop
+
+lemma and_eq_and' : m &&& n = land' m n := by
+  simp [HAnd.hAnd, AndOp.and, land, land', bitwise_eq_bitwise']
+
+lemma or_eq_or' : m ||| n = lor' m n := by
+  simp [HOr.hOr, OrOp.or, lor, lor', bitwise_eq_bitwise']
+
+theorem extract_val {x : BitVec (w + 1)} (h : j ≤ w) : (BitVec.extract w j x).val = x.val >>> j := by
+  simp only [BitVec.ofNat, Fin.ofNat', extract]
+  rw [mod_eq_of_lt]
+  rw [shiftRight_eq_shiftr, shiftr_eq_div_pow, ← Nat.sub_add_comm h]
+  rw [← pow_div (by linarith) (by decide)]
+  exact Nat.div_lt_div_of_lt_of_dvd ((Nat.pow_dvd_pow_iff_le_right (by decide)).mpr (by linarith)) x.isLt
+
+lemma shiftRight_zero : m >>> 0 = m := rfl
+
+theorem extract_val' {x : BitVec w} : (BitVec.extract j 0 x).val = x.val % 2^(j + 1) := by
+  simp [extract, BitVec.ofNat, Fin.ofNat', shiftRight_zero]
+
+lemma extract_eq_testBit {x : BitVec w} : (x.extract j j).val = (x.val.testBit j).toNat := by
+  simp [extract_cast, testBit, BitVec.ofNat, Fin.ofNat', shiftr_eq_div_pow, shiftRight_eq_shiftr, mod_two_of_bodd]
+
+theorem extract_eq_msb {x : BitVec (w + 1)} : (x.extract w w).val = (msb x).toNat := by
+  simp only [msb, getMsb, getLsb, extract_eq_testBit, succ_pos] ; congr
+
+lemma toNat_inj {a b : Bool} : a.toNat = b.toNat ↔ a=b := by cases' a <;> cases' b <;> aesop
+
+theorem msb_eq_testBit {x : BitVec (w + 1)} : msb x = x.val.testBit w := by
+  apply toNat_inj.mp
+  exact Eq.trans (@extract_eq_msb _ x).symm (@extract_eq_testBit _ _ x)
+
+theorem msb_eq_val (c : BitVec 1) : (msb c).toNat = c.val := by
+  simp only [msb_eq_testBit]
+  have := c.isLt
+  interval_cases c.val <;> simp
 
 /-! ### Equivalence between bitwise and BitVec operations -/
 
