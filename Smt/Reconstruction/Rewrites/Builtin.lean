@@ -9,10 +9,7 @@ import Smt.Reconstruction.Rewrites.Simp
 
 namespace Smt.Reconstruction.Rewrites.Builtin
 
--- Equality
-
-@[smt_simp] theorem eq_refl : (t = t) = True := eq_self t
-@[smt_simp] theorem eq_symm : (t = s) = (s = t) := propext ⟨(· ▸ rfl), (· ▸ rfl)⟩
+-- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/builtin/rewrites
 
 -- ITE
 
@@ -23,5 +20,18 @@ namespace Smt.Reconstruction.Rewrites.Builtin
             (fun hnc => if_pos hnc ▸ if_neg hnc ▸ rfl)
 @[smt_simp] theorem ite_eq_branch [h : Decidable c] : ite c x x = x :=
   h.byCases (if_pos · ▸ rfl) (if_neg · ▸ rfl)
+
+@[smt_simp] theorem ite_then_lookahead [h : Decidable c] : ite c (ite c x y) z = ite c x z :=
+  h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ if_pos hc ▸ rfl)
+            (fun hc => if_neg hc ▸ if_neg hc ▸ rfl)
+@[smt_simp] theorem ite_else_lookahead [h : Decidable c] : ite c x (ite c y z) = ite c x z :=
+  h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
+            (fun hc => if_neg hc ▸ if_neg hc ▸ if_neg hc ▸ rfl)
+@[smt_simp] theorem ite_then_neg_lookahead [h : Decidable c] : ite c (ite (Not c) x y) z = ite c y z :=
+  h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ ite_not_cond (c := c) ▸ if_pos hc ▸ rfl)
+            (fun hc => if_neg hc ▸ if_neg hc ▸ rfl)
+@[smt_simp] theorem ite_else_neg_lookahead [h : Decidable c] : ite c x (ite (Not c) y z) = ite c x y :=
+  h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
+            (fun hc => if_neg hc ▸ if_neg hc ▸ ite_not_cond (c := c) ▸ if_neg hc ▸ rfl)
 
 end Smt.Reconstruction.Rewrites.Builtin

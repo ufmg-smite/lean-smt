@@ -1,5 +1,4 @@
 import Lean
-import Mathlib.Tactic.LibrarySearch
 
 open Lean Elab Tactic Meta
 
@@ -19,8 +18,7 @@ def rewriteHyp (hyp : Expr) (mvar : MVarId) : MetaM MVarId :=
   mvar.withContext do
     let type ← mvar.getType
     let r ← mvar.rewrite type hyp
-    let mvar' ← mvar.replaceTargetEq r.eNew r.eqProof
-    pure mvar'
+    mvar.replaceTargetEq r.eNew r.eqProof
 
 def smtCongrCore (es : List Expr) (mvar: MVarId) : MetaM Unit := do
   let mvar' ← es.foldrM rewriteHyp mvar

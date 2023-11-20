@@ -108,7 +108,7 @@ def parsePullToMiddle : Syntax → TacticM (Option Nat)
   let i ← stxToNat ⟨stx[1]⟩ 
   let j ← stxToNat ⟨stx[3]⟩
   let e ← elabTerm stx[5] none
-  let t ← instantiateMVars (← expandLet (← inferType e))
+  let t ← instantiateMVars (← inferType e)
   let suffIdx ← parsePullToMiddle stx
   let suffIdx ←
     match suffIdx with
@@ -158,7 +158,7 @@ def parsePull : Syntax → TacticM (Option Nat)
 
 @[tactic pull] def evalPullCore : Tactic := fun stx => withMainContext do
   let hyp ← elabTerm stx[1] none
-  let t ← instantiateMVars (← expandLet (← inferType hyp))
+  let t ← instantiateMVars (← inferType hyp)
   let pivot ← elabTerm stx[3] none
   let i ← parsePull stx
   let answer ← pullCore pivot hyp t i

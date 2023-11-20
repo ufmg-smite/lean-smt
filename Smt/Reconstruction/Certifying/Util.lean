@@ -162,6 +162,7 @@ def getOp : Expr → MetaM Name
   | app (app (app (Expr.const nm ..) ..) ..) .. => pure nm
   | _ => throwError "[getOp] invalid parameter"
 
+-- Still in process of development
 partial def expandLet : Expr → MetaM Expr
 | fvar fid => do
     let lctx ← getLCtx

@@ -22,8 +22,8 @@ namespace Smt.Reconstruction.Certifying
 
 def trichotomyMeta (mvar : MVarId) (h₁ h₂ : Expr) (name : Name) : MetaM MVarId :=
   mvar.withContext do
-    let t₁ ← expandLet (← inferType h₁)
-    let t₂ ← expandLet (← inferType h₂)
+    let t₁ ← inferType h₁
+    let t₂ ← inferType h₂
     let thmName : Name ←
       match ← getOp t₁, ← getOp t₂ with
       | ``LT.lt , ``Eq    => pure ``trichotomy₁
@@ -44,9 +44,7 @@ syntax (name := trichotomy) "trichotomy" term "," term : tactic
   withMainContext do
     trace[smt.profile] m!"[trichotomy] start time: {← IO.monoNanosNow}ns"
     let h₁ ← notLeToLt (← elabTerm stx[1] none)
-    let h₁ ← expandLet h₁
     let h₂ ← notLeToLt (← elabTerm stx[3] none)
-    let h₂ ← expandLet h₂
     let fname ← mkFreshId
     let mvar ← getMainGoal
     let mvar' ← trichotomyMeta mvar h₁ h₂ fname

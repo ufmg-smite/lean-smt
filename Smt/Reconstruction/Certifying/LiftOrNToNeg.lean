@@ -48,9 +48,9 @@ def removeFalseCore (val type : Expr) : MetaM Expr := do
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
 def liftOrNToNegMeta (val : Expr) : MetaM Expr := do
-  let type ← expandLet (← inferType val)
+  let type ← inferType val
   let withoutFalse ← removeFalseCore val type
-  let type' ← instantiateMVars (← expandLet (← inferType withoutFalse))
+  let type' ← instantiateMVars (← inferType withoutFalse)
   let propsList ← collectPropsInOrChain type'
   let notPropsList := map notExpr propsList
   let propsListExpr := listExpr notPropsList $ Expr.sort Level.zero

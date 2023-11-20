@@ -28,7 +28,9 @@ theorem inverse' : ∀ a, op a (inv a) = e := by
   sorry
 
 theorem identity' : ∀ a, op a e = a := by
-  smt [assoc op, inverse op inv e, ident op e, inverse' op inv e]
+  smt_show [assoc op, inverse op inv e, ident op e, inverse' op inv e]
+  sorry
 
 theorem unique_identity e' : (∀ z, op e' z = z) → e' = e := by
-  smt [assoc op, inverse op inv e, ident op e]
+  smt_show [assoc op, inverse op inv e, ident op e]
+  sorry

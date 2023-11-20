@@ -26,7 +26,7 @@ syntax (name := arithMulNeg) "arithMulNeg" ("[" term,* "]")? "," term : tactic
 def parseArithMulAux : Array Term → Term → TacticM (Expr × Expr × Expr × Nat)
   | hs, i => do
     let li: List Expr ←
-      hs.toList.mapM (fun h: Term => do expandLet (← elabTerm h none))
+      hs.toList.mapM (fun h: Term => elabTerm h none)
     let i' ← stxToNat i
     match li with
     | [a, b, c] => return (a, b, c, i')
@@ -48,8 +48,8 @@ def castSnds : List Name :=
 
 def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Name 5) :
     MetaM Expr := do
-  let mut typeA ← expandLet (← inferType va)
-  let mut typeB ← expandLet (← inferType vb)
+  let mut typeA ← inferType va
+  let mut typeB ← inferType vb
   let mut va := va
   let mut vb := vb
   if typeA != typeB then

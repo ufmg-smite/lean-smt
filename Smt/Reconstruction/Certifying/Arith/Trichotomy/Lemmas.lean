@@ -8,7 +8,7 @@ Authors: Tomaz Gomes Mascarenhas
 import Smt.Reconstruction.Certifying.Boolean
 import Smt.Reconstruction.Certifying.PermutateOr
 
-import Mathlib.Init.Algebra.Order
+import Mathlib.Init.Order.Defs
 
 namespace Smt.Reconstruction.Certifying
 

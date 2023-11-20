@@ -57,8 +57,8 @@ theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip
 
 def resolutionCoreMeta (val₁ val₂ pivot : Expr) (sufIdx₁' sufIdx₂' : Option Nat)
     (flipped : Bool) : MetaM Expr := do
-  let type₁ ← expandLet (← inferType val₁)
-  let type₂ ← expandLet (← inferType val₂)
+  let type₁ ← inferType val₁
+  let type₂ ← inferType val₂
   let mut pivot := pivot
   let mut notPivot := mkApp (mkConst ``Not) pivot
   let sufIdx₁ ←
@@ -128,7 +128,6 @@ where
     let val₁ ← elabTerm firstHyp none
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
-    let pivot ← expandLet pivot
     let answer ← resolutionCoreMeta val₁ val₂ pivot sufIdx₁ sufIdx₂ false
     let mvar ← getMainGoal
     let type ← inferType answer
@@ -148,7 +147,6 @@ where
     let val₁ ← elabTerm firstHyp none
     let val₂ ← elabTerm secondHyp none
     let pivot ← elabTerm pivotTerm none
-    let pivot ← expandLet pivot
     let answer ← resolutionCoreMeta val₁ val₂ pivot sufIdx₁ sufIdx₂ true
     let mvar ← getMainGoal
     let type ← inferType answer

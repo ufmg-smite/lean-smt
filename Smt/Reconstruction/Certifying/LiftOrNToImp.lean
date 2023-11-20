@@ -85,7 +85,7 @@ def getGroupOrPrefixGoal : Expr → Nat → MetaM Expr
   pure $ app (app (mkConst ``Or) left) right
 
 def groupPrefixCore (pf : Expr) (i : Nat) : MetaM Expr := do
-  let clause ← expandLet (← inferType pf)
+  let clause ← inferType pf
   let props ← collectPropsInOrChain clause
   if i > 0 && i < List.length props then
     let lemmas ← groupPrefixLemmas props (i - 1)
@@ -116,7 +116,7 @@ def liftOrNToImpGoal (props : Expr) (prefLen : Nat) : MetaM Expr := do
   pure $ mkForall' premiss conclusion
 
 def liftOrNToImpCore (pf : Expr) (prefLen : Nat) : MetaM Expr := do
-    let clause ← expandLet (← inferType pf)
+    let clause ← inferType pf
     let newPf ←
       if prefLen > 1 then
         groupPrefixCore pf prefLen
