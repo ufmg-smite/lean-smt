@@ -11,7 +11,7 @@ import Smt.Reconstruction.Certifying.Arith.TightBounds.Lemmas
 import Lean
 import Mathlib.Algebra.Order.Floor
 
-open Lean hiding Rat
+open Lean
 open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying

@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Mathlib.Algebra.CovariantAndContravariant
 import Mathlib.Init.Function
-import Mathlib.Data.Rat.Order
+import Mathlib.Data.Real.Basic
 
 open Function
 
@@ -53,22 +53,22 @@ instance : CovariantClass Int Int (swap (· + ·)) (· ≤ ·) where
     intros a b c h
     exact Int.add_le_add_right h a
 
-instance : CovariantClass Rat Rat (· + ·) (· < ·) where
+instance : CovariantClass Real Real (· + ·) (· < ·) where
   elim := by
     intros a b c h
     exact add_lt_add_left h a
 
-instance : CovariantClass Rat Rat (swap (· + ·)) (· < ·) where
+instance : CovariantClass Real Real (swap (· + ·)) (· < ·) where
   elim := by
     intros a b c h
     exact add_lt_add_right h a
   
-instance : CovariantClass Rat Rat (· + ·) (· ≤ ·) where
+instance : CovariantClass Real Real (· + ·) (· ≤ ·) where
   elim := by
     intros a b c h
     exact add_le_add_left h a
 
-instance : CovariantClass Rat Rat (swap (· + ·)) (· ≤ ·) where
+instance : CovariantClass Real Real (swap (· + ·)) (· ≤ ·) where
   elim := by
     intros a b c h
     exact add_le_add_right h a

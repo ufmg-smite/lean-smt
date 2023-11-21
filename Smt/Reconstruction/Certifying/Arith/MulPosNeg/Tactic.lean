@@ -9,14 +9,15 @@ import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Instances
 import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
 import Smt.Reconstruction.Certifying.Util
 
-import Mathlib.Data.Int.Order.Basic
-import Mathlib.Data.Rat.Order
+import Mathlib.Data.Real.Basic
 
 import Lean
 
 namespace Smt.Reconstruction.Certifying
 
-open Lean hiding Rat
+noncomputable instance : LinearOrderedRing Real := inferInstance
+
+open Lean
 open Elab Tactic Expr Meta
 
 syntax (name := arithMulPos) "arithMulPos" ("[" term,* "]")? "," term : tactic
@@ -53,11 +54,11 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
   let mut vb := vb
   if typeA != typeB then
     if typeA == mkConst ``Int then
-      va := mkApp (mkConst ``Rat.ofInt) va
-      typeA := mkConst ``Rat
+      va := mkApp (mkConst ``zToR) va
+      typeA := mkConst ``Real
     else
-      vb := mkApp (mkConst ``Rat.ofInt) vb
-      typeB := mkConst ``Rat
+      vb := mkApp (mkConst ``zToR) vb
+      typeB := mkConst ``Real
   let typeC ← inferType vc
   let thmName ←
     if compId < 5 then
@@ -65,12 +66,11 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
     else throwError "[arithMul]: index too large"
 
   let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
-  let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
+  let zeroR ← mkAppOptM' (.const ``OfNat.ofNat [.zero]) #[mkConst ``Real, (mkNatLit 0), none]
   let zeroC := if typeC == mkConst ``Int then zeroI else zeroR
   let premiseLeft ←
-    if pos then mkAppM ``GT.gt #[vc, zeroC]
+    if pos then mkAppM ``LT.lt #[zeroC, vc]
     else mkAppM ``LT.lt #[vc, zeroC]
-
   let operator ←
     if compId < 5 then
       pure $ operators.get! compId
@@ -83,17 +83,17 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
   match typeA, typeC with
     | const ``Int _, const ``Int _ =>
       mkAppM thmName #[]
-    | const ``Int _, const ``Rat _ =>
+    | const ``Int _, const ``Real _ =>
       withLocalDeclD (← mkFreshId) premiseType $ fun bv => do
         let e₁ ← mkAppM (castSnds.get! compId) #[bv]
         let e₂ ← mkAppM thmName #[e₁]
         mkLambdaFVars #[bv] e₂
-    | const ``Rat _, const ``Int _ =>
+    | const ``Real _, const ``Int _ =>
       withLocalDeclD (← mkFreshId) premiseType $ fun bv => do
         let e₁ ← mkAppM (castFsts.get! compId) #[bv]
         let e₂ ← mkAppM thmName #[e₁]
         mkLambdaFVars #[bv] e₂
-    | const ``Rat _, const ``Rat _ =>
+    | const ``Real _, const ``Real _ =>
       mkAppM thmName #[]
     | _, _ => throwError "[arithMul]: unexpected variable type"
 
@@ -132,5 +132,8 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
   replaceMainGoal [mvar']
   evalTactic (← `(tactic| exact $(mkIdent fname)))
   trace[smt.profile] m!"[arithMulNeg] end time: {← IO.monoNanosNow}ns"
+
+example {a b c : Real} : 0 > c ∧ a ≤ b → c * a ≥ c * b := by
+  arithMulNeg [a,b,c], 1
 
 end Smt.Reconstruction.Certifying
