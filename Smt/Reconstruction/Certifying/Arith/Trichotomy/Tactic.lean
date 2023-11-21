@@ -8,14 +8,14 @@ Authors: Tomaz Gomes Mascarenhas
 import Lean
 
 -- we must import those to have visible instances of LinearOrder of
--- Nat, Int and Rat
+-- Nat, Int and Real
 import Mathlib.Init.Data.Nat.Lemmas
 import Mathlib.Init.Data.Int.Order
-import Mathlib.Data.Rat.Order
+import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruction.Certifying.Arith.Trichotomy.Lemmas
 
-open Lean hiding Rat
+open Lean
 open Meta Elab.Tactic Expr
 
 namespace Smt.Reconstruction.Certifying

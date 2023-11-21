@@ -7,20 +7,25 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Smt.Reconstruction.Certifying.Arith.MulPosNeg.Lemmas
 
-import Mathlib.Data.Rat.Floor
+import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Order.Floor
+import Mathlib.Tactic.LibrarySearch
 
 namespace Smt.Reconstruction.Certifying
 
-theorem Rat.neg_lt_neg {a b : ℚ} (h : a < b) : -a > -b := by
+variable (a : ℝ)
+
+#check Neg.neg a
+
+theorem Real.neg_lt_neg {a b : ℝ} (h : a < b) : -a > -b := by
   simp
   exact h
 
-theorem Rat.neg_le_neg {a b : ℚ} (h : a ≤ b) : -a ≥ -b := by
+theorem Real.neg_le_neg {a b : ℝ} (h : a ≤ b) : -a ≥ -b := by
   simp
   exact h
 
-theorem intTightLb' : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌊c⌋ + 1 := by
+theorem intTightLb' : ∀ {i : Int} {c : ℝ}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h
   cases lt_trichotomy i (⌊c⌋ + 1) with
   | inl iltc =>
@@ -34,10 +39,12 @@ theorem intTightLb' : ∀ {i : Int} {c : ℚ}, i > c → i ≥ ⌊c⌋ + 1 := by
               | inl ieqc => exact le_of_eq (Eq.symm ieqc)
               | inr igtc => exact le_of_lt igtc
 
-theorem intTightUb' : ∀ {i : Int} {c : ℚ}, i < c → i ≤ ⌈c⌉ - 1 := by
+theorem intTightUb' : ∀ {i : Int} {c : ℝ}, i < c → i ≤ ⌈c⌉ - 1 := by
   intros i c h
-  have neg_c_lt_neg_i := Rat.neg_lt_neg h
-  have i_le_floor_neg_c := intTightLb' neg_c_lt_neg_i
+  have neg_c_lt_neg_i := Real.neg_lt_neg h
+  have i_le_floor_neg_c: -i ≥ ⌊-c⌋ + 1 :=  by
+    apply intTightLb'
+    norm_cast at neg_c_lt_neg_i
   rw [Int.floor_neg] at i_le_floor_neg_c
   have i_plus_one_le_c := Int.neg_le_neg i_le_floor_neg_c
   simp at i_plus_one_le_c

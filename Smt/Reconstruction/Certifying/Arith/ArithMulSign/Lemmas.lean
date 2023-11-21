@@ -3,6 +3,7 @@ import Smt.Reconstruction.Certifying.Boolean
 
 import Mathlib.Algebra.Parity
 import Mathlib.Data.Nat.Parity
+import Mathlib.Data.Real.Basic
 
 open Smt.Reconstruction.Certifying
 
@@ -87,16 +88,16 @@ theorem combineSigns₄ : a < 0 → b < 0 → b * a > 0 := by
   simp at h
   exact h
 
-theorem castPos : ∀ (a : Int), a > 0 → Rat.ofInt a > 0 := by
+theorem castPos : ∀ (a : Int), a > 0 → Real.intCast.intCast a > 0 := by
   intros a h
   simp [h]
 
-theorem castNeg : ∀ (a : Int), a < 0 → Rat.ofInt a < 0 := by
+theorem castNeg : ∀ (a : Int), a < 0 → Real.intCast.intCast a < 0 := by
   intros a h
   simp [h]
 
-instance : HMul ℤ ℚ ℚ where
-  hMul z q := Rat.ofInt z * q
+instance : HMul ℤ ℝ ℝ where
+  hMul z r := Real.intCast.intCast z * r
 
-instance : HMul ℚ ℤ ℚ where
-  hMul q z := q * Rat.ofInt z
+instance : HMul ℝ ℤ ℝ where
+  hMul r z := r * Real.intCast.intCast z
