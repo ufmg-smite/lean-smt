@@ -1,6 +1,5 @@
-import Mathlib.Data.Rat.Basic
-import Mathlib.Data.Rat.Order
 import Mathlib.Algebra.Order.Ring.Lemmas
+import Mathlib.Data.Real.Basic
 
 instance lorInt : LinearOrderedRing Int := inferInstance
-instance lorRat : LinearOrderedRing Rat := inferInstance
+noncomputable instance lorReal : LinearOrderedRing Real := inferInstance
