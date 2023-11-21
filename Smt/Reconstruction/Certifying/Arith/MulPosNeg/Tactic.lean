@@ -11,7 +11,6 @@ import Smt.Reconstruction.Certifying.Util
 
 import Mathlib.Data.Int.Order.Basic
 import Mathlib.Data.Rat.Order
-import Mathlib.Data.Vector.Basic
 
 import Lean
 
@@ -37,8 +36,8 @@ def parseArithMul : Syntax → TacticM (Expr × Expr × Expr × Nat)
   | `(tactic| arithMulNeg [ $[$hs],* ], $i) => parseArithMulAux hs i
   | _ => throwError "[arithMul]: wrong usage"
 
-def operators : Vector Name 5 :=
-  ⟨[``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``Eq], rfl⟩  
+def operators : List Name :=
+  [``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``Eq]
 
 def castFsts : List Name :=
   [``castFstLT , ``castFstLE , ``castFstGT , ``castFstGE , ``castFstEQ]
@@ -46,7 +45,7 @@ def castFsts : List Name :=
 def castSnds : List Name :=
   [``castSndLT , ``castSndLE , ``castSndGT , ``castSndGE , ``castSndEQ]
 
-def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Name 5) :
+def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name) :
     MetaM Expr := do
   let mut typeA ← inferType va
   let mut typeB ← inferType vb
@@ -61,8 +60,8 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Na
       typeB := mkConst ``Rat
   let typeC ← inferType vc
   let thmName ←
-    if lt: compId < 5 then
-      pure (thms.get ⟨compId, lt⟩)
+    if compId < 5 then
+      pure (thms.get! compId)
     else throwError "[arithMul]: index too large"
 
   let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
@@ -73,8 +72,8 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Na
     else mkAppM ``LT.lt #[vc, zeroC]
 
   let operator ←
-    if ltPf: compId < 5 then
-      pure $ operators.get ⟨compId, ltPf⟩ 
+    if compId < 5 then
+      pure $ operators.get! compId
     else throwError "[arithMul]: index too large"
   let premiseRight ← mkAppM operator #[va, vb]
 
@@ -103,12 +102,12 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Na
   let (a, b, c, compId) ← parseArithMul stx
   let mvar ← getMainGoal
   let pf ← arithMulMeta a b c true compId
-                ⟨[ ``arith_mul_pos_lt
-                 , ``arith_mul_pos_le
-                 , ``arith_mul_pos_gt
-                 , ``arith_mul_pos_ge
-                 , ``arith_mul_pos_eq
-                 ], rfl⟩
+                [ ``arith_mul_pos_lt
+                , ``arith_mul_pos_le
+                , ``arith_mul_pos_gt
+                , ``arith_mul_pos_ge
+                , ``arith_mul_pos_eq
+                ]
   let type ← inferType pf
   let fname ← mkFreshId
   let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type pf
@@ -121,12 +120,12 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : Vector Na
   let (a, b, c, compId) ← parseArithMul stx
   let mvar ← getMainGoal
   let pf ← arithMulMeta a b c false compId
-                ⟨[ ``arith_mul_neg_lt
-                 , ``arith_mul_neg_le
-                 , ``arith_mul_neg_gt
-                 , ``arith_mul_neg_ge
-                 , ``arith_mul_neg_eq
-                 ], rfl⟩
+                [ ``arith_mul_neg_lt
+                , ``arith_mul_neg_le
+                , ``arith_mul_neg_gt
+                , ``arith_mul_neg_ge
+                , ``arith_mul_neg_eq
+                ]
   let type ← inferType pf
   let fname ← mkFreshId
   let (_, mvar') ← MVarId.intro1P $ ← mvar.assert fname type pf

@@ -13,7 +13,7 @@ https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58inte
 import Lean
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Tactic.NormNum
-import Mathlib.Data.Pi.Bounds
+import Mathlib.Data.Real.Pi.Bounds
 
 import Smt.Reconstruction.Certifying.Util
 
@@ -55,7 +55,7 @@ def arithTransPiMetaLt : Expr → MetaM Expr :=
     let some val ← getExprMVarAssignment? mvarTmp | throwError "unreachable"
     let val' ← mkAppM ``ratCast_lt_mpr #[val]
     let answer ← mkAppOptM ``lt_trans
-      #[mkConst `` none, none, none, none, val', mkConst ``pi_gt_3141592]
+      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_gt_3141592]
     return answer
 
 def arithTransPiMetaGt : Expr → MetaM Expr :=
@@ -66,7 +66,7 @@ def arithTransPiMetaGt : Expr → MetaM Expr :=
     let some val ← getExprMVarAssignment? mvarTmp | throwError "unreachable"
     let val' ← mkAppM ``ratCast_lt_mpr #[val]
     let answer ← mkAppOptM ``gt_trans
-      #[mkConst `` none, none, none, none, val', mkConst ``pi_lt_3141593]
+      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_lt_3141593]
     return answer
 
 def arithTransPiMeta (mvar : MVarId) :
@@ -94,6 +94,6 @@ syntax (name := arithTransPi) "arithTransPi" term "," term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-example : 3.1 < pi ∧ pi < 4 := by
+example : 3.1 < Real.pi ∧ Real.pi < 4 := by
   arithTransPi 3.1 , 4
 

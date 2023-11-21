@@ -11,7 +11,6 @@ https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58inte
 -/
 
 import Mathlib.Data.Complex.Exponential
-import Mathlib.Tactic.LibrarySearch
 
 import Smt.Reconstruction.Certifying.Boolean
 

@@ -9,7 +9,9 @@ Authors: Tomaz Gomes Mascarenhas
 Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule32ARITH_TRANS_EXP_APPROX_ABOVE_NEGE
 -/
-import Mathlib
+import Mathlib.Analysis.Calculus.Taylor
+import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 
 theorem exp_contDiffOn : ∀ (d : ℕ) (l r : ℝ),
     ContDiffOn ℝ d Real.exp (Set.Icc l r) := by
@@ -50,8 +52,8 @@ theorem arithTransExpApproxAboveNeg (d : ℕ) (l u t : ℝ) :
   have tLeU : t ≤ u := LT.lt.le u_bound
   have lLeU : l ≤ u := LE.le.trans lLeT tLeU
   have lLtU : l < u := LT.lt.trans l_bound u_bound
-  have taylor := taylor_mean_remainder_lagrange (f := -Real.exp) (x := -t) (x₀ := 0)
-    (hx := neg_pos.mpr t_neg) (hf := exp_contDiffOn d l t) (hf' := exp_DiffOn d l t l_bound)
+  /- have taylor := taylor_mean_remainder_lagrange (f := -Real.exp) (x := -t) (x₀ := 0) -/
+  /-   (hx := neg_pos.mpr t_neg) (hf := exp_contDiffOn d l t) () (hf' := exp_DiffOn d l t l_bound) -/
   have conv_imples: (p l - p t) / (l - t) < (p u - p t) / (u - t) :=
     StrictConvexOn.secant_strict_mono p_conv (a := t) (x := l) (y := u)
       (Set.mem_Icc.mpr ⟨lLeT, tLeU⟩)
