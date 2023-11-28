@@ -32,8 +32,8 @@ theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 theorem bool_or_dup : (xs ∨ b ∨ ys ∨ b ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by aesop
 
 def opsAssocNull : Name → Array Expr
-|  ``or => #[Expr.const ``or_assoc_eq [], Expr.const ``or_false []]
-| ``and => #[Expr.const ``and_assoc_eq [], Expr.const ``and_true []]
+|  ``Or => #[Expr.const ``or_assoc_eq [], Expr.const ``or_false []]
+| ``And => #[Expr.const ``and_assoc_eq [], Expr.const ``and_true []]
 | _ => #[]
 
 def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
@@ -79,19 +79,19 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   smtRw mv op rr xs
 
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
+  smt_rw And bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and bool_and_dup[[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw And bool_and_dup[[x1, x2, x3], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
-  smt_rw or bool_or_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw Or bool_or_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
+  smt_rw And bool_and_dup [[x1, x2, x3], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
-  smt_rw or bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
+  smt_rw Or bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
 example : (p1 ∧ True) = p1 := by
-  smt_rw and bool_and_true [[p1], []]
+  smt_rw And bool_and_true [[p1], []]
