@@ -41,8 +41,8 @@ def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array 
       for j in [: m-1] do
         if let some r ← observing? (mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true) then
           mv' ← mv'.replaceTargetEq r.eNew r.eqProof
-  let r ← mv'.rewrite (← mv'.getType) rule
-  mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) rule) then
+    mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
@@ -88,4 +88,5 @@ example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
-#check List
+example : (p1 ∧ True) = p1 := by
+  smt_rw and_assoc_eq and_true bool_and_true [[p1], []]
