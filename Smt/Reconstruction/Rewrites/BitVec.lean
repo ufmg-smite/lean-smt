@@ -436,6 +436,32 @@ def bv_srem_fewer (x y: BitVec (w + 1)) :=
 theorem bv_srem_fewer_ops {x y : BitVec (w + 1)} : srem x y = bv_srem_fewer x y := by
   simp only [bv_srem_eliminate, bv_srem', bv_srem_fewer, lt_zero_concat_extract]
 
+lemma sub_self_add (a : Nat) : a - a + 1 = 1 := by simp
+
+-- ask about the following defn's in the next proofs meeting
+def bv_uaddo (x y : BitVec (w + 1)) :=
+  decide (sub_self_add w ▸ (extract w w ((BitVec.ofNat 1 0 ++ x) + (BitVec.ofNat 1 0 ++ y))) = BitVec.ofNat 1 1)
+
+def bv_saddo (x y : BitVec (w + 1)) :=
+  let xS := extract w w x
+  let yS := extract w w y
+  let aS := extract w w (x + y)
+  ((sub_self_add w ▸ xS == BitVec.ofNat 1 0) && (sub_self_add w ▸ xS == BitVec.ofNat 1 0) && (sub_self_add w ▸ aS = BitVec.ofNat 1 1)) ||
+  ((sub_self_add w ▸ xS == BitVec.ofNat 1 1) && (sub_self_add w ▸ xS == BitVec.ofNat 1 1) && (sub_self_add w ▸ aS = BitVec.ofNat 1 0))
+
+def bv_sdivo (x y : BitVec (w + 1)) :=
+  (x == Nat.add_comm 1 w ▸ (BitVec.ofNat 1 1 ++ (BitVec.ofNat w 0))) && (y = ~~~(BitVec.ofNat (w + 1) 0))
+
+def bv_usubo (x y : BitVec (w + 1)) :=
+  let s := zeroExtend 1 x - zeroExtend 1 y
+  sub_self_add w ▸ extract w w s == BitVec.ofNat 1 1
+
+def bv_ssubo (x y : BitVec (w + 1)) :=
+  let xLt0 := decide (sub_self_add w ▸ (x.extract w w) = (BitVec.ofNat 1 1))
+  let yLt0 := decide (sub_self_add w ▸ (y.extract w w) = (BitVec.ofNat 1 1))
+  let s := x - y
+  let sLt0 := decide (sub_self_add w ▸ (s.extract w w) = (BitVec.ofNat 1 1))
+  (xLt0 && !yLt0 && !sLt0) || (!xLt0 && yLt0 && sLt0)
 
 /-! ### Simplification Rules -/
 

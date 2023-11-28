@@ -221,20 +221,6 @@ def sdiv (s t : BitVec n) : BitVec n :=
   | true,  false => - ((- s) / t)
   | true,  true  => (- s) / (- t)
 
---similar to (but not the same as) Std
-def smod''' (s t : BitVec (w + 1)) :=
-  let msb_s := (s.extract w w).val
-  let msb_t := (t.extract w w).val
-  let abs_s := if msb_s == 0 then s else  -s
-  let abs_t := if msb_t == 0 then t else -t
-  let u := abs_s % abs_t
-  match u, msb_s, msb_t with
-  | (0 : BitVec (w + 1)), _, _ => u
-  | _, 0, 0 => u
-  | _, 1, 0 => (-u) + t
-  | _, 0, 1 => u + t
-  | _, _, _ => -u
-
 def smod (s t : BitVec m) : BitVec m :=
   match s.msb, t.msb with
   | false, false => s % t
@@ -465,5 +451,4 @@ theorem BV_signExtend {x : BitVec w} (h: 0 < w): (signExtend i x).val = bitwise_
 -- if we use bitvec = bitvec version then make another lemma that reduces it to the .val version above (so that you dont reprove it every single time)
 -- swap lhs and rhs
 
-#check decide
 end BitVec
