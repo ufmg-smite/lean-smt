@@ -9,7 +9,7 @@ import Lean
 import Std
 import Aesop
 
-open Lean Elab.Tactic Meta Expr Syntax 
+open Lean Elab.Tactic Meta Expr Syntax
 
 namespace Smt.Data.tactic
 
@@ -22,7 +22,7 @@ theorem bool_and_flatten : (xs ∧ (b ∧ ys) ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 
 theorem bool_or_flatten : (xs ∨ (b ∨ ys) ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by
   rw [← @or_assoc b ys zs]
-  
+
 theorem bool_and_false : (xs ∧ False ∧ ys) = False := by rw [false_and, and_false]
 
 theorem bool_and_true : (xs ∧ True ∧ ys) = (xs ∧ ys) := by rw [true_and]
@@ -30,7 +30,6 @@ theorem bool_and_true : (xs ∧ True ∧ ys) = (xs ∧ ys) := by rw [true_and]
 theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs) := by aesop
 
 theorem bool_or_dup : (xs ∨ b ∨ ys ∨ b ∨ zs) = (xs ∨ b ∨ ys ∨ zs) := by aesop
-
 
 def opsAssocNull : Name → Array Expr
 |  ``or => #[Expr.const ``or_assoc_eq [], Expr.const ``or_false []]
@@ -46,10 +45,10 @@ def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : M
     let mut m := arr[i]!.size
     if m > 1 then
       for j in [: m-1] do
-        let r ← mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true
-        mv' ← mv'.replaceTargetEq r.eNew r.eqProof
-  let r ← mv'.rewrite (← mv'.getType) rule
-  mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+        if let some r ← observing? (mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true) then
+          mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) rule) then
+    mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
@@ -95,3 +94,6 @@ example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = 
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
+
+example : (p1 ∧ True) = p1 := by
+  smt_rw and bool_and_true [[p1], []]
