@@ -3,9 +3,9 @@ goal: sum Nat.zero = Nat.zero * (Nat.zero + 1) / 2
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.12234 Nat)) (=> (>= _uniq.12234 0) (forall ((_uniq.12235 Nat)) (=> (>= _uniq.12235 0) (>= (Nat.sub _uniq.12234 _uniq.12235) 0))))))
+(assert (forall ((_uniq.12533 Nat)) (=> (>= _uniq.12533 0) (forall ((_uniq.12534 Nat)) (=> (>= _uniq.12534 0) (>= (Nat.sub _uniq.12533 _uniq.12534) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.12236 Nat)) (=> (>= _uniq.12236 0) (>= (sum _uniq.12236) 0))))
+(assert (forall ((_uniq.12535 Nat)) (=> (>= _uniq.12535 0) (>= (sum _uniq.12535) 0))))
 (assert (not (= (sum 0) (div (* 0 (+ 0 1)) 2))))
 (check-sat)
 
@@ -16,9 +16,9 @@ goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 query:
 (define-sort Nat () Int)
 (define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.12254 Nat)) (=> (>= _uniq.12254 0) (forall ((_uniq.12255 Nat)) (=> (>= _uniq.12255 0) (>= (Nat.sub _uniq.12254 _uniq.12255) 0))))))
+(assert (forall ((_uniq.12553 Nat)) (=> (>= _uniq.12553 0) (forall ((_uniq.12554 Nat)) (=> (>= _uniq.12554 0) (>= (Nat.sub _uniq.12553 _uniq.12554) 0))))))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (Nat.sub n 1)))))
-(assert (forall ((_uniq.12256 Nat)) (=> (>= _uniq.12256 0) (>= (sum _uniq.12256) 0))))
+(assert (forall ((_uniq.12555 Nat)) (=> (>= _uniq.12555 0) (>= (sum _uniq.12555) 0))))
 (declare-const n Nat)
 (assert (>= n 0))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
