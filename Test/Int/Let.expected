@@ -20,9 +20,9 @@ result: unsat
 goal: f z = z
 
 query:
+(define-fun z () Int 10)
 (declare-fun f (Int) Int)
 (assert (= (f 10) 10))
-(define-fun z () Int 10)
 (assert (not (= (f z) z)))
 (check-sat)
 
@@ -32,10 +32,10 @@ failed to reconstruct proof: invalid 'simp', proposition expected
 goal: f y = y
 
 query:
-(declare-fun f (Int) Int)
-(assert (= (f 10) 10))
 (define-fun z () Int 10)
 (define-fun y () Int z)
+(declare-fun f (Int) Int)
+(assert (= (f 10) 10))
 (assert (not (= (f y) y)))
 (check-sat)
 
@@ -46,8 +46,8 @@ goal: z 3 = 10
 
 query:
 (declare-fun f (Int) Int)
+(define-fun z ((x._@.Test.Int.Let._hyg.283 Int)) Int (f 10))
 (assert (= (f 10) 10))
-(define-fun z ((x._@.Test.Int.Let._hyg.294 Int)) Int (f 10))
 (assert (not (= (z 3) 10)))
 (check-sat)
 

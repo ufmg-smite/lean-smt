@@ -42,7 +42,7 @@ def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : M
   let assoc := (opsAssocNull op)[0]!
   let null := (opsAssocNull op)[1]!
   for i in [: n] do
-    let mut m := arr[i]!.size
+    let m := arr[i]!.size
     if m > 1 then
       for j in [: m-1] do
         if let some r ← observing? (mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true) then
@@ -52,7 +52,7 @@ def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : M
   if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
-    let mut m := arr[i]!.size
+    let m := arr[i]!.size
     for j in [: m-1] do
       let some r ← observing? (mv'.rewrite (← mv'.getType) (.app assoc arr[i]![j]!)) | break
       mv' ← mv'.replaceTargetEq r.eNew r.eqProof
@@ -60,7 +60,6 @@ def smtRw (mv : MVarId) (op : Name) (rule : Expr) (arr : Array (Array Expr)) : M
 
 syntax inner := "[" term,* "]"
 syntax outer := "[" inner,* "]"
-
 
 syntax (name := smt_rw) "smt_rw" ident ident outer : tactic
 
@@ -78,7 +77,6 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   let xs ← parseOuter ⟨stx[3]⟩
   let op := stx[1].getId
   smtRw mv op rr xs
-  replaceMainGoal [mv]
 
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
   smt_rw and bool_and_flatten [[x1, x2], [b], [y1, y2], [z1, z2]]
