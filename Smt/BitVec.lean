@@ -7,7 +7,6 @@ Authors: Wojciech Nawrocki
 
 import Lean
 import Smt.Translator
-import Smt.Data.BitVec
 
 namespace Smt.BitVec
 
@@ -15,7 +14,7 @@ open Lean Expr
 open Translator Term
 
 @[smtTranslator] def replaceType : Translator
-  | e@(app (const ``BitVec _) n) => do
+  | e@(app (const `BitVec _) n) => do
     let n ← Meta.whnf n
     let some n ← Meta.evalNat n |>.run
       | throwError "bitvector type{indentD e}\nhas variable width"
@@ -29,64 +28,64 @@ def mkLit (w : Nat) (n : Nat) : Term :=
 
 @[smtTranslator] def replaceEq : Translator
   -- TODO: we should really just support beq/bne across all types uniformly
-  | app (app (const ``BEq.beq _) (app (const ``BitVec _) _)) _ => return symbolT "="
-  | app (app (app (app (const ``bne _) (app (const ``BitVec _) _)) _) e) e' =>
+  | app (app (const ``BEq.beq _) (app (const `BitVec _) _)) _ => return symbolT "="
+  | app (app (app (app (const ``bne _) (app (const `BitVec _) _)) _) e) e' =>
     return appT (symbolT "not") (mkApp2 (symbolT "=") (← applyTranslators! e) (← applyTranslators! e'))
   | _ => return none
 
 @[smtTranslator] def replaceFun : Translator
-  | e@(app (const ``BitVec.zero _) w) => do
+  | e@(app (const `BitVec.zero _) w) => do
     let w ← reduceWidth w e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkLit w 0
-  | e@(app (app (const ``BitVec.ofNat _) w) n) => do
+  | e@(app (app (const `BitVec.ofNat _) w) n) => do
     let w ← reduceWidth w e
     let n ← reduceLit n e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkLit w n
-  | app (const ``BitVec.add _) _            => return symbolT "bvadd"
-  | app (const ``BitVec.sub _) _            => return symbolT "bvsub"
-  | app (const ``BitVec.mul _) _            => return symbolT "bvmul"
-  | app (const ``BitVec.mod _) _            => return symbolT "bvurem"
-  | app (const ``BitVec.div _) _            => return symbolT "bvudiv"
-  | app (const ``BitVec.lt _) _             => return symbolT "bvult"
-  | app (const ``BitVec.le _) _             => return symbolT "bvule"
-  | app (const ``BitVec.complement _) _     => return symbolT "bvnot"
-  | app (const ``BitVec.and _) _            => return symbolT "bvand"
-  | app (const ``BitVec.or _) _             => return symbolT "bvor"
-  | app (const ``BitVec.xor _) _            => return symbolT "bvxor"
-  | e@(app (app (app (const ``BitVec.shiftLeft _) w) x) n) => do
+  | app (const `BitVec.add _) _            => return symbolT "bvadd"
+  | app (const `BitVec.sub _) _            => return symbolT "bvsub"
+  | app (const `BitVec.mul _) _            => return symbolT "bvmul"
+  | app (const `BitVec.mod _) _            => return symbolT "bvurem"
+  | app (const `BitVec.div _) _            => return symbolT "bvudiv"
+  | app (const `BitVec.lt _) _             => return symbolT "bvult"
+  | app (const `BitVec.le _) _             => return symbolT "bvule"
+  | app (const `BitVec.complement _) _     => return symbolT "bvnot"
+  | app (const `BitVec.and _) _            => return symbolT "bvand"
+  | app (const `BitVec.or _) _             => return symbolT "bvor"
+  | app (const `BitVec.xor _) _            => return symbolT "bvxor"
+  | e@(app (app (app (const `BitVec.shiftLeft _) w) x) n) => do
     let w ← reduceWidth w e
     let n ← reduceLit n e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (mkLit w n)
-  | e@(app (app (app (const ``BitVec.shiftRight _) w) x) n) => do
+  | e@(app (app (app (const `BitVec.shiftRight _) w) x) n) => do
     let w ← reduceWidth w e
     let n ← reduceLit n e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (mkLit w n)
-  | e@(app (app (app (const ``BitVec.rotateLeft _) _) x) n) => do
+  | e@(app (app (app (const `BitVec.rotateLeft _) _) x) n) => do
     let n ← reduceLit n e
     return appT
       (mkApp2 (symbolT "_") (symbolT "rotate_left") (literalT (toString n)))
       (← applyTranslators! x)
-  | e@(app (app (app (const ``BitVec.rotateRight _) _) x) n) => do
+  | e@(app (app (app (const `BitVec.rotateRight _) _) x) n) => do
     let n ← reduceLit n e
     return appT
       (mkApp2 (symbolT "_") (symbolT "rotate_right") (literalT (toString n)))
       (← applyTranslators! x)
-  | app (app (const ``BitVec.append _) _) _ => return symbolT "concat"
-  | e@(app (app (app (const ``BitVec.extract _) _) i) j) => do
+  | app (app (const `BitVec.append _) _) _ => return symbolT "concat"
+  | e@(app (app (app (const `BitVec.extract _) _) i) j) => do
     let i ← reduceLit i e
     let j ← reduceLit j e
     return mkApp3 (symbolT "_") (symbolT "extract") (literalT (toString i)) (literalT (toString j))
-  | e@(app (app (const ``BitVec.repeat_ _) _) i) => do
+  | e@(app (app (const `BitVec.repeat_ _) _) i) => do
     let i ← reduceLit i e
     return mkApp2 (symbolT "_") (symbolT "repeat") (literalT (toString i))
-  | e@(app (app (const ``BitVec.zeroExtend _) _) i) => do
+  | e@(app (app (const `BitVec.zeroExtend _) _) i) => do
     let i ← reduceLit i e
     return mkApp2 (symbolT "_") (symbolT "zero_extend") (literalT (toString i))
-  | e@(app (app (const ``BitVec.signExtend _) _) i) => do
+  | e@(app (app (const `BitVec.signExtend _) _) i) => do
     let i ← reduceLit i e
     return mkApp2 (symbolT "_") (symbolT "sign_extend") (literalT (toString i))
   | _ => return none
