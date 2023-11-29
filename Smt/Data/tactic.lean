@@ -90,3 +90,6 @@ example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 �
 
 example : (p1 ∧ True) = p1 := by
   smt_rw and_assoc_eq and_true bool_and_true [[p1], []]
+
+  example : (True ∧ p1) = p1 := by
+    smt_rw and_assoc_eq true_and bool_and_true [[p1], []]
