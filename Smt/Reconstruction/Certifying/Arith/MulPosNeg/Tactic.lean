@@ -133,7 +133,4 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
   evalTactic (← `(tactic| exact $(mkIdent fname)))
   trace[smt.profile] m!"[arithMulNeg] end time: {← IO.monoNanosNow}ns"
 
-example {a b c : Real} : 0 > c ∧ a ≤ b → c * a ≥ c * b := by
-  arithMulNeg [a,b,c], 1
-
 end Smt.Reconstruction.Certifying
