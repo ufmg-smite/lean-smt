@@ -61,7 +61,7 @@ def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
 
 -- Local `have` proofs are encoded as `let_fun`. Remove them.
 @[smtTranslator] def replaceHave : Translator := fun e => do
-  let some e := letFunAnnotation? e | return none
+  let some e := annotation? `let_fun e | return none
   if !e.appFn!.isLambda then return none
   Meta.lambdaTelescope e.appFn! fun args bd => do
     trace[smt.debug.replacePropLetFun] "found let_fun {e}"
