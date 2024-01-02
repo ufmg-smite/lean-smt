@@ -1,8 +1,8 @@
-import Smt.Reconstruction.Env
-import Smt.Reconstruction.Utils
-import Smt.Reconstruction.Types
-import Smt.Reconstruction.Coe
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Env
+import Smt.Reconstruction.Certified.Utils
+import Smt.Reconstruction.Certified.Types
+import Smt.Reconstruction.Certified.Coe
+import Smt.Reconstruction.Certified.Term
 
 open Types
 open proof
@@ -29,7 +29,7 @@ set_option maxHeartbeats 500000
                         | some ⟨ s₁, k₁ ⟩, some ⟨ s₂, k₂ ⟩ =>
                           if r: s₂ = s₁
                           then some ⟨ boolSort, λ Γ Δ =>
-                                            let coercion := coe' (congrArg (interpSort Δ) r) 
+                                            let coercion := coe' (congrArg (interpSort Δ) r)
                                             k₁ Γ Δ = coercion (k₂ Γ Δ) ⟩
                           else none
                         | _, _ => none
@@ -47,7 +47,7 @@ set_option maxHeartbeats 500000
 
 @[simp] def validWith (Γ : Environment) (Δ : SEnvironment) (t : term) : Prop :=
   match interpTerm t with
-  | some ⟨ boolSort, k ⟩ => Coe.coe (k Γ Δ)
+  | some ⟨ boolSort, k ⟩ => CoeOut.coe (k Γ Δ)
   | _ => False
 
 def followsFrom (t₁ t₂ : term) : Prop :=
@@ -59,4 +59,3 @@ def followsFrom (t₁ t₂ : term) : Prop :=
   match r: interpTerm t with
   | some ⟨ s, k ⟩ => ⟨ s, k ⟩
   | none => by simp at h; rewrite [r] at h; exact (False.elim h)
-

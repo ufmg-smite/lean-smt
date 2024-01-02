@@ -1,6 +1,6 @@
-import Smt.Reconstruction.Types
-import Smt.Reconstruction.Coe
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Types
+import Smt.Reconstruction.Certified.Coe
+import Smt.Reconstruction.Certified.Term
 
 open Types
 
@@ -23,4 +23,3 @@ def defaultValue (Δ : SEnvironment) (s : sort) : interpSort Δ s :=
   | sort.dep => False
 
 def defaultEnvironment: Environment := λ _ Δ s => defaultValue Δ s
-

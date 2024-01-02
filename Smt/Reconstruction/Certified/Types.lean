@@ -1,4 +1,4 @@
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Term
 
 open proof
 open sort
@@ -22,4 +22,3 @@ def Interpretation: Type 1 :=
   Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
 
 end Types
-

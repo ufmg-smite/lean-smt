@@ -1,5 +1,5 @@
-import Smt.Reconstruction.Defs
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Defs
+import Smt.Reconstruction.Certified.Term
 
 open Types
 open proof

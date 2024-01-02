@@ -1,5 +1,5 @@
-import Smt.Reconstruction.Defs
-import Smt.Reconstruction.Term
+import Smt.Reconstruction.Certified.Defs
+import Smt.Reconstruction.Certified.Term
 
 open Types
 open proof
@@ -29,9 +29,9 @@ theorem notImplies1 : ∀ {t₁ t₂ : term},
            simp
            rewrite [rt₁]
            have ek : (fun Γ Δ => ¬ k' Γ Δ) = k :=
-             by injection h' with h'; injection h' with _ h'; exact h';
+             by injection h' with h'; injection h' with _ h'
            have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' :=
-             by injection h'' with h''; injection h'' with _ h''; exact h''
+             by injection h'' with h''; injection h'' with _ h''
            rewrite [← ek, ← fe] at h
            apply byContradiction
            exact (λ hf => h (λ k₁w => False.elim (hf k₁w)))
@@ -62,11 +62,11 @@ theorem notImplies2 : ∀ {t₁ t₂ : term},
        | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂)
-       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) 
-       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) 
-       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁) 
-       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁) 
-       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁) 
+       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁)
+       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁)
+       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁)
+       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁)
+       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁)
        | some ⟨ sort.dep, _ ⟩, _             => absurdHyp h (r₁)
        | none, _                             => absurdHyp h (r₁)
 
@@ -96,8 +96,8 @@ theorem impliesElim : ∀ {t₁ t₂ : term},
        | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂)
-       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) 
-       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) 
+       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁)
+       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁)
        | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁)
        | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁)
        | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁)
@@ -122,7 +122,7 @@ theorem contradiction: ∀ {t: term},
     | some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r)
     | some ⟨ sort.dep, _ ⟩             => absurdHyp h (r)
     | none                             => absurdHyp h (r)
-       
+
 theorem R1 : ∀ {t₁ t₂ : term},
   followsFrom (and (or (not t₁) t₂) t₁) t₂
   | t₁, t₂, Γ, Δ, h => by
@@ -148,7 +148,7 @@ theorem R1 : ∀ {t₁ t₂ : term},
     | some ⟨ atom 1, _ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂)
     | some ⟨ atom 1, _ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂)
     | some ⟨ atom 1, _ ⟩, none                             => absurdHyp h (r₁, r₂)
-    | some ⟨ atom 0, _ ⟩, _               => absurdHyp h (r₁) 
+    | some ⟨ atom 0, _ ⟩, _               => absurdHyp h (r₁)
     | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁)
     | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁)
     | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁)
@@ -164,7 +164,6 @@ theorem conjunction: ∀ {t₁ t₂: term} {Γ: Environment} {Δ : SEnvironment}
     match r₁: interpTerm t₁, r₂: interpTerm t₂ with
     | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
         show (k₁ Γ Δ) ∧ (k₂ Γ Δ)
-        simp
         rewrite [r₁] at h₁
         rewrite [r₂] at h₂
         have k₁W: (k₁ Γ Δ) := h₁
