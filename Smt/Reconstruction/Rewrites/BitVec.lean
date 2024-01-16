@@ -438,7 +438,7 @@ theorem bv_srem_fewer_ops {x y : BitVec (w + 1)} : srem x y = bv_srem_fewer x y 
 
 lemma sub_self_add (a : Nat) : a - a + 1 = 1 := by simp
 
--- ask about the following defn's in the next proofs meeting
+-- ask about the following defn's in the next proofs meeting! these are ok.
 def bv_uaddo (x y : BitVec (w + 1)) :=
   decide (sub_self_add w ▸ (extract w w ((BitVec.ofNat 1 0 ++ x) + (BitVec.ofNat 1 0 ++ y))) = BitVec.ofNat 1 1)
 
@@ -446,8 +446,8 @@ def bv_saddo (x y : BitVec (w + 1)) :=
   let xS := extract w w x
   let yS := extract w w y
   let aS := extract w w (x + y)
-  ((sub_self_add w ▸ xS == BitVec.ofNat 1 0) && (sub_self_add w ▸ xS == BitVec.ofNat 1 0) && (sub_self_add w ▸ aS = BitVec.ofNat 1 1)) ||
-  ((sub_self_add w ▸ xS == BitVec.ofNat 1 1) && (sub_self_add w ▸ xS == BitVec.ofNat 1 1) && (sub_self_add w ▸ aS = BitVec.ofNat 1 0))
+  ((sub_self_add w ▸ xS == BitVec.ofNat 1 0) && (sub_self_add w ▸ yS == BitVec.ofNat 1 0) && (sub_self_add w ▸ aS = BitVec.ofNat 1 1)) ||
+  ((sub_self_add w ▸ xS == BitVec.ofNat 1 1) && (sub_self_add w ▸ yS == BitVec.ofNat 1 1) && (sub_self_add w ▸ aS = BitVec.ofNat 1 0))
 
 def bv_sdivo (x y : BitVec (w + 1)) :=
   (x == Nat.add_comm 1 w ▸ (BitVec.ofNat 1 1 ++ (BitVec.ofNat w 0))) && (y = ~~~(BitVec.ofNat (w + 1) 0))
@@ -487,6 +487,51 @@ theorem bv_ite_eq_cond₁ (c : BitVec 1) {t0 e0 e1 : BitVec w} :
   BitVec.ite c0 (BitVec.ite c0 t0 e0) e1 = BitVec.ite c0 t0 e1 := by
   simp only [BitVec.ite]
   cases' (msb c0) <;> simp
+
+theorem bv_ite_eq_cond₂ (c : BitVec 1) {t0 t1 e1 : BitVec w} :
+  BitVec.ite c0 t0 (BitVec.ite c0 t1 e1) = BitVec.ite c0 t0 e1 := by
+    simp only [BitVec.ite]
+    cases' (msb c0) <;> simp
+
+theorem bv_ite_eq_cond₃ (c : BitVec 1) {t0 t1 e1 e0 : BitVec w} :
+  BitVec.ite c0 (BitVec.ite c0 t0 e0) (BitVec.ite c0 t1 e1) = BitVec.ite c0 t0 e1 := by
+    simp only [BitVec.ite]
+    cases' (msb c0) <;> simp
+
+theorem bv_ite_merge_then_if (c0 c1 : BitVec 1) {t1 e1 : BitVec w} :
+  BitVec.ite c0 (BitVec.ite c1 t1 e1) t1 = BitVec.ite (c0 &&& ~~~c1) e1 t1 := by
+    simp only [BitVec.ite, msb_eq_testBit, and_cast, testBit_not, and_eq_and', testBit_land']
+    cases' (testBit c0.val 0) <;> cases' (testBit c1.val 0) <;> simp
+
+theorem bv_ite_merge_else_if (c0 c1 : BitVec 1) {t1 e1 : BitVec w} :
+  BitVec.ite c0 (BitVec.ite c1 t1 e1) e1 = BitVec.ite (c0 &&& c1) t1 e1 := by
+    simp only [BitVec.ite, msb_eq_testBit, and_cast, and_eq_and', testBit_land']
+    cases' (testBit c0.val 0) <;> cases' (testBit c1.val 0) <;> simp
+
+theorem bv_ite_merge_then_else (c0 c1 : BitVec 1) {t0 e1 : BitVec w} :
+  BitVec.ite c0 t0 (BitVec.ite c1 t0 e1) = BitVec.ite (bv_nor c0 c1) e1 t0 := by
+    simp only [BitVec.ite, msb_eq_testBit, bv_nor, and_cast, and_eq_and', testBit_land', testBit_not, or_cast, BitVec.or_eq_or', testBit_lor']
+    cases' (testBit c0.val 0) <;> cases' (testBit c1.val 0) <;> simp
+
+theorem bv_ite_merge_else_else (c0 c1 : BitVec 1) {t0 t1 : BitVec w} :
+  BitVec.ite c0 t0 (BitVec.ite c1 t1 t0) = BitVec.ite (~~~c0 &&& c1) t1 t0 := by
+    simp only [BitVec.ite, msb_eq_testBit, and_cast, and_eq_and', testBit_land', testBit_not]
+    cases' (testBit c0.val 0) <;> cases' (testBit c1.val 0) <;> simp
+
+-- in the next proofs meeting ask about bv_shl. In std it's defined for natural shifts but should be bitvector shifts?
+theorem bv_shl_by_const₀ {x : BitVec w} : x <<< 0 = x := by
+  rw [← val_bitvec_eq]; simp [shiftLeft_cast, mod_eq_of_lt x.isLt]
+
+theorem bv_shl_by_const₁ {x : BitVec w} {n : Nat} (h : n < w) :
+  (x <<< n).val = (x.extract (w - (1 + n)) 0 ++ BitVec.ofNat n 0).val := by
+  simp only [shiftLeft_cast, shiftLeft_eq, Nat.sub_zero,
+             extract, shiftRight_eq_shiftr, shiftr_eq_div_pow,
+             Nat.pow_zero, Nat.div_one, zero_eq_ofNat, concat_cast,
+             zero_cast, BitVec.or_eq_or', lor'_zero, BitVec.ofNat, Fin.ofNat', zero_mod]
+  sorry
+
+
+
 
 
 end Smt.Reconstruction.Rewrites.Arith
