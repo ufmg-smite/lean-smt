@@ -8,15 +8,15 @@ Authors: Abdalrhman Mohamed
 import Lean
 
 import Smt.Dsl.Sexp
-import Smt.Query
-import Smt.Reconstruction.Certifying
-import Smt.Solver
+import Smt.Reconstruct
+import Smt.Translate
 import Smt.Util
 
 namespace Smt
 
-open Lean Elab Tactic
-open Smt Query Solver
+open Lean hiding Command
+open Elab Tactic Qq
+open Smt Reconstruct Translate Query Solver
 
 initialize
   registerTraceClass `smt.debug
