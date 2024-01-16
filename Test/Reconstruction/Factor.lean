@@ -1,6 +1,6 @@
 import Smt
 
-open Smt.Reconstruction.Certifying
+open Smt.Reconstruct
 
 example : A ∨ B ∨ C ∨ B → A ∨ B ∨ C := by
   intro h
@@ -35,4 +35,3 @@ example :
 example : (A ∨ B) ∨ C ∨ D ∨ C ∨ (A ∨ B) → (A ∨ B) ∨ C ∨ D := by
   intro h
   factor h, 4
-

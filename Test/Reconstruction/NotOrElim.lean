@@ -1,6 +1,6 @@
 import Smt
 
-open Smt.Reconstruction.Certifying
+open Smt.Reconstruct
 
 example : ¬ (A ∨ B ∨ C ∨ D) → ¬ C := by
   intro h

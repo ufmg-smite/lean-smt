@@ -340,7 +340,7 @@ end
     | LocalDecl.cdecl .. => return e
     | LocalDecl.ldecl (value := v) (nonDep := nonDep) .. =>
       let cfg ← getConfig
-      if nonDep && !cfg.zetaNonDep then
+      if nonDep then
         return e
       else
         if cfg.trackZeta then
@@ -663,7 +663,7 @@ where
 partial def smartUnfoldingReduce? (e : Expr) : ReductionM (Option Expr) := do
   trace[Smt.reduce.smartUnfoldingReduce] "{e}"
   match ← go e |>.run with
-  | some e' => 
+  | some e' =>
     trace[Smt.reduce.smartUnfoldingReduce] "⤳ {e'}"
     return some e'
   | none =>
@@ -946,7 +946,7 @@ private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
 
 partial def whnfImp (e : Expr) : ReductionM Expr :=
   withIncRecDepth <| withTraceNode `Smt.reduce.whnf  (traceReduce e ·) <| whnfEasyCases e fun e => do
-    checkMaxHeartbeats "Smt.whnf"
+    Core.checkMaxHeartbeats "Smt.whnf"
     let useCache ← useWHNFCache e
     let e' ← match (← cached? useCache e) with
     | some e' => pure e'
