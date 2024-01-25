@@ -1,9 +1,0 @@
-goal: p ∧ q → p
-
-query:
-(declare-const q Bool)
-(declare-const p Bool)
-(assert (not (=> (and p q) p)))
-(check-sat)
-
-result: unsat

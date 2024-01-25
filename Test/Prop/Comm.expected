@@ -1,18 +1,1 @@
-goal: f p q = f q p
-
-query:
-(declare-const q Bool)
-(declare-fun f (Bool Bool) Bool)
-(declare-const p Bool)
-(assert (not (= (f p q) (f q p))))
-(check-sat)
-
-result: sat
-
-counter-model:
-(
-(define-fun q () Bool true)
-(define-fun f ((_arg_1 Bool) (_arg_2 Bool)) Bool (and _arg_1 (not _arg_2)))
-(define-fun p () Bool false)
-)
 Test/Prop/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`

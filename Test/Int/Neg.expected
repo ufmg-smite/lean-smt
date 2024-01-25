@@ -4,6 +4,5 @@ query:
 (declare-const x Int)
 (assert (not (= (- (- x)) x)))
 (check-sat)
-
-result: unsat
 Test/Int/Neg.lean:3:8: warning: declaration uses 'sorry'
+Test/Int/Neg.lean:4:11: warning: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice [linter.unnecessarySeqFocus]

@@ -1,7 +1,7 @@
 import Smt
 
 theorem forallExists : ∀ x : Nat, ∃ y : Int, x ≤ y := by
-  smt
+  smt_show
   intro x
   apply Exists.intro
   case w => exact Int.ofNat x

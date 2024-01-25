@@ -5,26 +5,20 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Std.Logic
+import Smt.Reconstruct.Prop.Core
 
 namespace Smt.Reconstruct.Prop
-
--- prelude
-
-theorem and_assoc_eq : ((a ∧ b) ∧ c) = (a ∧ (b ∧ c)) := by simp [and_assoc]
-
-theorem or_assoc_eq : ((a ∨ b) ∨ c) = (a ∨ (b ∨ c)) := by simp [or_assoc]
 
 -- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/booleans/rewrites
 
 open Function
 
-theorem bool_double_not_elim [Decidable t] : (¬¬t) = t :=
-  propext ⟨Decidable.of_not_not, not_not_intro⟩
+theorem bool_double_not_elim : (¬¬t) = t :=
+  propext Classical.not_not
 
 theorem bool_eq_true : (t = True) = t :=
   propext ⟨of_eq_true, eq_true⟩
-theorem bool_eq_false : (t = False) = (Not t) :=
+theorem bool_eq_false : (t = False) = ¬t :=
   propext ⟨(· ▸ not_false), eq_false⟩
 theorem bool_eq_nrefl : (t = ¬t) = False :=
   propext ⟨(have H : t ↔ ¬t := · ▸ ⟨id, id⟩; have f h := H.mp h h; f (H.mpr f)), False.elim⟩
@@ -33,12 +27,12 @@ theorem bool_impl_false1 : (t → False) = ¬t :=
   propext ⟨(·), (·)⟩
 theorem bool_impl_false2 : (False → t) = True :=
   propext ⟨const _ trivial, const _ False.elim⟩
-theorem bool_impl_true1 : (t → True) = True :=
+theorem bool_impl_true1 {t : Prop} : (t → True) = True :=
   propext ⟨const _ trivial, const _ (const _ trivial)⟩
 theorem bool_impl_true2 {t : Prop} : (True → t) = t :=
   propext ⟨(· trivial), const _⟩
-theorem bool_impl_elim [h : Decidable t] : (t → s) = (¬t ∨ s) :=
-  propext ⟨fun hts => h.byCases (Or.inr $ hts ·) Or.inl, (fun ht => ·.elim (absurd ht) id)⟩
+theorem bool_impl_elim : (t → s) = (¬t ∨ s) :=
+  propext ⟨fun hts => (Classical.em t).elim (Or.inr $ hts ·) Or.inl, (fun ht => ·.elim (absurd ht) id)⟩
 
 theorem bool_or_true : (xs ∨ True ∨ ys) = True :=
   (true_or _).symm ▸ or_true _
@@ -62,23 +56,27 @@ theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 
 theorem bool_and_conf : (xs ∧ w ∧ ys ∧ ¬w ∧ zs) = False :=
   propext ⟨fun ⟨_, hw, _, hnw, _⟩ => absurd hw hnw, False.elim⟩
-theorem bool_or_taut [h : Decidable w] : (xs ∨ w ∨ ys ∨ ¬w ∨ zs) = True := propext $ .intro
+theorem bool_or_taut : (xs ∨ w ∨ ys ∨ ¬w ∨ zs) = True := propext $ .intro
   (const _ trivial)
-  (eq_true h.em ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
+  (eq_true (Classical.em w) ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
 
-theorem bool_xor_refl : (x ≠ x) = False :=
-  propext ⟨(nomatch ·), False.elim⟩
-theorem bool_xor_nrefl : (x ≠ ¬x) = True :=
-  propext ⟨const _ trivial, const _ (show x = ¬x → False from bool_eq_nrefl ▸ id)⟩
-theorem bool_xor_false [h : Decidable x] : (x ≠ False) = x :=
-  propext ⟨(h.of_not_not $ @bool_eq_false x ▸ ·), flip (· ▸ ·)⟩
-theorem bool_xor_true : (x ≠ True) = ¬x :=
-  propext ⟨(· $ propext ⟨const _ trivial, const _ ·⟩), ne_true_of_not⟩
-theorem bool_xor_comm : (x ≠ y) = (y ≠ x) :=
-  propext ⟨Ne.symm, Ne.symm⟩
-theorem bool_xor_elim : (x ≠ y) = ¬(x = y) := rfl
+theorem bool_xor_refl : XOr x x = False :=
+  propext ⟨(·.elim absurd (flip absurd)), False.elim⟩
+theorem bool_xor_nrefl : (XOr x ¬x) = True :=
+  propext ⟨const _ trivial,
+           const _ ((Classical.em x).elim (fun hx => .inl hx (· hx)) (fun hnx => .inr hnx hnx))⟩
+theorem bool_xor_false : XOr x False = x :=
+  propext ⟨(·.elim (flip (const _ id)) (const _ False.elim)), (.inl · not_false)⟩
+theorem bool_xor_true : XOr x True = ¬x :=
+  propext ⟨(·.elim (const _ (False.elim $ not_true.mp ·)) (flip (const _ id))), (.inr · trivial)⟩
+theorem bool_xor_comm : XOr x y = XOr y x :=
+  propext ⟨XOr.symm, XOr.symm⟩
+theorem bool_xor_elim : XOr x y = ¬(x = y) :=
+  propext ⟨(·.elim (fun h => absurd · $ h ▸ ·) (fun h => (flip absurd) · $ h ▸ ·)), fun hnxy =>
+    (Classical.em x).elim ((Classical.em y).elim (False.elim $ hnxy $ propext ⟨const _ ·, const _ ·⟩) (flip .inl))
+      ((Classical.em y).elim (flip .inr) (fun hny hnx => False.elim $ hnxy $ propext ⟨(False.elim $ hnx ·), (False.elim $ hny ·)⟩))⟩
 
-theorem ite_neg_branch [h : Decidable c] [Decidable y] : x = ¬y → ite c x y = (c = x) :=
+theorem ite_neg_branch [h : Decidable c] : x = ¬y → ite c x y = (c = x) :=
   fun hxny => hxny ▸ h.byCases
     (fun hc => if_pos hc ▸ propext ⟨(propext ⟨const _ ·, const _ hc⟩), (· ▸ hc)⟩)
     (fun hnc => if_neg hnc ▸ propext

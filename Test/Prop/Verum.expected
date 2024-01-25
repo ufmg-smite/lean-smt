@@ -1,7 +1,0 @@
-goal: True
-
-query:
-(assert (not true))
-(check-sat)
-
-result: unsat

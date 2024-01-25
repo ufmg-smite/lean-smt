@@ -3,10 +3,3 @@ goal: ∃ p, p = true
 query:
 (assert (not (exists ((p Bool)) (= p true))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∃ p, p = True) → False
-with
-  ¬¬∃ p, p = true
-⊢ ¬¬∃ p, p = true

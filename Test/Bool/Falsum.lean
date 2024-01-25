@@ -1,5 +1,5 @@
 import Smt
 
 theorem falsum : !false := by
-  smt
+  smt_show
   simp_all

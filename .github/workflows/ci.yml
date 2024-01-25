@@ -13,6 +13,10 @@ jobs:
         - name: Linux
           os: ubuntu-latest
     steps:
+    - name: Install clang-15 (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt install clang-15 libc++-15-dev
     - name: Install Elan (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |

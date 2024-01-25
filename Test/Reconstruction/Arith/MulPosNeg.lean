@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruct
+open Smt.Reconstruct.Arith
 
 example {a b c : Int} : c > 0 ∧ a < b → c * a < c * b := by
   arithMulPos [a,b,c], 0

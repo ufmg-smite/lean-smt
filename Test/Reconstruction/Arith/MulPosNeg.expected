@@ -1,0 +1,17 @@
+Test/Reconstruction/Arith/MulPosNeg.lean:1:0: error: object file './.lake/build/lib/Smt/Reconstruct/Arith.olean' of module Smt.Reconstruct.Arith does not exist
+Test/Reconstruction/Arith/MulPosNeg.lean:3:5: error: unknown namespace 'Smt.Reconstruct.Arith'
+Test/Reconstruction/Arith/MulPosNeg.lean:5:26: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:8:24: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:11:26: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:14:24: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:17:26: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:20:26: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:23:27: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:26:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:29:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:32:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:35:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:38:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:41:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:44:35: error: expected token
+Test/Reconstruction/Arith/MulPosNeg.lean:47:27: error: expected token

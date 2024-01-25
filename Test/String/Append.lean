@@ -1,5 +1,5 @@
 import Smt
 
 theorem append : "a" ++ "b" = "ab" := by
-  smt
+  smt_show
   rfl

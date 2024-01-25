@@ -6,15 +6,6 @@ query:
 (declare-const b Int)
 (assert (not (= (curryAdd a b) (curryAdd b a))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
 Test/Int/Binders.lean:5:0: warning: declaration uses 'sorry'
 goal: partCurryAdd a b = partCurryAdd b a
 
@@ -24,15 +15,6 @@ query:
 (declare-const b Int)
 (assert (not (= (partCurryAdd a b) (partCurryAdd b a))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
 goal: partCurryAdd' a b = partCurryAdd' b a
 
@@ -42,15 +24,6 @@ query:
 (declare-const a Int)
 (assert (not (= (|partCurryAdd'| a b) (|partCurryAdd'| b a))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
 Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
 goal: mismatchNamesAdd a b = mismatchNamesAdd b a
 
@@ -60,13 +33,4 @@ query:
 (declare-const a Int)
 (assert (not (= (mismatchNamesAdd a b) (mismatchNamesAdd b a))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
 Test/Int/Binders.lean:25:0: warning: declaration uses 'sorry'

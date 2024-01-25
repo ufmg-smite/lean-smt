@@ -6,47 +6,26 @@ query:
 (declare-const n Int)
 (assert (not (< (mod n m) m)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:549
-Unreachable code reached Kind * is not supported
-
 Test/Int/Arith.lean:3:0: warning: declaration uses 'sorry'
 goal: (n - m) * k + l = n * k - m * k + l
 
 query:
-(declare-const k Int)
+(declare-const l Int)
 (declare-const n Int)
 (declare-const m Int)
-(declare-const l Int)
+(declare-const k Int)
 (assert (not (= (+ (* (- n m) k) l) (+ (- (* n k) (* m k)) l))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:549
-Unreachable code reached Kind * is not supported
-
 Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
 goal: n + k ≤ m + l
 
 query:
-(declare-const l Int)
 (declare-const k Int)
+(declare-const l Int)
 (assert (<= k l))
 (declare-const n Int)
 (declare-const m Int)
 (assert (<= n m))
 (assert (not (<= (+ n k) (+ m l))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof
 Test/Int/Arith.lean:11:0: warning: declaration uses 'sorry'

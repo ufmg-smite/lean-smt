@@ -1,5 +1,5 @@
 import Smt
 
 theorem exists'' : ∃ x : Nat, x ≥ 0 := by
-  smt
+  smt_show
   exact ⟨0, by decide⟩

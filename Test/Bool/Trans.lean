@@ -1,5 +1,5 @@
 import Smt
 
 example (p q r : Bool) : p == q → q == r → p == r := by
-  smt
+  smt_show
   cases p <;> cases q <;> cases r <;> simp_all

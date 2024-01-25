@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruct
+open Smt.Reconstruct.Arith
 
 example {a b : Int} : a < b → (a : Int) ≤ Int.ceil (Rat.ofInt b) - 1 := by
   intro h

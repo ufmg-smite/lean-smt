@@ -1,8 +1,8 @@
 import Smt
 
-theorem triv': ∀ p : Prop, p → p := by
+example : ∀ p : Prop, p → p := by
   smt
-  apply propext
-  apply Iff.intro
-  · exact λ _ _ => (Classical.em _).symm
-  · exact λ _   => True.intro
+  all_goals
+    intros; apply propext; apply Iff.intro
+    · intros; trivial
+    · intros; trivial

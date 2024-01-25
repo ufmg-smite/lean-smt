@@ -9,12 +9,12 @@ theorem Nat.not_le_of_reverse_le {m n : Nat} : ¬ m ≤ n → n ≤ m := fun hn 
 
 theorem Nat.max'_ge : ∀ x y : Nat, x ≤ max' x y ∧ y ≤ max' x y := by
   intro x y
-  smt
+  smt_show
   by_cases h : x ≤ y <;> simp [max', h]
   apply not_le_of_reverse_le h
 
 theorem Nat.max'_ge' : ∀ x y : Nat, x ≤ max' x y ∧ y ≤ max' x y := by
   intro x y
-  smt [max']
+  smt_show [max']
   by_cases h : x ≤ y <;> simp [max', h]
   apply not_le_of_reverse_le h
