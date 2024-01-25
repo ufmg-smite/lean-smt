@@ -3,15 +3,4 @@ goal: String.contains "a" (Char.ofNat 97) = true
 query:
 (assert (not (= (str.contains "a" (str.from_code 97)) true)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within cvc5::internal::Node cvc5::internal::proof::LeanNodeConverter::convert(cvc5::internal::Node) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_node_converter.cpp:236
-Check failure
-
- !it->second.isNull()
-
 Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'

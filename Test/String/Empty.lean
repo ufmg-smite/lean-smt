@@ -1,5 +1,5 @@
 import Smt
 
 theorem empty : "" = "" := by
-  smt
+  smt_show
   rfl

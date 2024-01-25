@@ -85,12 +85,18 @@ def mkLit (w : Nat) (n : Nat) : Term :=
   | e@(app (app (const ``BitVec.replicate _) _) i) => do
     let i ← reduceLit i e
     return mkApp2 (symbolT "_") (symbolT "repeat") (literalT (toString i))
-  | e@(app (app (const ``BitVec.zeroExtend _) _) i) => do
-    let i ← reduceLit i e
-    return mkApp2 (symbolT "_") (symbolT "zero_extend") (literalT (toString i))
-  | e@(app (app (const ``BitVec.signExtend _) _) i) => do
-    let i ← reduceLit i e
-    return mkApp2 (symbolT "_") (symbolT "sign_extend") (literalT (toString i))
+  | e@(app (app (const ``BitVec.zeroExtend _) w) v) => do
+    let w ← reduceWidth w e
+    let v ← reduceLit v e
+    if v ≤ w then
+      throwError "{v} is not greater than bitvector width {w} in{indentD e}"
+    return mkApp2 (symbolT "_") (symbolT "zero_extend") (literalT (toString (v - w)))
+  | e@(app (app (const ``BitVec.signExtend _) w) v) => do
+    let w ← reduceWidth w e
+    let v ← reduceLit v e
+    if v ≤ w then
+      throwError "{v} is not greater than bitvector width {w} in{indentD e}"
+    return mkApp2 (symbolT "_") (symbolT "sign_extend") (literalT (toString (v - w)))
   | _ => return none
 where
   reduceWidth (w : Expr) (e : Expr) : TranslationM Nat := do

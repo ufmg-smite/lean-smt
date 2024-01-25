@@ -4,8 +4,4 @@ query:
 (declare-const x Real)
 (assert (not (=> (distinct x 0) (exists ((y Real)) (= (* x y) 1)))))
 (check-sat)
-Test/Rat/Inverse.lean:4:2: error: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-cvc5 interrupted by timeout.
+Test/Rat/Inverse.lean:3:8: warning: declaration uses 'sorry'

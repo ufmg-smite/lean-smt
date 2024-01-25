@@ -1,6 +1,6 @@
-import Smt.Solver
+import Smt.Translate.Solver
 
-open Smt Solver
+open Smt Translate Solver
 
 def query : SolverM Result := do
   setLogic "LIA"

@@ -73,15 +73,12 @@ def resolutionCoreMeta (val₁ val₂ pivot : Expr) (sufIdx₁' sufIdx₂' : Opt
   let len₂ := sufIdx₂ + 1
   let lenGoal := len₁ + len₂ - 2
   let prefixLength := len₁ - 2
-
   if flipped then
     let tmp := pivot
     pivot := notPivot
     notPivot := tmp
-
   let pulled₁ ← pullCore pivot val₁ type₁ sufIdx₁'
   let pulled₂ ← pullCore notPivot val₂ type₂ sufIdx₂'
-
   let props₁ ← collectPropsInOrChain' sufIdx₁ type₁
   let props₁ := props₁.erase pivot
   let props₂ ← collectPropsInOrChain' sufIdx₂ type₂

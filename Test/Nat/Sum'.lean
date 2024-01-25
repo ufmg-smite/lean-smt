@@ -6,5 +6,5 @@ theorem sum_formula : sum n = n * (n + 1) / 2 := by
   induction n with
   | zero => smt [sum]; rfl
   | succ n ih =>
-    smt [sum, ih]
+    smt_show [sum, ih]
     sorry

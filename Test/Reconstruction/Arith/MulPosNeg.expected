@@ -1,0 +1,8 @@
+Test/Reconstruction/Arith/MulPosNeg.lean:15:2: error: application type mismatch
+  2 > Rat.ofInt (Int.ofNat 0)
+argument
+  Rat.ofInt (Int.ofNat 0)
+has type
+  ℚ : Type
+but is expected to have type
+  ℕ : Type

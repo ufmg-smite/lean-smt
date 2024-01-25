@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruct
+open Smt.Reconstruct.Arith
 
 example {a b c d e f : Nat} : a < d → b < e → c < f → a + (b + c) < d + (e + f) := by
   intros h₁ h₂ h₃

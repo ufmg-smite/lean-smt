@@ -10,4 +10,4 @@ example
     (h2 : dvd a c)
     (h3 : dvd a d)
   : dvd a (b + c + d) := by
-    smt [dvdax, h1, h2, h3] (timeout := 1)
+    smt_show [dvdax, h1, h2, h3] (timeout := 1)

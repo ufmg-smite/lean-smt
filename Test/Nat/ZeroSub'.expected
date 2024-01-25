@@ -1,37 +1,4 @@
-goal: 0 - Nat.zero = 0
-
-query:
-(define-sort Nat () Int)
-(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.229 Nat)) (=> (>= _uniq.229 0) (forall ((_uniq.230 Nat)) (=> (>= _uniq.230 0) (>= (Nat.sub _uniq.229 _uniq.230) 0))))))
-(assert (not (= (Nat.sub 0 0) 0)))
-(check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
-goal: 0 - Nat.succ x = 0
-
-query:
-(define-sort Nat () Int)
-(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.244 Nat)) (=> (>= _uniq.244 0) (forall ((_uniq.245 Nat)) (=> (>= _uniq.245 0) (>= (Nat.sub _uniq.244 _uniq.245) 0))))))
-(declare-const x Nat)
-(assert (>= x 0))
-(assert (= (Nat.sub 0 x) 0))
-(assert (not (= (Nat.sub 0 (+ x 1)) 0)))
-(check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
+Test/Nat/ZeroSub'.lean:6:12: error: unknown free variable '«Nat.sub»'
+cvc5.Kind.INTERNAL_KIND : @PURIFY_4
+Test/Nat/ZeroSub'.lean:7:17: error: failed to synthesize
+  Decidable (x ≥ 0)

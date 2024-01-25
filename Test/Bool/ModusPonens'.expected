@@ -7,13 +7,3 @@ query:
 (assert (= p true))
 (assert (not (= q true)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬?q = True → False
-with
-  ¬¬q = true
-p q : Bool
-hp : p = true
-hpq : p = true → q = true
-⊢ ¬¬q = true

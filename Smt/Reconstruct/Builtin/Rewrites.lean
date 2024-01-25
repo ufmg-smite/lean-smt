@@ -13,7 +13,7 @@ namespace Smt.Reconstruct.Builtin
 
 theorem ite_true_cond : ite True x y = x := rfl
 theorem ite_false_cond : ite False x y = y := rfl
-theorem ite_not_cond [h : Decidable c] : ite (Not c) x y = ite c y x :=
+theorem ite_not_cond [h : Decidable c] : ite (¬c) x y = ite c y x :=
   h.byCases (fun hc => if_pos hc ▸ if_neg (not_not_intro hc) ▸ rfl)
             (fun hnc => if_pos hnc ▸ if_neg hnc ▸ rfl)
 theorem ite_eq_branch [h : Decidable c] : ite c x x = x :=
@@ -25,10 +25,10 @@ theorem ite_then_lookahead [h : Decidable c] : ite c (ite c x y) z = ite c x z :
 theorem ite_else_lookahead [h : Decidable c] : ite c x (ite c y z) = ite c x z :=
   h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
             (fun hc => if_neg hc ▸ if_neg hc ▸ if_neg hc ▸ rfl)
-theorem ite_then_neg_lookahead [h : Decidable c] : ite c (ite (Not c) x y) z = ite c y z :=
+theorem ite_then_neg_lookahead [h : Decidable c] : ite c (ite (¬c) x y) z = ite c y z :=
   h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ ite_not_cond (c := c) ▸ if_pos hc ▸ rfl)
             (fun hc => if_neg hc ▸ if_neg hc ▸ rfl)
-theorem ite_else_neg_lookahead [h : Decidable c] : ite c x (ite (Not c) y z) = ite c x y :=
+theorem ite_else_neg_lookahead [h : Decidable c] : ite c x (ite (¬c) y z) = ite c x y :=
   h.byCases (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
             (fun hc => if_neg hc ▸ if_neg hc ▸ ite_not_cond (c := c) ▸ if_neg hc ▸ rfl)
 

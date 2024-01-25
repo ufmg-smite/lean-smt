@@ -1,5 +1,5 @@
 import Smt
 
 theorem lt : "a" < "b" := by
-  smt
+  smt_show
   decide

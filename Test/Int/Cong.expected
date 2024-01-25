@@ -6,6 +6,3 @@ query:
 (declare-const y Int)
 (assert (not (=> (= x y) (= (f x) (f y)))))
 (check-sat)
-
-result: unsat
-Test/Int/Cong.lean:5:2: error: no goals to be solved

@@ -6,6 +6,3 @@ query:
 (declare-const q Bool)
 (assert (not (=> (=> (= p true) (= q true)) (=> (=> (= q true) (= r true)) (=> (= p true) (= r true))))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: encountered errors elaborating cvc5 proof

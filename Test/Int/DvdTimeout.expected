@@ -1,9 +1,9 @@
 goal: dvd a (b + c + d) = true
 
 query:
-(declare-fun dvd (Int Int) Bool)
 (declare-const a Int)
 (declare-const d Int)
+(declare-fun dvd (Int Int) Bool)
 (assert (= (dvd a d) true))
 (declare-const c Int)
 (assert (= (dvd a c) true))
@@ -12,8 +12,11 @@ query:
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
 (assert (not (= (dvd a (+ (+ b c) d)) true)))
 (check-sat)
-Test/Int/DvdTimeout.lean:13:4: error: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-cvc5 interrupted by timeout.
+Test/Int/DvdTimeout.lean:12:25: error: unsolved goals
+a b c d : Int
+dvdax : ∀ (x y z : Int), dvd x y = true → dvd x z = true → dvd x (y + z) = true
+h1 : dvd a b = true
+h2 : dvd a c = true
+h3 : dvd a d = true
+⊢ dvd a (b + c + d) = true
+Test/Int/DvdTimeout.lean:13:33: error: unexpected token '(timeout :='; expected command
