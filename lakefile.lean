@@ -73,7 +73,7 @@ where
       | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={nameToSharedLib "c++"}.1", s!"--load-dynlib={dynlib}", test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
