@@ -14,6 +14,12 @@ namespace Smt.Reconstruct.Tactic
 open Lean Elab.Tactic
 open Smt.Reconstruct.Prop
 
+def True' := True
+
+theorem and_true' : (p ∧ True') = p := by simp [True']
+
+theorem true'_and : (True' ∧ p) = p := by simp [True']
+
 def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
   let n := arr.size
   let mut mv' := mv
@@ -70,7 +76,31 @@ example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
   smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
-example : (p1 ∧ True) = p1 := by
-  smt_rw and_assoc_eq and_true bool_and_true [[p1], []]
+
+
+example : (p1 ∧ p2 ∧ True) = (p1 ∧ p2) := by
+  --smt_rw and_assoc_eq and_true bool_and_true [[p1], [True']]
+  rw [← and_assoc]
+  have := @bool_and_true (p1 ∧ p2) True'
+  rw [and_true'] at this
+  rw [this]
+  rw [and_true']
+
+
+
+
+
+
+-- #check true_and
+
+-- example : (True ∧ p1) = p1 := by
+--   smt_rw and_assoc_eq and_true bool_and_true [[], [p1]]
+
+
+
+-- Smt.Reconstruct.Prop.bool_and_true {xs ys : Prop} : (xs ∧ True ∧ ys) = (xs ∧ ys)
+
+-- use a new True: True'
+-- instantiate the base lemma with True' whenever a list is empty
 
 end Smt.Reconstruct.Tactic
