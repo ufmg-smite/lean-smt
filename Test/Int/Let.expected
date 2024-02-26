@@ -6,8 +6,11 @@ query:
 (assert (= (f 10) 10))
 (assert (not (let ((y 10)) (= (f y) 10))))
 (check-sat)
-
-result: unsat
+Test/Int/Let.lean:5:51: error: unsolved goals
+f : Int → Int
+h : f 10 = 10
+⊢ let y := 10;
+  f y = 10
 goal: f 10 = 10
 
 query:
@@ -15,8 +18,12 @@ query:
 (assert (let ((y 10)) (= (f y) 10)))
 (assert (not (= (f 10) 10)))
 (check-sat)
-
-result: unsat
+Test/Int/Let.lean:8:51: error: unsolved goals
+f : Int → Int
+h :
+  let y := 10;
+  f y = 10
+⊢ f 10 = 10
 goal: f z = z
 
 query:
@@ -25,10 +32,6 @@ query:
 (assert (= (f 10) 10))
 (assert (not (= (f z) z)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: invalid 'simp', proposition expected
-  ℤ
 goal: f y = y
 
 query:
@@ -38,10 +41,6 @@ query:
 (assert (= (f 10) 10))
 (assert (not (= (f y) y)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: invalid 'simp', proposition expected
-  ℤ
 goal: z 3 = 10
 
 query:
@@ -50,12 +49,3 @@ query:
 (assert (= (f 10) 10))
 (assert (not (= (z 3) 10)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-

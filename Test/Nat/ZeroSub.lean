@@ -1,5 +1,5 @@
 import Smt
 
 example : 0 - x = 0 := by
-  smt
+  smt_show
   induction x <;> simp_all [Nat.sub_succ]

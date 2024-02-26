@@ -8,20 +8,19 @@ Authors: Abdalrhman Mohamed
 import Lean
 
 import Smt.Dsl.Sexp
-import Smt.Query
-import Smt.Reconstruction.Certifying
-import Smt.Solver
+import Smt.Reconstruct
+import Smt.Translate
 import Smt.Util
 
 namespace Smt
 
-open Lean Elab Tactic
-open Smt Query Solver
+open Lean hiding Command
+open Elab Tactic Qq
+open Smt Reconstruct Translate Query Solver
 
 initialize
   registerTraceClass `smt.debug
   registerTraceClass `smt.debug.attr
-  registerTraceClass `smt.debug.reconstruct
   registerTraceClass `smt.debug.translate.query
   registerTraceClass `smt.debug.translate.expr
 
@@ -96,7 +95,7 @@ def prepareSmtQuery (hs : List Expr) : TacticM (List Command) := do
 
 def elabProof (text : String) : TacticM Name := do
   let name ← mkFreshId
-  let name := Name.str name.getPrefix ("th0" ++ name.getString)
+  let name := Name.str name.getPrefix ("th0" ++ name.toString)
   let text := text.replace "th0" s!"{name}"
   let (env, log) ← process text (← getEnv) .empty "<proof>"
   _ ← modifyEnv (fun _ => env)
@@ -130,90 +129,49 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   else
     thms.add (.fvar e.fvarId!) #[] e
 
-open Reconstruction.Certifying in
-def rconsProof (name : Name) (hints : List Expr) : TacticM Unit := do
-  let mvar' ← Smt.Util.rewriteIffMeta (← Tactic.getMainGoal)
-  replaceMainGoal [mvar']
-  let mut gs ← (← Tactic.getMainGoal).apply (mkApp (mkConst ``notNotElim) (← Tactic.getMainTarget))
-  Tactic.replaceMainGoal gs
-  let th ← Meta.mkConstWithFreshMVarLevels name
-  trace[smt.debug.reconstruct] "theorem {name} : {← Meta.inferType th}"
-  gs ← (← Tactic.getMainGoal).apply th
-  Tactic.replaceMainGoal gs
-  for h in hints do
-    evalAnyGoals do
-      let gs ← (← Tactic.getMainGoal).apply h
-      Tactic.replaceMainGoal gs
-  let mut some thms ← (← Meta.getSimpExtension? `smt_simp).mapM (·.getTheorems)
-    | throwError "smt tactic failed, 'smt_simp' simpset is not available"
-  -- TODO: replace with our abbreviation of `Implies`
-  thms ← thms.addDeclToUnfold ``Implies
-  for h in hints do
-    thms ← addDeclToUnfoldOrTheorem thms h
-  evalAnyGoals do
-    let (result?, _) ← Meta.simpGoal (← Tactic.getMainGoal) {
-      config := { { : Lean.Meta.Simp.Config } with failIfUnchanged := false }
-      simpTheorems := #[thms],
-      congrTheorems := (← Meta.getSimpCongrTheorems)
-    }
-    match result? with
-    | none => replaceMainGoal []
-    | some (_, mvarId) => replaceMainGoal [mvarId]
-
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
-  let goalType ← Tactic.getMainTarget
+  let mv ← Util.rewriteIffMeta (← Tactic.getMainGoal)
+  Tactic.replaceMainGoal [mv]
+  let goalType : Q(Prop) ← mv.getType
   -- 1. Get the hints passed to the tactic.
   let mut hs ← parseHints ⟨stx[1]⟩
   hs := hs.eraseDups
   withProcessedHints hs fun hs => do
   -- 2. Generate the SMT query.
   let cmds ← prepareSmtQuery hs
-  let query := setOption "produce-models" "true"
-            *> emitCommands cmds.reverse
-            *> checkSat
-  logInfo m!"goal: {goalType}"
-  logInfo m!"\nquery:\n{Command.cmdsAsQuery (.checkSat :: cmds)}"
+  let cmds := .setLogic "ALL" :: cmds
+  trace[smt.debug] m!"goal: {goalType}"
+  trace[smt.debug] m!"\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 3. Run the solver.
-  let kind := smt.solver.kind.get (← getOptions)
-  let path := smt.solver.path.get? (← getOptions)
   let timeout ← parseTimeout ⟨stx[2]⟩
-  let ss ← createFromKind kind path timeout
-  let (res, ss) ← (StateT.run query ss : MetaM _)
+  let res ← prove (Command.cmdsAsQuery cmds) timeout
   -- 4. Print the result.
-  logInfo m!"\nresult: {res}"
-  if res = .sat then
-    -- 4a. Print model.
-    let (model, _) ← StateT.run getModel ss
-    logInfo m!"\ncounter-model:\n{model}\n"
+  -- logInfo m!"\nresult: {res.toString}"
+  match res with
+  | .error e =>
+    -- 4a. Print error reason.
+    trace[smt.debug] m!"\nerror reason:\n{repr e}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
-  if res = .unknown then
-    throwError "unable to prove goal"
-  try
-    -- 4b. Reconstruct proof.
-    let (.expr [.atom "proof", .atom nnp], _) ← StateT.run getProof ss
-      | throwError "encountered error parsing cvc5 proof"
-    let nnp := skipImports (unquote nnp)
-    trace[smt.debug.reconstruct] "proof:\n{nnp}"
-    let name ← elabProof nnp
-    rconsProof name hs
-  catch e =>
-    logInfo m!"failed to reconstruct proof: {e.toMessageData}"
-where
-  unquote s := s.extract ⟨1⟩ (s.endPos - ⟨1⟩)
-  skipImports (s : String) := Id.run do
-    let mut s := s
-    while s.startsWith "import" do
-      s := s.dropWhile (· != '\n')
-      s := s.drop 1
-    return s
+  | .ok pf =>
+    let (fv, mv, mvs) ← rconsProof (← Tactic.getMainGoal) pf
+    mv.withContext do
+      let ts ← hs.mapM (fun h => Meta.inferType h)
+      let mut gs ← mv.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
+      Tactic.replaceMainGoal (gs ++ mvs)
+      let hs := (.fvar fv) :: hs
+      for h in hs do
+        evalAnyGoals do
+          let gs ← (← Tactic.getMainGoal).apply h
+          Tactic.replaceMainGoal gs
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
-  let goalType ← Tactic.getMainTarget
+  let mv ← Util.rewriteIffMeta (← Tactic.getMainGoal)
+  let goalType ← mv.getType
   let mut hs ← parseHints ⟨stx[1]⟩
   hs := hs.eraseDups
   withProcessedHints hs fun hs => do
   let cmds ← prepareSmtQuery hs
-  let cmds := .checkSat :: cmds
+  let cmds := cmds ++ [.checkSat]
   logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
 
 end Smt

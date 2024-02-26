@@ -2,18 +2,19 @@ import Lake
 
 open Lake DSL
 
-package smt where
-  precompileModules := true
+require cvc5 from git
+  "https://github.com/abdoo8080/lean-cvc5.git" @ "main"
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "753159252c585df6b6aa7c48d2b8828d58388b79"
+  "https://github.com/leanprover-community/mathlib4.git" @ "v4.4.0"
+
+package smt where
+  precompileModules := true
+  moreLeanArgs := #[s!"--load-dynlib={nameToSharedLib "c++"}.1"]
+  moreGlobalServerArgs := #[s!"--load-dynlib={nameToSharedLib "c++"}.1"]
 
 @[default_target]
 lean_lib Smt
-
-lean_lib Certifying {
-  srcDir := "./Smt/Reconstruction/"
-}
 
 open Std
 open System
@@ -72,7 +73,7 @@ where
       | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={nameToSharedLib "c++"}.1", s!"--load-dynlib={dynlib}", test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -116,7 +117,7 @@ where
       | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={nameToSharedLib "c++"}.1", s!"--load-dynlib={dynlib}", test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout

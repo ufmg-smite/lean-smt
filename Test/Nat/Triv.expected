@@ -3,10 +3,3 @@ goal: Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero
 query:
 (assert (not (= (+ 0 (+ 0 1)) (+ 0 1))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬0 + (Int.ofNat 0 + 1) = Int.ofNat 0 + 1 → False
-with
-  ¬¬Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero
-⊢ ¬¬Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero

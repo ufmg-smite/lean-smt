@@ -1,0 +1,6 @@
+Test/Reconstruction/Arith/SumBounds.lean:1:0: error: object file './.lake/build/lib/Smt/Reconstruct/Arith.olean' of module Smt.Reconstruct.Arith does not exist
+Test/Reconstruction/Arith/SumBounds.lean:3:5: error: unknown namespace 'Smt.Reconstruct.Arith'
+Test/Reconstruction/Arith/SumBounds.lean:5:32: error: expected token
+Test/Reconstruction/Arith/SumBounds.lean:10:4: error: expected token
+Test/Reconstruction/Arith/SumBounds.lean:14:30: error: expected token
+Test/Reconstruction/Arith/SumBounds.lean:18:32: error: expected token

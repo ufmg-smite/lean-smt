@@ -4,10 +4,3 @@ query:
 (define-sort Nat () Int)
 (assert (not (exists ((x Nat)) (>= x 0))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∃ x, x ≥ 0) → False
-with
-  ¬¬∃ x, x ≥ 0
-⊢ ¬¬∃ x, x ≥ 0

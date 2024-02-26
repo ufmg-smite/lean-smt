@@ -152,7 +152,7 @@ structure State where
   in the goal's local context. -/
   concretizations : RBMap Name ConcretizationData Name.quickCmp := .empty
   /-- Cache of concretization names, lookupable by the concretization. -/
-  cache : DiscrTree Name false := .empty
+  cache : DiscrTree Name := .empty
 
   -- Stuff above is a persistent cache. Stuff below changes on every iteration.
 
@@ -176,7 +176,7 @@ def traceLCtx : TacticM Unit := withTraceNode `smt.debug.lctx (fun _ => pure .ni
 
 def getCached? (e : Expr) : ConcretizeM (Option (Name × Nat)) := do
   -- We use `withExtra` as concretizations can be prefixes of the full application.
-  let nms ← (←get).cache.getMatchWithExtra e
+  let nms ← (←get).cache.getMatchWithExtra e {}
   if nms.size > 1 then unreachable!
   if let #[(nm, n)] := nms then
     trace[smt.debug.concretize.cache] "hit {e} ↦ {nm}, left {n} args"
@@ -186,7 +186,7 @@ def getCached? (e : Expr) : ConcretizeM (Option (Name × Nat)) := do
 
 def addNewConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
   let st ← get
-  let cache ← st.cache.insert e nm
+  let cache ← st.cache.insert e nm {}
   let newConcretizations := st.newConcretizations.insert nm e
   set { st with cache, newConcretizations }
 

@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruction.Certifying
+open Smt.Reconstruct.Arith
 
 example {a b c : Int} : c > 0 ∧ a < b → c * a < c * b := by
   arithMulPos [a,b,c], 0
@@ -46,4 +46,3 @@ example {c : Real} {a b : Int}  : 0 < c ∧ a < b → c * a < c * b := by
 
 example {a b c : Int}  : 0 < c ∧ a < b → c * a < c * b := by
   arithMulPos [a, b, c], 0
-

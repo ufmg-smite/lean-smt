@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruction.Certifying
+open Smt.Reconstruct.Arith
 
 example {a b : Int} : a < b → (a : Int) ≤ Int.ceil (Real.intCast.intCast b) - 1 := by
   intro h
@@ -13,4 +13,3 @@ example {a : Int} : Real.intCast.intCast a < (7.2 : Real) → a ≤ Int.ceil (7.
 example {a b : Int} : a > b → (a : Int) ≥ Int.floor (Real.intCast.intCast b) + 1 := by
   intro h
   intTightLb h
-

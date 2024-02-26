@@ -1,6 +1,6 @@
-import Smt
+import Smt.Reconstruct.Arith
 
-open Smt.Reconstruction.Certifying
+open Smt.Reconstruct.Arith
 
 example (a : Int) : (a + 3) > 0 → (a + 3) ^ 2 > 0 := by
   arithMulSign [(a + 3)], [1], [2]
