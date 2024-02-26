@@ -19,7 +19,9 @@ theorem XOr.elim {p q r : Prop} (h : XOr p q) (h₁ : p → ¬q → r) (h₂ : �
 
 theorem XOr.symm (h : XOr p q) : XOr q p := h.elim (flip inr) (flip inl)
 
-@[macro_inline] instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
+namespace XOr
+
+@[macro_inline] scoped instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
   match dp with
   | isTrue   hp =>
     match dq with
@@ -29,6 +31,8 @@ theorem XOr.symm (h : XOr p q) : XOr q p := h.elim (flip inr) (flip inl)
     match dq with
     | isTrue   hq => isTrue (.inr hnp hq)
     | isFalse hnq => isFalse (·.elim (fun hp _ => hnp hp) (fun _ hq => hnq hq))
+
+end XOr
 
 namespace Smt.Reconstruct.Prop
 
