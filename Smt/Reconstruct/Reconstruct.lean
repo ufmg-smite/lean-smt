@@ -42,14 +42,14 @@ def rconsSort (s : cvc5.Sort) : MetaM Expr := do match s.getKind with
   | .INTERNAL_SORT_KIND
   | .UNINTERPRETED_SORT => return .fvar (← findFVarId s.getSymbol)
   | .BITVECTOR_SORT =>
-    let w : Q(Nat) := mkNatLit s.getBitVectorSize.val
+    let w : Nat := s.getBitVectorSize.val
     return q(Std.BitVec $w)
   | .INTEGER_SORT => return q(Int)
   | .REAL_SORT => return q(Rat)
   | _ => return .const `sorry []
 
 partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
-  | .VARIABLE => return .fvar (← findFVarId t.getSymbol)
+  | .VARIABLE => return .fvar (← findFVarId (getVariableName t))
   | .CONSTANT => return .fvar (← findFVarId t.getSymbol)
   | .CONST_BOOLEAN => return if t.getBooleanValue then q(True) else q(False)
   | .NOT =>
@@ -84,21 +84,21 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
   | .FORALL =>
     let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
     for x in t[0]! do
-      xs := xs.push (x.getSymbol, fun _ => rconsSort x.getSort)
+      xs := xs.push (getVariableName x, fun _ => rconsSort x.getSort)
     Meta.withLocalDeclsD xs fun xs => do
       let b ← rconsTerm t[1]!
       Meta.mkForallFVars xs b
   | .EXISTS =>
     let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
     for x in t[0]! do
-      xs := xs.push (x.getSymbol, fun _ => rconsSort x.getSort)
+      xs := xs.push (getVariableName x, fun _ => rconsSort x.getSort)
     Meta.withLocalDeclsD xs fun xs => do
       let b ← rconsTerm t[1]!
       Meta.mkExistsFVars xs b
   | .LAMBDA =>
     let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
     for x in t[0]! do
-      xs := xs.push (x.getSymbol, fun _ => rconsSort x.getSort)
+      xs := xs.push (getVariableName x, fun _ => rconsSort x.getSort)
     Meta.withLocalDeclsD xs fun xs => do
       let b ← rconsTerm t[1]!
       Meta.mkLambdaFVars xs b
@@ -109,6 +109,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
     for i in [1:t.getNumChildren] do
       curr := .app curr (← rconsTerm t[i]!)
     return curr
+  | .SKOLEM_FUN =>
+    rconsSkolem t
   | .CONST_BITVECTOR =>
     let w : Nat := t.getSort.getBitVectorSize.val
     let v : Nat := (t.getBitVectorValue 10).toNat!
@@ -225,9 +227,53 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
     let x : Q(Rat) ← rconsTerm t[0]!
     return q(Rat.isInt $x)
   | _ =>
-    logInfo m!"{repr t.getKind} : {t}"
-    return .const `sorry []
+    throwError "Unsupported kind: {repr t.getKind} : {t}"
 where
+  rconsForallSkolems (q : cvc5.Term) (n : Nat) : MetaM (Array Expr) := do
+    let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
+    let mut es := #[]
+    for x in q[0]![0]! do
+      xs := xs.push (getVariableName x, fun _ => rconsSort x.getSort)
+    let F := q[0]![1]!
+    for i in [0:n + 1] do
+      let α : Q(Type) ← rconsSort q[0]![0]![i]!.getSort
+      let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      let e ← Meta.withLocalDeclsD xs fun xs => do
+        let F ← rconsTerm F
+        let F' := F.replaceFVars xs[0:i] es
+        let ysF' ← Meta.mkExistsFVars xs[i + 1:n] F'
+        let xysF' : Q($α → Prop) ← Meta.mkLambdaFVars #[xs[i]!] (.app q(Not) ysF')
+        return q(@Classical.epsilon $α $h $xysF')
+      es := es.push e
+    return es
+  rconsExistsSkolems (q : cvc5.Term) (n : Nat) : MetaM (Array Expr) := do
+    let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
+    let mut es := #[]
+    for x in q[0]! do
+      xs := xs.push (getVariableName x, fun _ => rconsSort x.getSort)
+    let F := q[1]!
+    for i in [0:n + 1] do
+      let α : Q(Type) ← rconsSort q[0]![i]!.getSort
+      let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      let e ← Meta.withLocalDeclsD xs fun xs => do
+        let F ← rconsTerm F
+        let F' := F.replaceFVars xs[0:i] es
+        let ysF' ← Meta.mkExistsFVars xs[i + 1:n] F'
+        let xysF' : Q($α → Prop) ← Meta.mkLambdaFVars #[xs[i]!] ysF'
+        return q(@Classical.epsilon $α $h $xysF')
+      es := es.push e
+    return es
+  rconsSkolem (t : cvc5.Term) : MetaM Expr := do match t.getSkolemId with
+    | .PURIFY => rconsTerm t.getSkolemArguments[0]!
+    | .QUANTIFIERS_SKOLEMIZE =>
+      let q := t.getSkolemArguments[0]!
+      let n := t.getSkolemArguments[1]!.getIntegerValue.toNat
+      let es ← if q.getKind == .EXISTS then rconsExistsSkolems q n else rconsForallSkolems q n
+      return es[n]!
+    | _ =>
+      throwError "{repr t.getSkolemId} : {t.getSkolemArguments}"
+  getVariableName (t : cvc5.Term) : Name :=
+    if t.hasSymbol then t.getSymbol else Name.num `x t.getId
   rightAssocOp (op : Expr) (t : cvc5.Term) : MetaM Expr := do
     let mut curr ← rconsTerm t[t.getNumChildren - 1]!
     for i in [1:t.getNumChildren] do
@@ -257,14 +303,19 @@ def cacheTerm (t : cvc5.Term) (n : Name) : RconsM Unit :=
 def getTermExpr (t : cvc5.Term) : RconsM Expr :=
   return .fvar ⟨(← get).termMap.find! t⟩
 
-def cacheProof (p : cvc5.Proof) (n : Name) : RconsM Unit :=
-  modify fun state => { state with proofMap := state.proofMap.insert p n }
+def cacheProof (pf : cvc5.Proof) (n : Name) : RconsM Unit :=
+  modify fun state => { state with proofMap := state.proofMap.insert pf n }
 
-def isReconstructed (p : cvc5.Proof) : RconsM Bool :=
-  return (← get).proofMap.contains p
+def isReconstructed (pf : cvc5.Proof) : RconsM Bool := do
+  let state ← get
+  if !state.proofMap.contains pf then
+    return false
+  state.currGoal.withContext do
+    let ctx ← getLCtx
+    return if ctx.contains ⟨state.proofMap.find! pf⟩ then true else false
 
-def getProofExpr (p : cvc5.Proof) : RconsM Expr :=
-  return .fvar ⟨(← get).proofMap.find! p⟩
+def getProofExpr (pf : cvc5.Proof) : RconsM Expr :=
+  return .fvar ⟨(← get).proofMap.find! pf⟩
 
 def withAssums (as : Array Expr) (k : RconsM α) : RconsM α := do
   modify fun state => { state with currAssums := state.currAssums ++ as }
@@ -390,16 +441,16 @@ def rconsRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : RconsM Expr := do
     addThm q((True → $p) = $p) q(@Prop.bool_impl_true2 $p)
   | .BOOL_OR_TRUE =>
     let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_true) q(@Prop.bool_or_true) args)
+    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_true) args)
   | .BOOL_OR_FALSE =>
     let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_true) q(@Prop.bool_or_false) args)
+    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_false) args)
   | .BOOL_OR_FLATTEN =>
     let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_true) q(@Prop.bool_or_flatten) args)
+    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_flatten) args)
   | .BOOL_OR_DUP =>
     let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_true) q(@Prop.bool_or_dup) args)
+    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_dup) args)
   | .BOOL_AND_TRUE =>
     let args ← rconsArgs pf.getArguments
     addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
@@ -417,7 +468,7 @@ def rconsRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : RconsM Expr := do
     addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_conf) args)
   | .BOOL_OR_TAUT =>
     let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_true) q(@Prop.bool_or_taut) args)
+    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_taut) args)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← rconsTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -557,37 +608,22 @@ where
       args' := args'.push arg'
     return args'
 
-def rconsChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : RconsM Expr := do
-  let mut cc := clausify cs[0]!
-  let mut cp := ps[0]!
-  for i in [1:cs.size] do
-    let pol := as[2 * i - 2]!
-    let l := as[2 * i - 1]!
-    cp ← rconsResolution cc (clausify cs[i]!) pol l cp ps[i]!
-    cc := getResolutionResult cc (clausify cs[i]!) pol l
-  return cp
+def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
+  let l₁ := if pol.getBooleanValue then l else l.not
+  let l₂ := if pol.getBooleanValue then l.not else l
+  let mut ls := #[]
+  for li in c₁ do
+    if li != l₁ then
+      ls := ls.push li
+  for li in c₂ do
+    if li != l₂ then
+      ls := ls.push li
+  return ls
+
+def rconsResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (p₁ p₂ : Expr) : RconsM Expr := do
+  let f := if pol.getBooleanValue == true then Tac.r0 else Tac.r1
+  addTac (← rightAssocOp q(Or) (getResolutionResult c₁ c₂ pol l)) (f p₁ p₂ (← rconsTerm l) (some (c₁.size - 1)) (some (c₂.size - 1)))
 where
-  clausify (c : cvc5.Term) : Array cvc5.Term := Id.run do
-    if c.getKind != .OR then
-      return #[c]
-    let mut cs := #[]
-    for cc in c do
-      cs := cs.push cc
-    return cs
-  rconsResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (p₁ p₂ : Expr) : RconsM Expr := do
-    let f := if pol.getBooleanValue == true then Tac.r0 else Tac.r1
-    addTac (← rightAssocOp q(Or) (getResolutionResult c₁ c₂ pol l)) (f p₁ p₂ (← rconsTerm l) (some (c₁.size - 1)) (some (c₂.size - 1)))
-  getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
-    let l₁ := if pol.getBooleanValue then l else l.not
-    let l₂ := if pol.getBooleanValue then l.not else l
-    let mut ls := #[]
-    for li in c₁ do
-      if li != l₁ then
-        ls := ls.push li
-    for li in c₂ do
-      if li != l₂ then
-        ls := ls.push li
-    return ls
   rightAssocOp (op : Expr) (ts : Array cvc5.Term) : MetaM Expr := do
     if ts.isEmpty then
       return q(False)
@@ -595,6 +631,24 @@ where
     for i in [1:ts.size] do
       curr := mkApp2 op (← rconsTerm ts[ts.size - i - 1]!) curr
     return curr
+
+def clausify (c : cvc5.Term) : Array cvc5.Term := Id.run do
+  if c.getKind != .OR then
+    return #[c]
+  let mut cs := #[]
+  for cc in c do
+    cs := cs.push cc
+  return cs
+
+def rconsChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : RconsM Expr := do
+  let mut cc := clausify cs[0]!
+  let mut cp := ps[0]!
+  for i in [1:cs.size] do
+    let pol := as[0]![i - 1]!
+    let l := as[1]![i - 1]!
+    cp ← rconsResolution cc (clausify cs[i]!) pol l cp ps[i]!
+    cc := getResolutionResult cc (clausify cs[i]!) pol l
+  return cp
 
 def rconsScope (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) : RconsM Expr := do
   let mv ← getCurrGoal
@@ -618,8 +672,8 @@ def rconsScope (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) : Rco
 def rconsForallCong (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) : RconsM Expr := do
   let mv ← getCurrGoal
   mv.withContext do
-    let n := Name.str Name.anonymous pf.getResult[0]![0]![0]!.getSymbol
-    let α : Q(Type) ← rconsSort pf.getResult[0]![0]![0]!.getSort
+    let n := rconsTerm.getVariableName pf.getArguments[1]![0]!
+    let α : Q(Type) ← rconsSort pf.getArguments[1]![0]!.getSort
     let mkLam n α t := Meta.withLocalDeclD n α (rconsTerm t >>= Meta.mkLambdaFVars #[·])
     let p : Q($α → Prop) ← mkLam n α pf.getResult[0]![1]!
     let q : Q($α → Prop) ← mkLam n α pf.getResult[1]![1]!
@@ -627,14 +681,37 @@ def rconsForallCong (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) 
     let (fv, mv') ← h.mvarId!.intro n
     let a : Q($α) ← (return .fvar fv)
     setCurrGoal mv'
-    let h' : Q($p $a = $q $a) ← mv'.withContext (withAssums #[a] (rconsProof pf.getChildren[1]!))
+    let h' : Q($p $a = $q $a) ← mv'.withContext (withAssums #[a] (rconsProof pf.getChildren[0]!))
     let mv' ← getCurrGoal
     mv'.withContext (mv'.assignIfDefeq h')
     setCurrGoal mv
     addThm q((∀ a, $p a) = (∀ a, $q a)) q(forall_congr $h)
 
+def rconsSkolemize (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) : RconsM Expr := do
+  if pf.getChildren[0]!.getResult.getKind == .EXISTS then
+    let es ← rconsTerm.rconsExistsSkolems pf.getChildren[0]!.getResult (pf.getChildren[0]!.getResult[0]![0]!.getNumChildren - 1)
+    let f := fun h e => do
+      let α : Q(Type) ← pure (e.getArg! 0)
+      let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      let p : Q($α → Prop)  ← pure (e.getArg! 2)
+      let h : Q(∃ x, $p x) ← pure h
+      return q(@Classical.epsilon_spec_aux $α $hα $p $h)
+    let h : Expr ← es.foldlM f (← rconsProof pf.getChildren[0]!)
+    addThm (← rconsTerm pf.getResult) h
+  else
+    let es ← rconsTerm.rconsForallSkolems pf.getChildren[0]!.getResult (pf.getChildren[0]!.getResult[0]![0]!.getNumChildren - 1)
+    let f := fun h e => do
+      let α : Q(Type) ← pure (e.getArg! 0)
+      let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      let .lam n _ (.app _ b) bi := e.getArg! 2 | throwError "[skolemize]: expected a predicate with a negated body: {e}"
+      let p : Q($α → Prop)  ← pure (.lam n α b bi)
+      let h : Q(¬∀ x, $p x) ← pure h
+      return q(@Classical.epsilon_spec_aux' $α $hα $p $h)
+    let h : Expr ← es.foldlM f (← rconsProof pf.getChildren[0]!)
+    addThm (← rconsTerm pf.getResult) h
+
 partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
-  if (← isReconstructed pf) && (← Meta.findLocalDeclWithType? (← rconsTerm pf.getResult)).isSome then
+  if ← isReconstructed pf then
     return ← getProofExpr pf
   let e ← do match pf.getRule with
   | .ASSUME =>
@@ -657,7 +734,12 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
       addThm q($t = $t') q(Eq.refl $t)
   | .DSL_REWRITE =>
     rconsRewrite pf (← pf.getChildren.mapM rconsProof)
-  | .RESOLUTION
+  | .RESOLUTION =>
+    let c₁ := clausify pf.getChildren[0]!.getResult
+    let c₂ := clausify pf.getChildren[1]!.getResult
+    let p₁ ← rconsProof pf.getChildren[0]!
+    let p₂ ← rconsProof pf.getChildren[1]!
+    rconsResolution c₁ c₂ pf.getArguments[0]! pf.getArguments[1]! p₁ p₂
   | .CHAIN_RESOLUTION =>
     let cs := pf.getChildren.map (·.getResult)
     let as := pf.getArguments
@@ -830,7 +912,7 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     addThm (← rconsTerm pf.getResult) (.app q(Prop.notAnd $ps) hnps)
   | .CNF_AND_POS =>
     let cnf := pf.getArguments[0]!
-    let i : Q(Nat) := mkNatLit pf.getArguments[1]!.getIntegerValue.toNat
+    let i : Nat := pf.getArguments[1]!.getIntegerValue.toNat
     let mut ps : Q(List Prop) := q([])
     let n := cnf.getNumChildren
     for i in [:n] do
@@ -855,7 +937,7 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     addThm (← rconsTerm pf.getResult) q(Prop.cnfOrPos $ps)
   | .CNF_OR_NEG =>
     let cnf := pf.getArguments[0]!
-    let i : Q(Nat) := mkNatLit pf.getArguments[1]!.getIntegerValue.toNat
+    let i : Nat := pf.getArguments[1]!.getIntegerValue.toNat
     let mut ps : Q(List Prop) := q([])
     let n := cnf.getNumChildren
     for i in [:n] do
@@ -970,7 +1052,7 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     return curr
   | .CONG =>
     let k := pf.getResult[0]!.getKind
-    -- This rule is messed up for closures!
+    -- This rule needs more care for closures.
     if k == .FORALL then
       rconsForallCong pf rconsProof
     else if k == .EXISTS || k == .WITNESS || k == .LAMBDA || k == .SET_COMPREHENSION then
@@ -979,12 +1061,15 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     else
       let mut assums ← pf.getChildren.mapM rconsProof
       addTac (← rconsTerm pf.getResult) (.cong assums)
+  | .NARY_CONG =>
+    let mut assums ← pf.getChildren.mapM rconsProof
+    addTac (← rconsTerm pf.getResult) (.cong assums)
   | .TRUE_INTRO =>
     let p : Q(Prop) ← rconsTerm pf.getResult[0]!
     let hp : Q($p) ← rconsProof pf.getChildren[0]!
     addThm q($p = True) q(Prop.trueIntro $hp)
   | .TRUE_ELIM =>
-    let p : Q(Prop) ← rconsTerm pf.getResult[0]!
+    let p : Q(Prop) ← rconsTerm pf.getResult
     let hp : Q($p = True) ← rconsProof pf.getChildren[0]!
     addThm q($p) q(Prop.trueElim $hp)
   | .FALSE_INTRO =>
@@ -1000,9 +1085,18 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     let t  : Q($α) ← rconsTerm pf.getResult[0]!
     let t' : Q($α) ← rconsTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
+  | .SKOLEM_INTRO =>
+    let α : Q(Type) ← rconsSort pf.getResult[0]!.getSort
+    let k : Q($α) ← rconsTerm pf.getResult[0]!
+    let t : Q($α) ← rconsTerm pf.getResult[1]!
+    addThm q($k = $t) q(Eq.refl $t)
+  | .SKOLEMIZE =>
+    rconsSkolemize pf rconsProof
   | .INSTANTIATE =>
     let xsF  : Q(Prop) ← rconsProof pf.getChildren[0]!
-    let es ← (pf.getArguments.extract 0 pf.getChildren[0]!.getResult[0]!.getNumChildren).mapM (rconsTerm ·)
+    let mut es := #[]
+    for t in pf.getArguments[0]! do
+      es := es.push (← rconsTerm t)
     addThm (← rconsTerm pf.getResult) (mkAppN xsF es)
   | .ALPHA_EQUIV =>
     let α : Q(Type) ← rconsSort pf.getResult[0]!.getSort
@@ -1024,18 +1118,16 @@ partial def rconsProof (mv : MVarId) (pf : cvc5.Proof) : MetaM (FVarId × MVarId
   let ⟨fv, mv, _⟩ ← mv.replace h.fvarId! q($h trivial) q($p)
   return (fv, mv, mvs.toList)
 
-syntax (name := reconstruct) "reconstruct" str : tactic
-
 open cvc5 in
 def prove (query : String) (timeout : Option Nat) : Lean.MetaM (Except SolverError cvc5.Proof) := Solver.run do
   if let .some timeout := timeout then
     Solver.setOption "tlimit" (toString (1000*timeout))
   Solver.setOption "dag-thresh" "0"
   Solver.setOption "simplification" "none"
+  Solver.setOption "enum-inst" "true"
   Solver.setOption "produce-models" "true"
   Solver.setOption "produce-proofs" "true"
   Solver.setOption "proof-granularity" "dsl-rewrite"
-  Solver.setOption "enum-inst" "true"
   Solver.parse query
   let r ← Solver.checkSat
   if r.isUnsat then
@@ -1044,6 +1136,8 @@ def prove (query : String) (timeout : Option Nat) : Lean.MetaM (Except SolverErr
       trace[smt.debug.reconstruct] (← Solver.proofToString ps[0])
       return ps[0]
   throw (self := instMonadExcept _ _) (SolverError.user_error "something went wrong")
+
+syntax (name := reconstruct) "reconstruct" str : tactic
 
 open Lean.Elab Tactic in
 @[tactic reconstruct] def evalReconstruct : Tactic := fun stx =>
