@@ -14,10 +14,10 @@ import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Arith
 
-open Lean hiding Rat
+open Lean
 open Meta Elab.Tactic Expr
 
-theorem castEQ : ∀ {a b : Int}, a = b → Rat.ofInt a = Rat.ofInt b := by
+theorem castEQ : ∀ {a b : Int}, a = b → Real.intCast.intCast a = Real.intCast.intCast b := by
   intros a b h
   rw [h]
 
@@ -38,10 +38,10 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
     let tp₂ ← getOpType t₂
     let (h₁, h₂) ←
       match tp₁, tp₂ with
-      | const `Int .., const `Rat .. =>
+      | const `Int .., const `Real .. =>
         let thm := getCastRelThm rel₁
         pure (← mkAppM thm #[h₁], h₂)
-      | const `Rat .., const `Int .. =>
+      | const `Real .., const `Int .. =>
         let thm := getCastRelThm rel₂
         pure (h₁, ← mkAppM thm #[h₂])
       | _, _ => pure (h₁, h₂)

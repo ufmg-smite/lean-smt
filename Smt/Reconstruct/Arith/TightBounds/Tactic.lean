@@ -13,7 +13,7 @@ import Mathlib.Algebra.Order.Floor
 
 namespace Smt.Reconstruct.Arith
 
-open Lean hiding Rat
+open Lean
 open Meta Elab.Tactic Expr
 
 def isIntLt : Expr → Bool

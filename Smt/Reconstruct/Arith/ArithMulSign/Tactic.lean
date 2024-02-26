@@ -8,6 +8,7 @@ Authors: Tomaz Gomes Mascarenhas
 import Lean
 
 import Mathlib.Data.Nat.Parity
+import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.ArithMulSign.Lemmas
 import Smt.Reconstruct.Arith.MulPosNeg.Instances
@@ -37,7 +38,7 @@ where
       | .const `Int .. => pure true
       | _ => throwError "[arithMulSign]: unexpected type for expression"
     let lorInst := mkConst $
-      if exprIsInt then ``lorInt else ``lorRat
+      if exprIsInt then ``lorInt else ``lorReal
     let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
     let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
     -- zero with the same type as the current argument
@@ -166,13 +167,13 @@ where
       let exprType ← inferType expr
       let exprIsInt ←
         match exprType with
-        | .const `Rat .. => pure false
+        | .const `Real .. => pure false
         | .const `Int .. => pure true
         | _ => throwError "[arithMulSign]: unexpected type for expression"
       let lorInst := mkConst $
-        if exprIsInt then ``lorInt else ``lorRat
+        if exprIsInt then ``lorInt else ``lorReal
       let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
-      let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
+      let zeroR ← mkAppOptM' (.const ``OfNat.ofNat [.zero]) #[mkConst ``Real, (mkNatLit 0), none]
       -- zero with the same type as the current argument
       let currZero := if exprIsInt then zeroI else zeroR
       let bindedType: Expr ←
@@ -215,14 +216,14 @@ where
         let prodIsInt ←
           match prodType with
           | .const `Int .. => pure true
-          | .const `Rat .. => pure false
+          | .const `Real .. => pure false
           | _ => throwError "[arithMulSign]: unexpected type for accumulated product"
         let prodSignPfType ←
           if first then
             inferType exprPowSignPf
           else inferType prodSignPf
         let prodPos := (← getOp prodSignPfType) == `GT.gt
-        -- normalize types in case one is rat and the other is int
+        -- normalize types in case one is real and the other is int
         let (exprPow', prod', exprPowSignPf', prodSignPf') :=
           match exprIsInt, prodIsInt with
           | false, true  =>
@@ -230,13 +231,13 @@ where
               if prodPos then
                 mkApp2 (mkConst ``castPos) prod prodSignPf
               else mkApp2 (mkConst ``castNeg) prod prodSignPf
-            (exprPow, mkApp (mkConst ``Rat.ofInt) prod, exprPowSignPf, prodSignPf')
+            (exprPow, mkApp (mkConst ``zToR) prod, exprPowSignPf, prodSignPf')
           | true, false  =>
             let exprPowSignPf' :=
               if pol == Pol.Pos || pol == Pol.NZ || exp % 2 == 0 then
                 mkApp2 (mkConst ``castPos) exprPow exprPowSignPf
               else mkApp2 (mkConst ``castNeg) exprPow exprPowSignPf
-            (mkApp (mkConst ``Rat.ofInt) exprPow, prod, exprPowSignPf', prodSignPf)
+            (mkApp (mkConst ``zToR) exprPow, prod, exprPowSignPf', prodSignPf)
           | _, _   => (exprPow, prod, exprPowSignPf, prodSignPf)
         let answer ←
           if first then pure exprPowSignPf

@@ -11,7 +11,7 @@ example {a b c d e f w z : Int} :
     intros h₁ h₂ h₃ h₄
     sumBounds [h₁, h₂, h₃, h₄]
 
-example {a b c d e f : ℚ} : a < d → b ≤ e → c ≤ f → a + (b + c) < d + (e + f) := by
+example {a d : Int} {b c e f : Real} : a = d → b < e → c ≤ f → a + (b + c) < d + (e + f) := by
   intros h₁ h₂ h₃
   sumBounds [h₁, h₂, h₃]
 

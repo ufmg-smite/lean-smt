@@ -12,3 +12,6 @@ import Smt.Reconstruct.Arith.SumBounds
 import Smt.Reconstruct.Arith.TangentPlane
 import Smt.Reconstruct.Arith.TightBounds
 import Smt.Reconstruct.Arith.Trichotomy
+
+-- Non-linear arithmetic is increasing compilation time too much
+-- import Smt.Reconstruct.Arith.TransFns

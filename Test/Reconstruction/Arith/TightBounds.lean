@@ -2,14 +2,14 @@ import Smt.Reconstruct.Arith
 
 open Smt.Reconstruct.Arith
 
-example {a b : Int} : a < b → (a : Int) ≤ Int.ceil (Rat.ofInt b) - 1 := by
+example {a b : Int} : a < b → (a : Int) ≤ Int.ceil (Real.intCast.intCast b) - 1 := by
   intro h
   intTightUb h
 
-example {a : Int} : Rat.ofInt a < (7 : ℚ) → a ≤ Int.ceil (7 : Int) - 1 := by
+example {a : Int} : Real.intCast.intCast a < (7.2 : Real) → a ≤ Int.ceil (7.2 : Real) - 1 := by
   intro h
   intTightUb h
 
-example {a b : Int} : a > b → (a : Int) ≥ Int.floor (Rat.ofInt b) + 1 := by
+example {a b : Int} : a > b → (a : Int) ≥ Int.floor (Real.intCast.intCast b) + 1 := by
   intro h
   intTightLb h

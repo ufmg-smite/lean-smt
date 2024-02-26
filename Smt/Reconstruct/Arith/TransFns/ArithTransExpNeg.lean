@@ -5,12 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Mathlib.Algebra.Order.Ring.Lemmas
-import Mathlib.Data.Real.Basic
+/-
+Implementation of:
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule19ARITH_TRANS_EXP_NEGE
+-/
+
+import Mathlib.Data.Complex.Exponential
 
 namespace Smt.Reconstruct.Arith
 
-instance lorInt : LinearOrderedRing Int := inferInstance
-noncomputable instance lorReal : LinearOrderedRing Real := inferInstance
+theorem arithTransExpNeg (t : ℝ) : t < 0 ↔ Real.exp t < 1 :=
+  Iff.comm.mp Real.exp_lt_one_iff
 
 end Smt.Reconstruct.Arith
