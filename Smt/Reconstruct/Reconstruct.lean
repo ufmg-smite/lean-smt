@@ -115,6 +115,21 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
     let w : Nat := t.getSort.getBitVectorSize.val
     let v : Nat := (t.getBitVectorValue 10).toNat!
     return q(Std.BitVec.ofNat $w $v)
+  | .BITVECTOR_BITOF =>
+    let w : Nat := t[0]!.getSort.getBitVectorSize.val
+    let x : Q(Std.BitVec $w) ← rconsTerm t[0]!
+    let i : Nat := t.getOp[0]!.getIntegerValue.toNat
+    return q(«$x».getLsb $i = true)
+  | .BITVECTOR_BB_TERM =>
+    let w : Nat := t.getNumChildren
+    let bs : Q(Std.BitVec 0) := q(.nil)
+    let f (bs : Expr) (i : Nat) : MetaM Expr := do
+      let p : Q(Prop) ← rconsTerm t[i]!
+      let bs : Q(Std.BitVec $i) := bs
+      let hp : Q(Decidable $p) ← synthDecidableInst t[i]!
+      return q(@Std.BitVec.cons $i (@decide $p $hp) $bs)
+    let bs : Q(Std.BitVec $w) ← (List.range w).foldlM f bs
+    return q($bs)
   | .BITVECTOR_ADD =>
     let w : Nat := t.getSort.getBitVectorSize.val
     let x : Q(Std.BitVec $w) ← rconsTerm t[0]!
@@ -271,7 +286,7 @@ where
       let es ← if q.getKind == .EXISTS then rconsExistsSkolems q n else rconsForallSkolems q n
       return es[n]!
     | _ =>
-      throwError "{repr t.getSkolemId} : {t.getSkolemArguments}"
+      throwError "Unsupported skolem ID: {repr t.getSkolemId} : {t.getSkolemArguments}"
   getVariableName (t : cvc5.Term) : Name :=
     if t.hasSymbol then t.getSymbol else Name.num `x t.getId
   rightAssocOp (op : Expr) (t : cvc5.Term) : MetaM Expr := do
@@ -279,6 +294,43 @@ where
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op (← rconsTerm t[t.getNumChildren - i - 1]!) curr
     return curr
+  rightAssocOpDecidableInst (op : Expr) (inst : Expr) (t : cvc5.Term) : MetaM Expr := do
+    let mut curr ← rconsTerm t[t.getNumChildren - 1]!
+    let mut currInst ← synthDecidableInst t[t.getNumChildren - 1]!
+    for i in [1:t.getNumChildren] do
+      let ct := t[t.getNumChildren - i - 1]!
+      currInst := mkApp4 inst (← rconsTerm ct) curr (← synthDecidableInst ct) currInst
+      curr := mkApp2 op (← rconsTerm ct) curr
+    return currInst
+  synthDecidableInst (t : cvc5.Term) : MetaM Expr := do match t.getKind with
+    | .CONST_BOOLEAN => return if t.getBooleanValue then q(instDecidableTrue) else q(instDecidableFalse)
+    | .NOT =>
+      let p : Q(Prop) ← rconsTerm t[0]!
+      let hp : Q(Decidable $p) ← synthDecidableInst t[0]!
+      return q(@instDecidableNot $p $hp)
+    | .AND => rightAssocOpDecidableInst q(And) q(@instDecidableAnd) t
+    | .OR => rightAssocOpDecidableInst q(Or) q(@instDecidableOr) t
+    | .XOR => rightAssocOpDecidableInst q(XOr) q(@XOr.instDecidableXOr) t
+    | .EQUAL =>
+      if t[0]!.getSort.getKind == .BOOLEAN_SORT then
+        let p : Q(Prop) ← rconsTerm t[0]!
+        let q : Q(Prop) ← rconsTerm t[1]!
+        let hp : Q(Decidable $p) ← synthDecidableInst t[0]!
+        let hq : Q(Decidable $q) ← synthDecidableInst t[1]!
+        return q(@instDecidableEqProp $p $q (@instDecidableIff $p $q $hp $hq))
+      if t[0]!.getSort.getKind == .BITVECTOR_SORT then
+        let w : Nat := t[0]!.getSort.getBitVectorSize.val
+        return q(@Std.instDecidableEqBitVec $w)
+      let p : Q(Prop) ← rconsTerm t
+      Meta.synthInstance q(Decidable $p)
+    | .BITVECTOR_BITOF =>
+      let w : Nat := t[0]!.getSort.getBitVectorSize.val
+      let x : Q(Std.BitVec $w) ← rconsTerm t[0]!
+      let i : Nat := t.getOp[0]!.getIntegerValue.toNat
+      return q(instDecidableEqBool («$x».getLsb $i) true)
+    | _ =>
+      let p : Q(Prop) ← rconsTerm t
+      Meta.synthInstance q(Decidable $p)
 
 structure RconsState where
   termMap : HashMap cvc5.Term Name
@@ -439,9 +491,9 @@ def rconsRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : RconsM Expr := do
   | .BOOL_IMPL_TRUE2 =>
     let p : Q(Prop) ← rconsTerm pf.getArguments[1]!
     addThm q((True → $p) = $p) q(@Prop.bool_impl_true2 $p)
-  | .BOOL_OR_TRUE =>
-    let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_true) args)
+  -- | .BOOL_OR_TRUE =>
+  --   let args ← rconsArgs pf.getArguments
+  --   addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_true) args)
   | .BOOL_OR_FALSE =>
     let args ← rconsArgs pf.getArguments
     addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_false) args)
@@ -454,9 +506,9 @@ def rconsRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : RconsM Expr := do
   | .BOOL_AND_TRUE =>
     let args ← rconsArgs pf.getArguments
     addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
-  | .BOOL_AND_FALSE =>
-    let args ← rconsArgs pf.getArguments
-    addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_false) args)
+  -- | .BOOL_AND_FALSE =>
+  --   let args ← rconsArgs pf.getArguments
+  --   addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_false) args)
   | .BOOL_AND_FLATTEN =>
     let args ← rconsArgs pf.getArguments
     addTac (← rconsTerm pf.getResult) (.rewrite q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_flatten) args)
@@ -686,6 +738,18 @@ def rconsForallCong (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) 
     mv'.withContext (mv'.assignIfDefeq h')
     setCurrGoal mv
     addThm q((∀ a, $p a) = (∀ a, $q a)) q(forall_congr $h)
+
+def rconsBB (pf : cvc5.Proof) : RconsM Expr := do
+  let t := pf.getArguments[0]![0]!
+  match t.getKind with
+  | .CONST_BITVECTOR =>
+    let w : Nat := t.getSort.getBitVectorSize.toNat
+    let t : Q(Std.BitVec $w) ← rconsTerm pf.getResult[0]!
+    let t' : Q(Std.BitVec $w) ← rconsTerm pf.getResult[1]!
+    addThm q($t = $t') q(Eq.refl $t)
+  | _ =>
+    let type ← rconsTerm pf.getResult
+    addTrust type pf
 
 def rconsSkolemize (pf : cvc5.Proof) (rconsProof : cvc5.Proof → RconsM Expr) : RconsM Expr := do
   if pf.getChildren[0]!.getResult.getKind == .EXISTS then
@@ -1085,6 +1149,8 @@ partial def rconsProof (pf : cvc5.Proof) : RconsM Expr := do
     let t  : Q($α) ← rconsTerm pf.getResult[0]!
     let t' : Q($α) ← rconsTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
+  | .BV_BITBLAST_STEP =>
+    rconsBB pf
   | .SKOLEM_INTRO =>
     let α : Q(Type) ← rconsSort pf.getResult[0]!.getSort
     let k : Q($α) ← rconsTerm pf.getResult[0]!
