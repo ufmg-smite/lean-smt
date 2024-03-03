@@ -2,6 +2,8 @@ import cvc5
 import Lean
 import Qq
 
+import Mathlib.Data.Real.Archimedean
+
 import Smt.Reconstruct.Builtin
 import Smt.Reconstruct.Options
 import Smt.Reconstruct.Prop
@@ -32,25 +34,32 @@ open Lean hiding Rat mkRat
 open Qq cvc5
 open Smt.Reconstruct.Prop
 
-def findFVarId (n : Name) : MetaM FVarId := do
-  return match (← getLCtx).findFromUserName? n with
-  | some d => d.fvarId
-  | none   => ⟨n⟩
+def getFVarExpr! (n : Name) : MetaM Expr := do
+  match (← getLCtx).findFromUserName? n with
+  | some d => return d.toExpr
+  | none   => throwError "unknown free variable '{n}'"
+
+def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
+  match (← getLCtx).findFromUserName? n with
+  | some d => return d.toExpr
+  | none   =>
+    let c ← getConstInfo n
+    return .const c.name (c.numLevelParams.iterate (.zero :: ·) [])
 
 def rconsSort (s : cvc5.Sort) : MetaM Expr := do match s.getKind with
   | .BOOLEAN_SORT => return q(Prop)
   | .INTERNAL_SORT_KIND
-  | .UNINTERPRETED_SORT => return .fvar (← findFVarId s.getSymbol)
+  | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol
   | .BITVECTOR_SORT =>
     let w : Nat := s.getBitVectorSize.val
     return q(Std.BitVec $w)
   | .INTEGER_SORT => return q(Int)
-  | .REAL_SORT => return q(Rat)
+  | .REAL_SORT => return q(Real)
   | _ => return .const `sorry []
 
 partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
-  | .VARIABLE => return .fvar (← findFVarId (getVariableName t))
-  | .CONSTANT => return .fvar (← findFVarId t.getSymbol)
+  | .VARIABLE => getFVarExpr! (getVariableName t)
+  | .CONSTANT => getFVarOrConstExpr! t.getSymbol
   | .CONST_BOOLEAN => return if t.getBooleanValue then q(True) else q(False)
   | .NOT =>
     let b : Q(Prop) ← rconsTerm t[0]!
@@ -144,15 +153,24 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       return q(-(OfNat.ofNat $x' : Int))
   | .CONST_RATIONAL =>
     let x : Rat := t.getRationalValue
-    let num : Int := x.num
-    let den : Nat := x.den
-    return q(mkRat $num $den)
+    let num : Q(Real) := mkRealLit x.num.natAbs
+    if x.den == 1 then
+      if x.num ≥ 0 then
+        return q($num)
+      else
+        return q(-$num)
+    else
+      let den : Q(Real) := mkRealLit x.den
+      if x.num ≥ 0 then
+        return q($num / $den)
+      else
+        return q(-$num / $den)
   | .NEG =>
     if t.getSort.isInteger then
       let x : Q(Int) ← rconsTerm t[0]!
       return q(-$x)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
+      let x : Q(Real) ← rconsTerm t[0]!
       return q(-$x)
   | .SUB =>
     if t.getSort.isInteger then
@@ -160,8 +178,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x - $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x - $y)
   | .ADD =>
     if t.getSort.isInteger then
@@ -169,8 +187,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x + $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x + $y)
   | .MULT =>
     if t.getSort.isInteger then
@@ -178,8 +196,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x * $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x * $y)
   | .INTS_DIVISION =>
     let x : Q(Int) ← rconsTerm t[0]!
@@ -190,8 +208,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
     let y : Q(Int) ← rconsTerm t[1]!
     return q($x % $y)
   | .DIVISION =>
-    let x : Q(Rat) ← rconsTerm t[0]!
-    let y : Q(Rat) ← rconsTerm t[1]!
+    let x : Q(Real) ← rconsTerm t[0]!
+    let y : Q(Real) ← rconsTerm t[1]!
     return q($x / $y)
   | .ABS =>
     let x : Q(Int) ← rconsTerm t[0]!
@@ -202,8 +220,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x ≤ $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x ≤ $y)
   | .LT =>
     if t[0]!.getSort.isInteger then
@@ -211,8 +229,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x < $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x < $y)
   | .GEQ =>
     if t[0]!.getSort.isInteger then
@@ -220,8 +238,8 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x ≥ $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x ≥ $y)
   | .GT =>
     if t[0]!.getSort.isInteger then
@@ -229,21 +247,28 @@ partial def rconsTerm (t : cvc5.Term) : MetaM Expr := do match t.getKind with
       let y : Q(Int) ← rconsTerm t[1]!
       return q($x > $y)
     else
-      let x : Q(Rat) ← rconsTerm t[0]!
-      let y : Q(Rat) ← rconsTerm t[1]!
+      let x : Q(Real) ← rconsTerm t[0]!
+      let y : Q(Real) ← rconsTerm t[1]!
       return q($x > $y)
   | .TO_REAL =>
     let x : Q(Int) ← rconsTerm t[0]!
-    return q($x : Rat)
+    return q($x : Real)
   | .TO_INTEGER =>
-    let x : Q(Rat) ← rconsTerm t[0]!
-    return q(Rat.floor $x)
+    let x : Q(Real) ← rconsTerm t[0]!
+    return q(⌊$x⌋)
   | .IS_INTEGER =>
-    let x : Q(Rat) ← rconsTerm t[0]!
-    return q(Rat.isInt $x)
+    let x : Q(Real) ← rconsTerm t[0]!
+    return q($x = ⌊$x⌋)
   | _ =>
     throwError "Unsupported kind: {repr t.getKind} : {t}"
 where
+  mkRealLit (n : Nat) : Q(Real) := match h : n with
+    | 0     => q(0 : Real)
+    | 1     => q(1 : Real)
+    | _ + 2 =>
+      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(instNatAtLeastTwo)
+      let h := mkApp3 q(@instOfNat Real) (mkRawNatLit n) q(Real.natCast) h
+      mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   rconsForallSkolems (q : cvc5.Term) (n : Nat) : MetaM (Array Expr) := do
     let mut xs : Array (Name × (Array Expr → MetaM Expr)) := #[]
     let mut es := #[]
@@ -280,6 +305,9 @@ where
     return es
   rconsSkolem (t : cvc5.Term) : MetaM Expr := do match t.getSkolemId with
     | .PURIFY => rconsTerm t.getSkolemArguments[0]!
+    | .DIV_BY_ZERO => return q(fun (x : Real) => x / 0)
+    | .INT_DIV_BY_ZERO => return q(fun (x : Int) => x / 0)
+    | .MOD_BY_ZERO => return q(fun (x : Int) => x % 0)
     | .QUANTIFIERS_SKOLEMIZE =>
       let q := t.getSkolemArguments[0]!
       let n := t.getSkolemArguments[1]!.getIntegerValue.toNat
@@ -1193,6 +1221,7 @@ def prove (query : String) (timeout : Option Nat) : Lean.MetaM (Except SolverErr
   Solver.setOption "enum-inst" "true"
   Solver.setOption "produce-models" "true"
   Solver.setOption "produce-proofs" "true"
+  Solver.setOption "proof-elim-subtypes" "true"
   Solver.setOption "proof-granularity" "dsl-rewrite"
   Solver.parse query
   let r ← Solver.checkSat

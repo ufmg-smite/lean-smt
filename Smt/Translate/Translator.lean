@@ -27,7 +27,7 @@ abbrev TranslationM := StateT TranslationM.State MetaM
 
 /-- A function which translates some subset of Lean expressions to SMT-LIBv2 `Term`s. We use
 the combination of all registered translators to encode a fragment of Lean into the many-sorted
-first-order logic of SMT-LIBv2. New translators can be registered with the `smtTranslator` attribute.
+first-order logic of SMT-LIBv2. New translators can be registered with the `smt_translate` attribute.
 
 The input expression is guaranteed to be well-typed in the `MetaM` context. The return value is:
 - `some t` when the translator supports the input and translates it to `t`
@@ -128,8 +128,6 @@ def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
   withTraceNode `smt.debug.translate (traceTranslation e ·) do
     modify fun st => { st with depConstants := .empty }
     trace[smt.debug.translate.expr] "before: {e}"
-    let e ← Util.unfoldAllProjInsts e
-    trace[smt.debug.translate.expr] "after unfolding projs: {e}"
     let tm ← applyTranslators! e
     trace[smt.debug.translate.expr] "translated: {tm}"
     return (tm, (← get).depConstants)

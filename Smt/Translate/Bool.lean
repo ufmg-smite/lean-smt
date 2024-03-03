@@ -6,27 +6,28 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
+import Qq
 
 import Smt.Translate.Translator
 
 namespace Smt.Translate.Bool
 
-open Lean Expr
+open Qq
 open Translator Term
 
-@[smtTranslator] def replaceConst : Translator
-  | const `Bool.true _                             => return symbolT "true"
-  | const `Bool.false _                            => return symbolT "false"
-  | app (app (const `BEq.beq _) (const `Bool _)) _ => return symbolT "="
-  | _                                              => return none
+@[smt_translate] def translateType : Translator := fun (e : Q(Type)) => match e with
+  | ~q(Bool) => return symbolT "Bool"
+  | _        => return none
 
-@[smtTranslator] def replaceEq : Translator
-  | app (app (const `Decidable.decide _)
-             (app (app (app (const `Eq _) (const `Bool _))
-                       a) b)) _ => do
-    let tmA ← applyTranslators! a
-    let tmB ← applyTranslators! b
-    return Term.mkApp2 (symbolT "=") tmA tmB
-  | _ => return none
+@[smt_translate] def translateBool : Translator := fun (e : Q(Bool)) => match e with
+  | ~q(true)              => return symbolT "true"
+  | ~q(false)             => return symbolT "false"
+  | ~q(($x : Bool) == $y) => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(($x : Bool) != $y) => return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
+  | _                     => return none
+
+@[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
+  | ~q(($n : Bool) = $m) => return mkApp2 (symbolT "=") (← applyTranslators! n) (← applyTranslators! m)
+  | _                    => return none
 
 end Smt.Translate.Bool

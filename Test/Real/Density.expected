@@ -1,0 +1,8 @@
+goal: x < z → ∃ y, x < y ∧ y < z
+
+query:
+(declare-const x Real)
+(declare-const z Real)
+(assert (not (=> (< x z) (exists ((y Real)) (and (< x y) (< y z))))))
+(check-sat)
+Test/Real/Density.lean:3:8: warning: declaration uses 'sorry'

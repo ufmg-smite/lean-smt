@@ -1,20 +1,20 @@
 goal: dvd a (b + c + d) = true
 
 query:
-(declare-const a Int)
-(declare-const d Int)
 (declare-fun dvd (Int Int) Bool)
+(declare-const d Int)
+(declare-const a Int)
 (assert (= (dvd a d) true))
 (declare-const c Int)
 (assert (= (dvd a c) true))
 (declare-const b Int)
 (assert (= (dvd a b) true))
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
-(assert (not (= (dvd a (+ (+ b c) d)) true)))
+(assert (distinct (dvd a (+ (+ b c) d)) true))
 (check-sat)
 Test/Int/DvdTimeout.lean:12:25: error: unsolved goals
-a b c d : Int
-dvdax : ∀ (x y z : Int), dvd x y = true → dvd x z = true → dvd x (y + z) = true
+a b c d : ℤ
+dvdax : ∀ (x y z : ℤ), dvd x y = true → dvd x z = true → dvd x (y + z) = true
 h1 : dvd a b = true
 h2 : dvd a c = true
 h3 : dvd a d = true

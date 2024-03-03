@@ -6,61 +6,41 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
+import Qq
 
 import Smt.Translate.Translator
 
 namespace Smt.Translate.Nat
 
+open Qq
 open Lean Expr
 open Translator Term
 
-@[smtTranslator] def replaceConst : Translator
-  | const `Nat.add _                            => return symbolT "+"
-  | const `Nat.mul _                            => return symbolT "*"
-  | const `Nat.div _                            => return symbolT "div"
-  | const `Nat.mod _                            => return symbolT "mod"
-  | const `Nat.le _                             => return symbolT "<="
-  | const `Nat.lt _                             => return symbolT "<"
-  | const `Nat.ge _                             => return symbolT ">="
-  | const `Nat.gt _                             => return symbolT ">"
-  -- TODO: why is this not removed at unfoldProjInsts ?
-  | app (app (const `GE.ge _) (const `Nat _)) _ => return symbolT ">="
-  | _                                           => return none
+@[smt_translate] def translateNat : Translator := fun (e : Q(Nat)) => match e with
+  | ~q(OfNat.ofNat $n) => return if let some n := n.natLit? then literalT (toString n) else none
+  | ~q(.zero)    => return literalT "0"
+  | ~q(.succ $n) => return mkApp2 (symbolT "+") (← applyTranslators! n) (literalT "1")
+  | ~q($n + $m)  => return mkApp2 (symbolT "+") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q($n * $m)  => return mkApp2 (symbolT "*") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q($n / $m)  => return mkApp2 (symbolT "div") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q($n % $m)  => return mkApp2 (symbolT "mod") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q($n - $m)  => return mkApp3 (symbolT "ite") (mkApp2 (symbolT "<=") (← applyTranslators! m) (← applyTranslators! n))
+                                                  (mkApp2 (symbolT "-") (← applyTranslators! n) (← applyTranslators! m))
+                                                  (literalT "0")
+  | _            => return none
 
-@[smtTranslator] def replaceNatLit : Translator
-  | lit (.natVal n) => return literalT (toString n)
-  | _               => return none
+@[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
+  | ~q(($n : Nat) < $m) => return mkApp2 (symbolT "<") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q(($n : Nat) ≤ $m) => return mkApp2 (symbolT "<=") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q(($n : Nat) ≥ $m) => return mkApp2 (symbolT ">=") (← applyTranslators! n) (← applyTranslators! m)
+  | ~q(($n : Nat) > $m) => return mkApp2 (symbolT ">") (← applyTranslators! n) (← applyTranslators! m)
+  | _                   => return none
 
-/-- Removes casts of literals to `Nat` in `e`. For example, given
-    `(app (app (app (OfNat.ofNat _) _) (LIT 0) _) _)`, this method removes
-    all applications and returns just `(LIT 0)`. -/
-@[smtTranslator] def removeOfNat : Translator
-  | app (app (app (const ``OfNat.ofNat _) _) l) _ => applyTranslators! l
-  | _                                             => return none
-
-/-- Replaces `Nat` constructors `Nat.zero` and `Nat.succ n` for with `0` and
-    `(+ n 1)`. -/
-@[smtTranslator] def replaceCtr : Translator
-  | app (const ``Nat.succ _) e => do
-    let tmE ← applyTranslators! e
-    return Term.mkApp2 (symbolT "+") tmE (literalT "1")
-  | const ``Nat.zero _         => return literalT "0"
-  | _                          => return none
-
-/-- Removes applications of `Nat.decLe` in `e`.
-    TODO: replace by unfolding projections. -/
-@[smtTranslator] def removeDecLe : Translator
-  | app (app f (app (app (const ``Nat.decLe _) _) _)) e => do
-    let tmF ← applyTranslators! f
-    let tmE ← applyTranslators! e
-    return appT tmF tmE
-  | _ => return none
-
-/- Replaces quantified expressions over natural numbers for with versions that
-    ensure the quantified variables are greater than or equal to 0. For
-    example, given `∀ x : Nat, p(x)`, this method returns the expr
-    `∀ x : Nat, x ≥ 0 → p(x)`. -/
-@[smtTranslator] def replaceForalls : Translator
+/- Translates quantified expressions over natural numbers for with versions that
+   ensure the quantified variables are greater than or equal to 0. For
+   example, given `∀ x : Nat, p(x)`, this method returns the expr
+   `∀ x : Nat, x ≥ 0 → p(x)`. -/
+@[smt_translate] def translateForalls : Translator
   | e@(forallE n t@(const ``Nat _) b bi) => do
     if e.isArrow then return none
     Meta.withLocalDecl n bi t fun x => do

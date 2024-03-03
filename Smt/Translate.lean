@@ -12,7 +12,7 @@ import Smt.Translate.Int
 import Smt.Translate.Nat
 import Smt.Translate.Prop
 import Smt.Translate.Query
-import Smt.Translate.Rat
+import Smt.Translate.Real
 import Smt.Translate.Solver
 import Smt.Translate.String
 import Smt.Translate.Term

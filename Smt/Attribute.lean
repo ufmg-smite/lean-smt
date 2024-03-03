@@ -64,7 +64,7 @@ def registerSmtAttr (attrName : Name) (attrDescr : String)
       modifyEnv fun env => smtExt.modifyState env fun _ => s
   }
 
-initialize registerSmtAttr `smtTranslator
+initialize registerSmtAttr `smt_translate
              "Utilize this function to translate Lean expressions to SMT terms."
 
 end Smt.Attribute

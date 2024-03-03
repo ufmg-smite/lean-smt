@@ -1,6 +1,6 @@
 goal: String.replace "a" "a" "b" = "b"
 
 query:
-(assert (not (= (str.replace_all "a" "a" "b") "b")))
+(assert (distinct (str.replace_all "a" "a" "b") "b"))
 (check-sat)
 Test/String/Replace.lean:3:8: warning: declaration uses 'sorry'
