@@ -15,7 +15,7 @@ goal: x ≤ max' x y ∧ y ≤ max' x y
 query:
 (define-sort Nat () Int)
 (define-fun |Nat.max'| ((x Nat) (y Nat)) Nat (ite (<= x y) y x))
-(assert (forall ((_uniq.3530 Nat)) (=> (>= _uniq.3530 0) (forall ((_uniq.3531 Nat)) (=> (>= _uniq.3531 0) (>= (|Nat.max'| _uniq.3530 _uniq.3531) 0))))))
+(assert (forall ((_uniq.3518 Nat)) (=> (>= _uniq.3518 0) (forall ((_uniq.3519 Nat)) (=> (>= _uniq.3519 0) (>= (|Nat.max'| _uniq.3518 _uniq.3519) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-const y Nat)
