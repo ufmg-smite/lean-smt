@@ -1,5 +1,1 @@
-goal: ∀ (x : Nat), ∃ y, ↑x ≤ y
-
-query:
-(assert (not (forall ((x Int)) (=> (>= x 0) (exists ((y Int)) (<= x y))))))
-(check-sat)
+Test/Int/ForallExists.lean:4:2: error: incorrect number of universe levels Nat.cast

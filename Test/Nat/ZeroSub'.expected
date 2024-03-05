@@ -1,11 +1,14 @@
-Test/Nat/ZeroSub'.lean:6:12: error: tactic 'rewrite' failed, motive is not type correct
-a.0 : «Nat.sub» = fun x y => if x < y then 0 else x - y
-a.1 :
-  ∀ («_uniq.189» : Int),
-    «_uniq.189» ≥ 0 → ∀ («_uniq.190» : Int), «_uniq.190» ≥ 0 → «Nat.sub» «_uniq.189» «_uniq.190» ≥ 0
-a.2 : ¬«Nat.sub» 0 0 = 0
-s.3 : 0 = 0
-s.4 : «Nat.sub» 0 0 = (fun x y => if x < y then 0 else x - y) 0 0
-⊢ («Nat.sub» 0 0 = 0) = ((fun x y => if x < y then 0 else x - y) 0 0 = 0)
-Test/Nat/ZeroSub'.lean:7:17: error: failed to synthesize
-  Decidable (x ≥ 0)
+Test/Nat/ZeroSub'.lean:6:17: error: type mismatch
+  HEq.rfl
+has type
+  HEq ?m.574 ?m.574 : Prop
+but is expected to have type
+  ¬Smt.Reconstruct.andN' [] ¬0 - Nat.zero = 0 : Prop
+Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch
+  HAdd.hAdd x
+argument
+  x
+has type
+  ℕ : Type
+but is expected to have type
+  ℤ : Type

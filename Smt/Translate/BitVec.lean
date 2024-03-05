@@ -6,6 +6,7 @@ Authors: Wojciech Nawrocki
 -/
 
 import Lean
+import Qq
 import Std
 
 import Smt.Translate.Translator
@@ -13,60 +14,83 @@ import Smt.Translate.Translator
 namespace Smt.Translate.BitVec
 
 open Lean Expr
+open Qq
 open Std
 open Translator Term
 
-@[smtTranslator] def replaceType : Translator
-  | e@(app (const ``BitVec _) n) => do
-    let n ← Meta.whnf n
-    let some n ← Meta.evalNat n |>.run
-      | throwError "bitvector type{indentD e}\nhas variable width"
-    return mkApp2 (symbolT "_") (symbolT "BitVec") (literalT (toString n))
-  | _ => return none
+def getWidth (e : Expr) : MetaM (Option Nat) := do
+  let t : Q(Type) ← Meta.inferType e
+  match t with
+  | ~q(BitVec $w) => Meta.evalNat (← Meta.whnf w)
+  | _             => return none
 
 /-- Make a binary bitvector literal with value `n` and width `w`. -/
 def mkLit (w : Nat) (n : Nat) : Term :=
   let bits := Nat.toDigits 2 n |>.take w
   literalT <| bits.foldl (init := "#b".pushn '0' (w - bits.length)) (·.push ·)
 
-@[smtTranslator] def replaceEq : Translator
-  -- TODO: we should really just support beq/bne across all types uniformly
-  | app (app (const ``BEq.beq _) (app (const ``BitVec _) _)) _ => return symbolT "="
-  | app (app (app (app (const ``bne _) (app (const ``BitVec _) _)) _) e) e' =>
-    return appT (symbolT "not") (mkApp2 (symbolT "=") (← applyTranslators! e) (← applyTranslators! e'))
-  | _ => return none
+def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
+  let some n ← Meta.evalNat (← Meta.whnf n) |>.run
+    | throwError "literal{indentD n}\nis not constant in{indentD e}"
+  return n
 
-@[smtTranslator] def replaceFun : Translator
+def reduceWidth (w : Expr) (e : Expr) : TranslationM Nat := do
+  let some w ← Meta.evalNat (← Meta.whnf w) |>.run
+    | throwError "bitvector width{indentD w}\nis not constant in{indentD e}"
+  return w
+
+@[smt_translate] def translateType : Translator := fun (e : Q(Type)) => match e with
+  | ~q(BitVec $w) => do
+    let w ← Meta.whnf w
+    let some w ← (Meta.evalNat w).run
+      | throwError "bitvector type{indentD e}\nhas variable width"
+    return mkApp2 (symbolT "_") (symbolT "BitVec") (literalT (toString w))
+  | _             => return none
+
+open BitVec in
+@[smt_translate] def translateBitVec : Translator := fun e => do
+  let some w ← getWidth e | return none
+  let e : Q(BitVec $w) ← pure e
+  match e with
+  | ~q(@HShiftLeft.hShiftLeft (BitVec _) (BitVec _) _ _ $x $y)   =>
+    return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(@HShiftRight.hShiftRight (BitVec _) (BitVec _) _ _ $x $y) =>
+    return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(@zeroExtend $v _ $x) =>
+    let v ← reduceWidth v e
+    return mkApp3 (symbolT "_") (symbolT "zero_extend") (literalT (toString (w - v))) (← applyTranslators! x)
+  | ~q(@signExtend $v _ $x) =>
+    let v ← reduceWidth v e
+    return mkApp3 (symbolT "_") (symbolT "sign_extend") (literalT (toString (w - v))) (← applyTranslators! x)
+  | ~q(BitVec.ofNat _ $n) => return mkLit w (← reduceLit n e)
+  | ~q(OfNat.ofNat $n)    => return mkLit w (← reduceLit n e)
+  | ~q(-$x)               => return appT (symbolT "bvneg") (← applyTranslators! x)
+  | ~q(~~~$x)             => return appT (symbolT "bvnot") (← applyTranslators! x)
+  | ~q($x + $y)           => return mkApp2 (symbolT "bvadd") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x - $y)           => return mkApp2 (symbolT "bvsub") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x * $y)           => return mkApp2 (symbolT "bvmul") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(smtUDiv $x $y)     => return mkApp2 (symbolT "bvudiv") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x % $y)           => return mkApp2 (symbolT "bvurem") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(smtSDiv $x $y)     => return mkApp2 (symbolT "bvsdiv") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(srem $x $y)        => return mkApp2 (symbolT "bvsrem") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(smod $x $y)        => return mkApp2 (symbolT "bvsmod") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x &&& $y)         => return mkApp2 (symbolT "bvand") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x ||| $y)         => return mkApp2 (symbolT "bvor") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x ^^^ $y)         => return mkApp2 (symbolT "bvxor") (← applyTranslators! x) (← applyTranslators! y)
+  | _                     => return none
+
+@[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
+  | ~q(($x : BitVec _) < $y) => return mkApp2 (symbolT "bvult") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(($x : BitVec _) ≤ $y) => return mkApp2 (symbolT "bvule") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(($x : BitVec _) ≥ $y) => return mkApp2 (symbolT "bvuge") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(($x : BitVec _) > $y) => return mkApp2 (symbolT "bvugt") (← applyTranslators! x) (← applyTranslators! y)
+  | _                        => return none
+
+@[smt_translate] def replaceFun : Translator
   | e@(app (const ``BitVec.zero _) w) => do
     let w ← reduceWidth w e
     if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
     return mkLit w 0
-  | e@(app (app (const ``BitVec.ofNat _) w) n) => do
-    let w ← reduceWidth w e
-    let n ← reduceLit n e
-    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
-    return mkLit w n
-  | app (const ``BitVec.add _) _            => return symbolT "bvadd"
-  | app (const ``BitVec.sub _) _            => return symbolT "bvsub"
-  | app (const ``BitVec.mul _) _            => return symbolT "bvmul"
-  | app (const ``BitVec.umod _) _           => return symbolT "bvurem"
-  | app (const ``BitVec.udiv _) _           => return symbolT "bvudiv"
-  | app (const ``BitVec.ult _) _            => return symbolT "bvult"
-  | app (const ``BitVec.ule _) _            => return symbolT "bvule"
-  | app (const ``BitVec.not _) _            => return symbolT "bvnot"
-  | app (const ``BitVec.and _) _            => return symbolT "bvand"
-  | app (const ``BitVec.or _) _             => return symbolT "bvor"
-  | app (const ``BitVec.xor _) _            => return symbolT "bvxor"
-  | e@(app (app (app (const ``BitVec.shiftLeft _) w) x) n) => do
-    let w ← reduceWidth w e
-    let n ← reduceLit n e
-    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
-    return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (mkLit w n)
-  | e@(app (app (app (const ``BitVec.ushiftRight _) w) x) n) => do
-    let w ← reduceWidth w e
-    let n ← reduceLit n e
-    if w == 0 then throwError "cannot emit bitvector literal{indentD e}\nof bitwidth 0"
-    return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (mkLit w n)
   | e@(app (app (app (const ``BitVec.rotateLeft _) _) x) n) => do
     let n ← reduceLit n e
     return appT
@@ -77,7 +101,7 @@ def mkLit (w : Nat) (n : Nat) : Term :=
     return appT
       (mkApp2 (symbolT "_") (symbolT "rotate_right") (literalT (toString n)))
       (← applyTranslators! x)
-  | app (app (const ``BitVec.append _) _) _ => return symbolT "concat"
+  | app (app (app (app (const ``HAppend.hAppend _) (app (const ``BitVec _) _)) _) _) _ => return symbolT "concat"
   | e@(app (app (app (const ``BitVec.extractLsb _) _) i) j) => do
     let i ← reduceLit i e
     let j ← reduceLit j e
@@ -85,27 +109,6 @@ def mkLit (w : Nat) (n : Nat) : Term :=
   | e@(app (app (const ``BitVec.replicate _) _) i) => do
     let i ← reduceLit i e
     return mkApp2 (symbolT "_") (symbolT "repeat") (literalT (toString i))
-  | e@(app (app (const ``BitVec.zeroExtend _) w) v) => do
-    let w ← reduceWidth w e
-    let v ← reduceLit v e
-    if v ≤ w then
-      throwError "{v} is not greater than bitvector width {w} in{indentD e}"
-    return mkApp2 (symbolT "_") (symbolT "zero_extend") (literalT (toString (v - w)))
-  | e@(app (app (const ``BitVec.signExtend _) w) v) => do
-    let w ← reduceWidth w e
-    let v ← reduceLit v e
-    if v ≤ w then
-      throwError "{v} is not greater than bitvector width {w} in{indentD e}"
-    return mkApp2 (symbolT "_") (symbolT "sign_extend") (literalT (toString (v - w)))
   | _ => return none
-where
-  reduceWidth (w : Expr) (e : Expr) : TranslationM Nat := do
-    let some w ← Meta.evalNat (← Meta.whnf w) |>.run
-      | throwError "bitvector width{indentD w}\nis not constant in{indentD e}"
-    return w
-  reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
-    let some n ← Meta.evalNat (← Meta.whnf n) |>.run
-      | throwError "literal{indentD n}\nis not constant in{indentD e}"
-    return n
 
 end Smt.Translate.BitVec

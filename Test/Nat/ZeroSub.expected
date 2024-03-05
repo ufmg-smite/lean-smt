@@ -2,9 +2,7 @@ goal: 0 - x = 0
 
 query:
 (define-sort Nat () Int)
-(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
-(assert (forall ((_uniq.150 Nat)) (=> (>= _uniq.150 0) (forall ((_uniq.151 Nat)) (=> (>= _uniq.151 0) (>= (Nat.sub _uniq.150 _uniq.151) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
-(assert (not (= (Nat.sub 0 x) 0)))
+(assert (distinct (ite (<= x 0) (- 0 x) 0) 0))
 (check-sat)

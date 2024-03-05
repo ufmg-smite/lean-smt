@@ -1,5 +1,5 @@
 goal: true = true
 
 query:
-(assert (not (= true true)))
+(assert (distinct true true))
 (check-sat)

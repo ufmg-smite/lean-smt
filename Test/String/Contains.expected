@@ -1,6 +1,10 @@
 goal: String.contains "a" (Char.ofNat 97) = true
 
 query:
-(assert (not (= (str.contains "a" (str.from_code 97)) true)))
+(declare-sort Char 0)
+(define-sort Nat () Int)
+(declare-fun Char.ofNat (Nat) Char)
+(declare-fun String.contains (String Char) Bool)
+(assert (distinct (String.contains "a" (Char.ofNat (+ 96 1))) true))
 (check-sat)
 Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'

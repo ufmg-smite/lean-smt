@@ -10,11 +10,11 @@ Test/Int/Arith.lean:3:0: warning: declaration uses 'sorry'
 goal: (n - m) * k + l = n * k - m * k + l
 
 query:
-(declare-const l Int)
-(declare-const n Int)
 (declare-const m Int)
 (declare-const k Int)
-(assert (not (= (+ (* (- n m) k) l) (+ (- (* n k) (* m k)) l))))
+(declare-const n Int)
+(declare-const l Int)
+(assert (distinct (+ (* (- n m) k) l) (+ (- (* n k) (* m k)) l)))
 (check-sat)
 Test/Int/Arith.lean:7:0: warning: declaration uses 'sorry'
 goal: n + k ≤ m + l
@@ -23,8 +23,8 @@ query:
 (declare-const k Int)
 (declare-const l Int)
 (assert (<= k l))
-(declare-const n Int)
 (declare-const m Int)
+(declare-const n Int)
 (assert (<= n m))
 (assert (not (<= (+ n k) (+ m l))))
 (check-sat)
