@@ -86,30 +86,6 @@ theorem notXorElim2 (h : ¬XOr p q) : ¬p ∨ q :=
   | Or.inl hp, Or.inr hnq =>
     absurd (.inl hp hnq) h
 
-theorem iteElim1 [hc : Decidable c] : ite c a b → ¬ c ∨ a := by
-  intros h
-  cases hc with
-  | isTrue hc   => exact Or.inr h
-  | isFalse hnc => exact Or.inl hnc
-
-theorem iteElim2 [hc : Decidable c] : ite c a b → c ∨ b := by
-  intros h
-  cases hc with
-  | isTrue hc   => exact Or.inl hc
-  | isFalse hnc => exact Or.inr h
-
-theorem notIteElim1 [hc : Decidable c] : ¬ ite c a b → ¬ c ∨ ¬ a := by
-  intros h
-  cases hc with
-  | isTrue hc   => exact Or.inr h
-  | isFalse hnc => exact Or.inl hnc
-
-theorem notIteElim2 [hc : Decidable c] : ¬ ite c a b → c ∨ ¬ b := by
-  intros h
-  cases hc with
-  | isTrue hc   => exact Or.inl hc
-  | isFalse hnc => exact Or.inr h
-
 theorem contradiction : ∀ {P : Prop}, P → ¬ P → False := λ p np => np p
 
 theorem orComm : ∀ {P Q : Prop}, P ∨ Q → Q ∨ P := by
@@ -164,19 +140,6 @@ theorem orImplies₃ : ∀ {p q : Prop}, p ∨ q → ¬ p → q := by
   cases h with
   | inl p => exact False.elim (np p)
   | inr q => exact q
-
-theorem scopes : ∀ {ps : List Prop} {q : Prop}, impliesN ps q → andN ps → q :=
-  by intros ps q h
-     match ps with
-     | []   => intro; exact h
-     | [p]  => unfold andN
-               unfold impliesN at h
-               exact h
-     | p₁::p₂::ps => unfold andN
-                     unfold impliesN at h
-                     intro ⟨hp₁, hps⟩
-                     revert hps
-                     exact scopes (h hp₁)
 
 def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
   by intros p q h
@@ -360,51 +323,6 @@ theorem cnfXorNeg1 : (XOr p q) ∨ ¬p ∨ q :=
 
 theorem cnfXorNeg2 : (XOr p q) ∨ p ∨ ¬q :=
   orImplies notXorElim1
-
-theorem cnfItePos1 [h : Decidable c] : ¬ (ite c a b) ∨ ¬ c ∨ a := by
-  apply orImplies
-  intro hite
-  have hite' := notNotElim hite
-  match h with
-  | isTrue _    => exact Or.inr hite'
-  | isFalse hnc => exact Or.inl hnc
-
-theorem cnfItePos2 [h : Decidable c] : ¬ (ite c a b) ∨ c ∨ b := by
-  apply orImplies
-  intro hite
-  have hite' := notNotElim hite
-  match h with
-  | isFalse _ => exact Or.inr hite'
-  | isTrue hc => exact Or.inl hc
-
-theorem cnfItePos3 [h : Decidable c] : ¬ (ite c a b) ∨ a ∨ b := by
-  apply orImplies
-  intro hite
-  have hite' := notNotElim hite
-  match h with
-  | isFalse _ => exact Or.inr hite'
-  | isTrue _  => exact Or.inl hite'
-
-theorem cnfIteNeg1 [h : Decidable c] : (ite c a b) ∨ ¬ c ∨ ¬ a := by
-  apply orImplies
-  intro hnite
-  match h with
-  | isTrue _    => exact Or.inr hnite
-  | isFalse hnc => exact Or.inl hnc
-
-theorem cnfIteNeg2 [h : Decidable c] : (ite c a b) ∨ c ∨ ¬ b   := by
-  apply orImplies
-  intro hnite
-  match h with
-  | isFalse _ => exact Or.inr hnite
-  | isTrue hc => exact Or.inl hc
-
-theorem cnfIteNeg3 [h : Decidable c] : (ite c a b) ∨ ¬ a ∨ ¬ b := by
-  apply orImplies
-  intro hnite
-  match h with
-  | isFalse _ => exact Or.inr hnite
-  | isTrue _  => exact Or.inl hnite
 
 theorem iteIntro {α : Type u} {c : Prop} {t e : α} : ite c ((ite c t e) = t) ((ite c t e) = e) := by
   match Classical.em c with

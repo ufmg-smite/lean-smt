@@ -8,15 +8,16 @@ Authors: Abdalrhman Mohamed
 import Lean
 
 import Smt.Dsl.Sexp
-import Smt.Reconstruct
-import Smt.Translate
+import Smt.Reconstruct.Prop.Lemmas
+import Smt.Reconstruct.Reconstruct
+import Smt.Translate.Query
 import Smt.Util
 
 namespace Smt
 
 open Lean hiding Command
 open Elab Tactic Qq
-open Smt Reconstruct Translate Query Solver
+open Smt Reconstruct Translate Query
 
 initialize
   registerTraceClass `smt.debug
@@ -153,7 +154,7 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
     trace[smt.debug] m!"\nerror reason:\n{repr e}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .ok pf =>
-    let (fv, mv, mvs) ← rconsProof (← Tactic.getMainGoal) pf
+    let (fv, mv, mvs) ← reconstructProof (← Tactic.getMainGoal) pf
     mv.withContext do
       let ts ← hs.mapM (fun h => Meta.inferType h)
       let mut gs ← mv.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])

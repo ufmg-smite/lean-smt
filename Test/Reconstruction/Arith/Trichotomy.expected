@@ -1,3 +1,0 @@
-Test/Reconstruction/Arith/Trichotomy.lean:1:0: error: object file './.lake/build/lib/Smt/Reconstruct/Arith.olean' of module Smt.Reconstruct.Arith does not exist
-Test/Reconstruction/Arith/Trichotomy.lean:3:5: error: unknown namespace 'Smt.Reconstruct.Arith'
-Test/Reconstruction/Arith/Trichotomy.lean:5:24: error: expected token

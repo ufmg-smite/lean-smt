@@ -1,7 +1,7 @@
 Test/Nat/ZeroSub'.lean:6:17: error: type mismatch
   HEq.rfl
 has type
-  HEq ?m.574 ?m.574 : Prop
+  HEq ?m.529 ?m.529 : Prop
 but is expected to have type
   ¬Smt.Reconstruct.andN' [] ¬0 - Nat.zero = 0 : Prop
 Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch

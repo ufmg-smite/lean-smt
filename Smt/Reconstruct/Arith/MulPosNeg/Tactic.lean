@@ -14,8 +14,6 @@ import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Arith
 
-noncomputable instance : LinearOrderedRing Real := inferInstance
-
 open Lean
 open Elab Tactic Expr Meta
 

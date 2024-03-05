@@ -9,8 +9,6 @@ import Mathlib.Data.Real.Basic
 
 namespace Smt.Reconstruct.Arith
 
-noncomputable instance : LinearOrderedRing Real := inferInstance
-
 variable {α : Type}
 
 variable [LinearOrderedRing α]

@@ -11,29 +11,33 @@ import Smt.Reconstruct.Arith.MulPosNeg.Lemmas
 
 namespace Smt.Reconstruct.Arith
 
-theorem Real.neg_lt_neg {a b : ℝ} (h : a < b) : -a > -b := by
+variable {α : Type} [LinearOrderedRing α] [FloorRing α]
+
+theorem Real.neg_lt_neg {a b : α} (h : a < b) : -a > -b := by
   simp
   exact h
 
-theorem Real.neg_le_neg {a b : ℝ} (h : a ≤ b) : -a ≥ -b := by
+theorem Real.neg_le_neg {a b : α} (h : a ≤ b) : -a ≥ -b := by
   simp
   exact h
 
-theorem intTightLb' : ∀ {i : Int} {c : ℝ}, i > c → i ≥ ⌊c⌋ + 1 := by
+theorem castLE' : ∀ {a b : Int}, a ≤ b → (a : α) ≤ b := by simp
+
+theorem intTightLb' : ∀ {i : Int} {c : α}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h
   cases lt_trichotomy i (⌊c⌋ + 1) with
   | inl iltc =>
     have ilec := (Int.lt_iff_add_one_le i (⌊c⌋ + 1)).mp iltc
     simp at ilec
     have c_le_floor := Int.floor_le c
-    have cast_ilec := le_trans (castLE ilec) c_le_floor
+    have cast_ilec := le_trans (castLE' ilec) c_le_floor
     have abs := lt_of_le_of_lt cast_ilec h
     simp at abs
   | inr h' => cases h' with
               | inl ieqc => exact le_of_eq (Eq.symm ieqc)
               | inr igtc => exact le_of_lt igtc
 
-theorem intTightUb' : ∀ {i : Int} {c : ℝ}, i < c → i ≤ ⌈c⌉ - 1 := by
+theorem intTightUb' : ∀ {i : Int} {c : α}, i < c → i ≤ ⌈c⌉ - 1 := by
   intros i c h
   have neg_c_lt_neg_i := Real.neg_lt_neg h
   have i_le_floor_neg_c: -i ≥ ⌊-c⌋ + 1 :=  by

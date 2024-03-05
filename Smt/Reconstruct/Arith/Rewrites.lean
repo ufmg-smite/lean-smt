@@ -13,16 +13,16 @@ namespace Smt.Reconstruct.Arith
 
 open Function
 
-variable {α : Type} [LinearOrderedRing α]
+variable {α : Type} [h : LinearOrderedRing α]
 
-variable {xs w ys zs t x s r : α}
+variable {t ts x xs : α}
 
-theorem arith_plus_zero : t + 0 + s = t + s :=
-  (add_zero t).symm ▸ rfl
-theorem arith_mul_one : t * 1 * s = t * s :=
-  (mul_one t).symm ▸ rfl
-theorem arith_mul_zero : t * 0 * s = 0 :=
-  (mul_zero t).symm ▸ (zero_mul s).symm ▸ rfl
+theorem arith_plus_zero : ts + 0 + ss = ts + ss :=
+  (add_zero ts).symm ▸ rfl
+theorem arith_mul_one : ts * 1 * ss = ts * ss :=
+  (mul_one ts).symm ▸ rfl
+theorem arith_mul_zero : ts * 0 * ss = 0 :=
+  (mul_zero ts).symm ▸ (zero_mul ss).symm ▸ rfl
 
 theorem arith_int_div_one {t : Int} : t / 1 = t :=
   Int.ediv_one t
@@ -43,7 +43,7 @@ theorem arith_elim_lt : (t < s) = ¬(t ≥ s) :=
 theorem arith_elim_leq : (t ≤ s) = (s ≥ t) :=
   propext ge_iff_le
 
-theorem arith_leq_norm {t s : Int}: (t ≤ s) = ¬(t ≥ s + 1) :=
+theorem arith_leq_norm {t s : Int} : (t ≤ s) = ¬(t ≥ s + 1) :=
   propext ⟨(propext Int.not_le ▸ Int.lt_add_one_of_le ·),
            (Int.le_of_lt_add_one $ propext Int.not_le ▸ · )⟩
 
@@ -68,15 +68,15 @@ theorem arith_plus_flatten : xs + (w + ys) + zs = xs + w + ys + zs :=
 theorem arith_mult_flatten : xs * (w * ys) * zs = xs * w * ys * zs :=
   mul_assoc xs w ys ▸ rfl
 
-theorem arith_mult_dist : x * (y + z + w) = x * y + x * (z + w) :=
-  add_assoc y z w ▸ mul_add x y (z + w) ▸ rfl
+theorem arith_mult_dist : x * (y + z + ws) = x * y + x * (z + ws) :=
+  add_assoc y z ws ▸ mul_add x y (z + ws) ▸ rfl
 
-theorem arith_plus_cancel1 : t + x + s + (-1 * x) + r = t + s + r :=
-  neg_eq_neg_one_mul x ▸ add_assoc t x s ▸ add_assoc t (x + s) (-x) ▸
-  add_comm x s ▸ (add_neg_cancel_right s x).symm ▸ rfl
+theorem arith_plus_cancel1 : ts + x + ss + (-1 * x) + rs = ts + ss + rs :=
+  neg_eq_neg_one_mul x ▸ add_assoc ts x ss ▸ add_assoc ts (x + ss) (-x) ▸
+  add_comm x ss ▸ (add_neg_cancel_right ss x).symm ▸ rfl
 
-theorem arith_plus_cancel2 : t + (-1 * x) + s + x + r = t + s + r :=
-  neg_eq_neg_one_mul x ▸ add_assoc t (-x) s ▸ add_assoc t (-x + s) x ▸
-  add_comm (-x) s ▸ (neg_add_cancel_right s x).symm ▸ rfl
+theorem arith_plus_cancel2 : ts + (-1 * x) + ss + x + rs = ts + ss + rs :=
+  neg_eq_neg_one_mul x ▸ add_assoc ts (-x) ss ▸ add_assoc ts (-x + ss) x ▸
+  add_comm (-x) ss ▸ (neg_add_cancel_right ss x).symm ▸ rfl
 
 end Smt.Reconstruct.Arith

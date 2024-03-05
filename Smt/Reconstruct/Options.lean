@@ -13,6 +13,9 @@ open Lean
 
 initialize
   registerTraceClass `smt.profile.reconstruct
+  registerTraceClass `smt.debug.reconstruct.sort
+  registerTraceClass `smt.debug.reconstruct.term
+  registerTraceClass `smt.debug.reconstruct.proof
   registerTraceClass `smt.debug.reconstruct
 
 end Smt.Reconstruct
