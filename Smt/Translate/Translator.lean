@@ -38,7 +38,7 @@ namespace Translator
 
 private unsafe def getTranslatorsUnsafe : MetaM (List (Translator × Name)) := do
   let env ← getEnv
-  let names := (smtExt.getState env).toList
+  let names := ((smtExt.getState env).findD ``Translator {}).toList
   -- trace[smt.debug.attr] "Translators: {names}"
   let mut translators := []
   for name in names do

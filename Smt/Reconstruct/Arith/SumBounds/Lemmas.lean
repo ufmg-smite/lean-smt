@@ -5,21 +5,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Mathlib.Algebra.Order.Monoid.Lemmas -- add_lt_add
-import Mathlib.Init.Function -- swap
+import Mathlib.Algebra.Order.Ring.Defs
 
 namespace Smt.Reconstruct.Arith
 
 open Function
 
-variable {α : Type}
-
-variable [Preorder α]
-variable [Add α]
-variable [CovariantClass α α (· + ·) (· < ·)]
-variable [CovariantClass α α (· + ·) (· ≤ ·)]
-variable [CovariantClass α α (swap (· + ·)) (· < ·)]
-variable [CovariantClass α α (swap (· + ·)) (· ≤ ·)]
+variable {α : Type} [LinearOrderedRing α]
 
 variable {a b c d : α}
 

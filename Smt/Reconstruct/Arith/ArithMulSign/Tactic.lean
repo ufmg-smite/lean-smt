@@ -11,7 +11,6 @@ import Mathlib.Data.Nat.Parity
 import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.ArithMulSign.Lemmas
-import Smt.Reconstruct.Arith.MulPosNeg.Instances
 import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Arith
@@ -23,6 +22,11 @@ inductive Pol where
  | NZ  : Pol -- 1
  | Pos : Pol -- 2
  deriving BEq
+
+def intLOR := mkApp2 (.const ``LinearOrderedCommRing.toLinearOrderedRing [.zero])
+                     (.const ``Int []) (.const ``Int.linearOrderedCommRing [])
+
+def RealLOR := Expr.const ``Real.instLinearOrderedRingReal []
 
 def mulSign (mv : MVarId) (xs : Array (Expr × Fin 3 × Nat)) : MetaM Unit := do
   mv.assignIfDefeq (← go true xs.toList (mkConst `empty) (mkConst `empty))
@@ -37,8 +41,7 @@ where
       | .const `Rat .. => pure false
       | .const `Int .. => pure true
       | _ => throwError "[arithMulSign]: unexpected type for expression"
-    let lorInst := mkConst $
-      if exprIsInt then ``lorInt else ``lorReal
+    let lorInst := if exprIsInt then intLOR else RealLOR
     let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
     let zeroR := mkApp (mkConst ``Rat.ofInt) zeroI
     -- zero with the same type as the current argument
@@ -170,8 +173,7 @@ where
         | .const `Real .. => pure false
         | .const `Int .. => pure true
         | _ => throwError "[arithMulSign]: unexpected type for expression"
-      let lorInst := mkConst $
-        if exprIsInt then ``lorInt else ``lorReal
+      let lorInst := if exprIsInt then intLOR else RealLOR
       let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
       let zeroR ← mkAppOptM' (.const ``OfNat.ofNat [.zero]) #[mkConst ``Real, (mkNatLit 0), none]
       -- zero with the same type as the current argument
