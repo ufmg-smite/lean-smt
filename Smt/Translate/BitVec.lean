@@ -9,7 +9,7 @@ import Lean
 import Qq
 import Std
 
-import Smt.Translate.Translator
+import Smt.Translate
 
 namespace Smt.Translate.BitVec
 

@@ -5,6 +5,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
+import Smt.Arith
+import Smt.BitVec
+import Smt.Bool
+import Smt.Builtin
+import Smt.Nat
+import Smt.Prop
+import Smt.Quant
+import Smt.String
 import Smt.Tactic
-import Smt.Translate
+import Smt.UF
+
+import Smt.Translate.Solver

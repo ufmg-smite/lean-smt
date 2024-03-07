@@ -8,8 +8,8 @@ Authors: Abdalrhman Mohamed
 import Lean
 
 import Smt.Dsl.Sexp
+import Smt.Reconstruct
 import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Reconstruct
 import Smt.Translate.Query
 import Smt.Util
 
@@ -17,7 +17,7 @@ namespace Smt
 
 open Lean hiding Command
 open Elab Tactic Qq
-open Smt Reconstruct Translate Query
+open Smt Translate Query Reconstruct Util
 
 initialize
   registerTraceClass `smt.debug
