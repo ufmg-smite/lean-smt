@@ -10,7 +10,7 @@ import Qq
 
 import Mathlib.Data.Real.Archimedean
 
-import Smt.Translate.Translator
+import Smt.Translate
 
 namespace Smt.Translate.Rat
 

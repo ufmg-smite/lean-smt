@@ -9,7 +9,7 @@ import Lean
 
 import Smt.Data.Graph
 import Smt.Translate.Commands
-import Smt.Translate.Translator
+import Smt.Translate
 import Smt.Tactic.EqnDef
 import Smt.Util
 

@@ -8,7 +8,7 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 import Lean
 import Qq
 
-import Smt.Translate.Translator
+import Smt.Translate
 
 namespace Smt.Translate.String
 
