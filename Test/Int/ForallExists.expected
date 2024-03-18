@@ -1,12 +1,1 @@
-goal: ∀ (x : ℕ), ∃ y, ↑x ≤ y
-
-query:
-(assert (not (forall ((x Int)) (=> (>= x 0) (exists ((y Int)) (<= x y))))))
-(check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∀ (x : ℤ), Implies (x ≥ 0) (∃ y, x ≤ y)) → False
-with
-  ¬¬∀ (x : ℕ), ∃ y, ↑x ≤ y
-⊢ ¬¬∀ (x : ℕ), ∃ y, ↑x ≤ y
+Test/Int/ForallExists.lean:4:2: error: incorrect number of universe levels Nat.cast

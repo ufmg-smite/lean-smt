@@ -6,12 +6,11 @@ Authors: Tomaz Gomes Mascarenhas
 -/
 
 import Mathlib.Algebra.Order.Ring.Lemmas
-import Mathlib.Data.Rat.Basic
-import Mathlib.Data.Rat.Order
+import Mathlib.Data.Real.Basic
 
 namespace Smt.Reconstruct.Arith
 
 instance lorInt : LinearOrderedRing Int := inferInstance
-instance lorRat : LinearOrderedRing Rat := inferInstance
+noncomputable instance lorReal : LinearOrderedRing Real := inferInstance
 
 end Smt.Reconstruct.Arith

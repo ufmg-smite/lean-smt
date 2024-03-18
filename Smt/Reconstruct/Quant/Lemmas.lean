@@ -5,6 +5,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
+import Std.Logic
+
+namespace Classical
+
+theorem epsilon_spec_aux' {α : Sort u} (h : Nonempty α) (p : α → Prop) : (¬∀ y, p y) → ¬p (@epsilon α h (fun x => ¬p x)) :=
+  propext not_forall ▸ epsilon_spec_aux h (fun x => ¬p x)
+
+end Classical
+
 open Classical
 
 namespace Smt.Reconstruct.Quant

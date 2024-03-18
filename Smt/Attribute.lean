@@ -15,12 +15,12 @@ open Std
 /-- An extension to Lean's runtime environment to support SMT attributes.
     Maintains a set of function declarations for the `smt` tactic to utilize
     while generating the SMT query. -/
-abbrev SmtExtension := SimpleScopedEnvExtension Name (HashSet Name)
+abbrev SmtExtension := SimpleScopedEnvExtension (Name × Name) (HashMap Name (HashSet Name))
 
 /-- Adds a declaration to the set of function declarations maintained by the SMT
     environment extension. -/
-def addSmtEntry (d : HashSet Name) (e : Name) : HashSet Name :=
-  d.insert e
+def addSmtEntry (d : HashMap Name (HashSet Name)) (e : (Name × Name)) :=
+  d.insert e.fst ((d.findD e.fst {}).insert e.snd)
 
 initialize smtExt : SmtExtension ← registerSimpleScopedEnvExtension {
   name     := `SmtExt
@@ -33,18 +33,17 @@ def throwUnexpectedType (t : Name) (n : Name) : AttrM Unit :=
   throwError s!"unexpected type at '{n}', `{t}` expected"
 
 /-- Validates the tagged declaration. -/
-def validate (n : Name) : AttrM Unit := do
+def validate (n : Name) (t : Name) : AttrM Unit := do
   match (← getEnv).find? n with
   | none      => throwError s!"unknown constant '{n}'"
   | some info =>
     match info.type with
-    | Expr.const c .. =>
-      if c != `Smt.Translator then throwUnexpectedType `Smt.Translator n
-    | _               => throwUnexpectedType `Smt.Translator n
+    | Expr.const c .. => if c != t then throwUnexpectedType t n
+    | _               => throwUnexpectedType t n
 
 /-- Registers an SMT attribute with the provided name and description and links
     it against `ext`. -/
-def registerSmtAttr (attrName : Name) (attrDescr : String)
+def registerSmtAttr (attrName : Name) (typeName : Name) (attrDescr : String)
   : IO Unit :=
   registerBuiltinAttribute {
     name  := attrName
@@ -54,17 +53,24 @@ def registerSmtAttr (attrName : Name) (attrDescr : String)
       trace[smt.debug.attr] s!"attrName: {attrName}, attrDescr: {attrDescr}"
       trace[smt.debug.attr] s!"decl: {decl}, stx: {stx}, attrKind: {attrKind}"
       Attribute.Builtin.ensureNoArgs stx
-      validate decl
-      setEnv (smtExt.addEntry (← getEnv) decl)
-      trace[smt.debug.attr]
-        s!"translators: {(smtExt.getState (← getEnv)).toList}"
+      validate decl typeName
+      setEnv (smtExt.addEntry (← getEnv) (typeName, decl))
     erase := fun declName => do
       let s := smtExt.getState (← getEnv)
       let s := s.erase declName
       modifyEnv fun env => smtExt.modifyState env fun _ => s
   }
 
-initialize registerSmtAttr `smtTranslator
+initialize registerSmtAttr `smt_translate `Smt.Translator
              "Utilize this function to translate Lean expressions to SMT terms."
+
+initialize registerSmtAttr `smt_sort_reconstruct `Smt.SortReconstructor
+             "Utilize this function to translate cvc5 sorts to Lean expressions."
+
+initialize registerSmtAttr `smt_term_reconstruct `Smt.TermReconstructor
+             "Utilize this function to translate cvc5 terms to Lean expressions."
+
+initialize registerSmtAttr `smt_proof_reconstruct `Smt.ProofReconstructor
+             "Utilize this function to translate cvc5 proofs to Lean expressions."
 
 end Smt.Attribute

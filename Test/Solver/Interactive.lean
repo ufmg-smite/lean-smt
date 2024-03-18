@@ -1,6 +1,6 @@
-import Smt.Solver
+import Smt.Translate.Solver
 
-open Smt Solver
+open Smt Translate Solver
 
 open Term in
 def query : SolverM Result := do
@@ -20,6 +20,6 @@ def main : IO Unit := do
   let ss ← createFromKind .cvc5 "cvc5" none
   let (res, ss) ← StateT.run query ss
   _ ← StateT.run exit ss
-  println! "query:\n{Command.cmdsAsQuery ss.commands}\n\nres: {res}"
+  println! "query:\n{Command.cmdsAsQuery ss.commands.reverse}\n\nres: {res}"
 
 #eval main

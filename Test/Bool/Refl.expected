@@ -2,13 +2,5 @@ goal: (p == p) = true
 
 query:
 (declare-const p Bool)
-(assert (not (= (= p p) true)))
+(assert (distinct (= p p) true))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬(?p = ?p) = True → False
-with
-  ¬¬(p == p) = true
-p : Bool
-⊢ ¬¬(p == p) = true

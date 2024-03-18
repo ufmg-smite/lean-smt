@@ -1,8 +1,5 @@
 goal: "a" ++ "b" = "ab"
 
 query:
-(assert (not (= (str.++ "a" "b") "ab")))
+(assert (distinct (str.++ "a" "b") "ab"))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: encountered error parsing cvc5 proof

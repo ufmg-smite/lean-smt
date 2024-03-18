@@ -1,18 +1,9 @@
 goal: (f p q == f q p) = true
 
 query:
-(declare-fun f (Bool Bool) Bool)
 (declare-const p Bool)
 (declare-const q Bool)
-(assert (not (= (= (f p q) (f q p)) true)))
+(declare-fun f (Bool Bool) Bool)
+(assert (distinct (= (f p q) (f q p)) true))
 (check-sat)
-
-result: sat
-
-counter-model:
-(
-(define-fun f ((_arg_1 Bool) (_arg_2 Bool)) Bool (and _arg_1 (not _arg_2)))
-(define-fun p () Bool false)
-(define-fun q () Bool true)
-)
-Test/Bool/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
+Test/Bool/Comm.lean:3:0: warning: declaration uses 'sorry'

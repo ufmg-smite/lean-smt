@@ -5,11 +5,3 @@ query:
 (declare-const q Bool)
 (assert (not (=> (= (not q) true) (=> (=> (= p true) (= q true)) (= (not p) true)))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Implies ((¬?q) = True) (Implies (Implies (?p = True) (?q = True)) ((¬?p) = True)) → False
-with
-  ¬¬((!q) = true → (p = true → q = true) → (!p) = true)
-p q : Bool
-⊢ ¬¬((!q) = true → (p = true → q = true) → (!p) = true)

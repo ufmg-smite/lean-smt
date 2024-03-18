@@ -7,10 +7,10 @@ query:
 res: unsat
 
 proof:
-import Smt.Reconstruct
+import Smt.Reconstruction.Certifying
 
 open Classical
-open Smt.Reconstruct
+open Smt.Reconstruction.Certifying
 
 
 

@@ -1,5 +1,5 @@
 import Smt
 
 theorem addition (p q : Bool) : p → p || q := by
-  smt
+  smt_show
   simp_all

@@ -1,5 +1,5 @@
 import Smt
 
 theorem contains : "a".contains 'a' := by
-  smt
+  smt_show
   sorry

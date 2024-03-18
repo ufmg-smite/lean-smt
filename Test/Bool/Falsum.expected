@@ -1,12 +1,5 @@
 goal: (!false) = true
 
 query:
-(assert (not (= (not false) true)))
+(assert (distinct (not false) true))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬(¬False) = True → False
-with
-  ¬¬(!false) = true
-⊢ ¬¬(!false) = true

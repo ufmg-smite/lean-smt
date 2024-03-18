@@ -1,15 +1,7 @@
 goal: (p == q) = true → (q == p) = true
 
 query:
-(declare-const q Bool)
 (declare-const p Bool)
+(declare-const q Bool)
 (assert (not (=> (= (= p q) true) (= (= q p) true))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  ¬Implies ((?p = ?q) = True) ((?q = ?p) = True) → False
-with
-  ¬¬((p == q) = true → (q == p) = true)
-p q : Bool
-⊢ ¬¬((p == q) = true → (q == p) = true)

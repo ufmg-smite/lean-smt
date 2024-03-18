@@ -1,0 +1,18 @@
+Test/Reconstruction/Arith/ArithMulSign.lean:24:2: error: type mismatch
+  _uniq.7790
+has type
+  a < Int.ofNat 0 → b < OfNat.ofNat 0 → zToR (Pow.pow a 3) * Pow.pow b 3 > 0 : Prop
+but is expected to have type
+  a < 0 → b < 0 → ↑a ^ 3 * b ^ 3 > 0 : Prop
+Test/Reconstruction/Arith/ArithMulSign.lean:33:2: error: type mismatch
+  _uniq.13465
+has type
+  a < Int.ofNat 0 →
+    b > OfNat.ofNat 0 →
+      c < OfNat.ofNat 0 →
+        d > OfNat.ofNat 0 →
+          e < Int.ofNat 0 →
+            Mul.mul (Mul.mul (Mul.mul (zToR a) (Pow.pow b 2)) (Pow.pow c 2)) (Pow.pow d 4) * zToR (Pow.pow e 5) >
+              0 : Prop
+but is expected to have type
+  a < 0 → b > 0 → c < 0 → d > 0 → e < 0 → ↑a * b ^ 2 * c ^ 2 * d ^ 4 * ↑e ^ 5 > 0 : Prop

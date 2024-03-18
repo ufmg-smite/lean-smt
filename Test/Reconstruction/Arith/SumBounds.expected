@@ -1,0 +1,16 @@
+Test/Reconstruction/Arith/SumBounds.lean:7:2: error: application type mismatch
+  sumBounds₁ h₂
+argument
+  h₂
+has type
+  @LT.lt ℕ instLTNat b e : Prop
+but is expected to have type
+  @LT.lt ℕ Preorder.toLT b e : Prop
+Test/Reconstruction/Arith/SumBounds.lean:20:2: error: application type mismatch
+  sumBounds₁ h₂
+argument
+  h₂
+has type
+  @LT.lt ℕ instLTNat b e : Prop
+but is expected to have type
+  @LT.lt ℕ Preorder.toLT b e : Prop

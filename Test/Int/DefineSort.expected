@@ -3,17 +3,8 @@ goal: MyInt.add a b = MyInt.add b a
 query:
 (define-sort MyInt () Int)
 (define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
-(declare-const b MyInt)
 (declare-const a MyInt)
-(assert (not (= (MyInt.add a b) (MyInt.add b a))))
+(declare-const b MyInt)
+(assert (distinct (MyInt.add a b) (MyInt.add b a)))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: could not parse solver output: incomplete input: expected a token, got none
-solver stdout:
-
-solver stderr:
-Fatal failure within virtual bool cvc5::internal::proof::LeanProofPostprocessCallback::update(cvc5::internal::Node, cvc5::internal::PfRule, const std::vector<cvc5::internal::NodeTemplate<true> >&, const std::vector<cvc5::internal::NodeTemplate<true> >&, cvc5::internal::CDProof*, bool&) at /home/hbarbosa/cvc/wt-leanPrinter/src/proof/lean/lean_post_processor.cpp:785
-Unreachable code reached Higher-order congruence not supported yet
-
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'

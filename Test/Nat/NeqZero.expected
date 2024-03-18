@@ -3,22 +3,10 @@ goal: ∀ (x : ℕ), x ≠ 0
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
 (check-sat)
-
-result: sat
-
-counter-model:
-()
-Test/Nat/NeqZero.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
+Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'
 goal: ∀ (x : ℕ), x + 1 ≠ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))
 (check-sat)
-
-result: unsat
-failed to reconstruct proof: tactic 'apply' failed, failed to unify
-  (¬∀ (x : ℤ), Implies (x ≥ 0) (x + 1 ≠ 0)) → False
-with
-  ¬¬∀ (x : ℕ), x + 1 ≠ 0
-⊢ ¬¬∀ (x : ℕ), x + 1 ≠ 0
 Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'
