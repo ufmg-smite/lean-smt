@@ -20,31 +20,77 @@ theorem and_true' : (p ∧ True') = p := by simp [True']
 
 theorem true'_and : (True' ∧ p) = p := by simp [True']
 
-def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
+theorem or_true' : (p ∧ True') = p := by simp [True']
+
+theorem true'_or : (True' ∧ p) = p := by simp [True']
+
+def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
   let n := arr.size
   let mut mv' := mv
   let mut arr2 : Array Expr := #[]
   for i in [: n] do
     let m := arr[i]!.size
     if m == 0 then
-      arr2 := Array.push arr2 (.const `True' [])
+      arr2 := Array.push arr2 (.const ``True' [])
     if m == 1 then
       arr2 := Array.push arr2 arr[i]![0]!
     if m > 1 then
       let mut term := arr[i]![m-1]!
       for j in [: m-1] do
-        term := mkAppN (.const `And []) #[arr[i]![m-j-2]!, term]
+        term := mkAppN op #[arr[i]![m-j-2]!, term]
         if let some r ← observing? (mv'.rewrite (← mv'.getType) (mkAppN assoc #[arr[i]![m-j-2]!]) true) then
           mv' ← mv'.replaceTargetEq r.eNew r.eqProof
       arr2 := Array.push arr2 term
   logInfo m!"{arr2}"
   let rule' :=  mkAppN rule arr2
+  logInfo m!"{rule}"
+  logInfo m!"{← Meta.inferType rule}"
   logInfo m!"{rule'}"
+  mv' ← (mv'.assert (← mkFreshUserName `h) (← Meta.inferType rule') rule')
+  let (fv, mv'') ← mv'.intro1P
+  mv' := mv''
+  mv'.withContext do
+  let mut mv' := mv'
+  let mut fv := fv
+  if let some r ← observing? (mv'.rewrite (← fv.getType) (.const ``and_true' [])) then
+    let res ← mv'.replaceLocalDecl fv r.eNew r.eqProof
+    mv' := res.mvarId
+    fv := res.fvarId
+  mv'.withContext do
+  let mut mv' := mv'
+  let mut fv := fv
+  if let some r ← observing? (mv'.rewrite (← fv.getType) (.const ``and_true' [])) then
+    let res ← mv'.replaceLocalDecl fv r.eNew r.eqProof
+    mv' := res.mvarId
+    fv := res.fvarId
+  mv'.withContext do
+  let mut mv' := mv'
+  let mut fv := fv
+  if let some r ← observing? (mv'.rewrite (← fv.getType) (.const ``true'_and [])) then
+    let res ← mv'.replaceLocalDecl fv r.eNew r.eqProof
+    mv' := res.mvarId
+    fv := res.fvarId
+  mv'.withContext do
+  let mut mv' := mv'
+  let mut fv := fv
+  if let some r ← observing? (mv'.rewrite (← fv.getType) (.const ``true'_and [])) then
+    let res ← mv'.replaceLocalDecl fv r.eNew r.eqProof
+    mv' := res.mvarId
+    fv := res.fvarId
+  mv'.withContext do
+  let mut mv' := mv'
+  let mut fv := fv
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
+    mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
+    mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   if let some r ← observing? (mv'.rewrite (← mv'.getType) null) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   logInfo m!"{mv'}"
-  if let some r ← observing? (mv'.rewrite (← mv'.getType) rule) then
+  if let some r ← observing? (mv'.rewrite (← mv'.getType) (.fvar fv)) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
+  -- if let some r ← observing? (mv'.rewrite (← mv'.getType) rule) then
+  --   mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   logInfo m!"{mv'}"
   for i in [: n] do
     let m := arr[i]!.size
@@ -56,7 +102,9 @@ def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array 
 syntax inner := "[" term,* "]"
 syntax outer := "[" inner,* "]"
 
-syntax (name := smt_rw) "smt_rw" ident ident ident outer : tactic
+#check FVarId.getType
+
+syntax (name := smt_rw) "smt_rw" ident ident ident ident outer : tactic
 
 def parseInner : TSyntax ``inner → TacticM (Array Expr)
   | `(inner| [$ts,*]) => ts.getElems.mapM (elabTerm · none)
@@ -68,35 +116,35 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
 
 @[tactic smt_rw] def evalSMTRw : Tactic := fun stx => do
   let mv : MVarId ← getMainGoal
-  let rr ← elabTerm stx[3] none
-  let xs ← parseOuter ⟨stx[4]⟩
-  let op  ← elabTermForApply stx[1]
-  let nu  ← elabTermForApply stx[2]
-  smtRw mv op nu rr xs
+  let rr ← elabTermForApply stx[4]
+  let xs ← parseOuter ⟨stx[5]⟩
+  let as  ← elabTermForApply stx[2]
+  let nu  ← elabTermForApply stx[3]
+  let opr ← elabTerm stx[1] none
+  smtRw mv opr as nu rr xs
 
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  have := @bool_and_flatten (x1 ∧ x2 ∧ x3) b (y1 ∧ y2) (z1 ∧ z2)
+  --have := @bool_and_flatten (x1 ∧ x2 ∧ x3) b (y1 ∧ y2) (z1 ∧ z2)
   -- rw [← @and_assoc x2]
   -- rw [← @and_assoc x1]
   -- rw [← @and_assoc y1]
   -- rw [← @and_assoc z1]
   -- rw [and_true, and_true]
   -- rw [this]
-
-  smt_rw and_assoc_eq and_true bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
+  smt_rw And and_assoc_eq and_true bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
+  smt_rw And and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
-  smt_rw or_assoc_eq or_false bool_or_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
+  smt_rw Or or_assoc_eq or_false bool_or_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [b], [z1, z2]]
+  smt_rw And and_assoc_eq and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
-  smt_rw or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
+  smt_rw Or or_assoc_eq or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
 
 
@@ -112,6 +160,7 @@ elab "threeAnd" : term => return threeAnd
 
 #reduce threeAnd
 
+#check MVarId.assert
 
 example : (p1 ∧ p2 ∧ True) = (p1 ∧ p2) := by
   --smt_rw and_assoc_eq and_true bool_and_true [[p1], [True']]
@@ -122,19 +171,26 @@ example : (p1 ∧ p2 ∧ True) = (p1 ∧ p2) := by
   rw [and_true']
 
 example : (p1 ∧ p2 ∧ p3 ∧ p4 ∧ True) = (p1 ∧ p2 ∧ p3 ∧ p4) := by
-  smt_rw and_assoc_eq and_true bool_and_true [[p1, p2, p3, p4], []]
+  smt_rw And and_assoc_eq and_true bool_and_true [[p1, p2, p3, p4], []]
 
 
 
 
 
 
+example : (True ∧ p1) = p1 := by
+  -- have := @bool_and_true True' p1
+  -- rw [true'_and, true'_and] at this
+  -- rw [this]
 
+  smt_rw And and_assoc_eq and_true bool_and_true [[], [p1]]
 
--- #check true_and
+example : (p1 ∧ True) = p1 := by
+  -- have := @bool_and_true p1 True'
+  -- rw [and_true', and_true'] at this
+  -- rw [this]
 
--- example : (True ∧ p1) = p1 := by
---   smt_rw and_assoc_eq and_true bool_and_true [[], [p1]]
+  smt_rw And and_assoc_eq and_true bool_and_true [[p1], []]
 
 
 
