@@ -5,7 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Leonardo de Moura, Wojciech Nawrocki
 -/
 import Lean.Meta.WHNF
-
+import Lean.Meta.CtorRecognizer
+import Lean
 import Smt.Tactic.WHNFConfigurableRef
 
 namespace Lean.Meta
@@ -166,7 +167,7 @@ private def toCtorWhenStructure (inductName : Name) (major : Expr) : ReductionM 
   let env ← getEnv
   if !isStructureLike env inductName then
     return major
-  else if let some _ := major.isConstructorApp? env then
+  else if let some _ ← isConstructorApp? major then
     return major
   else
     let majorType ← inferType major
@@ -340,8 +341,8 @@ end
     | LocalDecl.cdecl .. => return e
     | LocalDecl.ldecl (value := v) (nonDep := nonDep) .. =>
       let cfg ← getConfig
-      if cfg.trackZeta then
-        modify fun s => { s with zetaFVarIds := s.zetaFVarIds.insert fvarId }
+      if cfg.trackZetaDelta then
+        modify fun s => { s with zetaDeltaFVarIds := s.zetaDeltaFVarIds.insert fvarId }
       whnfEasyCases v k
   | Expr.mvar mvarId   =>
     match (← getExprMVarAssignment? mvarId) with
@@ -796,7 +797,7 @@ mutual
                 let numArgs := e.getAppNumArgs
                 if recArgPos >= numArgs then return none
                 let recArg := e.getArg! recArgPos numArgs
-                if !(← whnfMatcher recArg).isConstructorApp (← getEnv) then return none
+                if !(← isConstructorApp (← whnfMatcher recArg)) then return none
                 return some r
             | _ =>
               if (← getMatcherInfo? fInfo.name).isSome then
@@ -1000,7 +1001,7 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
                 args ← args.modifyM i visit
             else
               args ← args.modifyM i visit
-          if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isNatLit then
+          if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.natLit?.isSome then
             pure <| mkRawNatLit (args[0]!.natLit?.get! + 1)
           else
             pure <| mkAppN f args
