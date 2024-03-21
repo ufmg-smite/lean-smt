@@ -7,7 +7,7 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 
 import Lean
 import Std.Classes.Cast
-import Std.Data.Int.Basic
+import Std.Data.Int.Lemmas
 import Smt.Translator
 
 namespace Smt.Int

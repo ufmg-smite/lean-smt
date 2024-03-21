@@ -1,5 +1,5 @@
 import Smt
-import Smt.Data.BitVec
+open Std BitVec
 
 theorem xor_comm_2 (x y : BitVec 2) : x ^^^ y = y ^^^ x  := by
   smt
