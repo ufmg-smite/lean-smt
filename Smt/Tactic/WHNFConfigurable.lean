@@ -6,7 +6,6 @@ Authors: Leonardo de Moura, Wojciech Nawrocki
 -/
 import Lean.Meta.WHNF
 import Lean.Meta.CtorRecognizer
-import Lean
 import Smt.Tactic.WHNFConfigurableRef
 
 namespace Lean.Meta
@@ -976,6 +975,15 @@ def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
           pure none
       | none => pure none
     | _ => pure none
+
+namespace MonadCacheT
+
+variable {ω α β : Type} {m : Type → Type} [STWorld ω m] [BEq α] [Hashable α] [MonadLiftT (ST ω) m] [Monad m]
+
+instance (ε) [always : MonadAlwaysExcept ε m] : MonadAlwaysExcept ε (MonadCacheT α β m) where
+  except := let _ := always.except; inferInstance
+
+end MonadCacheT
 
 partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : ReductionM Expr :=
   let rec visit (e : Expr) : MonadCacheT Expr Expr ReductionM Expr :=
