@@ -65,6 +65,9 @@ def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (null : Expr) (nullr1 : Expr)
   mv' ← mv'.assert `null' (← Meta.inferType null) null
   let (fv1, mv'') ← mv'.intro1P
   mv' := mv''
+  mv'.withContext do
+  let mut mv' := mv'
+  logInfo m!"{Expr.fvar fv1}"
   let mv3 ← mkFreshExprMVar (mkAppN (.const `Eq [.zero]) #[Expr.sort Lean.Level.zero, .fvar fv1, null]) (userName := `mvar3)
   mv' ← mv'.assert (← mkFreshUserName `h1) (mkAppN (.const `Eq [.zero]) #[Expr.sort Lean.Level.zero, .fvar fv1, null]) mv3
   let (fv3, mv'') ← mv'.intro1P
@@ -222,7 +225,8 @@ open Tactic in
   let nur  ← elabTermForApply stx[4]
   let nur2  ← elabTermForApply stx[5]
   let opr ← elabTerm stx[1] none
-  _ <- smtRw mv opr as nu nur nur2 rr xs
+  let mv3 ← smtRw mv opr as nu nur nur2 rr xs
+  Tactic.replaceMainGoal [mv3]
 
 
 
@@ -283,6 +287,7 @@ example : (p1 ∧ p2 ∧ p3 ∧ p4 ∧ True) = (p1 ∧ p2 ∧ p3 ∧ p4) := by
 #check @rfl Prop
 
 example : (True ∧ p1) = p1 := by
+  -- have ⟨True'', hTrue''⟩ : ∃ (p :Prop), p = True := sorry
   -- have True'' : Prop := True
   -- have h2 : True'' = True := sorry
   -- have : ∀ p : Prop, (True ∧ p) = p := sorry
@@ -295,12 +300,16 @@ example : (True ∧ p1) = p1 := by
 
   smt_rw And and_assoc_eq True and_true true_and bool_and_true [[], [p1]]
 
+
 example : (p1 ∧ True) = p1 := by
+
+  have ⟨p, hp⟩: ∃ (p : Prop), p = True := ⟨True, rfl⟩
   -- have := @bool_and_true p1 True'
   -- rw [and_true', and_true'] at this
   -- rw [this]
 
   smt_rw And and_assoc_eq True and_true true_and bool_and_true [[p1], []]
+
 
 
 example : (True ∧ p1) = p1 := by
