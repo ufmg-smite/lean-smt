@@ -16,5 +16,5 @@ import Smt.Solver
 import Smt.String
 import Smt.Tactic
 import Smt.Term
-
+import Smt.Abs
 -- import Smt.Reconstruction.Certifying

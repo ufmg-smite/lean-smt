@@ -8,7 +8,7 @@ Authors: Abdalrhman Mohamed
 import Lean
 import Std.Data.Rat
 import Smt.Translator
-
+import Mathlib.Data.Rat.Lemmas
 namespace Smt.Rat
 
 open Lean Expr
@@ -27,6 +27,14 @@ open Translator Term
   | app (app (const ``GT.gt _) (const `Rat _)) _ => return symbolT ">"
   | app (app (const ``GE.ge _) (const `Rat _)) _ => return symbolT ">="
   | app (app (app (const ``Int.cast _) (const `Rat _)) _) e => applyTranslators! e
+  | app (app (app (const ``Rat.cast _) (const `Real _)) _) e  => applyTranslators! e
+  | _ => return none
+
+@[smtTranslator] def replaceOfScientific : Translator
+  | app (app (app (const ``Rat.ofScientific _) m) s) e => do
+      let tmE ← applyTranslators! e
+      let tmM ← applyTranslators! m
+      return Term.mkApp2 (symbolT "div") tmM (Term.mkApp2 (symbolT "^") (literalT "10") tmE)
   | _ => return none
 
 end Smt.Rat
