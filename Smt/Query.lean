@@ -205,8 +205,18 @@ where
 
     trace[smt.debug.translate.query] "deps: {deps}"
     for e' in deps do
-      go e'
-      addDependency e e'
+      if e' matches const `Real.sqrt .. then
+        logInfo "find Real.sqrt_property"
+        addCommand (mkConst `Real.sqrt_property1) <| .assert (forallT "__sqrt_x" (symbolT "Real") (Term.mkApp2 (symbolT "=>") (Term.mkApp2 (symbolT ">=") (symbolT "__sqrt_x") (literalT "0")) (Term.mkApp2 (symbolT "and") (Term.mkApp2 (symbolT ">=") (appT (symbolT "Real.sqrt") (symbolT "__sqrt_x")) (literalT "0")) (Term.mkApp2 (symbolT "=") (mkApp2 (symbolT "^") (appT (symbolT "Real.sqrt") (symbolT "__sqrt_x")) (literalT "2")) (symbolT "__sqrt_x")))))
+        addDependency (mkConst `Real.sqrt_property1) (mkConst `Real.sqrt_property2)
+        addCommand (mkConst `Real.sqrt_property2) <| .assert (forallT "__sqrt_x" (symbolT "Real") (Term.mkApp2 (symbolT "=") (appT (symbolT "Real.sqrt") (Term.mkApp2 (symbolT "^") (symbolT "__sqrt_x") (literalT "2"))) (appT (symbolT "abs") (symbolT "__sqrt_x"))))
+        go (mkConst `Real.sqrt)
+        addDependency (mkConst `Real.sqrt_property2) (mkConst `Real.sqrt)
+
+        addDependency e (mkConst `Real.sqrt_property1)
+      else
+        go e'
+        addDependency e e'
 
 end QueryBuilderM
 
