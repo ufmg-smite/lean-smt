@@ -48,7 +48,7 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .BOOL_DOUBLE_NOT_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((¬¬$p) = $p) q(@Prop.bool_double_not_elim $p)
@@ -281,10 +281,21 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
   | .CONTRA =>
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
     let hp : Q($p) ← reconstructProof pf.getChildren[0]!
-    let hnp : Q(¬$p) ← reconstructProof pf.getChildren[0]!
+    let hnp : Q(¬$p) ← reconstructProof pf.getChildren[1]!
     addThm q(False) q(Prop.contradiction $hp $hnp)
   | .AND_ELIM =>
-    addTac (← reconstructTerm pf.getResult) (andElim · (← reconstructProof pf.getChildren[0]!) pf.getArguments[0]!.getIntegerValue.toNat)
+    let Fs := pf.getChildren[0]!.getResult
+    let i : Nat := pf.getArguments[0]!.getIntegerValue.toNat
+    let ps : Q(List Prop) ← (do
+      let mut ps : Q(List Prop) := q([])
+      let n := Fs.getNumChildren
+      for i in [:n] do
+        let p : Q(Prop) ← reconstructTerm Fs[n - i - 1]!
+        ps := q($p :: $ps)
+      return ps)
+    let hi : Q($i < «$ps».length) := (.app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true))
+    let hps : Q(andN $ps) ← reconstructProof pf.getChildren[0]!
+    addThm (← reconstructTerm pf.getResult) q(@Prop.and_elim _ $hps $i $hi)
   | .AND_INTRO =>
     let cpfs := pf.getChildren
     let q : Q(Prop) ← reconstructTerm cpfs.back.getResult

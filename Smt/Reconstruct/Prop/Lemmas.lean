@@ -354,6 +354,15 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
   | Or.inl p => p
   | Or.inr p => p
 
+theorem and_elim {ps : List Prop} (hps : andN ps) (i : Nat) {hi : i < ps.length} : ps[i] := match ps with
+  | []  => nomatch hi
+  | [_] => match i with
+    | 0     => hps
+    | _ + 1 => nomatch hi
+  | p₁ :: p₂ :: ps => match i with
+    | 0     => hps.left
+    | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ and_elim hps.right i
+
 def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
