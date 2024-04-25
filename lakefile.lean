@@ -6,7 +6,7 @@ require cvc5 from git
   "https://github.com/abdoo8080/lean-cvc5.git" @ "main"
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "v4.4.0"
+  "https://github.com/leanprover-community/mathlib4.git" @ "v4.7.0"
 
 package smt where
   precompileModules := true

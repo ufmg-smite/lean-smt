@@ -44,7 +44,7 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _ => return none
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .EQ_REFL =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!

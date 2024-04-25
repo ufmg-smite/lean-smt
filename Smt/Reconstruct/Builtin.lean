@@ -13,6 +13,15 @@ namespace Smt.Reconstruct.Builtin
 
 open Lean Qq
 
+@[smt_sort_reconstruct] def reconstructBuiltinSort : SortReconstructor := fun s => do match s.getKind with
+  | .FUNCTION_SORT =>
+    let mut curr : Q(Type) ← reconstructSort s.getFunctionCodomainSort
+    for s in s.getFunctionDomainSorts do
+      let t : Q(Type) ← reconstructSort s
+      curr := q($t → $curr)
+    return curr
+  | _              => return none
+
 def getFVarExpr! (n : Name) : MetaM Expr := do
   match (← getLCtx).findFromUserName? n with
   | some d => return d.toExpr
@@ -35,8 +44,8 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)
-  | .SKOLEM_FUN => match t.getSkolemId with
-    | .PURIFY => reconstructTerm t.getSkolemArguments[0]!
+  | .SKOLEM => match t.getSkolemId with
+    | .PURIFY => reconstructTerm t.getSkolemIndices[0]!
     | _ => return none
   | _ => return none
 where
@@ -44,7 +53,7 @@ where
     if t.hasSymbol then t.getSymbol else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .ITE_TRUE_COND =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let x : Q($α) ← reconstructTerm pf.getArguments[1]!

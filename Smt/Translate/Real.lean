@@ -5,7 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
 import Qq
 
 import Mathlib.Data.Real.Archimedean
@@ -27,7 +26,7 @@ open Translator Term
 
 @[smt_translate] def translateReal : Translator := fun (e : Q(Real)) => match e with
   | ~q((($x : Int) : Real)) => return appT (symbolT "to_real") (← applyTranslators! x)
-  | ~q(@OfNat.ofNat _ _ (@instOfNat _ _ _ instNatAtLeastTwo)) =>
+  | ~q(@OfNat.ofNat _ _ (@instOfNatAtLeastTwo _ _ _ instNatAtLeastTwo)) =>
     return if let some n := (e.getArg! 1).natLit? then literalT s!"{n}.0" else none
   | ~q(0)       => return (literalT "0.0")
   | ~q(1)       => return (literalT "1.0")

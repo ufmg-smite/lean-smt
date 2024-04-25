@@ -51,15 +51,22 @@ open Lean Qq
       Meta.mkLambdaFVars xs b
   | .HO_APPLY =>
     return (← reconstructTerm t[0]!).app (← reconstructTerm t[1]!)
-  | .SKOLEM_FUN => match t.getSkolemId with
+  | .SKOLEM => match t.getSkolemId with
     | .QUANTIFIERS_SKOLEMIZE =>
-      let q := t.getSkolemArguments[0]!
-      let n := t.getSkolemArguments[1]!.getIntegerValue.toNat
+      let q := t.getSkolemIndices[0]!
+      let x := t.getSkolemIndices[1]!
+      let n := getVariableIndex q x
       let es ← if q.getKind == .EXISTS then reconstructExistsSkolems q n else reconstructForallSkolems q n
       return es[n]!
     | _ => return none
   | _ => return none
 where
+  getVariableIndex (q : cvc5.Term) (x : cvc5.Term) : Nat := Id.run do
+    let xs := q[0]!
+    let mut i := 0
+    while xs[i]! != x do
+      i := i + 1
+    i
   reconstructForallSkolems (q : cvc5.Term) (n : Nat) : ReconstructM (Array Expr) := do
     let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
     let mut es := #[]

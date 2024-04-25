@@ -6,7 +6,6 @@ Authors: Tomaz Gomes Mascarenhas
 -/
 
 import Lean
-import Std
 
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct.Options
@@ -395,7 +394,7 @@ def andElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
         | some e => recGetLamBody e
       if i < getLengthAnd andProp - 1 then
         pf ← mkAppM ``And.left #[pf]
-      mv.assignIfDefeq pf
+      mv.assign pf
 where
   recGetLamBody (e : Expr) : Expr :=
     match e with
@@ -470,7 +469,7 @@ def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
         let pf ← getProof i 0 props pf
         let pf := mkApp val pf
         let pf ← mkLambdaFVars #[bv] pf
-        mv.assignIfDefeq pf
+        mv.assign pf
 where
   getProof (i j : Nat) (props : List Expr) (val : Expr) : MetaM Expr :=
     match i with
