@@ -103,11 +103,6 @@ where
     return es
   getVariableName (t : cvc5.Term) : Name :=
     if t.hasSymbol then t.getSymbol else Name.num `x t.getId
-  withNewTermCache {α} (k : ReconstructM α) : ReconstructM α := do
-    let state ← get
-    let r ← k
-    set { ← get with termCache := state.termCache }
-    return r
 
 @[smt_proof_reconstruct] def reconstructQuantProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .CONG =>
@@ -137,22 +132,18 @@ where
   | _ => return none
 where
   reconstructForallCong (pf : cvc5.Proof) : ReconstructM Expr := do
-    let mv ← getCurrGoal
-    mv.withContext do
-      let n := reconstructQuant.getVariableName pf.getArguments[1]![0]!
-      let α : Q(Type) ← reconstructSort pf.getArguments[1]![0]!.getSort
-      let mkLam n α t := Meta.withLocalDeclD n α (reconstructTerm t >>= liftM ∘ Meta.mkLambdaFVars #[·])
-      let p : Q($α → Prop) ← mkLam n α pf.getResult[0]![1]!
-      let q : Q($α → Prop) ← mkLam n α pf.getResult[1]![1]!
-      let h : Q(∀ a, $p a = $q a) ← Meta.mkFreshExprMVar q(∀ a, $p a = $q a)
-      let (fv, mv') ← h.mvarId!.intro n
+    let n := reconstructQuant.getVariableName pf.getArguments[1]![0]!
+    let α : Q(Type) ← reconstructSort pf.getArguments[1]![0]!.getSort
+    let mkLam n α t := withNewTermCache $ Meta.withLocalDeclD n α (reconstructTerm t >>= liftM ∘ Meta.mkLambdaFVars #[·])
+    let p : Q($α → Prop) ← mkLam n α pf.getResult[0]![1]!
+    let q : Q($α → Prop) ← mkLam n α pf.getResult[1]![1]!
+    let h : Q(∀ a, $p a = $q a) ← Meta.mkFreshExprMVar q(∀ a, $p a = $q a)
+    let (fv, mv) ← h.mvarId!.intro n
+    withNewProofCache $ withNewTermCache $ mv.withContext do
       let a : Q($α) ← (return .fvar fv)
-      setCurrGoal mv'
-      let h' : Q($p $a = $q $a) ← mv'.withContext (withAssums #[a] (reconstructProof pf.getChildren[0]!))
-      let mv' ← getCurrGoal
-      mv'.withContext (mv'.assignIfDefeq h')
-      setCurrGoal mv
-      addThm q((∀ a, $p a) = (∀ a, $q a)) q(forall_congr $h)
+      let h' : Q($p $a = $q $a) ← withAssums #[a] (reconstructProof pf.getChildren[0]!)
+      mv.assign (← instantiateMVars h')
+    addThm q((∀ a, $p a) = (∀ a, $q a)) q(forall_congr $h)
   reconstructSkolemize (pf : cvc5.Proof) : ReconstructM Expr := do
     let res := pf.getChildren[0]!.getResult
     if res.getKind == .EXISTS then

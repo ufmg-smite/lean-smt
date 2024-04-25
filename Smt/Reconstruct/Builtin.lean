@@ -115,41 +115,33 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 @[smt_proof_reconstruct] def reconstructBuiltinProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .ASSUME =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]!
-    match (← Meta.findLocalDeclWithType? p) with
-    | none => throwError "no assumption of type\n\t{p}\nfound in local context"
-    | some fv => return Expr.fvar fv
+    match (← findAssumWithType? p) with
+    | none   => throwError "no assumption of type\n\t{p}\nfound in local context"
+    | some a => return a
   | .SCOPE =>
-    let mv ← getCurrGoal
-    mv.withContext do
-      let f := fun arg ps => do
-        let p : Q(Prop) ← reconstructTerm arg
-        return q($p :: $ps)
-      let ps : Q(List Prop) ← pf.getArguments.foldrM f q([])
-      let as ← pf.getArguments.mapM (fun _ => return Name.num `a (← incCount))
-      let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
-      let h₁ : Q(impliesN $ps $q) ← Meta.mkFreshExprMVar q(impliesN $ps $q)
-      let (fvs, mv') ← h₁.mvarId!.introN pf.getArguments.size as.toList
-      setCurrGoal mv'
-      mv'.withContext do
-        let h₂ : Q($q) ← withAssums (fvs.map Expr.fvar) (reconstructProof pf.getChildren[0]!)
-        let mv'' ← getCurrGoal
-        mv''.withContext (mv''.assignIfDefeq h₂)
-      setCurrGoal mv
-      addThm q(andN $ps → $q) q(Builtin.scopes $h₁)
+    let f := fun arg ps => do
+      let p : Q(Prop) ← reconstructTerm arg
+      return q($p :: $ps)
+    let ps : Q(List Prop) ← pf.getArguments.foldrM f q([])
+    let as ← pf.getArguments.mapM (fun _ => return Name.num `a (← incCount))
+    let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
+    let h₁ : Q(impliesN $ps $q) ← Meta.mkFreshExprMVar q(impliesN $ps $q)
+    let (fvs, mv) ← h₁.mvarId!.introN as.size as.toList
+    withNewProofCache $ mv.withContext do
+      let h₂ : Q($q) ← withAssums (fvs.map Expr.fvar) (reconstructProof pf.getChildren[0]!)
+      mv.assign h₂
+    addThm q(andN $ps → $q) q(Builtin.scopes $h₁)
   | .EVALUATE =>
     let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
-    if (← reconstructTerm pf.getResult).getUsedConstants.any (isNoncomputable (← getEnv)) then
-      return none
-    -- TODO: handle case where a Prop is inside an expression
-    if α.isProp then
-      let p  : Q(Prop) ← reconstructTerm pf.getResult[0]!
-      let p' : Q(Prop) ← reconstructTerm pf.getResult[1]!
-      let h : Q(Decidable ($p = $p')) ← Meta.synthInstance q(Decidable ($p = $p'))
-      addThm q($p = $p') (.app q(@of_decide_eq_true ($p = $p') $h) q(Eq.refl true))
-    else
-      let t  : Q($α) ← reconstructTerm pf.getResult[0]!
-      let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    let t  : Q($α) ← reconstructTerm pf.getResult[0]!
+    let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    if pf.getResult[0]! == pf.getResult[1]! then
       addThm q($t = $t') q(Eq.refl $t)
+    else
+      let h : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
+      if h.getUsedConstants.any (isNoncomputable (← getEnv)) then
+        return none
+      addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
   | .ACI_NORM =>
     addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
   | .DSL_REWRITE => reconstructRewrite pf
