@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Builtin.Rewrites
 import Smt.Reconstruct
@@ -149,6 +150,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let t  : Q($α) ← reconstructTerm pf.getResult[0]!
       let t' : Q($α) ← reconstructTerm pf.getResult[1]!
       addThm q($t = $t') q(Eq.refl $t)
+  | .ACI_NORM =>
+    addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
   | .DSL_REWRITE => reconstructRewrite pf
   | .ITE_ELIM1 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
