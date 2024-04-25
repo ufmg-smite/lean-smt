@@ -5,10 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct
 import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Builtin.Rewrites
-import Smt.Reconstruct
 
 namespace Smt.Reconstruct.Builtin
 

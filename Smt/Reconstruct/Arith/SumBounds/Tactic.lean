@@ -46,7 +46,7 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
         pure (h₁, ← mkAppM thm #[h₂])
       | _, _ => pure (h₁, h₂)
     let thmName : Name ←
-      match rel₂, rel₁ with
+      match rel₁, rel₂ with
       | ``LT.lt , ``LT.lt => pure ``sumBounds₁
       | ``LT.lt , ``LE.le => pure ``sumBounds₂
       | ``LT.lt , ``Eq    => pure ``sumBounds₃
@@ -57,7 +57,7 @@ def combineBounds (mvar : MVarId) : Expr → Expr → MetaM Expr := fun h₁ h�
       | ``Eq    , ``LE.le => pure ``sumBounds₈
       | ``Eq    , ``Eq    => pure ``sumBounds₉
       | _      , _      => throwError "[sumBounds] invalid operation"
-    mkAppM thmName #[h₂, h₁]
+    mkAppM thmName #[h₁, h₂]
 where
   getOpType : Expr → MetaM Expr
   | app (Expr.const ``Not ..) e' => getOpType e'
@@ -69,10 +69,8 @@ where
 def sumBounds (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
   if hs.isEmpty then
     throwError "[sumBounds]: empty list of premisses"
-  let mut acc := hs[0]!
-  for i in [1:hs.size] do
-    acc ← combineBounds mv acc hs[i]!
-  mv.assignIfDefeq acc
+  let h ← hs[1:].foldlM (combineBounds mv) hs[0]!
+  mv.assign h
 
 def sumBoundsMeta (mvar : MVarId) (h : Expr) (hs : List Expr) (name : Name)
     : MetaM MVarId :=

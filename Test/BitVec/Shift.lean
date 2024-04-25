@@ -1,6 +1,6 @@
 import Smt
 
-open Std BitVec
+open BitVec
 
 theorem append_eq_shl_or_2 (x y : BitVec 2)
     : x ++ y = (x.zeroExtend 4 <<< 2#2) ||| y.zeroExtend 4 := by

@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct.Prop.Factor
 import Smt.Reconstruct.Prop.Lemmas
@@ -14,7 +15,6 @@ import Smt.Reconstruct.Prop.PermutateOr
 import Smt.Reconstruct.Prop.Pull
 import Smt.Reconstruct.Prop.Resolution
 import Smt.Reconstruct.Prop.Rewrites
-import Smt.Reconstruct
 import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Prop
@@ -85,9 +85,9 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_OR_DUP =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_dup) args)
-  | .BOOL_AND_TRUE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
+  -- | .BOOL_AND_TRUE =>
+  --   let args ← reconstructArgs pf.getArguments[1:]
+  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
   -- | .BOOL_AND_FALSE =>
   --   let args ← reconstructArgs pf.getArguments[1:]
   --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_false) args)

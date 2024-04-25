@@ -1,20 +1,10 @@
 Test/Nat/Sum'.lean:7:12: error: tactic 'rewrite' failed, motive is not type correct
+case s.15
 a.0 : ∀ (n : ℤ), sum n = if n = 0 then 0 else n + sum (if 1 ≤ n then n - 1 else 0)
-a.1 : ∀ «_uniq.15780» ≥ 0, sum «_uniq.15780» ≥ 0
-a.2 : sum 0 ≠ 0 / 2
+a.1 : ∀ «_uniq.15709» ≥ 0, sum «_uniq.15709» ≥ 0
+a.2 : sum 0 ≠ 0
 a.3 : ∀ (n : ℤ), sum n = if n = 0 then 0 else n + sum (if n ≥ 1 then -1 + n else 0)
 n : ℤ
-s.4 : sum n = sum n
-s.5 : (n = 0) = (n = 0)
-s.6 : 0 = 0
-s.7 : n = n
-s.8 : (1 ≤ n) = (n ≥ 1)
-s.9 : n - 1 = n + -1 * 1
-s.10 : -1 * 1 = -1
-s.11 : n + -1 * 1 = n + -1
-s.12 : n + -1 = -1 + n
-s.13 : n + -1 * 1 = -1 + n
-s.14 : n - 1 = -1 + n
 ⊢ (if 1 ≤ n then n - 1 else 0) = if n ≥ 1 then -1 + n else 0
 goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 
@@ -23,7 +13,7 @@ query:
 (declare-const n Nat)
 (assert (>= n 0))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (ite (<= 1 n) (- n 1) 0)))))
-(assert (forall ((_uniq.17431 Nat)) (=> (>= _uniq.17431 0) (>= (sum _uniq.17431) 0))))
+(assert (forall ((_uniq.17981 Nat)) (=> (>= _uniq.17981 0) (>= (sum _uniq.17981) 0))))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
 (assert (distinct (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2)))
 (check-sat)

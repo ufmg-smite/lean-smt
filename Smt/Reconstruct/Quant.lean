@@ -5,8 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Quant.Lemmas
 import Smt.Reconstruct
+import Smt.Reconstruct.Quant.Lemmas
 
 /-- Takes an array `xs` of free variables or metavariables and a term `e` that may contain those variables, and abstracts and binds them as existential quantifiers.
 

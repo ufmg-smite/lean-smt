@@ -153,7 +153,7 @@ def mkProjFn (ctorVal : ConstructorVal) (us : List Level) (params : Array Expr) 
   | some info => match info.getProjFn? i with
     | none => return mkProj ctorVal.induct i major
     | some projFn => return mkApp (mkAppN (mkConst projFn us) params) major
-#check Expr
+
 /--
   If `major` is not a constructor application, and its type is a structure `C ...`, then return `C.mk major.1 ... major.n`
 

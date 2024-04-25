@@ -1,16 +1,28 @@
 Test/Reconstruction/Arith/SumBounds.lean:7:2: error: application type mismatch
-  sumBounds₁ h₂
+  sumBounds₁ h₃
 argument
-  h₂
+  h₃
 has type
-  @LT.lt ℕ instLTNat b e : Prop
+  @LT.lt ℕ instLTNat c f : Prop
 but is expected to have type
-  @LT.lt ℕ Preorder.toLT b e : Prop
+  @LT.lt ℕ Preorder.toLT c f : Prop
+Test/Reconstruction/Arith/SumBounds.lean:12:4: error: type mismatch
+  _uniq.452
+has type
+  w + c + b + a ≤ z + f + e + d : Prop
+but is expected to have type
+  a + (b + (c + w)) ≤ d + (e + (f + z)) : Prop
+Test/Reconstruction/Arith/SumBounds.lean:16:2: error: type mismatch
+  _uniq.1532
+has type
+  c + b + IntCast.intCast a < f + e + IntCast.intCast d : Prop
+but is expected to have type
+  ↑a + (b + c) < ↑d + (e + f) : Prop
 Test/Reconstruction/Arith/SumBounds.lean:20:2: error: application type mismatch
-  sumBounds₁ h₂
+  sumBounds₁ h₃
 argument
-  h₂
+  h₃
 has type
-  @LT.lt ℕ instLTNat b e : Prop
+  @LT.lt ℕ instLTNat c f : Prop
 but is expected to have type
-  @LT.lt ℕ Preorder.toLT b e : Prop
+  @LT.lt ℕ Preorder.toLT c f : Prop
