@@ -35,6 +35,7 @@ jobs:
       run: |
         lake update
         lake exe cache get
+        lake build
         lake build +Smt:dynlib
     - name: Test lean-smt
       run: lake run test
