@@ -22,7 +22,7 @@ def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁ ∧ p�
   have ⟨ ht₁, ht₂ ⟩ := h₂
   exact h₁ ht₁ ht₂
 
-theorem arith_mul_pos_lt : (0 : α) < c ∧ a < b → c * a < c * b :=
+theorem arith_mul_pos_lt : c > 0 ∧ a < b → c * a < c * b :=
   uncurry (flip mul_lt_mul_of_pos_left)
 
 theorem arith_mul_pos_le : c > 0 ∧ a ≤ b → c * a ≤ c * b := λ h =>

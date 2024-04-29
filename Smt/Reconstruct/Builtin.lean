@@ -5,13 +5,23 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct
+import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Builtin.Rewrites
-import Smt.Reconstruct
 
 namespace Smt.Reconstruct.Builtin
 
 open Lean Qq
+
+@[smt_sort_reconstruct] def reconstructBuiltinSort : SortReconstructor := fun s => do match s.getKind with
+  | .FUNCTION_SORT =>
+    let mut curr : Q(Type) ← reconstructSort s.getFunctionCodomainSort
+    for s in s.getFunctionDomainSorts do
+      let t : Q(Type) ← reconstructSort s
+      curr := q($t → $curr)
+    return curr
+  | _              => return none
 
 def getFVarExpr! (n : Name) : MetaM Expr := do
   match (← getLCtx).findFromUserName? n with
@@ -35,8 +45,8 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)
-  | .SKOLEM_FUN => match t.getSkolemId with
-    | .PURIFY => reconstructTerm t.getSkolemArguments[0]!
+  | .SKOLEM => match t.getSkolemId with
+    | .PURIFY => reconstructTerm t.getSkolemIndices[0]!
     | _ => return none
   | _ => return none
 where
@@ -44,7 +54,7 @@ where
     if t.hasSymbol then t.getSymbol else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .ITE_TRUE_COND =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let x : Q($α) ← reconstructTerm pf.getArguments[1]!
@@ -105,41 +115,35 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 @[smt_proof_reconstruct] def reconstructBuiltinProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .ASSUME =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]!
-    match (← Meta.findLocalDeclWithType? p) with
-    | none => throwError "no assumption of type\n\t{p}\nfound in local context"
-    | some fv => return Expr.fvar fv
+    match (← findAssumWithType? p) with
+    | none   => throwError "no assumption of type\n\t{p}\nfound in local context"
+    | some a => return a
   | .SCOPE =>
-    let mv ← getCurrGoal
-    mv.withContext do
-      let f := fun arg ps => do
-        let p : Q(Prop) ← reconstructTerm arg
-        return q($p :: $ps)
-      let ps : Q(List Prop) ← pf.getArguments.foldrM f q([])
-      let as ← pf.getArguments.mapM (fun _ => return Name.num `a (← incCount))
-      let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
-      let h₁ : Q(impliesN $ps $q) ← Meta.mkFreshExprMVar q(impliesN $ps $q)
-      let (fvs, mv') ← h₁.mvarId!.introN pf.getArguments.size as.toList
-      setCurrGoal mv'
-      mv'.withContext do
-        let h₂ : Q($q) ← withAssums (fvs.map Expr.fvar) (reconstructProof pf.getChildren[0]!)
-        let mv'' ← getCurrGoal
-        mv''.withContext (mv''.assignIfDefeq h₂)
-      setCurrGoal mv
-      addThm q(andN $ps → $q) q(Builtin.scopes $h₁)
+    let f := fun arg ps => do
+      let p : Q(Prop) ← reconstructTerm arg
+      return q($p :: $ps)
+    let ps : Q(List Prop) ← pf.getArguments.foldrM f q([])
+    let as ← pf.getArguments.mapM (fun _ => return Name.num `a (← incCount))
+    let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
+    let h₁ : Q(impliesN $ps $q) ← Meta.mkFreshExprMVar q(impliesN $ps $q)
+    let (fvs, mv) ← h₁.mvarId!.introN as.size as.toList
+    withNewProofCache $ mv.withContext do
+      let h₂ : Q($q) ← withAssums (fvs.map Expr.fvar) (reconstructProof pf.getChildren[0]!)
+      mv.assign h₂
+    addThm q(andN $ps → $q) q(Builtin.scopes $h₁)
   | .EVALUATE =>
     let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
-    if (← reconstructTerm pf.getResult).getUsedConstants.any (isNoncomputable (← getEnv)) then
-      return none
-    -- TODO: handle case where a Prop is inside an expression
-    if α.isProp then
-      let p  : Q(Prop) ← reconstructTerm pf.getResult[0]!
-      let p' : Q(Prop) ← reconstructTerm pf.getResult[1]!
-      let h : Q(Decidable ($p = $p')) ← Meta.synthInstance q(Decidable ($p = $p'))
-      addThm q($p = $p') (.app q(@of_decide_eq_true ($p = $p') $h) q(Eq.refl true))
-    else
-      let t  : Q($α) ← reconstructTerm pf.getResult[0]!
-      let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    let t  : Q($α) ← reconstructTerm pf.getResult[0]!
+    let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    if pf.getResult[0]! == pf.getResult[1]! then
       addThm q($t = $t') q(Eq.refl $t)
+    else
+      let h : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
+      if h.getUsedConstants.any (isNoncomputable (← getEnv)) then
+        return none
+      addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
+  | .ACI_NORM =>
+    addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
   | .DSL_REWRITE => reconstructRewrite pf
   | .ITE_ELIM1 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!

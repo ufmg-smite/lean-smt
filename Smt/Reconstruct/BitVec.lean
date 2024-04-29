@@ -15,33 +15,33 @@ open Lean Qq
 @[smt_sort_reconstruct] def reconstructBitVecSort : SortReconstructor := fun s => do match s.getKind with
   | .BITVECTOR_SORT =>
     let w : Nat := s.getBitVectorSize.val
-    return q(Std.BitVec $w)
+    return q(BitVec $w)
   | _             => return none
 
 @[smt_term_reconstruct] partial def reconstructBitVec : TermReconstructor := fun t => do match t.getKind with
   | .CONST_BITVECTOR =>
     let w : Nat := t.getSort.getBitVectorSize.val
     let v : Nat := (t.getBitVectorValue 10).toNat!
-    return q(Std.BitVec.ofNat $w $v)
+    return q(BitVec.ofNat $w $v)
   | .BITVECTOR_BITOF =>
     let w : Nat := t[0]!.getSort.getBitVectorSize.val
-    let x : Q(Std.BitVec $w) ← reconstructTerm t[0]!
+    let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let i : Nat := t.getOp[0]!.getIntegerValue.toNat
     return q(«$x».getLsb $i = true)
   | .BITVECTOR_BB_TERM =>
     let w : Nat := t.getNumChildren
-    let bs : Q(Std.BitVec 0) := q(.nil)
+    let bs : Q(BitVec 0) := q(.nil)
     let f (bs : Expr) (i : Nat) : ReconstructM Expr := do
       let p : Q(Prop) ← reconstructTerm t[i]!
-      let bs : Q(Std.BitVec $i) := bs
+      let bs : Q(BitVec $i) := bs
       let hp : Q(Decidable $p) ← synthDecidableInst t[i]!
-      return q(@Std.BitVec.cons $i (@decide $p $hp) $bs)
-    let bs : Q(Std.BitVec $w) ← (List.range w).foldlM f bs
+      return q(@BitVec.cons $i (@decide $p $hp) $bs)
+    let bs : Q(BitVec $w) ← (List.range w).foldlM f bs
     return q($bs)
   | .BITVECTOR_ADD =>
     let w : Nat := t.getSort.getBitVectorSize.val
-    let x : Q(Std.BitVec $w) ← reconstructTerm t[0]!
-    let y : Q(Std.BitVec $w) ← reconstructTerm t[1]!
+    let x : Q(BitVec $w) ← reconstructTerm t[0]!
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
     return q($x + $y)
   | _ => return none
 where
@@ -71,12 +71,12 @@ where
         return q(@instDecidableEqProp $p $q (@instDecidableIff $p $q $hp $hq))
       if t[0]!.getSort.getKind == .BITVECTOR_SORT then
         let w : Nat := t[0]!.getSort.getBitVectorSize.val
-        return q(@Std.instDecidableEqBitVec $w)
+        return q(@instDecidableEqBitVec $w)
       let p : Q(Prop) ← reconstructTerm t
       Meta.synthInstance q(Decidable $p)
     | .BITVECTOR_BITOF =>
       let w : Nat := t[0]!.getSort.getBitVectorSize.val
-      let x : Q(Std.BitVec $w) ← reconstructTerm t[0]!
+      let x : Q(BitVec $w) ← reconstructTerm t[0]!
       let i : Nat := t.getOp[0]!.getIntegerValue.toNat
       return q(instDecidableEqBool («$x».getLsb $i) true)
     | _ =>
@@ -84,7 +84,7 @@ where
       Meta.synthInstance q(Decidable $p)
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructBitVecProof : ProofReconstructor := fun pf => do match pf.getRule with
@@ -94,8 +94,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     match t.getKind with
     | .CONST_BITVECTOR =>
       let w : Nat := t.getSort.getBitVectorSize.toNat
-      let t : Q(Std.BitVec $w) ← reconstructTerm pf.getResult[0]!
-      let t' : Q(Std.BitVec $w) ← reconstructTerm pf.getResult[1]!
+      let t : Q(BitVec $w) ← reconstructTerm pf.getResult[0]!
+      let t' : Q(BitVec $w) ← reconstructTerm pf.getResult[1]!
       addThm q($t = $t') q(Eq.refl $t)
     | _ => return none
   | _ => return none

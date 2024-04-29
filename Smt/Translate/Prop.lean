@@ -5,7 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Lean
 import Qq
 
 import Smt.Translate
@@ -67,7 +66,7 @@ def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
 
 -- Local `have` proofs are encoded as `let_fun`. Remove them.
 @[smt_translate] def translateHave : Translator := fun e => do
-  let some e := letFunAnnotation? e | return none
+  let some (_, _, _, e) := letFun? e | return none
   if !e.appFn!.isLambda then return none
   Meta.lambdaTelescope e.appFn! fun args bd => do
     trace[smt.debug.translatePropLetFun] "found let_fun {e}"

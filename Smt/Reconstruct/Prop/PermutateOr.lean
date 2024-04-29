@@ -33,7 +33,7 @@ where go : List Expr → Nat → Expr → MetaM Expr
 
 def reorder (mv : MVarId) (e : Expr) (is : Array Nat) (i : Option Nat) : MetaM Unit := do
   let answer ← permutateOrMeta e is.toList i
-  mv.assignIfDefeq answer
+  mv.assign answer
 
 -- TODO: find a way to remove '?' without breaking the parser
 syntax (name := permutateOr) "permutateOr" term "," ("[" term,* "]")? ("," term)? : tactic

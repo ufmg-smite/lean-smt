@@ -15,7 +15,7 @@ namespace Smt.Reconstruct.Arith
 
 variable {α : Type}
 
-variable [LinearOrderedRing α]
+variable [LinearOrderedCommRing α]
 
 variable {a b : α}
 
@@ -32,7 +32,7 @@ theorem powNegEven : ∀ {k : Nat} {z : α}, z < 0 → Even k → z ^ k > 0 := b
     simp [Pow.pow]
     have mulZ := arith_mul_neg_lt ⟨h₁, rc⟩
     simp at mulZ
-    rw [pow_succ]
+    rw [pow_succ, mul_comm]
     exact mulZ
 
 theorem powNegOdd : ∀ {k : Nat} {z : α}, z < 0 → Odd k → z ^ k < 0 := by
@@ -46,7 +46,7 @@ theorem powNegOdd : ∀ {k : Nat} {z : α}, z < 0 → Odd k → z ^ k < 0 := by
     simp [Int.pow]
     have mulZ := arith_mul_neg_lt ⟨h₁, rc⟩
     simp at mulZ
-    rw [pow_succ]
+    rw [pow_succ, mul_comm]
     exact mulZ
 
 end
@@ -60,6 +60,7 @@ theorem powPos : ∀ {k : Nat} {z : α}, z > 0 → z ^ k > 0 := by
     rw [pow_succ]
     have h₂ := arith_mul_pos_lt ⟨h, ih⟩
     simp at h₂
+    rw [mul_comm]
     exact h₂
 
 theorem nonZeroEvenPow : ∀ {k : Nat} {z : α},

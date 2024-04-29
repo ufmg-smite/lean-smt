@@ -154,16 +154,15 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
     trace[smt.debug] m!"\nerror reason:\n{repr e}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .ok pf =>
-    let (fv, mv, mvs) ← reconstructProof (← Tactic.getMainGoal) pf
-    mv.withContext do
-      let ts ← hs.mapM (fun h => Meta.inferType h)
-      let mut gs ← mv.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
-      Tactic.replaceMainGoal (gs ++ mvs)
-      let hs := (.fvar fv) :: hs
-      for h in hs do
-        evalAnyGoals do
-          let gs ← (← Tactic.getMainGoal).apply h
-          Tactic.replaceMainGoal gs
+    let (p, mvs) ← reconstructProof pf
+    let ts ← hs.mapM (fun h => Meta.inferType h)
+    let mut gs ← (← Tactic.getMainGoal).apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
+    Tactic.replaceMainGoal (gs ++ mvs)
+    let hs := p :: hs
+    for h in hs do
+      evalAnyGoals do
+        let gs ← (← Tactic.getMainGoal).apply h
+        Tactic.replaceMainGoal gs
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let mv ← Util.rewriteIffMeta (← Tactic.getMainGoal)

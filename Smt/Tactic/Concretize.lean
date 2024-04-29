@@ -75,7 +75,7 @@ def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
     }
     simpTheorems
   }
-  _ ← Tactic.simpLocation ctx (loc := loc.toTacticLocation)
+  _ ← Tactic.simpLocation ctx #[] (loc := loc.toTacticLocation)
   let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
   Tactic.dsimpLocation { ctx with config := { ctx.config with failIfUnchanged := false } } (loc := loc.toTacticLocation)
 

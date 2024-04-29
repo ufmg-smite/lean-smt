@@ -81,7 +81,7 @@ def factor (mv : MVarId) (e : Expr) (i : Option Nat) : MetaM Unit := do
   let fvt ← inferType e
   let suffix := i.getD ((← getLength fvt) - 1)
   let answer ← factorCoreMeta e fvt suffix
-  mv.assignIfDefeq answer
+  mv.assign answer
 
 namespace Tactic
 

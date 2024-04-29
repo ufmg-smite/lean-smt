@@ -1,5 +1,5 @@
-Test/Concretize/BitVec.lean:17:0: warning: declaration uses 'sorry'
+Test/Concretize/BitVec.lean:8:0: warning: declaration uses 'sorry'
 x y : BitVec 2
-polyAdd.«2» : BitVec 2 → BitVec 2 → BitVec 2 := BitVec.xor
+polyAdd.«2» : BitVec 2 → BitVec 2 → BitVec 2 := fun x y => (BitVec.toNat x ^^^ BitVec.toNat y)#'⋯
 polyDouble.«2» : BitVec 2 → BitVec 2 := fun x => polyAdd.«2» x x
 ⊢ polyDouble.«2» (polyAdd.«2» x y) = polyDouble.«2» (polyAdd.«2» y x)

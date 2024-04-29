@@ -117,11 +117,11 @@ where
 
 def r₀ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := do
   let answer ← resolutionCoreMeta e₁ e₂ pivot i₁ i₂ false
-  mv.assignIfDefeq answer
+  mv.assign answer
 
 def r₁ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := do
   let answer ← resolutionCoreMeta e₁ e₂ pivot i₁ i₂ true
-  mv.assignIfDefeq answer
+  mv.assign answer
 
 @[tactic resolution_1] def evalResolution_1 : Tactic := fun stx =>
   withMainContext do
