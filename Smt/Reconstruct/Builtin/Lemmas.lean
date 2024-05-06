@@ -13,7 +13,7 @@ namespace Smt.Reconstruct.Builtin
   | []      => True
   | [_]     => True
   | [x, y]  => x ≠ y
-  | x :: ys => ys.foldr (fun y p => x ≠ y ∧ p) (distinct ys)
+  | x :: ys => ys.foldr (x ≠ · ∧ ·) (distinct ys)
 
 theorem iteElim1 [hc : Decidable c] : ite c a b → ¬ c ∨ a := by
   intros h
