@@ -104,7 +104,36 @@ where
   getVariableName (t : cvc5.Term) : Name :=
     if t.hasSymbol then t.getSymbol else Name.num `x t.getId
 
+def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Option Expr) := do
+  match pf.getRewriteRule with
+  | .BETA_REDUCE =>
+    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let t  : Q($α) ← reconstructTerm pf.getResult[0]!
+    let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    addThm q($t = $t') q(Eq.refl $t)
+  | .EXISTS_ELIM =>
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (reconstructQuant.getVariableName x, fun _ => reconstructSort x.getSort)
+    let p : Q(Prop) ← reconstructTerm pf.getResult[0]!
+    let q : Q(Prop) ← reconstructTerm pf.getResult[1]!
+    let (_, _, (h : Q($q = $p))) ← Meta.withLocalDeclsD xs fun xs => do
+      let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
+      let h := q(Classical.not_not_eq $b)
+      let f : Expr → (Expr × Expr × Expr) → ReconstructM (Expr × Expr × Expr) := fun x (p, q, h) => do
+        let α : Q(Type) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
+        let hx : Q(∀ x : $α, (¬$lp x) = $lq x) ← Meta.mkLambdaFVars #[x] h
+        let ap ← Meta.mkForallFVars #[x] p
+        let eq ← Meta.mkExistsFVars #[x] q
+        return (ap, eq, q(Eq.trans (Classical.not_forall_eq $lp) (congrArg Exists (funext $hx))))
+      xs.foldrM f (q(¬$b), q($b), h)
+    addThm q($p = $q) q(@Eq.symm Prop $q $p $h)
+  | _ => return none
+
 @[smt_proof_reconstruct] def reconstructQuantProof : ProofReconstructor := fun pf => do match pf.getRule with
+  | .THEORY_REWRITE => reconstructRewrite pf (← pf.getChildren.mapM reconstructProof)
   | .CONG =>
     let k := pf.getResult[0]!.getKind
     -- This rule needs more care for closures.
@@ -112,11 +141,6 @@ where
       reconstructForallCong pf
     else
       return none
-  | .BETA_REDUCE =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
-    let t  : Q($α) ← reconstructTerm pf.getResult[0]!
-    let t' : Q($α) ← reconstructTerm pf.getResult[1]!
-    addThm q($t = $t') q(Eq.refl $t)
   | .SKOLEMIZE => reconstructSkolemize pf
   | .INSTANTIATE =>
     let xsF  : Q(Prop) ← reconstructProof pf.getChildren[0]!

@@ -38,6 +38,19 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
 @[smt_term_reconstruct] def reconstructBuiltin : TermReconstructor := fun t => do match t.getKind with
   | .VARIABLE => getFVarExpr! (getVariableName t)
   | .CONSTANT => getFVarOrConstExpr! t.getSymbol
+  | .EQUAL =>
+    let α : Q(Type) ← reconstructSort t[0]!.getSort
+    let x : Q($α) ← reconstructTerm t[0]!
+    let y : Q($α) ← reconstructTerm t[1]!
+    return q($x = $y)
+  | .DISTINCT =>
+    let n := t.getNumChildren
+    let α : Q(Type) ← reconstructSort t[0]!.getSort
+    let mut xs : Q(List $α) := q([])
+    for i in [0:n] do
+      let x : Q($α) ← reconstructTerm t[n - i - 1]!
+      xs := q($x :: $xs)
+    return q(Builtin.distinct $xs)
   | .ITE =>
     let α : Q(Type) ← reconstructSort t.getSort
     let c : Q(Prop) ← reconstructTerm t[0]!
@@ -55,6 +68,11 @@ where
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
+  | .DISTINCT_ELIM =>
+    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let t  : Q($α) ← reconstructTerm pf.getResult[0]!
+    let t' : Q($α) ← reconstructTerm pf.getResult[1]!
+    addThm q($t = $t') q(Eq.refl $t)
   | .ITE_TRUE_COND =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let x : Q($α) ← reconstructTerm pf.getArguments[1]!
@@ -144,7 +162,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
   | .ACI_NORM =>
     addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
-  | .DSL_REWRITE => reconstructRewrite pf
+  | .DSL_REWRITE
+  | .THEORY_REWRITE => reconstructRewrite pf
   | .ITE_ELIM1 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
