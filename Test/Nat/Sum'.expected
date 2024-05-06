@@ -1,19 +1,12 @@
-Test/Nat/Sum'.lean:7:12: error: tactic 'rewrite' failed, motive is not type correct
-case s.15
-a.0 : ∀ (n : ℤ), sum n = if n = 0 then 0 else n + sum (if 1 ≤ n then n - 1 else 0)
-a.1 : ∀ «_uniq.15709» ≥ 0, sum «_uniq.15709» ≥ 0
-a.2 : Smt.Reconstruct.Builtin.distinct [sum 0, 0]
-a.3 : ∀ (n : ℤ), sum n = if n = 0 then 0 else n + sum (if n ≥ 1 then -1 + n else 0)
-n : ℤ
-⊢ (if 1 ≤ n then n - 1 else 0) = if n ≥ 1 then -1 + n else 0
+Test/Nat/Sum'.lean:7:12: error: [arithPolyNorm]: could not prove 0 + sum 0 = sum 0
 goal: sum (Nat.succ n) = Nat.succ n * (Nat.succ n + 1) / 2
 
 query:
 (define-sort Nat () Int)
-(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (ite (<= 1 n) (- n 1) 0)))))
-(assert (forall ((_uniq.17996 Nat)) (=> (>= _uniq.17996 0) (>= (sum _uniq.17996) 0))))
 (declare-const n Nat)
 (assert (>= n 0))
+(define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (ite (<= 1 n) (- n 1) 0)))))
+(assert (forall ((_uniq.22118 Nat)) (=> (>= _uniq.22118 0) (>= (sum _uniq.22118) 0))))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
 (assert (distinct (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2)))
 (check-sat)

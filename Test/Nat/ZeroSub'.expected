@@ -1,7 +1,7 @@
 Test/Nat/ZeroSub'.lean:6:17: error: type mismatch
   Iff.rfl
 has type
-  ?m.506 ↔ ?m.506 : Prop
+  ?m.578 ↔ ?m.578 : Prop
 but is expected to have type
   ¬Smt.Reconstruct.andN' [] ¬0 - Nat.zero = 0 : Prop
 Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch

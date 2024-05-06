@@ -11,15 +11,11 @@ open Lean Elab Tactic Meta
 
 namespace Smt.Reconstruct.UF
 
-def rewriteHyp (mv : MVarId) (hyp : Expr) : MetaM MVarId :=
-  mv.withContext do
-    let type ← mv.getType
-    let r ← mv.rewrite type hyp false { occs := .pos [1] }
-    mv.replaceTargetEq r.eNew r.eqProof
-
-def smtCongr (mv : MVarId) (hyps : Array Expr) : MetaM Unit := do
-  let mv ← hyps.foldlM rewriteHyp mv
-  mv.refl
+def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
+  let hs ← hs.mapM fun h =>
+    return { userName := .anonymous, type := (← Meta.inferType h), value := h }
+  let (_, mv) ← mv.assertHypotheses hs
+  _ ← mv.congrN
 
 namespace Tactic
 
