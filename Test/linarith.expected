@@ -14,5 +14,6 @@ Test/linarith.lean:117:13: warning: unused variable `c` [linter.unusedVariables]
 Test/linarith.lean:129:60: warning: unused variable `h3` [linter.unusedVariables]
 Test/linarith.lean:136:9: warning: unused variable `a` [linter.unusedVariables]
 Test/linarith.lean:136:13: warning: unused variable `c` [linter.unusedVariables]
+Test/linarith.lean:157:2: error: [arithPolyNorm]: could not prove x - y = -x + y
 Test/linarith.lean:179:34: warning: unused variable `z` [linter.unusedVariables]
 Test/linarith.lean:180:5: warning: unused variable `h5` [linter.unusedVariables]

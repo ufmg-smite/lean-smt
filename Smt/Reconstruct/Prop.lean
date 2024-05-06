@@ -21,7 +21,7 @@ namespace Smt.Reconstruct.Prop
 
 open Lean Qq
 
-@[smt_sort_reconstruct] def reconstructSort : SortReconstructor := fun s => do match s.getKind with
+@[smt_sort_reconstruct] def reconstructPropSort : SortReconstructor := fun s => do match s.getKind with
   | .BOOLEAN_SORT => return q(Prop)
   | _             => return none
 
@@ -215,6 +215,13 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
 
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf (← pf.getChildren.mapM reconstructProof)
+  | .ITE_EQ =>
+    let α : Q(Type) ← reconstructSort pf.getArguments[0]![1]!.getSort
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let x : Q($α) ← reconstructTerm pf.getArguments[0]![1]!
+    let y : Q($α) ← reconstructTerm pf.getArguments[0]![2]!
+    addThm q(ite $c ((ite $c $x $y) = $x) ((ite $c $x $y) = $y)) q(@Prop.ite_eq $α $c $hc $x $y)
   | .RESOLUTION =>
     let c₁ := clausify pf.getChildren[0]!.getResult
     let c₂ := clausify pf.getChildren[1]!.getResult

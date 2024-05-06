@@ -16,6 +16,10 @@ namespace Smt.Reconstruct.Prop
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
 
+theorem ite_eq (c : Prop) [h : Decidable c] (x y : α) : ite c ((ite c x y) = x) ((ite c x y) = y) := by
+  cases h
+  all_goals simp_all
+
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
   cases Classical.em P with

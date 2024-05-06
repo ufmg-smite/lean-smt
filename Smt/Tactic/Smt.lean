@@ -143,8 +143,8 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   let cmds := .setLogic "ALL" :: cmds
   trace[smt.debug] m!"goal: {goalType}"
   trace[smt.debug] m!"\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
-  -- 3. Run the solver.
   let timeout ← parseTimeout ⟨stx[2]⟩
+  -- 3. Run the solver.
   let res ← prove (Command.cmdsAsQuery cmds) timeout
   -- 4. Print the result.
   -- logInfo m!"\nresult: {res.toString}"

@@ -137,7 +137,8 @@ def findAssumWithType? (t : Expr) : ReconstructM (Option Expr) := do
 def skipStep (mv : MVarId) : ReconstructM Unit := mv.withContext do
   let state ← get
   let t ← Meta.mkForallFVars state.currAssums (← mv.getType)
-  let mv' ← Meta.mkFreshExprMVar t
+  let ctx := state.currAssums.foldr (fun e ctx => ctx.erase e.fvarId!) (← getLCtx)
+  let mv' ← Meta.withLCtx ctx (← Meta.getLocalInstances) (Meta.mkFreshExprMVar t)
   let e := mkAppN mv' state.currAssums
   set { state with skipedGoals := state.skipedGoals.push mv'.mvarId! }
   mv.assign e

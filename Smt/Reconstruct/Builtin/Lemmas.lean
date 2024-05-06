@@ -9,6 +9,12 @@ import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Builtin
 
+@[reducible] def distinct : List α → Prop
+  | []      => True
+  | [_]     => True
+  | [x, y]  => x ≠ y
+  | x :: ys => ys.foldr (fun y p => x ≠ y ∧ p) (distinct ys)
+
 theorem iteElim1 [hc : Decidable c] : ite c a b → ¬ c ∨ a := by
   intros h
   cases hc with

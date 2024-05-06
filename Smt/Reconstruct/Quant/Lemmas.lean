@@ -7,6 +7,13 @@ Authors: Tomaz Gomes Mascarenhas
 
 namespace Classical
 
+theorem exists_elim {α} {p : α → Prop} : (∃ x, p x) = ¬∀ x, ¬p x :=
+  Eq.symm (propext not_forall_not)
+
+theorem not_forall_eq (p : α → Prop) : (¬∀ (x : α), p x) = ∃ x, ¬p x := propext not_forall
+
+theorem not_not_eq (p : Prop) : (¬¬p) = p := propext not_not
+
 theorem epsilon_spec_aux' {α : Sort u} (h : Nonempty α) (p : α → Prop) : (¬∀ y, p y) → ¬p (@epsilon α h (fun x => ¬p x)) :=
   propext not_forall ▸ epsilon_spec_aux h (fun x => ¬p x)
 

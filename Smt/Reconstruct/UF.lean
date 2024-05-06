@@ -26,16 +26,6 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _             => return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with
-  | .EQUAL =>
-    let α : Q(Type) ← reconstructSort t[0]!.getSort
-    let x : Q($α) ← reconstructTerm t[0]!
-    let y : Q($α) ← reconstructTerm t[1]!
-    return q($x = $y)
-  | .DISTINCT =>
-    let α : Q(Type) ← reconstructSort t[0]!.getSort
-    let x : Q($α) ← reconstructTerm t[0]!
-    let y : Q($α) ← reconstructTerm t[1]!
-    return q($x ≠ $y)
   | .APPLY_UF =>
     let mut curr ← reconstructTerm t[0]!
     for i in [1:t.getNumChildren] do
