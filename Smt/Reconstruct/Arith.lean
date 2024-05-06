@@ -333,7 +333,7 @@ where
         addThm q(($a₁ ≥ $a₂) = ($b₁ ≥ $b₂)) q(Arith.ge_of_sub_eq $hc₁ $hc₂ $h)
       | .GT =>
         addThm q(($a₁ > $a₂) = ($b₁ > $b₂)) q(Arith.gt_of_sub_eq $hc₁ $hc₂ $h)
-      | _   => none
+      | _   => return none
   | .ARITH_MULT_SIGN =>
     let args := pf.getArguments
     let m := args.back
@@ -372,7 +372,7 @@ where
       addThm q($m > 0 ∧ $l ≥ $r → $m * $l ≥ $m * $r) q(@Arith.arith_mul_pos_ge _ _ $l $r $m)
     | .GT =>
       addThm q($m > 0 ∧ $l > $r → $m * $l > $m * $r) q(@Arith.arith_mul_pos_gt _ _ $l $r $m)
-    | _ => none
+    | _ => return none
   | .ARITH_MULT_NEG =>
     let ⟨α, _⟩ := getTypeAndInst pf.getArguments[0]!.getSort
     let m : Q($α) ← reconstructTerm pf.getArguments[0]!
@@ -389,7 +389,7 @@ where
       addThm q($m < 0 ∧ $l ≥ $r → $m * $l ≤ $m * $r) q(@Arith.arith_mul_neg_ge _ _ $l $r $m)
     | .GT =>
       addThm q($m < 0 ∧ $l > $r → $m * $l < $m * $r) q(@Arith.arith_mul_neg_gt _ _ $l $r $m)
-    | _ => none
+    | _ => return none
   | .ARITH_MULT_TANGENT =>
     let x : Q(Real) ← reconstructTerm pf.getArguments[0]!
     let y : Q(Real) ← reconstructTerm pf.getArguments[1]!
