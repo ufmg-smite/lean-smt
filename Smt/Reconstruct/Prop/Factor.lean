@@ -77,7 +77,12 @@ where
            let newLi ← collectPropsInOrChain' suffIdx' newLiExpr
            go newLi i' n suffIdx' answer'
 
-def factor (mv : MVarId) (e : Expr) (i : Option Nat) : MetaM Unit := do
+def traceFactor (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def factor (mv : MVarId) (e : Expr) (i : Option Nat) : MetaM Unit := withTraceNode `smt.reconstruct.factor traceFactor do
   let fvt ← inferType e
   let suffix := i.getD ((← getLength fvt) - 1)
   let answer ← factorCoreMeta e fvt suffix

@@ -50,8 +50,8 @@ def registerSmtAttr (attrName : Name) (typeName : Name) (attrDescr : String)
     descr := attrDescr
     applicationTime := AttributeApplicationTime.afterTypeChecking
     add   := fun decl stx attrKind => do
-      trace[smt.debug.attr] s!"attrName: {attrName}, attrDescr: {attrDescr}"
-      trace[smt.debug.attr] s!"decl: {decl}, stx: {stx}, attrKind: {attrKind}"
+      trace[smt.attr] s!"attrName: {attrName}, attrDescr: {attrDescr}"
+      trace[smt.attr] s!"decl: {decl}, stx: {stx}, attrKind: {attrKind}"
       Attribute.Builtin.ensureNoArgs stx
       validate decl typeName
       setEnv (smtExt.addEntry (← getEnv) (typeName, decl))

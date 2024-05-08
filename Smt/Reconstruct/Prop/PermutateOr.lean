@@ -31,7 +31,12 @@ where go : List Expr → Nat → Expr → MetaM Expr
           let pulled ← pullCore e acc type suffIdx
           go es suffIdx pulled
 
-def reorder (mv : MVarId) (e : Expr) (is : Array Nat) (i : Option Nat) : MetaM Unit := do
+def traceReorder (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def reorder (mv : MVarId) (e : Expr) (is : Array Nat) (i : Option Nat) : MetaM Unit := withTraceNode `smt.reconstruct.reorder traceReorder do
   let answer ← permutateOrMeta e is.toList i
   mv.assign answer
 

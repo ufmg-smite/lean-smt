@@ -39,7 +39,7 @@ namespace Translator
 private unsafe def getTranslatorsUnsafe : MetaM (List (Translator × Name)) := do
   let env ← getEnv
   let names := ((smtExt.getState env).findD ``Translator {}).toList
-  -- trace[smt.debug.attr] "Translators: {names}"
+  -- trace[smt.attr] "Translators: {names}"
   let mut translators := []
   for name in names do
     let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
@@ -90,7 +90,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
       -- TODO: Use `DiscrTree` to index the translators instead of naively looping
       for (t, nm) in ts do
         if let some tm ← t e then
-          trace[smt.debug.translate.expr] "{e} =({nm})=> {tm}"
+          trace[smt.translate.expr] "{e} =({nm})=> {tm}"
           return tm
 
       -- Then try splitting subexpressions
@@ -125,11 +125,11 @@ def traceTranslation (e : Expr) (e' : Except ε (Term × NameSet)) : Translation
 /-- Processes `e` by running it through all the registered `Translator`s.
 Returns the resulting SMT-LIB term and set of dependencies. -/
 def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
-  withTraceNode `smt.debug.translate (traceTranslation e ·) do
+  withTraceNode `smt.translate (traceTranslation e ·) do
     modify fun st => { st with depConstants := .empty }
-    trace[smt.debug.translate.expr] "before: {e}"
+    trace[smt.translate.expr] "before: {e}"
     let tm ← applyTranslators! e
-    trace[smt.debug.translate.expr] "translated: {tm}"
+    trace[smt.translate.expr] "translated: {tm}"
     return (tm, (← get).depConstants)
 
 def translateExpr' (e : Expr) : TranslationM Term :=

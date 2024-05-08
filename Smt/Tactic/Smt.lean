@@ -19,12 +19,6 @@ open Lean hiding Command
 open Elab Tactic Qq
 open Smt Translate Query Reconstruct Util
 
-initialize
-  registerTraceClass `smt.debug
-  registerTraceClass `smt.debug.attr
-  registerTraceClass `smt.debug.translate.query
-  registerTraceClass `smt.debug.translate.expr
-
 syntax smtHints := ("[" term,* "]")?
 syntax smtTimeout := ("(timeout := " num ")")?
 
@@ -101,7 +95,7 @@ def elabProof (text : String) : TacticM Name := do
   let (env, log) ← process text (← getEnv) .empty "<proof>"
   _ ← modifyEnv (fun _ => env)
   for m in log.msgs do
-    trace[smt.debug.reconstruct] (← m.toString)
+    trace[smt.reconstruct] (← m.toString)
   if log.hasErrors then
     throwError "encountered errors elaborating cvc5 proof"
   return name
@@ -145,7 +139,7 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   trace[smt.debug] m!"\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   let timeout ← parseTimeout ⟨stx[2]⟩
   -- 3. Run the solver.
-  let res ← prove (Command.cmdsAsQuery cmds) timeout
+  let res ← solve (Command.cmdsAsQuery cmds) timeout
   -- 4. Print the result.
   -- logInfo m!"\nresult: {res.toString}"
   match res with

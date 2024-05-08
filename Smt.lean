@@ -10,6 +10,7 @@ import Smt.BitVec
 import Smt.Bool
 import Smt.Builtin
 import Smt.Nat
+import Smt.Options
 import Smt.Prop
 import Smt.Quant
 import Smt.String

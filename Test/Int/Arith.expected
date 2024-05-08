@@ -1,1 +1,1 @@
-Test/Int/Arith.lean:4:2: error: [normNum]: could not prove False
+Test/Int/Arith.lean:4:2: error: [norm_num]: could not prove False

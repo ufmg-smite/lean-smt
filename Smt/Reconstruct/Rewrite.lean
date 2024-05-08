@@ -14,7 +14,13 @@ namespace Smt.Reconstruct.Tactic
 open Lean Elab.Tactic
 open Smt.Reconstruct.Prop
 
-def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit := do
+def traceSmtRw (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def smtRw (mv : MVarId) (assoc : Expr) (null : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit :=
+  withTraceNode `smt.reconstruct.smtRw traceSmtRw do
   let n := arr.size
   let mut mv' := mv
   for i in [: n] do

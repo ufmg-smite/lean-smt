@@ -63,26 +63,27 @@ def arithPolyNormCore (mv : MVarId) : MetaM (Option MVarId) := mv.withContext do
   else
     Meta.applySimpResultToTarget mv tgt r
 
+
+def traceArithPolyNorm (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
 /-- Use `arithPolyNorm` to rewrite the main goal. -/
-def arithPolyNorm (mv : MVarId) : MetaM Unit := mv.withContext do
+def arithPolyNorm (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.arithPolyNorm traceArithPolyNorm do
+  mv.withContext do
   if let .some mv ← arithPolyNormCore mv then
     throwError "[arithPolyNorm]: could not prove {← mv.getType}"
 
-open Lean Mathlib.Tactic.RingNF in
-/-- Use `arithPolyNorm` to rewrite the main goal. -/
-def arithPolyNorm' (mv : MVarId) : MetaM Unit := mv.withContext do
-  let tgt ← instantiateMVars (← mv.getType)
-  let s ← IO.mkRef {}
-  let r ← M.run s {} <| rewrite tgt
-  if r.expr.consumeMData.isConstOf ``True then
-    mv.assign (← Meta.mkOfEqTrue (← r.getProof))
-  else
-    throwError "[arithPolyNorm]: could not prove {r.expr}\n{mv}"
+def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
 
 open Mathlib.Meta.NormNum in
-def normNum (mv : MVarId) : MetaM Unit := do
+def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
   if let some (_, mv) ← normNumAt mv {} #[] true false then
-    throwError "[normNum]: could not prove {← mv.getType}"
+    throwError "[norm_num]: could not prove {← mv.getType}"
 
 open Qq in
 partial def findConst (α : Q(Type)) (hα : Q(LinearOrderedRing $α)) (e : Q($α)) : MetaM Expr := do

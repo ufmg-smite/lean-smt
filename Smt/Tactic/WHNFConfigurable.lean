@@ -1043,12 +1043,12 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
   visit e |>.run
 
 initialize
-  registerTraceClass `Smt.reduce
-  registerTraceClass `Smt.reduce.whnf
-  registerTraceClass `Smt.reduce.whnfCore
-  registerTraceClass `Smt.reduce.rec
-  registerTraceClass `Smt.reduce.matcher
-  registerTraceClass `Smt.reduce.smartUnfoldingReduce
+  registerTraceClass `smt.reduce
+  registerTraceClass `smt.reduce.whnf
+  registerTraceClass `smt.reduce.whnfCore
+  registerTraceClass `smt.reduce.rec
+  registerTraceClass `smt.reduce.matcher
+  registerTraceClass `smt.reduce.smartUnfoldingReduce
 
 end Smt
 

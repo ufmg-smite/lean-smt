@@ -8,7 +8,6 @@ Authors: Tomaz Gomes Mascarenhas
 import Lean
 
 import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct.Options
 import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Prop
@@ -466,7 +465,12 @@ where
       let currProp := props.get! j
       mkAppOptM ``Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
-def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
+def traceNotOrElim (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit := withTraceNode `smt.reconstruct.notOrElim traceNotOrElim do
     mv.withContext do
       let type ← inferType val
       let orChain := notExpr type

@@ -11,7 +11,13 @@ open Lean Elab Tactic Meta
 
 namespace Smt.Reconstruct.UF
 
-def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
+def traceSmtCongr (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := withTraceNode `smt.reconstruct.smtCongr traceSmtCongr do
+  mv.withContext do
   let hs ← hs.mapM fun h =>
     return { userName := .anonymous, type := (← Meta.inferType h), value := h }
   let (_, mv) ← mv.assertHypotheses hs
