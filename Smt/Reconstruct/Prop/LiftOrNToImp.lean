@@ -7,7 +7,6 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-import Smt.Reconstruct.Options
 import Smt.Reconstruct.Prop.Lemmas
 import Smt.Reconstruct.Util
 

@@ -43,7 +43,7 @@ open Translator Term
   {a : α} → {motive : (a_1 : α) → a = a_1 → Sort u_1} → motive a (_ : a = a) → {a_1 : α} → (t : a = a_1) → motive a_1 t -/
 @[smt_translate] def translateEqRec : Translator
   | app (app (app (app (app (app (const `Eq.rec _) _) _) _) e) _) _ => do
-    trace[smt.debug.translateEqRec] "found eq_rec body : {e}"
+    trace[smt.translateEqRec] "found eq_rec body : {e}"
     applyTranslators? e
   | _ => return none
 
@@ -69,11 +69,11 @@ def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
   let some (_, _, _, e) := letFun? e | return none
   if !e.appFn!.isLambda then return none
   Meta.lambdaTelescope e.appFn! fun args bd => do
-    trace[smt.debug.translatePropLetFun] "found let_fun {e}"
+    trace[smt.translatePropLetFun] "found let_fun {e}"
     let #[arg] := args | return none
-    trace[smt.debug.translatePropLetFun] "arg : {arg}"
+    trace[smt.translatePropLetFun] "arg : {arg}"
     if !(← Meta.inferType (← Meta.inferType arg)).isProp then return none
-    trace[smt.debug.translatePropLetFun] "translating {bd.instantiate #[arg]}"
+    trace[smt.translatePropLetFun] "translating {bd.instantiate #[arg]}"
     applyTranslators? (bd.instantiate #[arg])
 
 end Smt.Translate.Prop

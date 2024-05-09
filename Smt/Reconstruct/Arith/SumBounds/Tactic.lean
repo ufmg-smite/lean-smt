@@ -66,9 +66,15 @@ where
   | app (app (app (Expr.const _ ..) tp) ..) .. => pure tp
   | _ => throwError "[getOp] invalid parameter"
 
-def sumBounds (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
+def traceSumBounds (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def sumBounds (mv : MVarId) (hs : Array Expr) : MetaM Unit := withTraceNode `smt.reconstruct.sumBounds traceSumBounds do
+  mv.withContext do
   if hs.isEmpty then
-    throwError "[sumBounds]: empty list of premisses"
+    throwError "[sum_bounds]: empty list of premisses"
   let h ← hs[1:].foldlM (combineBounds mv) hs[0]!
   mv.assign h
 
@@ -88,27 +94,27 @@ where
 
 namespace Tactic
 
-syntax (name := sumBounds) "sumBounds" "[" term,* "]" : tactic
+syntax (name := sumBounds) "sum_bounds" "[" term,* "]" : tactic
 
 def parseSumBounds : Syntax → TacticM (List Expr)
-  | `(tactic| sumBounds [$[$hs],*]) =>
+  | `(tactic| sum_bounds [$[$hs],*]) =>
     hs.toList.mapM (fun stx => elabTerm stx.raw none)
-  | _ => throwError "[sumBounds]: expects a list of premisses"
+  | _ => throwError "[sum_bounds]: expects a list of premisses"
 
 @[tactic sumBounds] def evalSumBounds : Tactic := fun stx =>
   withMainContext do
-    trace[smt.debug] m!"[sumBounds] start time: {← IO.monoNanosNow}ns"
+    trace[smt.debug] m!"[sum_bounds] start time: {← IO.monoNanosNow}ns"
     let (h, hs) ←
       match ← parseSumBounds stx with
       | h::hs =>
         let h'::hs' := List.reverse (h::hs) | throwError "unreachable"
         pure (h', hs')
-      | [] => throwError "[sumBounds]: empty list of premisses"
+      | [] => throwError "[sum_bounds]: empty list of premisses"
     let mvar ← getMainGoal
     let fname ← mkFreshId
     let mvar' ← sumBoundsMeta mvar h hs fname
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
-    trace[smt.debug] m!"[sumBounds] end time: {← IO.monoNanosNow}ns"
+    trace[smt.debug] m!"[sum_bounds] end time: {← IO.monoNanosNow}ns"
 
 end Smt.Reconstruct.Arith.Tactic
