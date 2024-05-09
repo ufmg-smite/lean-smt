@@ -5,6 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct.Bool.Tactic
+import Smt.Reconstruct.BitVec.Bitblast
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct
 
@@ -250,6 +252,52 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let t : Q(BitVec $w) ← reconstructTerm pf.getResult[0]!
       let t' : Q(BitVec $w) ← reconstructTerm pf.getResult[1]!
       addThm q($t = $t') q(Eq.refl $t)
+    | .CONSTANT =>
+      let w : Nat := t.getSort.getBitVectorSize.toNat
+      let x : Q(BitVec $w) ← reconstructTerm pf.getResult[0]!
+      let x' : Q(BitVec $w) ← reconstructTerm pf.getResult[1]!
+      let h : Q(«$x».bb = $x') ← Meta.mkFreshExprMVar q(«$x».bb = $x')
+      let mv ← Bool.boolify h.mvarId!
+      let ds := [``BitVec.bb, ``BitVec.iunfoldr, ``Fin.hIterate, ``Fin.hIterateFrom]
+      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDite]
+      let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
+      let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
+      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      mv.refl
+      addThm q($x = $x') q(Eq.trans (BitVec.self_eq_bb $x) $h)
+    | .EQUAL =>
+      let w : Nat := t[0]!.getSort.getBitVectorSize.toNat
+      let x : Q(BitVec $w) ← reconstructTerm pf.getResult[0]![0]!
+      let y : Q(BitVec $w) ← reconstructTerm pf.getResult[0]![1]!
+      let p : Q(Prop) ← reconstructTerm pf.getResult[1]!
+      let hp : Q(Decidable $p) ← synthDecidableInst pf.getResult[1]!
+      let h : Q(decide (BitVec.beq $x $y) = decide $p) ← Meta.mkFreshExprMVar q(decide (BitVec.beq $x $y) = @decide $p $hp)
+      let mv ← Bool.boolify h.mvarId!
+      let ds := [``BitVec.beq, ``BitVec.beq.go]
+      let ts := [``BitVec.getLsb_cons, ``Nat.succ.injEq]
+      let ps := [``Nat.reduceAdd, ``Nat.reduceSub, ``Nat.reduceEq, ``reduceIte]
+      let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
+      let simpTheorems ← ts.foldrM (fun n a => a.addConst n) simpTheorems
+      let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
+      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      mv.refl
+      addThm q(($x = $y) = $p) q(Eq.trans (BitVec.eq_eq_beq $x $y) (Bool.eq_of_decide_eq $h))
+    | .BITVECTOR_ADD =>
+      let w : Nat := t[0]!.getSort.getBitVectorSize.toNat
+      let x : Q(BitVec $w) ← reconstructTerm pf.getResult[0]![0]!
+      let y : Q(BitVec $w) ← reconstructTerm pf.getResult[0]![1]!
+      let z : Q(BitVec $w) ← reconstructTerm pf.getResult[1]!
+      let h : Q((BitVec.adc' $x $y false).snd = $z) ← Meta.mkFreshExprMVar q((BitVec.adc' $x $y false).snd = $z)
+      let mv ← Bool.boolify h.mvarId!
+      let ds := [``BitVec.adc', ``BitVec.adcb', ``BitVec.iunfoldr, ``Fin.hIterate, ``Fin.hIterateFrom]
+      let ts := [``BitVec.getLsb_cons, ``Nat.succ.injEq]
+      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDite, ``reduceIte]
+      let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
+      let simpTheorems ← ts.foldrM (fun n a => a.addConst n) simpTheorems
+      let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
+      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      mv.refl
+      addThm q($x + $y = $z) q(Eq.trans (BitVec.add_eq_adc' $x $y) $h)
     | _ => return none
   | _ => return none
 

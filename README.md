@@ -6,9 +6,10 @@ important to note that there are still some rough edges and ongoing improvements
 being made.
 
 ## Supported Theories
-`lean-smt` currently supports the theories of Uninterpreted Functions and
-Arithmetic with quantifiers. Mathlib is currently required for Arithmetic. We
-are working on adding support for other theories.
+`lean-smt` currently supports the theories of Uninterpreted Functions and Linear
+Integer/Real Arithmetic with quantifiers. Mathlib is currently required for
+Arithmetic. Support for the theory of Bitvectors is at an experimental stage. We
+are working on adding support for other theories as well.
 
 ## Requirements
 `lean-smt` depends on [`lean-cvc5`](https://github.com/abdoo8080/lean-cvc5) FFI,

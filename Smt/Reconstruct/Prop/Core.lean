@@ -19,7 +19,7 @@ theorem XOr.symm (h : XOr p q) : XOr q p := h.elim (flip inr) (flip inl)
 
 namespace XOr
 
-@[macro_inline] scoped instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
+@[macro_inline] instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
   match dp with
   | isTrue   hp =>
     match dq with
