@@ -93,12 +93,10 @@ def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (null : Expr) (nullr1 : Expr)
   let mut mv' := mv'
   let mut fv := fv
   (fv, mv') ← simpLocalDeclRw mv' fv (.fvar fv2)
-  logInfo m!"now1: {mv'}"
   mv'.withContext do
   let mut mv' := mv'
   let mut fv := fv
   (fv, mv') ← simpLocalDeclRw mv' fv (.fvar fv4)
-  logInfo m!"now2: {mv'}"
   mv'.withContext do
   let mut mv' := mv'
   let mut fv := fv
