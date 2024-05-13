@@ -130,6 +130,7 @@ open Tactic in
   let opr ← elabTerm stx[1] none
   smtRw mv opr as nu nur nur2 rr xs
 
+
 example : ((True ∧ p4) = (p4)) := by
   smt_rw And and_assoc_eq True and_true true_and bool_and_true [[], [p4]]
 
