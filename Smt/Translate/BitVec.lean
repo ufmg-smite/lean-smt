@@ -5,9 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki
 -/
 
-import Lean
 import Qq
-import Std
 
 import Smt.Translate
 
@@ -15,7 +13,6 @@ namespace Smt.Translate.BitVec
 
 open Lean Expr
 open Qq
-open Std
 open Translator Term
 
 def getWidth (e : Expr) : MetaM (Option Nat) := do
@@ -56,28 +53,28 @@ open BitVec in
     return mkApp2 (symbolT "bvshl") (← applyTranslators! x) (← applyTranslators! y)
   | ~q(@HShiftRight.hShiftRight (BitVec _) (BitVec _) _ _ $x $y) =>
     return mkApp2 (symbolT "bvlshr") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(@zeroExtend $v _ $x) =>
+  | ~q(@BitVec.zeroExtend $v _ $x) =>
     let v ← reduceWidth v e
     return mkApp3 (symbolT "_") (symbolT "zero_extend") (literalT (toString (w - v))) (← applyTranslators! x)
-  | ~q(@signExtend $v _ $x) =>
+  | ~q(@BitVec.signExtend $v _ $x) =>
     let v ← reduceWidth v e
     return mkApp3 (symbolT "_") (symbolT "sign_extend") (literalT (toString (w - v))) (← applyTranslators! x)
-  | ~q(BitVec.ofNat _ $n) => return mkLit w (← reduceLit n e)
-  | ~q(OfNat.ofNat $n)    => return mkLit w (← reduceLit n e)
-  | ~q(-$x)               => return appT (symbolT "bvneg") (← applyTranslators! x)
-  | ~q(~~~$x)             => return appT (symbolT "bvnot") (← applyTranslators! x)
-  | ~q($x + $y)           => return mkApp2 (symbolT "bvadd") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x - $y)           => return mkApp2 (symbolT "bvsub") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x * $y)           => return mkApp2 (symbolT "bvmul") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(smtUDiv $x $y)     => return mkApp2 (symbolT "bvudiv") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x % $y)           => return mkApp2 (symbolT "bvurem") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(smtSDiv $x $y)     => return mkApp2 (symbolT "bvsdiv") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(srem $x $y)        => return mkApp2 (symbolT "bvsrem") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(smod $x $y)        => return mkApp2 (symbolT "bvsmod") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x &&& $y)         => return mkApp2 (symbolT "bvand") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x ||| $y)         => return mkApp2 (symbolT "bvor") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x ^^^ $y)         => return mkApp2 (symbolT "bvxor") (← applyTranslators! x) (← applyTranslators! y)
-  | _                     => return none
+  | ~q(.ofNat _ $n)    => return mkLit w (← reduceLit n e)
+  | ~q(OfNat.ofNat $n) => return mkLit w (← reduceLit n e)
+  | ~q(-$x)            => return appT (symbolT "bvneg") (← applyTranslators! x)
+  | ~q(~~~$x)          => return appT (symbolT "bvnot") (← applyTranslators! x)
+  | ~q($x + $y)        => return mkApp2 (symbolT "bvadd") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x - $y)        => return mkApp2 (symbolT "bvsub") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x * $y)        => return mkApp2 (symbolT "bvmul") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(.smtUDiv $x $y) => return mkApp2 (symbolT "bvudiv") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x % $y)        => return mkApp2 (symbolT "bvurem") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(.smtSDiv $x $y) => return mkApp2 (symbolT "bvsdiv") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(.srem $x $y)    => return mkApp2 (symbolT "bvsrem") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q(.smod $x $y)    => return mkApp2 (symbolT "bvsmod") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x &&& $y)      => return mkApp2 (symbolT "bvand") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x ||| $y)      => return mkApp2 (symbolT "bvor") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x ^^^ $y)      => return mkApp2 (symbolT "bvxor") (← applyTranslators! x) (← applyTranslators! y)
+  | _                  => return none
 
 @[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
   | ~q(($x : BitVec _) < $y) => return mkApp2 (symbolT "bvult") (← applyTranslators! x) (← applyTranslators! y)

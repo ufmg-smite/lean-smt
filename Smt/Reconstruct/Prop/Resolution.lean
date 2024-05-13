@@ -7,7 +7,6 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-import Smt.Reconstruct.Options
 import Smt.Reconstruct.Prop.LiftOrNToImp
 import Smt.Reconstruct.Prop.Pull
 import Smt.Reconstruct.Util
@@ -115,13 +114,18 @@ where
         return (getNatLit? e₁, getNatLit? e₂)
       | _ => throwError "[Resolution]: wrong usage"
 
-def r₀ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := do
-  let answer ← resolutionCoreMeta e₁ e₂ pivot i₁ i₂ false
-  mv.assignIfDefeq answer
+def resolution (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
 
-def r₁ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := do
+def r₀ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := withTraceNode `smt.reconstruct.resolution resolution do
+  let answer ← resolutionCoreMeta e₁ e₂ pivot i₁ i₂ false
+  mv.assign answer
+
+def r₁ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM Unit := withTraceNode `smt.reconstruct.resolution resolution do
   let answer ← resolutionCoreMeta e₁ e₂ pivot i₁ i₂ true
-  mv.assignIfDefeq answer
+  mv.assign answer
 
 @[tactic resolution_1] def evalResolution_1 : Tactic := fun stx =>
   withMainContext do

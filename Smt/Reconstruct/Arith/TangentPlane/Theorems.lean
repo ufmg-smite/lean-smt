@@ -85,6 +85,11 @@ theorem arithMulTangentLower :
     ((x ≤ a ∧ y ≥ b) ∨ (x ≥ a ∧ y ≤ b)) :=
   ⟨ arithMulTangentMpLower x y a b , arithMulTangentMprLower x y a b  ⟩
 
+theorem arithMulTangentLowerEq :
+    (x * y ≤ b * x + a * y - a * b) =
+    ((x ≤ a ∧ y ≥ b) ∨ (x ≥ a ∧ y ≤ b)) :=
+  propext (arithMulTangentLower x y a b)
+
 -- SIGMA = 1
 
 theorem arithMulTangentMpUpper :
@@ -150,5 +155,10 @@ theorem arithMulTangentUpper :
     x * y ≥ b * x + a * y - a * b ↔
     ((x ≤ a ∧ y ≤ b) ∨ (x ≥ a ∧ y ≥ b)) :=
   ⟨ arithMulTangentMpUpper x y a b , arithMulTangentMprUpper x y a b  ⟩
+
+theorem arithMulTangentUpperEq :
+    (x * y ≥ b * x + a * y - a * b) =
+    ((x ≤ a ∧ y ≤ b) ∨ (x ≥ a ∧ y ≥ b)) :=
+  propext (arithMulTangentUpper x y a b)
 
 end Smt.Reconstruct.Arith

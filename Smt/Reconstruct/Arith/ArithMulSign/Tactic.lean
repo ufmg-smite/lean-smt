@@ -28,8 +28,14 @@ def intLOR := mkApp2 (.const ``LinearOrderedCommRing.toLinearOrderedRing [.zero]
 
 def RealLOR := Expr.const ``Real.instLinearOrderedRingReal []
 
-def mulSign (mv : MVarId) (xs : Array (Expr × Fin 3 × Nat)) : MetaM Unit := do
-  mv.assignIfDefeq (← go true xs.toList (mkConst `empty) (mkConst `empty))
+
+def traceMulSign (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def mulSign (mv : MVarId) (xs : Array (Expr × Fin 3 × Nat)) : MetaM Unit := withTraceNode `smt.reconstruct.mulSign traceMulSign do
+  mv.assign (← go true xs.toList (mkConst `empty) (mkConst `empty))
 where
   go (first : Bool) (xs : (List (Expr × Fin 3 × Nat))) (prodSignPf : Expr) (prod : Expr) : MetaM Expr :=
   match xs with

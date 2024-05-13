@@ -1,4 +1,3 @@
-
 name: CI
 
 on: [push, pull_request, workflow_dispatch]
@@ -34,7 +33,7 @@ jobs:
     - name: Build lean-smt
       run: |
         lake update
-        lake exe cache get
+        lake build
         lake build +Smt:dynlib
     - name: Test lean-smt
       run: lake run test

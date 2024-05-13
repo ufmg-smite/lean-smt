@@ -75,7 +75,7 @@ def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
     }
     simpTheorems
   }
-  _ ← Tactic.simpLocation ctx (loc := loc.toTacticLocation)
+  _ ← Tactic.simpLocation ctx #[] (loc := loc.toTacticLocation)
   let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
   Tactic.dsimpLocation { ctx with config := { ctx.config with failIfUnchanged := false } } (loc := loc.toTacticLocation)
 
@@ -170,18 +170,18 @@ abbrev ConcretizeM := StateT State <| ReaderT Config TacticM
 def withMainContext (x : ConcretizeM α) : ConcretizeM α := do
   controlAt TacticM fun mapInBase => Tactic.withMainContext (mapInBase x)
 
-def traceLCtx : TacticM Unit := withTraceNode `smt.debug.lctx (fun _ => pure .nil) <| Tactic.withMainContext do
+def traceLCtx : TacticM Unit := withTraceNode `smt.lctx (fun _ => pure .nil) <| Tactic.withMainContext do
   for ld in (← getLCtx) do
-    trace[smt.debug.concretize.lctx] "{ld.userName} @ {repr ld.fvarId} : {ld.type} {if ld.isAuxDecl then "(aux)" else ""}"
+    trace[smt.concretize.lctx] "{ld.userName} @ {repr ld.fvarId} : {ld.type} {if ld.isAuxDecl then "(aux)" else ""}"
 
 def getCached? (e : Expr) : ConcretizeM (Option (Name × Nat)) := do
   -- We use `withExtra` as concretizations can be prefixes of the full application.
   let nms ← (←get).cache.getMatchWithExtra e {}
   if nms.size > 1 then unreachable!
   if let #[(nm, n)] := nms then
-    trace[smt.debug.concretize.cache] "hit {e} ↦ {nm}, left {n} args"
+    trace[smt.concretize.cache] "hit {e} ↦ {nm}, left {n} args"
     return some (nm, n)
-  trace[smt.debug.concretize.cache] "miss {e}"
+  trace[smt.concretize.cache] "miss {e}"
   return none
 
 def addNewConcretization (nm : Name) (e : Expr) : ConcretizeM Unit := do
@@ -218,7 +218,7 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     if concreteArgs.isEmpty then return .continue
 
     let eConcrete ← mkAppOptM' fn concreteArgs
-    trace[smt.debug.concretize.app] "{e} ==> {eConcrete}"
+    trace[smt.concretize.app] "{e} ==> {eConcrete}"
 
     -- Add a suffix for every concretised argument.
     let nm ← concreteArgs.foldlM (init := declName) fun nm arg? => do
@@ -236,7 +236,7 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     -- does not expose new opportunities in the arguments.
     return .continue
 
-partial def loop : ConcretizeM Unit := withTraceNode `smt.debug.concretize.loop (fun _ => pure .nil) do
+partial def loop : ConcretizeM Unit := withTraceNode `smt.concretize.loop (fun _ => pure .nil) do
   if (← get).visitSet.isEmpty then return
   let tgt ← modifyGet fun st =>
     let st' := { st with
@@ -245,7 +245,7 @@ partial def loop : ConcretizeM Unit := withTraceNode `smt.debug.concretize.loop 
       visitSet := st.visitSet.pop
     }
     (st.visitSet.back, st')
-  trace[smt.debug.concretize.loop] "visit {repr tgt}"
+  trace[smt.concretize.loop] "visit {repr tgt}"
 
   let _ ← withMainContext <| Meta.transform (← tgt.getType) (m := ConcretizeM) (pre := concretizeApp)
 

@@ -1,53 +1,39 @@
 # SMT Lean
 This project is inspired by [SMTCoq](https://smtcoq.github.io/) and aims to
-provide Lean tactics that discharge goals into SMT solvers. This project is
-in its early design/development phase and is not recommended for use.
+provide Lean tactics that discharge goals into SMT solvers. It is under active
+development and is currently in a beta phase. While it is ready for use, it is
+important to note that there are still some rough edges and ongoing improvements
+being made.
 
-# Requirements
-`lean-smt` communicates with SMT solvers via the SMT-LIB textual interface.
-Therefore, it requires a supported SMT solver to be installed. Currently,
-`lean-smt` supports two SMT solvers:
-- [`cvc5`](https://cvc5.github.io) (default).
-- [`z3`](https://github.com/Z3Prover/z3).
+## Supported Theories
+`lean-smt` currently supports the theories of Uninterpreted Functions and Linear
+Integer/Real Arithmetic with quantifiers. Mathlib is currently required for
+Arithmetic. Support for the theory of Bitvectors is at an experimental stage. We
+are working on adding support for other theories as well.
 
-# Usage
-To use the `lean-smt` in your project. Add the following line to your list of
+## Requirements
+`lean-smt` depends on [`lean-cvc5`](https://github.com/abdoo8080/lean-cvc5) FFI,
+which currently only supports Linux.
+
+## Usage
+To use `lean-smt` in your project, add the following line to your list of
 dependencies in `lakefile.lean`:
 ```lean
 require smt from git "https://github.com/ufmg-smite/lean-smt.git"@"main"
 ```
 `lean-smt` comes with one main tactic, `smt`, that translates the current goal
-into an SMT query, sends the query to an SMT solver, and prints the result
-returned by the SMT solver. The tactic DOES NOT currently generate a proof term
-to discharge the goal.
+into an SMT query, sends the query to cvc5, and (if the solver returns `unsat`)
+replays cvc5's proof in Lean. cvc5's proofs sometimes contain holes, which are
+sent back to the user as Lean goals. The user can then fill in these holes
+manually or by using other tactics.
 
-# Example
+### Example
 To use the `smt` tactic, you just need to import the `Smt` library:
 ```lean
 import Smt
 
-theorem modus_ponens (p q : Prop) : p → (p → q) → q := by
-  smt
-  simp_all
-```
-For the theorem above, `smt` prints
-```smt2
-goal: p → (p → q) → q
-
-query:
-(declare-const p Bool)
-(declare-const q Bool)
-(assert (not (=> p (=> (=> p q) q))))
-(check-sat)
-
-result: unsat
-```
-You can specify the SMT solver to use like so:
-```lean
-set_option smt.solver.kind "z3"
-```
-`lean-smt` assumes the specified SMT solver to be in the path. If that's not
-the case, you can specify the path to the SMT solver like so:
-```lean
-set_option smt.solver.path "path/to/z3"
+example {U : Type} [Nonempty U] {f : U → U → U} {a b c d : U}
+  (h0 : a = b) (h1 : c = d) (h2 : p1 ∧ True) (h3 : (¬ p1) ∨ (p2 ∧ p3))
+  (h4 : (¬ p3) ∨ (¬ (f a c = f b d))) : False := by
+  smt [h0, h1, h2, h3, h4]
 ```

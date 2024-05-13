@@ -26,16 +26,6 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _             => return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with
-  | .EQUAL =>
-    let α : Q(Type) ← reconstructSort t[0]!.getSort
-    let x : Q($α) ← reconstructTerm t[0]!
-    let y : Q($α) ← reconstructTerm t[1]!
-    return q($x = $y)
-  | .DISTINCT =>
-    let α : Q(Type) ← reconstructSort t[0]!.getSort
-    let x : Q($α) ← reconstructTerm t[0]!
-    let y : Q($α) ← reconstructTerm t[1]!
-    return q($x ≠ $y)
   | .APPLY_UF =>
     let mut curr ← reconstructTerm t[0]!
     for i in [1:t.getNumChildren] do
@@ -44,7 +34,7 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _ => return none
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .EQ_REFL =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!

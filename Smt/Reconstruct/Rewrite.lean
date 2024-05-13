@@ -14,7 +14,6 @@ namespace Smt.Reconstruct.Tactic
 open Lean Elab Meta
 open Smt.Reconstruct.Prop
 
-
 def simpLocalDeclRw (mv : MVarId) (fv : FVarId) (rule : Expr) : MetaM (FVarId × MVarId) := do
   let simpTheorems ← ({} : SimpTheorems).add (Origin.other `h) #[] rule
   let simpTheorems : SimpTheoremsArray := #[simpTheorems]

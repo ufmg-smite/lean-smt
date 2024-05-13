@@ -6,16 +6,18 @@ Authors: Tomaz Gomes Mascarenhas
 -/
 
 import Lean
-import Std
 
 import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct.Options
 import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Prop
 
 open Lean Elab.Tactic Meta Expr Syntax
 open Nat List Classical
+
+theorem ite_eq (c : Prop) [h : Decidable c] (x y : α) : ite c ((ite c x y) = x) ((ite c x y) = y) := by
+  cases h
+  all_goals simp_all
 
 theorem notImplies1 : ∀ {P Q : Prop}, ¬ (P → Q) → P := by
   intros P Q h
@@ -355,6 +357,15 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
   | Or.inl p => p
   | Or.inr p => p
 
+theorem and_elim {ps : List Prop} (hps : andN ps) (i : Nat) {hi : i < ps.length} : ps[i] := match ps with
+  | []  => nomatch hi
+  | [_] => match i with
+    | 0     => hps
+    | _ + 1 => nomatch hi
+  | p₁ :: p₂ :: ps => match i with
+    | 0     => hps.left
+    | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ and_elim hps.right i
+
 def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
@@ -395,7 +406,7 @@ def andElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
         | some e => recGetLamBody e
       if i < getLengthAnd andProp - 1 then
         pf ← mkAppM ``And.left #[pf]
-      mv.assignIfDefeq pf
+      mv.assign pf
 where
   recGetLamBody (e : Expr) : Expr :=
     match e with
@@ -454,7 +465,12 @@ where
       let currProp := props.get! j
       mkAppOptM ``Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
-def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
+def traceNotOrElim (r : Except Exception Unit) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit := withTraceNode `smt.reconstruct.notOrElim traceNotOrElim do
     mv.withContext do
       let type ← inferType val
       let orChain := notExpr type
@@ -470,7 +486,7 @@ def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit :=
         let pf ← getProof i 0 props pf
         let pf := mkApp val pf
         let pf ← mkLambdaFVars #[bv] pf
-        mv.assignIfDefeq pf
+        mv.assign pf
 where
   getProof (i j : Nat) (props : List Expr) (val : Expr) : MetaM Expr :=
     match i with

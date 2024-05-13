@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct.Prop.Factor
 import Smt.Reconstruct.Prop.Lemmas
@@ -14,14 +15,13 @@ import Smt.Reconstruct.Prop.PermutateOr
 import Smt.Reconstruct.Prop.Pull
 import Smt.Reconstruct.Prop.Resolution
 import Smt.Reconstruct.Prop.Rewrites
-import Smt.Reconstruct
 import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Prop
 
 open Lean Qq
 
-@[smt_sort_reconstruct] def reconstructSort : SortReconstructor := fun s => do match s.getKind with
+@[smt_sort_reconstruct] def reconstructPropSort : SortReconstructor := fun s => do match s.getKind with
   | .BOOLEAN_SORT => return q(Prop)
   | _             => return none
 
@@ -48,7 +48,7 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Option Expr) := do
-  match cvc5.RewriteRule.fromNat! pf.getArguments[0]!.getIntegerValue.toNat with
+  match pf.getRewriteRule with
   | .BOOL_DOUBLE_NOT_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((¬¬$p) = $p) q(@Prop.bool_double_not_elim $p)
@@ -85,9 +85,9 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_OR_DUP =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_dup) args)
-  | .BOOL_AND_TRUE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
+  -- | .BOOL_AND_TRUE =>
+  --   let args ← reconstructArgs pf.getArguments[1:]
+  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
   -- | .BOOL_AND_FALSE =>
   --   let args ← reconstructArgs pf.getArguments[1:]
   --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_false) args)
@@ -215,6 +215,13 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
 
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf (← pf.getChildren.mapM reconstructProof)
+  | .ITE_EQ =>
+    let α : Q(Type) ← reconstructSort pf.getArguments[0]![1]!.getSort
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let x : Q($α) ← reconstructTerm pf.getArguments[0]![1]!
+    let y : Q($α) ← reconstructTerm pf.getArguments[0]![2]!
+    addThm q(ite $c ((ite $c $x $y) = $x) ((ite $c $x $y) = $y)) q(@Prop.ite_eq $α $c $hc $x $y)
   | .RESOLUTION =>
     let c₁ := clausify pf.getChildren[0]!.getResult
     let c₂ := clausify pf.getChildren[1]!.getResult
@@ -281,10 +288,21 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
   | .CONTRA =>
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
     let hp : Q($p) ← reconstructProof pf.getChildren[0]!
-    let hnp : Q(¬$p) ← reconstructProof pf.getChildren[0]!
+    let hnp : Q(¬$p) ← reconstructProof pf.getChildren[1]!
     addThm q(False) q(Prop.contradiction $hp $hnp)
   | .AND_ELIM =>
-    addTac (← reconstructTerm pf.getResult) (andElim · (← reconstructProof pf.getChildren[0]!) pf.getArguments[0]!.getIntegerValue.toNat)
+    let Fs := pf.getChildren[0]!.getResult
+    let i : Nat := pf.getArguments[0]!.getIntegerValue.toNat
+    let ps : Q(List Prop) ← (do
+      let mut ps : Q(List Prop) := q([])
+      let n := Fs.getNumChildren
+      for i in [:n] do
+        let p : Q(Prop) ← reconstructTerm Fs[n - i - 1]!
+        ps := q($p :: $ps)
+      return ps)
+    let hi : Q($i < «$ps».length) := (.app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true))
+    let hps : Q(andN $ps) ← reconstructProof pf.getChildren[0]!
+    addThm (← reconstructTerm pf.getResult) q(@Prop.and_elim _ $hps $i $hi)
   | .AND_INTRO =>
     let cpfs := pf.getChildren
     let q : Q(Prop) ← reconstructTerm cpfs.back.getResult

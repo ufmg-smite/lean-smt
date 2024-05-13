@@ -5,7 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Lean
 import Qq
 
 import Smt.Translate

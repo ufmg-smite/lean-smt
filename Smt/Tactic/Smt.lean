@@ -19,12 +19,6 @@ open Lean hiding Command
 open Elab Tactic Qq
 open Smt Translate Query Reconstruct Util
 
-initialize
-  registerTraceClass `smt.debug
-  registerTraceClass `smt.debug.attr
-  registerTraceClass `smt.debug.translate.query
-  registerTraceClass `smt.debug.translate.expr
-
 syntax smtHints := ("[" term,* "]")?
 syntax smtTimeout := ("(timeout := " num ")")?
 
@@ -101,7 +95,7 @@ def elabProof (text : String) : TacticM Name := do
   let (env, log) ← process text (← getEnv) .empty "<proof>"
   _ ← modifyEnv (fun _ => env)
   for m in log.msgs do
-    trace[smt.debug.reconstruct] (← m.toString)
+    trace[smt.reconstruct] (← m.toString)
   if log.hasErrors then
     throwError "encountered errors elaborating cvc5 proof"
   return name
@@ -143,9 +137,9 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
   let cmds := .setLogic "ALL" :: cmds
   trace[smt.debug] m!"goal: {goalType}"
   trace[smt.debug] m!"\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
-  -- 3. Run the solver.
   let timeout ← parseTimeout ⟨stx[2]⟩
-  let res ← prove (Command.cmdsAsQuery cmds) timeout
+  -- 3. Run the solver.
+  let res ← solve (Command.cmdsAsQuery cmds) timeout
   -- 4. Print the result.
   -- logInfo m!"\nresult: {res.toString}"
   match res with
@@ -154,16 +148,15 @@ private def addDeclToUnfoldOrTheorem (thms : Meta.SimpTheorems) (e : Expr) : Met
     trace[smt.debug] m!"\nerror reason:\n{repr e}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .ok pf =>
-    let (fv, mv, mvs) ← reconstructProof (← Tactic.getMainGoal) pf
-    mv.withContext do
-      let ts ← hs.mapM (fun h => Meta.inferType h)
-      let mut gs ← mv.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
-      Tactic.replaceMainGoal (gs ++ mvs)
-      let hs := (.fvar fv) :: hs
-      for h in hs do
-        evalAnyGoals do
-          let gs ← (← Tactic.getMainGoal).apply h
-          Tactic.replaceMainGoal gs
+    let (p, mvs) ← reconstructProof pf
+    let ts ← hs.mapM (fun h => Meta.inferType h)
+    let mut gs ← (← Tactic.getMainGoal).apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
+    Tactic.replaceMainGoal (gs ++ mvs)
+    let hs := p :: hs
+    for h in hs do
+      evalAnyGoals do
+        let gs ← (← Tactic.getMainGoal).apply h
+        Tactic.replaceMainGoal gs
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let mv ← Util.rewriteIffMeta (← Tactic.getMainGoal)

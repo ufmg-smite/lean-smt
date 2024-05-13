@@ -5,8 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Std.Logic
-
 /- abbrev Implies (p q : Prop) := p → q -/
 
 inductive XOr (p q : Prop) : Prop where
@@ -21,7 +19,7 @@ theorem XOr.symm (h : XOr p q) : XOr q p := h.elim (flip inr) (flip inl)
 
 namespace XOr
 
-@[macro_inline] scoped instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
+@[macro_inline] instance [dp : Decidable p] [dq : Decidable q] : Decidable (XOr p q) :=
   match dp with
   | isTrue   hp =>
     match dq with
@@ -36,8 +34,36 @@ end XOr
 
 namespace Smt.Reconstruct.Prop
 
-theorem and_assoc_eq : ((a ∧ b) ∧ c) = (a ∧ (b ∧ c)) := by simp [and_assoc]
+theorem and_assoc_eq : ((p ∧ q) ∧ r) = (p ∧ (q ∧ r)) := by
+  simp [and_assoc]
 
-theorem or_assoc_eq : ((a ∨ b) ∨ c) = (a ∨ (b ∨ c)) := by simp [or_assoc]
+theorem and_comm_eq : (p ∧ q) = (q ∧ p) := by
+  simp [and_comm]
+
+theorem or_assoc_eq : ((a ∨ b) ∨ c) = (a ∨ (b ∨ c)) := by
+  simp [or_assoc]
+
+theorem or_comm_eq : (p ∨ q) = (q ∨ p) := by
+  simp [or_comm]
+
+instance : Std.Associative And := ⟨@and_assoc_eq⟩
+
+instance : Std.Commutative And := ⟨@and_comm_eq⟩
+
+instance : Std.IdempotentOp And := ⟨and_self⟩
+
+instance : Std.LawfulIdentity And True where
+  left_id := true_and
+  right_id := and_true
+
+instance : Std.Associative Or := ⟨@or_assoc_eq⟩
+
+instance : Std.Commutative Or := ⟨@or_comm_eq⟩
+
+instance : Std.IdempotentOp Or := ⟨or_self⟩
+
+instance : Std.LawfulIdentity Or False where
+  left_id := false_or
+  right_id := or_false
 
 end Smt.Reconstruct.Prop
