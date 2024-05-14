@@ -575,4 +575,13 @@ syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
 
+theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
+  revert hj
+  induction ps.length
+  · sorry
+  · sorry
+
+
+
+
 end Smt.Reconstruct.Prop

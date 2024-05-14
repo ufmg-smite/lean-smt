@@ -11,9 +11,6 @@ import Smt.Reconstruct.Prop.Rewrites
 
 namespace Smt.Reconstruct.Tactic
 
-open Lean Elab.Tactic
-open Smt.Reconstruct.Prop
-
 open Lean Elab Meta
 open Smt.Reconstruct.Prop
 
@@ -36,22 +33,22 @@ def traceSmtRw (r : Except Exception Unit) : MetaM MessageData :=
   | .ok _ => m!"{checkEmoji}"
   | _     => m!"{bombEmoji}"
 
-def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (null : Expr) (nullr1 : Expr) (nullr2 : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit :=
+def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (id : Expr) (id_op : Expr) (op_id : Expr) (rule : Expr) (arr : Array (Array Expr)) : MetaM Unit :=
   withTraceNode `smt.reconstruct.smtRw traceSmtRw do
   let n := arr.size
   let mut mv' := mv
-  mv' ← mv'.assert `null' (← Meta.inferType null) null
+  mv' ← mv'.assert `null' (← Meta.inferType id) id
   let (fv1, mv'') ← mv'.intro1P
   mv' := mv''
   mv'.withContext do
   let mut mv' := mv'
-  mv' ← mv'.assert (← mkFreshUserName `h1) (mkAppN (.const `Eq [.zero]) #[Expr.sort Lean.Level.zero, .fvar fv1, null]) (mkAppN (.const `rfl [.succ .zero]) #[Expr.sort Lean.Level.zero, .fvar fv1])
+  mv' ← mv'.assert (← mkFreshUserName `h1) (mkAppN (.const `Eq [.zero]) #[Expr.sort Lean.Level.zero, .fvar fv1, id]) (mkAppN (.const `rfl [.succ .zero]) #[Expr.sort Lean.Level.zero, .fvar fv1])
   let (fv3, mv'') ← mv'.intro1P
   mv' := mv''
-  mv' ← (mv'.assert (← mkFreshUserName `h2) (← Meta.inferType nullr2) nullr2)
+  mv' ← (mv'.assert (← mkFreshUserName `h2) (← Meta.inferType id_op) id_op)
   let (fv4, mv'') ← mv'.intro1P
   mv' := mv''
-  mv' ← (mv'.assert (← mkFreshUserName `h) (← Meta.inferType nullr1) nullr1)
+  mv' ← (mv'.assert (← mkFreshUserName `h) (← Meta.inferType op_id) op_id)
   let (fv2, mv'') ← mv'.intro1P
   mv' := mv''
   mv'.withContext do
@@ -100,7 +97,7 @@ def smtRw (mv : MVarId) (op : Expr) (assoc : Expr) (null : Expr) (nullr1 : Expr)
   mv'.withContext do
   let mut mv' := mv'
   let mut fv := fv
-  mv' ← simpTargetRw mv' nullr1
+  mv' ← simpTargetRw mv' op_id
   if let some r ← observing? (mv'.rewrite (← mv'.getType) (.fvar fv)) then
     mv' ← mv'.replaceTargetEq r.eNew r.eqProof
   for i in [: n] do
@@ -142,19 +139,19 @@ example : ((True ∧ p4) = (p4)) := by
   smt_rw And and_assoc_eq True and_true true_and bool_and_true [[], [p4]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
-  smt_rw Or or_assoc_eq False or_false false_or bool_or_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
+  smt_rw Or or_assoc_eq False false_or or_false bool_or_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_dup [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
 
 example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
-  smt_rw Or or_assoc_eq False or_false false_or bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
+  smt_rw Or or_assoc_eq False false_or or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
 example : (p1 ∧ p2 ∧ p3 ∧ p4 ∧ True) = (p1 ∧ p2 ∧ p3 ∧ p4) := by
   smt_rw And and_assoc_eq True and_true true_and bool_and_true [[p1, p2, p3, p4], []]
