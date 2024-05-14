@@ -6,14 +6,9 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Smt.Reconstruct
+import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct.Prop.Factor
 import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Prop.LiftOrNToImp
-import Smt.Reconstruct.Prop.LiftOrNToNeg
-import Smt.Reconstruct.Prop.PermutateOr
-import Smt.Reconstruct.Prop.Pull
-import Smt.Reconstruct.Prop.Resolution
 import Smt.Reconstruct.Prop.Rewrites
 import Smt.Reconstruct.Rewrite
 
@@ -171,6 +166,14 @@ where
       args' := args'.push arg'
     return args'
 
+def nary (k : cvc5.Kind) (c : cvc5.Term) : Array cvc5.Term := Id.run do
+  if c.getKind != k then
+    return #[c]
+  let mut cs := #[]
+  for cc in c do
+    cs := cs.push cc
+  return cs
+
 def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
   let l₁ := if pol.getBooleanValue then l else l.not
   let l₂ := if pol.getBooleanValue then l.not else l
@@ -183,9 +186,24 @@ def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Arra
       ls := ls.push li
   return ls
 
-def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (p₁ p₂ : Expr) : ReconstructM Expr := do
-  let f := if pol.getBooleanValue == true then r₀ else r₁
-  addTac (← rightAssocOp q(Or) (getResolutionResult c₁ c₂ pol l)) (f · p₁ p₂ (← reconstructTerm l) (some (c₁.size - 1)) (some (c₂.size - 1)))
+def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps hqs : Expr) : ReconstructM Expr := do
+  let f t ps := do
+    let p : Q(Prop) ← reconstructTerm t
+    return q($p :: $ps)
+  let ps : Q(List Prop) ← c₁.foldrM f q([])
+  let qs : Q(List Prop) ← c₂.foldrM f q([])
+  let hps : Q(orN $ps) ← pure hps
+  let hqs : Q(orN $qs) ← pure hqs
+  let (i?, j?) := if pol.getBooleanValue then (c₁.getIdx? l, c₂.getIdx? l.not) else (c₁.getIdx? l.not, c₂.getIdx? l)
+  if let (some i, some j) := (i?, j?) then
+    let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
+    let hj : Q($j < «$qs».length) := .app q(@of_decide_eq_true ($j < «$qs».length) _) q(Eq.refl true)
+    let hij : Q($ps[$i] = ¬$qs[$j]) :=
+      if pol.getBooleanValue then .app q(Prop.eq_not_not) q($ps[$i])
+      else .app q(@Eq.refl Prop) q($ps[$i])
+    addThm (← rightAssocOp q(Or) (getResolutionResult c₁ c₂ pol l)) q(Prop.orN_resolution $hps $hqs $hi $hj $hij)
+  else
+    addThm (← rightAssocOp q(Or) (c₁ ++ c₂)) q(Prop.orN_concat $hps $hqs)
 where
   rightAssocOp (op : Expr) (ts : Array cvc5.Term) : ReconstructM Expr := do
     if ts.isEmpty then
@@ -195,22 +213,14 @@ where
       curr := mkApp2 op (← reconstructTerm ts[ts.size - i - 1]!) curr
     return curr
 
-def clausify (c : cvc5.Term) : Array cvc5.Term := Id.run do
-  if c.getKind != .OR then
-    return #[c]
-  let mut cs := #[]
-  for cc in c do
-    cs := cs.push cc
-  return cs
-
 def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : ReconstructM Expr := do
-  let mut cc := clausify cs[0]!
+  let mut cc := nary .OR cs[0]!
   let mut cp := ps[0]!
   for i in [1:cs.size] do
     let pol := as[0]![i - 1]!
     let l := as[1]![i - 1]!
-    cp ← reconstructResolution cc (clausify cs[i]!) pol l cp ps[i]!
-    cc := getResolutionResult cc (clausify cs[i]!) pol l
+    cp ← reconstructResolution cc (nary .OR cs[i]!) pol l cp ps[i]!
+    cc := getResolutionResult cc (nary .OR cs[i]!) pol l
   return cp
 
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
@@ -223,49 +233,30 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     let y : Q($α) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(ite $c ((ite $c $x $y) = $x) ((ite $c $x $y) = $y)) q(@Prop.ite_eq $α $c $hc $x $y)
   | .RESOLUTION =>
-    let c₁ := clausify pf.getChildren[0]!.getResult
-    let c₂ := clausify pf.getChildren[1]!.getResult
-    let p₁ ← reconstructProof pf.getChildren[0]!
-    let p₂ ← reconstructProof pf.getChildren[1]!
-    reconstructResolution c₁ c₂ pf.getArguments[0]! pf.getArguments[1]! p₁ p₂
+    let c₁ := nary .OR pf.getChildren[0]!.getResult
+    let c₂ := nary .OR pf.getChildren[1]!.getResult
+    let hps ← reconstructProof pf.getChildren[0]!
+    let hqs ← reconstructProof pf.getChildren[1]!
+    reconstructResolution c₁ c₂ pf.getArguments[0]! pf.getArguments[1]! hps hqs
   | .CHAIN_RESOLUTION =>
     let cs := pf.getChildren.map (·.getResult)
     let as := pf.getArguments
     let ps ← pf.getChildren.mapM reconstructProof
     reconstructChainResolution cs as ps
   | .FACTORING =>
-    -- as an argument we pass whether the suffix of the factoring clause is a
-    -- singleton *repeated* literal. This is marked by a number as in
-    -- resolution.
-    let children := pf.getChildren
-    let lastPremiseLit := children[0]!.getResult[children[0]!.getResult.getNumChildren - 1]!
-    let resOriginal := pf.getResult
-    -- For the last premise literal to be a singleton repeated literal, either
-    -- it is equal to the result (in which case the premise was just n
-    -- occurrences of it), or the end of the original clause is different from
-    -- the end of the resulting one. In principle we'd need to add the
-    -- singleton information only for OR nodes, so we could avoid this test if
-    -- the result is not an OR node. However given the presence of
-    -- purification boolean variables which can stand for OR nodes (and could
-    -- thus be ambiguous in the final step, with the purification remove), we
-    -- do the general test.
-    let singleton := if lastPremiseLit == resOriginal || (resOriginal.getKind == .OR && lastPremiseLit != resOriginal[resOriginal.getNumChildren - 1]!)
-      then some (children[0]!.getResult.getNumChildren - 1) else none;
-    addTac (← reconstructTerm pf.getResult) (factor · (← reconstructProof children[0]!) singleton)
+    let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
+    let q : Q(Prop) ← reconstructTerm pf.getResult
+    let hp : Q($p) ← reconstructProof pf.getChildren[0]!
+    let hpq : Q($p = $q) ← Meta.mkFreshExprMVar q($p = $q)
+    Meta.AC.rewriteUnnormalizedTop hpq.mvarId!
+    addThm q($q) q(Prop.eqResolve $hp $hpq)
   | .REORDERING =>
-    let children := pf.getChildren
-    let size := pf.getResult.getNumChildren
-    let lastPremiseLit := children[0]!.getResult[size - 1]!
-    -- none if tail of the clause is not an OR (i.e., it cannot be a singleton)
-    let singleton := if lastPremiseLit.getKind == .OR then some (size - 1) else none
-    -- for each literal in the resulting clause, get its position in the premise
-    let mut pos := #[]
-    for resLit in pf.getResult do
-      for i in [:size] do
-        if children[0]!.getResult[i]! == resLit then
-          pos := pos.push i
-    -- turn conclusion into clause
-    addTac (← reconstructTerm pf.getResult) (reorder · (← reconstructProof children[0]!) pos singleton)
+    let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult
+    let q : Q(Prop) ← reconstructTerm pf.getResult
+    let hp : Q($p) ← reconstructProof pf.getChildren[0]!
+    let hpq : Q($p = $q) ← Meta.mkFreshExprMVar q($p = $q)
+    Meta.AC.rewriteUnnormalizedTop hpq.mvarId!
+    addThm q($q) q(Prop.eqResolve $hp $hpq)
   | .SPLIT =>
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]!
     addThm q($q ∨ ¬$q) q(Classical.em $q)
@@ -291,16 +282,12 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     let hnp : Q(¬$p) ← reconstructProof pf.getChildren[1]!
     addThm q(False) q(Prop.contradiction $hp $hnp)
   | .AND_ELIM =>
-    let Fs := pf.getChildren[0]!.getResult
+    let f t ps := do
+      let p : Q(Prop) ← reconstructTerm t
+      return q($p :: $ps)
+    let ps : Q(List Prop) ← (nary .AND pf.getChildren[0]!.getResult).foldrM f q([])
     let i : Nat := pf.getArguments[0]!.getIntegerValue.toNat
-    let ps : Q(List Prop) ← (do
-      let mut ps : Q(List Prop) := q([])
-      let n := Fs.getNumChildren
-      for i in [:n] do
-        let p : Q(Prop) ← reconstructTerm Fs[n - i - 1]!
-        ps := q($p :: $ps)
-      return ps)
-    let hi : Q($i < «$ps».length) := (.app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true))
+    let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hps : Q(andN $ps) ← reconstructProof pf.getChildren[0]!
     addThm (← reconstructTerm pf.getResult) q(@Prop.and_elim _ $hps $i $hi)
   | .AND_INTRO =>
@@ -316,7 +303,14 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     let ⟨_, hq⟩ ← cpfs.pop.foldrM f (⟨q, hq⟩ : Σ q : Q(Prop), Q($q))
     return hq
   | .NOT_OR_ELIM =>
-    addTac (← reconstructTerm pf.getResult) (notOrElim · (← reconstructProof pf.getChildren[0]!) pf.getArguments[0]!.getIntegerValue.toNat)
+    let f t ps := do
+      let p : Q(Prop) ← reconstructTerm t
+      return q($p :: $ps)
+    let ps : Q(List Prop) ← (nary .OR pf.getChildren[0]!.getResult[0]!).foldrM f q([])
+    let i : Nat := pf.getArguments[0]!.getIntegerValue.toNat
+    let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
+    let hnps : Q(¬orN $ps) ← reconstructProof pf.getChildren[0]!
+    addThm (← reconstructTerm pf.getResult) q(@Prop.not_or_elim _ $hnps $i $hi)
   | .IMPLIES_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[1]!

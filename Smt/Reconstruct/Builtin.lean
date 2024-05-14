@@ -16,11 +16,12 @@ open Lean Qq
 
 @[smt_sort_reconstruct] def reconstructBuiltinSort : SortReconstructor := fun s => do match s.getKind with
   | .FUNCTION_SORT =>
-    let mut curr : Q(Type) ← reconstructSort s.getFunctionCodomainSort
-    for s in s.getFunctionDomainSorts do
+    let mut ct : Q(Type) ← reconstructSort s.getFunctionCodomainSort
+    let f s (a : Q(Type)) := do
       let t : Q(Type) ← reconstructSort s
-      curr := q($t → $curr)
-    return curr
+      return q($t → $a)
+    let t ← s.getFunctionDomainSorts.foldrM f ct
+    return t
   | _              => return none
 
 def getFVarExpr! (n : Name) : MetaM Expr := do

@@ -58,13 +58,16 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let a : Q($α) ← reconstructTerm pf.getArguments[0]!
     addThm q($a = $a) q(Eq.refl $a)
   | .SYMM =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
-    let a : Q($α) ← reconstructTerm pf.getResult[1]!
-    let b : Q($α) ← reconstructTerm pf.getResult[0]!
     if pf.getResult.getKind == .EQUAL then
+      let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+      let a : Q($α) ← reconstructTerm pf.getResult[1]!
+      let b : Q($α) ← reconstructTerm pf.getResult[0]!
       let h : Q($a = $b) ← reconstructProof pf.getChildren[0]!
       addThm q($b = $a) q(Eq.symm $h)
     else
+      let α : Q(Type) ← reconstructSort pf.getResult[0]![0]!.getSort
+      let a : Q($α) ← reconstructTerm pf.getResult[0]![1]!
+      let b : Q($α) ← reconstructTerm pf.getResult[0]![0]!
       let h : Q($a ≠ $b) ← reconstructProof pf.getChildren[0]!
       addThm q($b ≠ $a) q(Ne.symm $h)
   | .TRANS =>

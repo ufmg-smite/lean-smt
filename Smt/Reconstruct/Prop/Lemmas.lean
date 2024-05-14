@@ -357,7 +357,7 @@ theorem dupOr₂ {P : Prop} : P ∨ P → P := λ h =>
   | Or.inl p => p
   | Or.inr p => p
 
-theorem and_elim {ps : List Prop} (hps : andN ps) (i : Nat) {hi : i < ps.length} : ps[i] := match ps with
+theorem and_elim (hps : andN ps) (i : Nat) {hi : i < ps.length} : ps[i] := match ps with
   | []  => nomatch hi
   | [_] => match i with
     | 0     => hps
@@ -365,6 +365,15 @@ theorem and_elim {ps : List Prop} (hps : andN ps) (i : Nat) {hi : i < ps.length}
   | p₁ :: p₂ :: ps => match i with
     | 0     => hps.left
     | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ and_elim hps.right i
+
+theorem not_or_elim (hnps : ¬orN ps) (i : Nat) {hi : i < ps.length} : ¬ps[i] := match ps with
+  | []  => nomatch hi
+  | [_] => match i with
+    | 0     => hnps
+    | _ + 1 => nomatch hi
+  | p₁ :: p₂ :: ps => match i with
+    | 0     => (deMorganSmall hnps).left
+    | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ not_or_elim (deMorganSmall hnps).right i
 
 def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
@@ -555,6 +564,21 @@ theorem falseElim : ∀ {A : Prop}, A = False → ¬ A := λ h ha =>
 theorem falseElim₂ : ∀ {A : Prop}, False = A → ¬ A := falseElim ∘ Eq.symm
 
 theorem negSymm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (Eq.symm f)
+
+theorem eq_not_not (p : Prop) : p = ¬¬p := propext (not_not.symm)
+
+theorem orN_concat (hps : orN ps) (hqs : orN qs) : orN (ps ++ qs) :=
+  match ps with
+  | []          => hqs
+  | [_]         => match qs with
+    | []     => hps
+    | _ :: _ => Or.inl hps
+  | _ :: _ :: _ => match hps with
+    | Or.inl hp  => Or.inl hp
+    | Or.inr hps => Or.inr (orN_concat hps hqs)
+
+theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
+  sorry
 
 theorem implies_of_not_and : ¬(andN' ps ¬q) → impliesN ps q := by
   induction ps with
