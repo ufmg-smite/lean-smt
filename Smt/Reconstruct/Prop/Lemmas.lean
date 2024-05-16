@@ -575,4 +575,127 @@ syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
 
+#check eraseIdx_cons_succ
+
+#check take_append_drop
+#check Nat.lt_trans
+
+
+theorem orN_cons : orN (t :: l) = (t ∨ orN l) := by
+  cases l with
+  | nil => simp [orN]
+  | cons t' l => simp [orN]
+
+theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (orN qs) := by
+  revert j
+  induction qs with
+  | nil =>
+    intro j hj
+    simp at hj; exfalso
+    exact not_succ_le_zero j hj
+  | cons t l ih =>
+    intro j hj
+    cases j with
+    | zero =>
+      simp only [eraseIdx_cons_zero, cons_getElem_zero, orN_cons, eraseIdx_cons_succ, cons_getElem_succ]
+      rw [or_comm]
+    | succ j =>
+      simp only [eraseIdx_cons_succ, cons_getElem_succ, orN_cons, eraseIdx, or_assoc]
+      congr
+      rw [@ih j (by rw [length_cons, succ_lt_succ_iff] at hj; exact hj)]
+
+-- orN ps -> orN (ps ++ qs)
+theorem orN_subList (hps : orN ps) (hpq : ps = subList i j qs): orN qs := by
+  revert i j ps
+  induction qs with
+  | nil =>
+    intro ps i j hp hps
+    simp [subList, *] at *; assumption
+  | cons t l ih =>
+    simp only [subList] at *
+    intro ps i j hp hps
+    rw [orN_cons]
+    cases i with
+    | zero =>
+      simp at hps
+      rw [hps] at hp
+      rw [orN_cons] at hp
+      apply congOrLeft _ hp; intro H
+      cases j with
+      | zero => simp [orN] at H
+      | succ j => exact @ih _ 0 j H (by simp)
+    | succ i =>
+      simp only [drop_succ_cons] at hps
+      cases j with
+      | zero =>
+        simp [hps, orN] at *
+      | succ j =>
+        apply Or.inr
+        apply @ih ps i j hp
+        simp [hps]
+
+
+theorem length_take (h : n ≤ l.length) : (take n l).length = n := by
+  revert n
+  induction l with
+  | nil => intro n h; simp at h; simp [h]
+  | cons t l ih =>
+    intro n h
+    cases n with
+    | zero => simp
+    | succ n => simp [ih (by rw [length_cons, succ_le_succ_iff] at h; exact h)]
+
+
+theorem length_eraseIdx (h : i < l.length) : (eraseIdx l i).length = l.length -1 := by
+  revert i
+  induction l with
+  | nil => simp
+  | cons t l ih =>
+    intro i hi
+    cases i with
+    | zero => simp
+    | succ i =>
+      simp
+      rw [length_cons, succ_lt_succ_iff] at hi
+      rw [ih hi, Nat.succ_eq_add_one, Nat.sub_add_cancel (zero_lt_of_lt hi)]
+
+theorem take_append (a b : List α) : take a.length (a ++ b) = a := by
+  have H3:= take_append_drop a.length (a ++ b)
+  apply (append_inj H3 _).1
+  rw [length_take]
+  rw [length_append]
+  apply le_add_right
+
+theorem drop_append (a b : List α): drop a.length (a ++ b) = b := by
+  have H3:= take_append_drop a.length (a ++ b)
+  apply (append_inj H3 _).2
+  rw [length_take]
+  rw [length_append]
+  apply le_add_right
+
+
+theorem orN_append_left (hps : orN ps) (hq : 1 ≤ qs.length) : orN (ps ++ qs) := by
+  apply @orN_subList ps ps.length (qs.length + ps.length -1) (ps ++ qs) hps
+  simp only [subList]
+  sorry
+
+-- length qs - 1 + (length ps - 1) - 1 - (length ps - 1) + 1
+theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
+  have H1 := orN_eraseIdx hj
+  have H2 := orN_eraseIdx hi
+  have H3:= take_append (ps.eraseIdx i) (qs.eraseIdx j)
+  have H4:= drop_append (ps.eraseIdx i) (qs.eraseIdx j)
+  simp only [length_eraseIdx hi, length_eraseIdx hj] at H3 H4
+  by_cases h : ps[i]
+  · simp only [eq_iff_iff, true_iff, iff_true, h, hqs, hij, hps] at *
+    apply @orN_subList _ (ps.length - 1) ((qs.length-1) + (ps.length-1)-1) _ (by rw [falseIntro hij, or_false] at H1; exact H1)
+    rw [subList, H4, Nat.sub_add_cancel (by sorry), add_sub_self_right]
+    rw [← length_eraseIdx hj, take_length]
+  · simp only [hps, hqs, h, eq_iff_iff, false_iff, not_not, iff_true, or_false,
+    not_false_eq_true] at *
+    apply @orN_subList _ 0 (ps.length - 1 -1) _ H2
+    simp only [subList, drop_zero, Nat.sub_zero, Nat.sub_add_cancel (show 1 ≤ ps.length -1 by sorry), H3]
+
+
+
 end Smt.Reconstruct.Prop
