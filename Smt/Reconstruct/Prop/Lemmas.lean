@@ -604,32 +604,33 @@ theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (o
       congr
       rw [@ih j (by rw [length_cons, succ_lt_succ_iff] at hj; exact hj)]
 
--- orN ps -> orN (ps ++ qs)
-theorem orN_subList (hps : orN ps) (hpq : ps = subList i j qs): orN qs := by
+def subList' (xs : List α) (i j : Nat) : List α :=
+  List.drop i (xs.take j)
+
+example (p q s: Prop) (h : q → s) (hpq : p ∨ q) : p ∨ s := by
+  exact congOrLeft h hpq
+
+
+theorem orN_subList (hps : orN ps) (hpq : ps = subList' qs i j): orN qs := by
   revert i j ps
   induction qs with
   | nil =>
     intro ps i j hp hps
-    simp [subList, *] at *; assumption
+    simp [subList', *] at *; assumption
   | cons t l ih =>
-    simp only [subList] at *
+    simp only [subList'] at *
     intro ps i j hp hps
     rw [orN_cons]
-    cases i with
+    cases j with
     | zero =>
-      simp at hps
-      rw [hps] at hp
-      rw [orN_cons] at hp
-      apply congOrLeft _ hp; intro H
-      cases j with
-      | zero => simp [orN] at H
-      | succ j => exact @ih _ 0 j H (by simp)
-    | succ i =>
-      simp only [drop_succ_cons] at hps
-      cases j with
+      simp [*, orN] at *
+    | succ j =>
+      simp only [take_cons_succ] at hps
+      cases i with
       | zero =>
-        simp [hps, orN] at *
-      | succ j =>
+        simp only [hps, orN_cons, drop_zero] at hp
+        exact congOrLeft (fun hp => @ih (drop 0 (take j l)) 0 j (by simp [hp]) rfl) hp
+      | succ i =>
         apply Or.inr
         apply @ih ps i j hp
         simp [hps]
@@ -673,28 +674,24 @@ theorem drop_append (a b : List α): drop a.length (a ++ b) = b := by
   rw [length_append]
   apply le_add_right
 
+theorem orN_append_left (hps : orN ps) : orN (ps ++ qs) := by
+  apply @orN_subList ps (ps ++ qs) 0 ps.length hps
+  simp [subList', take_append]
 
-theorem orN_append_left (hps : orN ps) (hq : 1 ≤ qs.length) : orN (ps ++ qs) := by
-  apply @orN_subList ps ps.length (qs.length + ps.length -1) (ps ++ qs) hps
-  simp only [subList]
-  sorry
+theorem orN_append_right (hqs : orN qs) : orN (ps ++ qs) := by
+  apply @orN_subList qs (ps ++ qs) ps.length (ps.length + qs.length) hqs
+  simp only [←length_append, subList', take_length, drop_append]
 
--- length qs - 1 + (length ps - 1) - 1 - (length ps - 1) + 1
+
 theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
   have H1 := orN_eraseIdx hj
   have H2 := orN_eraseIdx hi
-  have H3:= take_append (ps.eraseIdx i) (qs.eraseIdx j)
-  have H4:= drop_append (ps.eraseIdx i) (qs.eraseIdx j)
-  simp only [length_eraseIdx hi, length_eraseIdx hj] at H3 H4
   by_cases h : ps[i]
   · simp only [eq_iff_iff, true_iff, iff_true, h, hqs, hij, hps] at *
-    apply @orN_subList _ (ps.length - 1) ((qs.length-1) + (ps.length-1)-1) _ (by rw [falseIntro hij, or_false] at H1; exact H1)
-    rw [subList, H4, Nat.sub_add_cancel (by sorry), add_sub_self_right]
-    rw [← length_eraseIdx hj, take_length]
+    apply orN_append_right (by simp [*] at *; exact H1)
   · simp only [hps, hqs, h, eq_iff_iff, false_iff, not_not, iff_true, or_false,
     not_false_eq_true] at *
-    apply @orN_subList _ 0 (ps.length - 1 -1) _ H2
-    simp only [subList, drop_zero, Nat.sub_zero, Nat.sub_add_cancel (show 1 ≤ ps.length -1 by sorry), H3]
+    apply orN_append_left H2
 
 
 
