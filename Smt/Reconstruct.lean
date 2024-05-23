@@ -16,12 +16,11 @@ open Lean
 open Attribute
 
 structure Reconstruct.state where
-  bvarCache : HashMap cvc5.Term Bool
   termCache : HashMap cvc5.Term Expr
   proofCache : HashMap cvc5.Proof Expr
   count : Nat
   currAssums : Array Expr
-  skipedGoals : Array MVarId
+  skippedGoals : Array MVarId
 
 abbrev ReconstructM := StateT Reconstruct.state MetaM
 
@@ -56,19 +55,6 @@ where
         trace[smt.reconstruct.sort] "{s} =({n})=> {e}"
         return e
     throwError "Failed to reconstruct sort {s} with kind {repr s.getKind}"
-
-partial def hasBoundVars (t : cvc5.Term) : ReconstructM Bool := do
-  if let some b := (← get).bvarCache.find? t then
-    return b
-  let mut b := false
-  if t.getKind == .VARIABLE then
-    b := true
-  for ct in t do
-    if ← hasBoundVars ct then
-      b := true
-      break
-  modify fun state => { state with bvarCache := state.bvarCache.insert t b }
-  return b
 
 def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : ReconstructM MessageData :=
   return m!"{t} ↦ " ++ match r with
@@ -140,7 +126,7 @@ def skipStep (mv : MVarId) : ReconstructM Unit := mv.withContext do
   let ctx := state.currAssums.foldr (fun e ctx => ctx.erase e.fvarId!) (← getLCtx)
   let mv' ← Meta.withLCtx ctx (← Meta.getLocalInstances) (Meta.mkFreshExprMVar t)
   let e := mkAppN mv' state.currAssums
-  set { state with skipedGoals := state.skipedGoals.push mv'.mvarId! }
+  set { state with skippedGoals := state.skippedGoals.push mv'.mvarId! }
   mv.assign e
 
 def addThm (type : Expr) (val : Expr) : ReconstructM Expr := do
@@ -188,8 +174,8 @@ def traceReconstructProof (r : Except Exception (Expr × List MVarId)) : MetaM M
 open Qq in
 partial def reconstructProof (pf : cvc5.Proof) : MetaM (Expr × List MVarId) := do
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
-  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨{}, {}, {}, 0, #[], #[]⟩
-  let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
+  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨{}, {}, 0, #[], #[]⟩
+  let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
   return (q($h trivial), mvs.toList)
 
 open cvc5 in
