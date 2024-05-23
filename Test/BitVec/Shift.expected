@@ -9,8 +9,8 @@ Test/BitVec/Shift.lean:5:8: warning: declaration uses 'sorry'
 goal: x ++ y = zeroExtend 6 x <<< 3#2 ||| zeroExtend 6 y
 
 query:
-(declare-const y (_ BitVec 3))
 (declare-const x (_ BitVec 3))
+(declare-const y (_ BitVec 3))
 (assert (distinct (concat x y) (bvor (bvshl ((_ zero_extend 3) x) #b11) ((_ zero_extend 3) y))))
 (check-sat)
 Test/BitVec/Shift.lean:10:8: warning: declaration uses 'sorry'

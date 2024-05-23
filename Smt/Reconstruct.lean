@@ -166,17 +166,17 @@ where
 
 end Reconstruct
 
-def traceReconstructProof (r : Except Exception (Expr × List MVarId)) : MetaM MessageData :=
+def traceReconstructProof (r : Except Exception (Expr × Expr × List MVarId)) : MetaM MessageData :=
   return match r with
   | .ok _ => m!"{checkEmoji}"
   | _     => m!"{bombEmoji}"
 
 open Qq in
-partial def reconstructProof (pf : cvc5.Proof) : MetaM (Expr × List MVarId) := do
+partial def reconstructProof (pf : cvc5.Proof) : MetaM (Expr × Expr × List MVarId) := do
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
   let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨{}, {}, 0, #[], #[]⟩
   let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
-  return (q($h trivial), mvs.toList)
+  return (p, q($h trivial), mvs.toList)
 
 open cvc5 in
 def traceSolve (r : Except Exception (Except SolverError Proof)) : MetaM MessageData :=
@@ -216,9 +216,9 @@ open Lean.Elab Tactic in
     match r with
       | .error e => logInfo (repr e)
       | .ok pf =>
-        let (p, mvs) ← reconstructProof pf
+        let (p, hp, mvs) ← reconstructProof pf
         let mv ← Tactic.getMainGoal
-        let mv ← mv.assert (Name.num `s 0) (← Meta.inferType p) p
+        let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1
         replaceMainGoal (mv :: mvs)
 
