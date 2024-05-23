@@ -5,6 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
+theorem exists_congr' {α : Sort u} {p q : α → Prop} (h : ∀ a, p a = q a) : (∃ a, p a) = (∃ a, q a) :=
+  propext (exists_congr (h · ▸ Iff.rfl))
+
 namespace Classical
 
 theorem exists_elim {α} {p : α → Prop} : (∃ x, p x) = ¬∀ x, ¬p x :=

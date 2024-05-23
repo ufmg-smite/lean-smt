@@ -32,21 +32,21 @@ open Lean Qq
     let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
     for x in t[0]! do
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
-    withNewTermCache $ Meta.withLocalDeclsD xs fun xs => do
+    Meta.withLocalDeclsD xs fun xs => withNewTermCache do
       let b ← reconstructTerm t[1]!
       Meta.mkForallFVars xs b
   | .EXISTS =>
     let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
     for x in t[0]! do
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
-    withNewTermCache $ Meta.withLocalDeclsD xs fun xs => do
+    Meta.withLocalDeclsD xs fun xs => withNewTermCache do
       let b ← reconstructTerm t[1]!
       Meta.mkExistsFVars xs b
   | .LAMBDA =>
     let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
     for x in t[0]! do
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
-    withNewTermCache $ Meta.withLocalDeclsD xs fun xs => do
+    Meta.withLocalDeclsD xs fun xs => withNewTermCache do
       let b ← reconstructTerm t[1]!
       Meta.mkLambdaFVars xs b
   | .HO_APPLY =>
@@ -76,12 +76,12 @@ where
     for i in [0:n + 1] do
       let α : Q(Type) ← reconstructSort q[0]![0]![i]!.getSort
       let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
-      let e ← withNewTermCache $ Meta.withLocalDeclsD xs fun xs => do
+      let e ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
         let F ← reconstructTerm F
-        let F' := F.replaceFVars xs[0:i] es
-        let ysF' ← Meta.mkExistsFVars xs[i + 1:n + 1] F'
-        let xysF' : Q($α → Prop) ← Meta.mkLambdaFVars #[xs[i]!] (.app q(Not) ysF')
-        return q(@Classical.epsilon $α $h $xysF')
+        let ysF : Q(Prop) ← Meta.mkForallFVars xs[i + 1:] F
+        let xysF ← Meta.mkLambdaFVars #[xs[i]!] q(¬$ysF)
+        let xysF : Q($α → Prop) := xysF.replaceFVars xs[0:i] es
+        return q(@Classical.epsilon $α $h $xysF)
       es := es.push e
     return es
   reconstructExistsSkolems (q : cvc5.Term) (n : Nat) : ReconstructM (Array Expr) := do
@@ -93,12 +93,12 @@ where
     for i in [0:n + 1] do
       let α : Q(Type) ← reconstructSort q[0]![i]!.getSort
       let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
-      let e ← withNewTermCache $ Meta.withLocalDeclsD xs fun xs => do
+      let e ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
         let F ← reconstructTerm F
-        let F' := F.replaceFVars xs[0:i] es
-        let ysF' ← Meta.mkExistsFVars xs[i + 1:n + 1] F'
-        let xysF' : Q($α → Prop) ← Meta.mkLambdaFVars #[xs[i]!] ysF'
-        return q(@Classical.epsilon $α $h $xysF')
+        let ysF ← Meta.mkExistsFVars xs[i + 1:] F
+        let xysF ← Meta.mkLambdaFVars #[xs[i]!] ysF
+        let xysF : Q($α → Prop) := xysF.replaceFVars xs[0:i] es
+        return q(@Classical.epsilon $α $h $xysF)
       es := es.push e
     return es
   getVariableName (t : cvc5.Term) : Name :=
@@ -139,6 +139,8 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
     -- This rule needs more care for closures.
     if k == .FORALL then
       reconstructForallCong pf
+    else if k == .EXISTS then
+      reconstructExistsCong pf
     else
       return none
   | .SKOLEMIZE => reconstructSkolemize pf
@@ -156,18 +158,41 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | _ => return none
 where
   reconstructForallCong (pf : cvc5.Proof) : ReconstructM Expr := do
-    let n := reconstructQuant.getVariableName pf.getArguments[1]![0]!
-    let α : Q(Type) ← reconstructSort pf.getArguments[1]![0]!.getSort
-    let mkLam n α t := withNewTermCache $ Meta.withLocalDeclD n α (reconstructTerm t >>= liftM ∘ Meta.mkLambdaFVars #[·])
-    let p : Q($α → Prop) ← mkLam n α pf.getResult[0]![1]!
-    let q : Q($α → Prop) ← mkLam n α pf.getResult[1]![1]!
-    let h : Q(∀ a, $p a = $q a) ← Meta.mkFreshExprMVar q(∀ a, $p a = $q a)
-    let (fv, mv) ← h.mvarId!.intro n
-    withNewProofCache $ withNewTermCache $ mv.withContext do
-      let a : Q($α) ← (return .fvar fv)
-      let h' : Q($p $a = $q $a) ← withAssums #[a] (reconstructProof pf.getChildren[0]!)
-      mv.assign (← instantiateMVars h')
-    addThm q((∀ a, $p a) = (∀ a, $q a)) q(forall_congr $h)
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (reconstructQuant.getVariableName x, fun _ => reconstructSort x.getSort)
+    let ((p : Q(Prop)), (q : Q(Prop)), (h : Q($q = $p))) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache <| withNewProofCache do
+      let p : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
+      let q : Q(Prop) ← reconstructTerm pf.getResult[1]![1]!
+      let h : Q($p = $q) ← reconstructProof pf.getChildren[0]!
+      let f : Expr → (Expr × Expr × Expr) → ReconstructM (Expr × Expr × Expr) := fun x (p, q, h) => do
+        let α : Q(Type) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
+        let hx : Q(∀ x : $α, $lp x = $lq x) ← Meta.mkLambdaFVars #[x] h
+        let ap ← Meta.mkForallFVars #[x] p
+        let aq ← Meta.mkForallFVars #[x] q
+        return (ap, aq, q(forall_congr $hx))
+      xs.foldrM f (p, q, h)
+    addThm q($p = $q) h
+  reconstructExistsCong (pf : cvc5.Proof) : ReconstructM Expr := do
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (reconstructQuant.getVariableName x, fun _ => reconstructSort x.getSort)
+    let ((p : Q(Prop)), (q : Q(Prop)), (h : Q($q = $p))) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache <| withNewProofCache do
+      let p : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
+      let q : Q(Prop) ← reconstructTerm pf.getResult[1]![1]!
+      let h : Q($p = $q) ← reconstructProof pf.getChildren[0]!
+      let f : Expr → (Expr × Expr × Expr) → ReconstructM (Expr × Expr × Expr) := fun x (p, q, h) => do
+        let α : Q(Type) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
+        let hx : Q(∀ x : $α, $lp x = $lq x) ← Meta.mkLambdaFVars #[x] h
+        let ep ← Meta.mkExistsFVars #[x] p
+        let eq ← Meta.mkExistsFVars #[x] q
+        return (ep, eq, q(exists_congr' $hx))
+      xs.foldrM f (p, q, h)
+    addThm q($p = $q) h
   reconstructSkolemize (pf : cvc5.Proof) : ReconstructM Expr := do
     let res := pf.getChildren[0]!.getResult
     if res.getKind == .EXISTS then
