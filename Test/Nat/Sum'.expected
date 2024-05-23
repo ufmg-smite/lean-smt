@@ -6,7 +6,7 @@ query:
 (declare-const n Nat)
 (assert (>= n 0))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (ite (<= 1 n) (- n 1) 0)))))
-(assert (forall ((_uniq.22095 Nat)) (=> (>= _uniq.22095 0) (>= (sum _uniq.22095) 0))))
+(assert (forall ((_uniq.22096 Nat)) (=> (>= _uniq.22096 0) (>= (sum _uniq.22096) 0))))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
 (assert (distinct (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2)))
 (check-sat)

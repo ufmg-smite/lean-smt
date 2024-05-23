@@ -1,1 +1,7 @@
-Test/Bool/PropExt.lean:4:2: error: no goals to be solved
+goal: (p = true) = (q = true) → (p == q) = true
+
+query:
+(declare-const p Bool)
+(declare-const q Bool)
+(assert (not (=> (= (= p true) (= q true)) (= (= p q) true))))
+(check-sat)

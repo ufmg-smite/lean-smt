@@ -29,8 +29,8 @@ goal: mismatchNamesAdd a b = mismatchNamesAdd b a
 
 query:
 (define-fun mismatchNamesAdd ((a Int) (b Int)) Int (+ a b))
-(declare-const a Int)
 (declare-const b Int)
+(declare-const a Int)
 (assert (distinct (mismatchNamesAdd a b) (mismatchNamesAdd b a)))
 (check-sat)
 Test/Int/Binders.lean:25:0: warning: declaration uses 'sorry'
