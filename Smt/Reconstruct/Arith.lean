@@ -143,15 +143,15 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_PLUS_ZERO =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_zero $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd $α $α $α _) q(@add_assoc $α _) q(0 : $α) q(@zero_add $α _) q(@add_zero $α _) q(@Arith.arith_plus_zero $α $h) args)
   | .ARITH_MUL_ONE =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_one $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul $α $α $α _) q(@mul_assoc $α _) q(1 : $α) q(@one_mul $α _) q(@mul_one $α _) q(@Arith.arith_mul_one $α $h) args)
   | .ARITH_MUL_ZERO =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul $α $α $α _) q(@mul_assoc $α _) q(1 : $α) q(@one_mul $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args)
   | .ARITH_INT_DIV_ONE =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q($t / 1 = $t) q(@Arith.arith_int_div_one $t)
@@ -215,23 +215,23 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_PLUS_FLATTEN =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_flatten $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd $α $α $α _) q(@add_assoc $α _) q(0 : $α) q(@zero_add $α _) q(@add_zero $α _) q(@Arith.arith_plus_flatten $α $h) args)
   | .ARITH_MULT_FLATTEN =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_flatten $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul $α $α $α _) q(@mul_assoc $α _) q(1 : $α) q(@one_mul $α _) q(@mul_one $α _) q(@Arith.arith_mult_flatten $α $h) args)
   | .ARITH_MULT_DIST =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_dist $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul $α $α $α _) q(@mul_assoc $α _) q(1 : $α) q(@one_mul $α _) q(@mul_one $α _) q(@Arith.arith_mult_dist $α $h) args)
   | .ARITH_PLUS_CANCEL1 =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel1 $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd $α $α $α _) q(@add_assoc $α _) q(0 : $α) q(@zero_add $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel1 $α $h) args)
   | .ARITH_PLUS_CANCEL2 =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel2 $α $h) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd $α $α $α _) q(@add_assoc $α _) q(0 : $α) q(@zero_add $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel2 $α $h) args)
   | _ => return none
 where
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do

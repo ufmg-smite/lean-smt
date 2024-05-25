@@ -5,6 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+-- import Smt.Tactic
+-- import Smt.Reconstruct
+-- import Smt.Builtin
+-- import Smt.Prop
+-- import Smt.UF
+-- import Smt.Quant
+-- import Smt.Translate.BitVec
+
 import Smt.Reconstruct.Bool.Tactic
 import Smt.Reconstruct.BitVec.Bitblast
 import Smt.Reconstruct.Prop.Core
@@ -302,3 +310,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | _ => return none
 
 end Smt.Reconstruct.BitVec
+
+-- open BitVec
+
+-- example {x y : BitVec 4} : ¬(x = 11#4 ∧ y = 11#4 ∧ x + y = 15#4) := by
+--   smt
