@@ -36,6 +36,7 @@ open Translator Term
     Meta.withLocalDecl n bi t fun x => do
       let tmT ← applyTranslators! t
       let tmB ← applyTranslators! (b.instantiate #[x])
+      modify fun s => { s with depFVars := s.depFVars.erase x.fvarId! }
       return existsT n.toString tmT tmB
   | _ => return none
 

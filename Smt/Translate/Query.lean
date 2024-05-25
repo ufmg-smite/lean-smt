@@ -47,13 +47,11 @@ def addDependency (e e' : Expr) : QueryBuilderM Unit :=
 /-- Translate an expression and compute its (non-SMT-builtin) dependencies.
 When `fvarDeps = false`, we filter out dependencies on fvars. -/
 def translateAndFindDeps (e : Expr) (fvarDeps := true) : QueryBuilderM (Term × Array Expr) := do
-  let (tm, deps) ← Translator.translateExpr e
-  let unknownConsts := deps.toArray.filterMap fun nm =>
+  let (tm, depConsts, depFVars) ← Translator.translateExpr e
+  let unknownConsts := depConsts.toArray.filterMap fun nm =>
     if Util.smtConsts.contains nm.toString then none else some (mkConst nm)
   if fvarDeps then
-    let st : CollectFVars.State := {}
-    let st := collectFVars st e
-    let fvs := st.fvarIds.map mkFVar
+    let fvs := depFVars.toArray.map mkFVar
     return (tm, fvs ++ unknownConsts)
   else
     return (tm, unknownConsts)
