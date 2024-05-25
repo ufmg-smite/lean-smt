@@ -20,8 +20,11 @@ structure TranslationM.State where
   /-- Constants that the translated result depends on. We propagate these upwards during translation
   in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
   depConstants : NameSet := .empty
-  /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants`. -/
-  cache : HashMap Expr (Option (Term × NameSet)) := .empty
+  /-- Free variables that the translated result depends on. We propagate these upwards during translation
+  in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
+  depFVars : FVarIdSet := .empty
+  /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants` and `depFVars`. -/
+  cache : HashMap Expr (Option (Term × NameSet × FVarIdSet)) := .empty
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -55,18 +58,23 @@ opaque getTranslators : MetaM (List (Translator × Name))
 /-- Return a cached translation of `e` if found, otherwise run `k e` and cache the result. -/
 def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
   match (← get).cache.find? e with
-  | some (some (tm, deps)) =>
-    modify fun st => { st with depConstants := st.depConstants.union deps }
+  | some (some (tm, depConsts, depFVars)) =>
+    modify fun st => { st with
+      depConstants := st.depConstants.union depConsts
+      depFVars := st.depFVars.union depFVars
+    }
     return some tm
   | some none =>
     return none
   | none =>
     let depConstantsBefore := (← get).depConstants
+    let depFVarsBefore := (← get).depFVars
     modify fun st => { st with depConstants := .empty }
     let ret? ← k e
     modify fun st => { st with
       depConstants := st.depConstants.union depConstantsBefore
-      cache := st.cache.insert e <| ret?.map ((·, st.depConstants))
+      depFVars := st.depFVars.union depFVarsBefore
+      cache := st.cache.insert e <| ret?.map ((·, st.depConstants, st.depFVars))
     }
     return ret?
 
@@ -81,7 +89,7 @@ partial def applyTranslators! (e : Expr) : TranslationM Term := do
 expression and if one succeeds, its result is returned. Otherwise, `e` is split into subexpressions
 which are then recursively translated and put together into an SMT-LIB term. The traversal proceeds
 in a top-down, depth-first order. -/
-partial def applyTranslators? : Translator := withCache fun e => do
+partial def applyTranslators? : Translator := fun e => do
   let ts ← getTranslators
   go ts e
   where
@@ -97,6 +105,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
       match e with
       | fvar fv =>
         let ld ← fv.getDecl
+        modify fun st => { st with depFVars := st.depFVars.insert fv }
         return symbolT ld.userName.toString
       | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
@@ -104,33 +113,37 @@ partial def applyTranslators? : Translator := withCache fun e => do
       | app f e => return appT (← applyTranslators! f) (← applyTranslators! e)
       | lam .. => throwError "cannot translate {e}, SMT-LIB does not support lambdas"
       | forallE n t b bi =>
-        let tmB ← Meta.withLocalDecl n bi t (fun x => applyTranslators! <| b.instantiate #[x])
+        let tmB ← Meta.withLocalDecl n bi t (translateBody b)
         if !b.hasLooseBVars /- not a dependent arrow -/ then
           return arrowT (← applyTranslators! t) tmB
         else
           return forallT n.toString (← applyTranslators! t) tmB
       | letE n t v b _ =>
-        let tmB ← Meta.withLetDecl n t v (fun x => applyTranslators! <| b.instantiate #[x])
+        let tmB ← Meta.withLetDecl n t v (translateBody b)
         return letT n.toString (← applyTranslators! v) tmB
       | mdata _ e => go ts e
       | e         => throwError "cannot translate {e}"
+    translateBody (b : Expr) (x : Expr) : TranslationM Term := do
+      let tmB ← applyTranslators! (b.instantiate #[x])
+      modify fun s => { s with depFVars := s.depFVars.erase x.fvarId! }
+      return tmB
 
 end
 
-def traceTranslation (e : Expr) (e' : Except ε (Term × NameSet)) : TranslationM MessageData :=
+def traceTranslation (e : Expr) (e' : Except ε (Term × NameSet × FVarIdSet)) : TranslationM MessageData :=
   return m!"{e} ↦ " ++ match e' with
     | .ok (e', _) => m!"{e'}"
     | .error _    => m!"{bombEmoji}"
 
 /-- Processes `e` by running it through all the registered `Translator`s.
 Returns the resulting SMT-LIB term and set of dependencies. -/
-def translateExpr (e : Expr) : TranslationM (Term × NameSet) :=
+def translateExpr (e : Expr) : TranslationM (Term × NameSet × FVarIdSet) :=
   withTraceNode `smt.translate (traceTranslation e ·) do
-    modify fun st => { st with depConstants := .empty }
+    modify fun st => { st with depConstants := .empty, depFVars := .empty }
     trace[smt.translate.expr] "before: {e}"
     let tm ← applyTranslators! e
     trace[smt.translate.expr] "translated: {tm}"
-    return (tm, (← get).depConstants)
+    return (tm, (← get).depConstants, (← get).depFVars)
 
 def translateExpr' (e : Expr) : TranslationM Term :=
   Prod.fst <$> translateExpr e
