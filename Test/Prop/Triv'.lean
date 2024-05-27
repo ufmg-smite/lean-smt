@@ -5,4 +5,4 @@ example : ∀ p : Prop, p → p := by
   all_goals
     intros; apply propext; apply Iff.intro
     · intros; trivial
-    · intros; trivial
+    · intros; simp_all

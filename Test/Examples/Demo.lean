@@ -8,12 +8,9 @@ axiom ident   : ∀ a, op e a = a
 
 theorem inverse' : ∀ a, op a (inv a) = e := by
   smt [assoc op, inverse op inv e, ident op e]
-  all_goals simp [eq_comm, Classical.not_not]
 
 theorem identity' : ∀ a, op a e = a := by
   smt [assoc op, inverse op inv e, ident op e, inverse' op inv e]
-  all_goals simp [eq_comm, Classical.not_not]
 
 theorem unique_identity e' : (∀ z, op e' z = z) → e' = e := by
   smt [assoc op, inverse op inv e, ident op e]
-  all_goals simp [eq_comm]
