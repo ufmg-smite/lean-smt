@@ -47,6 +47,14 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_DOUBLE_NOT_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((¬¬$p) = $p) q(@Prop.bool_double_not_elim $p)
+  | .BOOL_NOT_TRUE =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hpf : Q($p = False) := cpfs[0]!
+    addThm q((¬$p) = True) q(@Prop.bool_not_true $p $hpf)
+  | .BOOL_NOT_FALSE =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hpt : Q($p = True) := cpfs[0]!
+    addThm q((¬$p) = False) q(@Prop.bool_not_false $p $hpt)
   | .BOOL_EQ_TRUE =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(($p = True) = $p) q(@Prop.bool_eq_true $p)
@@ -68,6 +76,10 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_IMPL_TRUE2 =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((True → $p) = $p) q(@Prop.bool_impl_true2 $p)
+  | .BOOL_IMPL_ELIM =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    addThm q(($p → $q) = (¬$p ∨ $q)) q(@Prop.bool_impl_elim $p $q)
   -- | .BOOL_OR_TRUE =>
   --   let args ← reconstructArgs pf.getArguments
   --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_true) args)
@@ -98,6 +110,16 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_OR_TAUT =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_taut) args)
+  | .BOOL_OR_DE_MORGAN =>
+    let args ← reconstructArgs pf.getArguments[1:]
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_de_morgan) args)
+  | .BOOL_IMPLIES_DE_MORGAN =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    addThm q((¬($p → $q)) = ($p ∧ ¬$q)) q(@Prop.bool_implies_de_morgan $p $q)
+  -- | .BOOL_AND_DE_MORGAN =>
+  --   let args ← reconstructArgs pf.getArguments[1:]
+  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_de_morgan) args)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -117,7 +139,15 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | .BOOL_XOR_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    addThm q(XOr $p $q = ¬($p = $q)) q(@Prop.bool_xor_elim $p $q)
+    addThm q(XOr $p $q = ((¬$p) = $q)) q(@Prop.bool_xor_elim $p $q)
+  | .BOOL_NOT_XOR_ELIM =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    addThm q((¬XOr $p $q) = ($p = $q)) q(@Prop.bool_not_xor_elim $p $q)
+  | .BOOL_NOT_EQ_ELIM =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    addThm q((¬$p = $q) = ((¬$p) = $q)) q(@Prop.bool_not_eq_elim $p $q)
   | .ITE_NEG_BRANCH =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!

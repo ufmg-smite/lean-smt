@@ -15,6 +15,8 @@ open Function
 
 theorem bool_double_not_elim : (¬¬t) = t :=
   propext Classical.not_not
+theorem bool_not_true (h : t = False) : (¬t) = True := h ▸ propext not_false_iff
+theorem bool_not_false (h : t = True) : (¬t) = False := h ▸ propext not_true
 
 theorem bool_eq_true : (t = True) = t :=
   propext ⟨of_eq_true, eq_true⟩
@@ -60,6 +62,13 @@ theorem bool_or_taut : (xs ∨ w ∨ ys ∨ ¬w ∨ zs) = True := propext $ .int
   (const _ trivial)
   (eq_true (Classical.em w) ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
 
+theorem bool_or_de_morgan : (¬(x ∨ y ∨ zs)) = (¬x ∧ ¬(y ∨ zs)) :=
+  propext not_or
+theorem bool_implies_de_morgan : (¬(x → y)) = (x ∧ ¬y) :=
+  propext Classical.not_imp_iff_and_not
+theorem bool_and_de_morgan : (¬(x ∧ y ∧ zs)) = (¬x ∨ ¬(y ∧ zs)) :=
+  propext Classical.not_and_iff_or_not_not
+
 theorem bool_xor_refl : XOr x x = False :=
   propext ⟨(·.elim absurd (flip absurd)), False.elim⟩
 theorem bool_xor_nrefl : (XOr x ¬x) = True :=
@@ -71,10 +80,24 @@ theorem bool_xor_true : XOr x True = ¬x :=
   propext ⟨(·.elim (const _ (False.elim $ not_true.mp ·)) (flip (const _ id))), (.inr · trivial)⟩
 theorem bool_xor_comm : XOr x y = XOr y x :=
   propext ⟨XOr.symm, XOr.symm⟩
-theorem bool_xor_elim : XOr x y = ¬(x = y) :=
-  propext ⟨(·.elim (fun h => absurd · $ h ▸ ·) (fun h => (flip absurd) · $ h ▸ ·)), fun hnxy =>
-    (Classical.em x).elim ((Classical.em y).elim (False.elim $ hnxy $ propext ⟨const _ ·, const _ ·⟩) (flip .inl))
-      ((Classical.em y).elim (flip .inr) (fun hny hnx => False.elim $ hnxy $ propext ⟨(False.elim $ hnx ·), (False.elim $ hny ·)⟩))⟩
+theorem bool_xor_elim : (XOr x y) = ((¬x) = y) :=
+  propext (Iff.intro
+    (·.elim (fun hx hny => propext ⟨(absurd hx ·), (absurd · hny)⟩) (fun hnx hy => propext ⟨const _ hy, const _ hnx⟩))
+    (fun hnxy => (Classical.em y).elim (fun hy => XOr.inr (hnxy ▸ hy) hy)
+                                       (fun hny => XOr.inl (Classical.not_not.mp (hnxy ▸ hny)) hny)))
+theorem bool_not_xor_elim : (¬XOr x y) = (x = y) :=
+  propext (Iff.intro
+    (fun hnxy => propext (Iff.intro
+       (fun hx => Classical.byContradiction (hnxy $ XOr.inl hx ·))
+       (fun hy => Classical.byContradiction (hnxy $ XOr.inr · hy))))
+    fun hxy => hxy ▸ fun hxx => hxx.elim (fun hx hnx => hnx hx) (· ·))
+
+theorem bool_not_eq_elim : (¬x = y) = ((¬x) = y) :=
+  propext
+    (Iff.intro (bool_not_xor_elim ▸ fun hnnxy => (Classical.not_not.mp hnnxy).elim
+      (fun hx hny => propext ⟨(absurd hx ·), (absurd · hny)⟩)
+      (fun hnx hy => propext ⟨const _ hy, const _ hnx⟩))
+    (@iff_not_self x $ · ▸ · ▸ Iff.rfl))
 
 theorem ite_neg_branch [h : Decidable c] : x = ¬y → ite c x y = (c = x) :=
   fun hxny => hxny ▸ h.byCases
