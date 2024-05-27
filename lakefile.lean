@@ -8,10 +8,15 @@ require cvc5 from git
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "v4.7.0"
 
+def libcpp : String :=
+  if System.Platform.isWindows then "libstdc++-6.dll"
+  else if System.Platform.isOSX then "libc++.dylib"
+  else "libstdc++.so.6"
+
 package smt where
   precompileModules := true
-  moreLeanArgs := #[s!"--load-dynlib={nameToSharedLib "c++"}.1"]
-  moreGlobalServerArgs := #[s!"--load-dynlib={nameToSharedLib "c++"}.1"]
+  moreLeanArgs := #[s!"--load-dynlib={libcpp}"]
+  moreGlobalServerArgs := #[s!"--load-dynlib={libcpp}"]
 
 @[default_target]
 lean_lib Smt
@@ -70,10 +75,10 @@ where
     -- Note: this only works on Unix since it needs the shared library `libSmt`
     -- to also loads its transitive dependencies.
     let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
+      | do IO.println s!"Error: Could not find `{nameToSharedLib "Smt"}`"; return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={nameToSharedLib "c++"}.1", s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={dynlib}", test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -114,10 +119,10 @@ where
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
     let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: Could not find `libSmt.so`"; return 2
+      | do IO.println s!"Error: Could not find `{nameToSharedLib "Smt"}`"; return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={nameToSharedLib "c++"}.1", s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={dynlib}", test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout
