@@ -6,7 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
-import Std.Data.Rat
+import Batteries.Data.Rat
 import Smt.Translator
 import Mathlib.Data.Rat.Lemmas
 namespace Smt.Rat
@@ -31,7 +31,7 @@ open Translator Term
   | _ => return none
 
 @[smtTranslator] def replaceOfScientific : Translator
-  | app (app (app (const ``Rat.ofScientific _) m) s) e => do
+  | app (app (app (const ``Rat.ofScientific _) m) _) e => do
       let tmE ← applyTranslators! e
       let tmM ← applyTranslators! m
       return Term.mkApp2 (symbolT "div") tmM (Term.mkApp2 (symbolT "^") (literalT "10") tmE)

@@ -6,12 +6,12 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Lean
-import Std.Data.HashMap
+import Batteries.Data.HashMap
 import Smt.Commands
 import Smt.Data.Sexp
 import Smt.Term
 
-open Std
+open Batteries
 
 namespace Smt
 

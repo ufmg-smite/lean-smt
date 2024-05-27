@@ -109,7 +109,7 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
     -- in the equational definition.
     let (fvVar, mvarId) ← (← mvarId.define nm tp e).intro1P
     return (fvVar, [mvarId])
-  
+
   let (eqn, pf) ← withMainContext <| lambdaTelescope e fun args body => do
     let lhs ← mkAppOptM' (mkFVar fvVar) (args.map some)
     let eqn ← mkEq lhs body
@@ -127,7 +127,7 @@ def addEqnDefWithBody (nm : Name) (e : Expr) : TacticM (FVarId × FVarId) := do
 open Lean Meta Elab Tactic in
 /-- Place an equational definition for a constant in the local context. -/
 elab "extract_def" i:ident : tactic => do
-  let nm ← resolveGlobalConstNoOverloadWithInfo i
+  let nm ← resolveGlobalConstNoOverload i
   let _ ← addEqnDefForConst nm
 
 /-- Specialize an equational definition via partial evaluation. See `specialize_def`. -/

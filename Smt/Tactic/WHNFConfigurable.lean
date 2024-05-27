@@ -239,7 +239,7 @@ private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : A
    =========================== -/
 
 /-- Auxiliary function for reducing `Quot.lift` and `Quot.ind` applications. -/
-private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : Array Expr)
+private def reduceQuotRec (recVal  : QuotVal) (_ : List Level) (recArgs : Array Expr)
     (failK : Unit → ReductionM α) (successK : Expr → ReductionM α)
     : ReductionM α :=
   let process (majorPos argPos : Nat) : ReductionM α :=
@@ -338,7 +338,7 @@ end
     let decl ← fvarId.getDecl
     match decl with
     | LocalDecl.cdecl .. => return e
-    | LocalDecl.ldecl (value := v) (nonDep := nonDep) .. =>
+    | LocalDecl.ldecl (value := v) .. =>
       let cfg ← getConfig
       if cfg.trackZetaDelta then
         modify fun s => { s with zetaDeltaFVarIds := s.zetaDeltaFVarIds.insert fvarId }
@@ -1009,8 +1009,8 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
                 args ← args.modifyM i visit
             else
               args ← args.modifyM i visit
-          if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.natLit?.isSome then
-            pure <| mkRawNatLit (args[0]!.natLit?.get! + 1)
+          if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isRawNatLit then
+            pure <| mkRawNatLit (args[0]!.rawNatLit?.get! + 1)
           else
             pure <| mkAppN f args
         -- `let`-bindings are normally substituted by WHNF, but they are left alone when `zeta` is off,

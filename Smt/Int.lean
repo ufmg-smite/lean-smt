@@ -6,8 +6,8 @@ Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
 import Lean
-import Std.Classes.Cast
-import Std.Data.Int.Lemmas
+import Batteries.Classes.Cast
+import Batteries.Data.Int.Lemmas
 import Smt.Translator
 
 namespace Smt.Int
