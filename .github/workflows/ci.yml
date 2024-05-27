@@ -11,25 +11,15 @@ jobs:
         include:
         - name: Linux
           os: ubuntu-latest
+        - name: macOS
+          os: macos-latest
     steps:
-    - name: Install clang-15 (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt install clang-15 libc++-15-dev
-    - name: Install Elan (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install Elan
       run: |
         curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
         echo "$HOME/.elan/bin" >> $GITHUB_PATH
-    - name: Install cvc5 (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        mkdir -p "$HOME/.local/bin"
-        curl https://github.com/HanielB/cvc5/releases/download/leanPrinter-v0.0.4/cvc5-Linux-2023-03-10-f9e30de2dd -L > "$HOME/.local/bin/cvc5"
-        chmod +x "$HOME/.local/bin/cvc5"
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Build lean-smt
       run: |
         lake update
