@@ -24,9 +24,6 @@ theorem arith_mul_one : ts * 1 * ss = ts * ss :=
 theorem arith_mul_zero : ts * 0 * ss = 0 :=
   (mul_zero ts).symm ▸ (zero_mul ss).symm ▸ rfl
 
-theorem arith_int_div_one {t : Int} : t / 1 = t :=
-  Int.ediv_one t
-
 theorem arith_neg_neg_one : -1 * (-1 * t) = t :=
   neg_mul _ t ▸ (one_mul t).symm ▸ neg_mul_neg _ t ▸ (one_mul t).symm ▸ rfl
 
@@ -50,8 +47,11 @@ theorem arith_leq_norm {t s : Int} : (t ≤ s) = ¬(t ≥ s + 1) :=
 theorem arith_geq_tighten {t s : Int} : (¬(t ≥ s)) = (s ≥ t + 1) :=
   propext Int.not_le
 
-theorem arith_geq_norm: (t ≥ s) = (t - s ≥ 0) :=
+theorem arith_geq_norm1 : (t ≥ s) = (t - s ≥ 0) :=
   propext ⟨sub_nonneg_of_le, le_of_sub_nonneg⟩
+
+theorem arith_geq_norm2 : (t ≥ s) = (-t ≤ -s) :=
+  propext (Iff.symm neg_le_neg_iff)
 
 theorem arith_refl_leq : (t ≤ t) = True :=
   propext ⟨const _ trivial, const _ (le_refl t)⟩

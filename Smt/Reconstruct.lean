@@ -54,7 +54,7 @@ where
       if let some e ← r s then
         trace[smt.reconstruct.sort] "{s} =({n})=> {e}"
         return e
-    throwError "Failed to reconstruct sort {s} with kind {repr s.getKind}"
+    throwError "Failed to reconstruct sort {s} with kind {s.getKind}"
 
 def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : ReconstructM MessageData :=
   return m!"{t} ↦ " ++ match r with
@@ -86,7 +86,7 @@ where
       if let some e ← r t then
         trace[smt.reconstruct.term] "{t} =({n})=> {e}"
         return e
-    throwError "Failed to reconstruct term {t} with kind {repr t.getKind}"
+    throwError "Failed to reconstruct term {t} with kind {t.getKind}"
 
 def withNewProofCache (k : ReconstructM α) : ReconstructM α := do
   let state ← get
@@ -149,7 +149,7 @@ def addTrust (type : Expr) (pf : cvc5.Proof) : ReconstructM Expr := do
   skipStep mv.mvarId!
   trace[smt.reconstruct.proof] m!"have {name} : {type} := sorry"
   trace[smt.reconstruct.proof]
-    m!"rule : {repr pf.getRule}\npremises : {pf.getChildren.map (·.getResult)}\nargs : {pf.getArguments}\nconclusion : {pf.getResult}"
+    m!"rule : {pf.getRule}\npremises : {pf.getChildren.map (·.getResult)}\nargs : {pf.getArguments}\nconclusion : {pf.getResult}"
   return mv
 
 partial def reconstructProof : cvc5.Proof → ReconstructM Expr := withProofCache fun pf => do

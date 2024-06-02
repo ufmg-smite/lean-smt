@@ -4,7 +4,7 @@
  [{"url": "https://github.com/abdoo8080/lean-cvc5.git",
    "type": "git",
    "subDir": null,
-   "rev": "de9e6df8776ec2758fd13a2ce3b8e8ae8d6fe31d",
+   "rev": "00acb97db0bb56c3e8b5fedf2d564e3be444a65e",
    "name": "cvc5",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",

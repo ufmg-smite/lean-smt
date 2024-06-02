@@ -152,9 +152,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args)
-  | .ARITH_INT_DIV_ONE =>
-    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q($t / 1 = $t) q(@Arith.arith_int_div_one $t)
   | .ARITH_NEG_NEG_ONE =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
@@ -191,11 +188,16 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q((¬($t ≥ $s)) = ($s ≥ $t + 1)) q(@Arith.arith_geq_tighten $t $s)
-  | .ARITH_GEQ_NORM =>
+  | .ARITH_GEQ_NORM1 =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     let s : Q($α) ← reconstructTerm pf.getArguments[2]!
-    addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Arith.arith_geq_norm $α $h $t $s)
+    addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Arith.arith_geq_norm1 $α $h $t $s)
+  | .ARITH_GEQ_NORM2 =>
+    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
+    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
+    let s : Q($α) ← reconstructTerm pf.getArguments[2]!
+    addThm q(($t ≥ $s) = (-$t ≤ -$s)) q(@Arith.arith_geq_norm2 $α $h $t $s)
   | .ARITH_REFL_LEQ =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
