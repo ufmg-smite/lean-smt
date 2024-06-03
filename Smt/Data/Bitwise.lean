@@ -217,9 +217,7 @@ theorem bitwise_add_eq_add_base (x y i: Nat) : x%(2^i) + y%(2^i) = bitwise_add x
 
 theorem bitwise_add_eq_add (x y : Nat) : bitwise_add x y i = (x + y) % 2 ^ i := by
   rw [Nat.add_mod, bitwise_add_eq_add_base]
-  cases' i with i i
-  · simp [mod_one, toNat]
-  · simp [bitwise_add, Nat.mod_eq_of_lt toNat_lt]
+  simp [Nat.mod_eq_of_lt toNat_lt]
 
 #eval bitwise_add 10 9 5
 
