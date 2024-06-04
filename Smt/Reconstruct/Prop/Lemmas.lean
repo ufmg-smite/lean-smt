@@ -575,12 +575,6 @@ syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
 
-#check eraseIdx_cons_succ
-
-#check take_append_drop
-#check Nat.lt_trans
-
-
 theorem orN_cons : orN (t :: l) = (t ∨ orN l) := by
   cases l with
   | nil => simp [orN]
@@ -607,10 +601,6 @@ theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (o
 def subList' (xs : List α) (i j : Nat) : List α :=
   List.drop i (xs.take j)
 
-example (p q s: Prop) (h : q → s) (hpq : p ∨ q) : p ∨ s := by
-  exact congOrLeft h hpq
-
-
 theorem orN_subList (hps : orN ps) (hpq : ps = subList' qs i j): orN qs := by
   revert i j ps
   induction qs with
@@ -635,7 +625,6 @@ theorem orN_subList (hps : orN ps) (hpq : ps = subList' qs i j): orN qs := by
         apply @ih ps i j hp
         simp [hps]
 
-
 theorem length_take (h : n ≤ l.length) : (take n l).length = n := by
   revert n
   induction l with
@@ -645,7 +634,6 @@ theorem length_take (h : n ≤ l.length) : (take n l).length = n := by
     cases n with
     | zero => simp
     | succ n => simp [ih (by rw [length_cons, succ_le_succ_iff] at h; exact h)]
-
 
 theorem length_eraseIdx (h : i < l.length) : (eraseIdx l i).length = l.length -1 := by
   revert i
@@ -682,7 +670,6 @@ theorem orN_append_right (hqs : orN qs) : orN (ps ++ qs) := by
   apply @orN_subList qs (ps ++ qs) ps.length (ps.length + qs.length) hqs
   simp only [←length_append, subList', take_length, drop_append]
 
-
 theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
   have H1 := orN_eraseIdx hj
   have H2 := orN_eraseIdx hi
@@ -692,7 +679,5 @@ theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : 
   · simp only [hps, hqs, h, eq_iff_iff, false_iff, not_not, iff_true, or_false,
     not_false_eq_true] at *
     apply orN_append_left H2
-
-
 
 end Smt.Reconstruct.Prop
