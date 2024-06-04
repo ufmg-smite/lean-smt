@@ -154,12 +154,12 @@ example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 �
   smt_rw Or or_assoc_eq False false_or or_false bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
 
 example : (p1 ∧ p2 ∧ p3 ∧ p4 ∧ True) = (p1 ∧ p2 ∧ p3 ∧ p4) := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_true [[p1, p2, p3, p4], []]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_true [[p1, p2, p3, p4], []]
 
 example : (p1 ∧ True) = p1 := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_true [[p1], []]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_true [[p1], []]
 
 example : (True ∧ p1) = p1 := by
-  smt_rw And and_assoc_eq True and_true true_and bool_and_true [[], [p1]]
+  smt_rw And and_assoc_eq True true_and and_true bool_and_true [[], [p1]]
 
 end Smt.Reconstruct.Tactic
