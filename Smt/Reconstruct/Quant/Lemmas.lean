@@ -29,4 +29,16 @@ end Classical
 
 namespace Smt.Reconstruct.Quant
 
+theorem miniscope {p q : α → Prop} : (∀ x, p x ∧ q x) = ((∀ x, p x) ∧ (∀ x, q x)) :=
+  propext forall_and
+
+theorem miniscopeN {α : Type u} {ps : List (α → Prop)} : (∀ x, andN (ps.map (· x))) = andN (ps.map (∀ x, · x)) :=
+  match ps with
+  | []             => by simp [andN]
+  | [_]            => rfl
+  | p₁ :: p₂ :: ps =>
+    show _ = (_ ∧ _) from
+    @miniscopeN α (p₂ :: ps) ▸
+    @miniscope α p₁ (fun x => andN ((p₂ :: ps).map (· x))) ▸ rfl
+
 end Smt.Reconstruct.Quant
