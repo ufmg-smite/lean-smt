@@ -577,20 +577,6 @@ theorem orN_concat (hps : orN ps) (hqs : orN qs) : orN (ps ++ qs) :=
     | Or.inl hp  => Or.inl hp
     | Or.inr hps => Or.inr (orN_concat hps hqs)
 
-theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : j < qs.length) (hij : ps[i] = ¬qs[j]) : orN (ps.eraseIdx i ++ qs.eraseIdx j) := by
-  sorry
-
-theorem implies_of_not_and : ¬(andN' ps ¬q) → impliesN ps q := by
-  induction ps with
-  | nil => exact notNotElim
-  | cons p ps ih =>
-    simp only [andN', impliesN]
-    intro hnpps hp
-    have hnpnps := deMorganSmall₃ hnpps
-    match hnpnps with
-    | .inl hnp => contradiction
-    | .inr hnps => exact ih hnps
-
 theorem orN_cons : orN (t :: l) = (t ∨ orN l) := by
   cases l with
   | nil => simp [orN]
@@ -695,6 +681,18 @@ theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : 
   · simp only [hps, hqs, h, eq_iff_iff, false_iff, not_not, iff_true, or_false,
     not_false_eq_true] at *
     apply orN_append_left H2
+
+theorem implies_of_not_and : ¬(andN' ps ¬q) → impliesN ps q := by
+  induction ps with
+  | nil => exact notNotElim
+  | cons p ps ih =>
+    simp only [andN', impliesN]
+    intro hnpps hp
+    have hnpnps := deMorganSmall₃ hnpps
+    match hnpnps with
+    | .inl hnp => contradiction
+    | .inr hnps => exact ih hnps
+
 
 syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules
