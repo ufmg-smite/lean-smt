@@ -567,16 +567,6 @@ theorem negSymm {α : Type u} {a b : α} : a ≠ b → b ≠ a := λ h f => h (E
 
 theorem eq_not_not (p : Prop) : p = ¬¬p := propext (not_not.symm)
 
-theorem orN_concat (hps : orN ps) (hqs : orN qs) : orN (ps ++ qs) :=
-  match ps with
-  | []          => hqs
-  | [_]         => match qs with
-    | []     => hps
-    | _ :: _ => Or.inl hps
-  | _ :: _ :: _ => match hps with
-    | Or.inl hp  => Or.inl hp
-    | Or.inr hps => Or.inr (orN_concat hps hqs)
-
 theorem orN_cons : orN (t :: l) = (t ∨ orN l) := by
   cases l with
   | nil => simp [orN]
@@ -692,7 +682,6 @@ theorem implies_of_not_and : ¬(andN' ps ¬q) → impliesN ps q := by
     match hnpnps with
     | .inl hnp => contradiction
     | .inr hnps => exact ih hnps
-
 
 syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules

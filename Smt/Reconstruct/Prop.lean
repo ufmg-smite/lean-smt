@@ -233,7 +233,7 @@ def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps
       else .app q(@Eq.refl Prop) q($ps[$i])
     addThm (← rightAssocOp q(Or) (getResolutionResult c₁ c₂ pol l)) q(Prop.orN_resolution $hps $hqs $hi $hj $hij)
   else
-    addThm (← rightAssocOp q(Or) (c₁ ++ c₂)) q(Prop.orN_concat $hps $hqs)
+    addThm (← rightAssocOp q(Or) (c₁ ++ c₂)) q(Prop.orN_append_left $hps)
 where
   rightAssocOp (op : Expr) (ts : Array cvc5.Term) : ReconstructM Expr := do
     if ts.isEmpty then
