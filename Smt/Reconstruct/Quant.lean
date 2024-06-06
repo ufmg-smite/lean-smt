@@ -159,6 +159,30 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
+  | .QUANT_MINISCOPE =>
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
+    let (_, _, h) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
+      let mut ps : Array Q(Prop) := #[]
+      for ct in pf.getResult[0]![1]! do
+        let p : Q(Prop) ← reconstructTerm ct
+        ps := ps.push q($p)
+      let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
+      let h : Q($b = $b) := q(Eq.refl $b)
+      let lf := fun x (α : Q(Type)) p lps => do
+        let lp : Q($α → Prop) ← (return ← Meta.mkLambdaFVars #[x] p)
+        return q($lp :: $lps)
+      let f := fun x (p, ps, h) => do
+        let α : Q(Type) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lps : Q(List ($α → Prop)) ← ps.foldrM (lf x α) q([])
+        let hx : Q(∀ x, $lp x = andN («$lps».map (· x))) ← Meta.mkLambdaFVars #[x] h
+        let ap ← Meta.mkForallFVars #[x] p
+        let aps ← liftM (ps.mapM (Meta.mkForallFVars #[x]))
+        return (ap, aps, q(Eq.trans (forall_congr $hx) (@miniscopeN $α $lps)))
+      xs.foldrM f (b, ps, h)
+    addThm (← reconstructTerm pf.getResult) h
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructQuantProof : ProofReconstructor := fun pf => do match pf.getRule with
