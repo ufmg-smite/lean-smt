@@ -224,12 +224,19 @@ theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notList l) :=
                        have ih := @deMorgan₃ (h₂::t) t₂
                        exact ⟨t₁, ih⟩
 
-theorem cnfAndNeg : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
+theorem cnfAndNeg' : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
   by intro l
      apply orComm
      apply orImplies
      intro h
      exact deMorgan h
+
+theorem cnfAndNeg : orN (andN l :: notList l) := by
+  cases l with
+  | nil => trivial
+  | cons l ls =>
+    simp only [orN]
+    apply cnfAndNeg'
 
 theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i True :=
   by intros l i
@@ -270,7 +277,14 @@ theorem cnfOrNeg : ∀ (l : List Prop) (i : Nat), orN l ∨ ¬ List.getD l i Fal
       have ⟨_, notOrNTail⟩ := deMorganSmall orNl
       exact absurd orNTail notOrNTail
 
-theorem cnfOrPos : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (Classical.em (orN l))
+theorem cnfOrPos' : ∀ (l : List Prop), ¬ orN l ∨ orN l := λ l => orComm (Classical.em (orN l))
+
+theorem cnfOrPos : orN ((¬orN l) :: l) := by
+  cases l with
+  | nil => exact not_false
+  | cons l ls =>
+    simp only [orN]
+    apply cnfOrPos'
 
 theorem cnfImpliesPos : ∀ {p q : Prop}, ¬ (p → q) ∨ ¬ p ∨ q := by
   intros p q
