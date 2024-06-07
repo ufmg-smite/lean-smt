@@ -62,52 +62,40 @@ example (A B : Int) (h : 0 < A * B) : 0 < 8*A*B := by
 
 example (A B : Real) (h : 0 < A * B) : 0 < A*B/8 := by
   smt [h]
-  all_goals sorry
 
 example (A B : Real) (h : 0 < A * B) : 0 < A/8*B := by
   smt [h]
-  all_goals sorry
 
 example (ε : Real) (h1 : ε > 0) : ε / 2 + ε / 3 + ε / 7 < ε := by
   smt [h1]
-  all_goals sorry
 
 example (x y z : Real) (h1 : 2*x < 3*y) (h2 : -4*x + z/2 < 0)
         (h3 : 12*y - z < 0)  : False := by
   smt [h1, h2, h3]
-  all_goals sorry
 
 example (ε : Real) (h1 : ε > 0) : ε / 2 < ε := by
   smt [h1]
-  all_goals sorry
 
 example (ε : Real) (h1 : ε > 0) : ε / 3 + ε / 3 + ε / 3 = ε := by
   smt [h1]
-  all_goals sorry
 
 example (x : Real) (h : 0 < x) : 0 < x/1 := by
   smt [h]
-  all_goals sorry
 
 example (x : Real) (h : x < 0) : 0 < x/(-1) := by
   smt [h]
-  all_goals (ring_nf; simp)
 
 example (x : Real) (h : x < 0) : 0 < x/(-2) := by
   smt [h]
-  all_goals (ring_nf; simp)
 
 example (x : Real) (h : x < 0) : 0 < x/(-4/5) := by
   smt [h]
-  all_goals (ring_nf; simp)
 
 example (x : Real) (h : 0 < x) : 0 < x/2/3 := by
   smt [h]
-  all_goals (ring_nf; simp)
 
 example (x : Real) (h : 0 < x) : 0 < x/(2/3) := by
   smt [h]
-  all_goals (ring_nf; simp)
 
 example (a b c : Real) (h2 : b + 2 > 3 + b) : False := by
   smt [h2]
