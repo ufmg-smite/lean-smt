@@ -105,7 +105,7 @@ where
       es := es.push e
     return es
 
-def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Option Expr) := do
+def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
   | .BETA_REDUCE =>
     let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
@@ -186,7 +186,7 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructQuantProof : ProofReconstructor := fun pf => do match pf.getRule with
-  | .THEORY_REWRITE => reconstructRewrite pf (← pf.getChildren.mapM reconstructProof)
+  | .THEORY_REWRITE => reconstructRewrite pf
   | .CONG =>
     let k := pf.getResult[0]!.getKind
     -- This rule needs more care for closures.

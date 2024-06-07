@@ -42,18 +42,18 @@ where
       curr := mkApp2 op (← reconstructTerm t[t.getNumChildren - i - 1]!) curr
     return curr
 
-def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Option Expr) := do
+def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
   | .BOOL_DOUBLE_NOT_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((¬¬$p) = $p) q(@Prop.bool_double_not_elim $p)
   | .BOOL_NOT_TRUE =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
-    let hpf : Q($p = False) := cpfs[0]!
+    let hpf : Q($p = False) ← reconstructProof pf.getChildren[0]!
     addThm q((¬$p) = True) q(@Prop.bool_not_true $p $hpf)
   | .BOOL_NOT_FALSE =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
-    let hpt : Q($p = True) := cpfs[0]!
+    let hpt : Q($p = True) ← reconstructProof pf.getChildren[0]!
     addThm q((¬$p) = False) q(@Prop.bool_not_false $p $hpt)
   | .BOOL_EQ_TRUE =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -78,7 +78,7 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
     addThm q((True → $p) = $p) q(@Prop.bool_impl_true2 $p)
   | .BOOL_IMPL_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
-    let q : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q(($p → $q) = (¬$p ∨ $q)) q(@Prop.bool_impl_elim $p $q)
   -- | .BOOL_OR_TRUE =>
   --   let args ← reconstructArgs pf.getArguments
@@ -153,7 +153,7 @@ def reconstructRewrite (pf : cvc5.Proof) (cpfs : Array Expr) : ReconstructM (Opt
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[3]!
     let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    let h : Q($p = ¬$q) := cpfs[0]!
+    let h : Q($p = ¬$q) ← reconstructProof pf.getChildren[0]!
     addThm q(ite $c $p $q = ($c = $p)) q(@Prop.ite_neg_branch $c $p $q $hc $h)
   | .ITE_THEN_TRUE =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -204,6 +204,12 @@ def nary (k : cvc5.Kind) (c : cvc5.Term) : Array cvc5.Term := Id.run do
     cs := cs.push cc
   return cs
 
+def reclausify (c : Array cvc5.Term) (l : cvc5.Term) : Array cvc5.Term :=
+  if c == nary .OR l then #[l] else c
+
+def clausify (c l : cvc5.Term) : Array cvc5.Term :=
+  reclausify (nary .OR c) l
+
 def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
   let l₁ := if pol.getBooleanValue then l else l.not
   let l₂ := if pol.getBooleanValue then l.not else l
@@ -249,12 +255,13 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
   for i in [1:cs.size] do
     let pol := as[0]![i - 1]!
     let l := as[1]![i - 1]!
-    cp ← reconstructResolution cc (nary .OR cs[i]!) pol l cp ps[i]!
-    cc := getResolutionResult cc (nary .OR cs[i]!) pol l
+    cc := reclausify cc l
+    cp ← reconstructResolution cc (clausify cs[i]! l) pol l cp ps[i]!
+    cc := getResolutionResult cc (clausify cs[i]! l) pol l
   return cp
 
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
-  | .DSL_REWRITE => reconstructRewrite pf (← pf.getChildren.mapM reconstructProof)
+  | .DSL_REWRITE => reconstructRewrite pf
   | .ITE_EQ =>
     let α : Q(Type) ← reconstructSort pf.getArguments[0]![1]!.getSort
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
@@ -263,11 +270,13 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     let y : Q($α) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(ite $c ((ite $c $x $y) = $x) ((ite $c $x $y) = $y)) q(@Prop.ite_eq $α $c $hc $x $y)
   | .RESOLUTION =>
-    let c₁ := nary .OR pf.getChildren[0]!.getResult
-    let c₂ := nary .OR pf.getChildren[1]!.getResult
+    let p := pf.getArguments[0]!
+    let l := pf.getArguments[1]!
+    let c₁ := clausify pf.getChildren[0]!.getResult l
+    let c₂ := clausify pf.getChildren[1]!.getResult l
     let hps ← reconstructProof pf.getChildren[0]!
     let hqs ← reconstructProof pf.getChildren[1]!
-    reconstructResolution c₁ c₂ pf.getArguments[0]! pf.getArguments[1]! hps hqs
+    reconstructResolution c₁ c₂ p l hps hqs
   | .CHAIN_RESOLUTION =>
     let cs := pf.getChildren.map (·.getResult)
     let as := pf.getArguments
@@ -421,7 +430,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     for i in [:n] do
       let p : Q(Prop) ← reconstructTerm cnf[n - i - 1]!
       ps := q($p :: $ps)
-    addThm (← reconstructTerm pf.getResult) q(Prop.cnfAndNeg $ps)
+    addThm (← reconstructTerm pf.getResult) q(@Prop.cnfAndNeg $ps)
   | .CNF_OR_POS =>
     let cnf := pf.getArguments[0]!
     let mut ps : Q(List Prop) := q([])
@@ -429,7 +438,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     for i in [:n] do
       let p : Q(Prop) ← reconstructTerm cnf[n - i - 1]!
       ps := q($p :: $ps)
-    addThm (← reconstructTerm pf.getResult) q(Prop.cnfOrPos $ps)
+    addThm (← reconstructTerm pf.getResult) q(@Prop.cnfOrPos $ps)
   | .CNF_OR_NEG =>
     let cnf := pf.getArguments[0]!
     let i : Nat := pf.getArguments[1]!.getIntegerValue.toNat
