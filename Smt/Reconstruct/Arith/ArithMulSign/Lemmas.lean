@@ -5,8 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Mathlib.Algebra.Parity
-import Mathlib.Data.Nat.Parity
+import Mathlib.Algebra.Order.Ring.Defs
+-- import Mathlib.Algebra.Order.Ring.Nat
+-- import Mathlib.Data.Nat.Parity
 import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.MulPosNeg.Lemmas
@@ -95,18 +96,18 @@ theorem combineSigns₄ : a < 0 → b < 0 → b * a > 0 := by
   simp at h
   exact h
 
-theorem castPos : ∀ (a : Int), a > 0 → Real.intCast.intCast a > 0 := by
+theorem castPos : ∀ (a : Int), a > 0 → ↑a > 0 := by
   intros a h
   simp [h]
 
-theorem castNeg : ∀ (a : Int), a < 0 → Real.intCast.intCast a < 0 := by
+theorem castNeg : ∀ (a : Int), a < 0 → ↑a < 0 := by
   intros a h
   simp [h]
 
 instance : HMul ℤ ℝ ℝ where
-  hMul z r := Real.intCast.intCast z * r
+  hMul z r := ↑z * r
 
 instance : HMul ℝ ℤ ℝ where
-  hMul r z := r * Real.intCast.intCast z
+  hMul r z := r * ↑z
 
 end Smt.Reconstruct.Arith

@@ -182,47 +182,56 @@ theorem notNotElim : ∀ {p : Prop}, ¬ ¬ p → p :=
 
 theorem notNotIntro : ∀ {p : Prop}, p → ¬ ¬ p := λ p np => np p
 
-theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l :=
-  by intros l h
-     exact match l with
-     | []   => True.intro
-     | [t]  => by simp only [andN]
-                  simp only [notList, orN, map] at h
-                  cases Classical.em t with
-                  | inl tt  => exact tt
-                  | inr ntt => exact False.elim (h ntt)
-     | h₁::h₂::t => by simp [orN, notList, map] at h
-                       have ⟨ t₁, t₂ ⟩ := deMorganSmall h
-                       have ih := @deMorgan (h₂::t) t₂
-                       simp [andN]
-                       have t₁' := notNotElim t₁
-                       exact ⟨ t₁', ih ⟩
+theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l := by
+  intros l h
+  exact match l with
+  | []   => True.intro
+  | [t]  => by
+    simp only [andN]
+    simp only [notList, orN, map] at h
+    cases Classical.em t with
+    | inl tt  => exact tt
+    | inr ntt => exact False.elim (h ntt)
+  | h₁::h₂::t => by
+    simp only [orN, notList, map] at h
+    have ⟨ t₁, t₂ ⟩ := deMorganSmall h
+    have ih := @deMorgan (h₂::t) t₂
+    simp [andN]
+    have t₁' := notNotElim t₁
+    exact ⟨ t₁', ih ⟩
 
-theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) :=
-  by intros l h
-     exact match l with
-     | [] => by simp [orN, notList]
-     | [t] => by simp only [orN, notList]; simp [andN] at h; exact notNotIntro h
-     | h₁::h₂::t => by simp [orN, notList, map]
-                       simp [andN] at h
-                       apply deMorganSmall₂
-                       have nnh₁ := notNotIntro (And.left h)
-                       have ih := @deMorgan₂ (h₂::t) (And.right h)
-                       exact ⟨nnh₁, ih⟩
+theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) := by
+  intros l h
+  exact match l with
+  | [] => by
+    simp [orN, notList]
+  | [t] => by
+    simp only [orN, notList]
+    simp [andN] at h
+    exact notNotIntro h
+  | h₁::h₂::t => by
+    simp only [orN, notList, map]
+    simp [andN] at h
+    apply deMorganSmall₂
+    have nnh₁ := notNotIntro (And.left h)
+    have ih := @deMorgan₂ (h₂::t) (And.right h)
+    exact ⟨nnh₁, ih⟩
 
-theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notList l) :=
-  by intros l h
-     exact match l with
-     | [] => True.intro
-     | [t] => by simp [andN, notList, map]
-                 simp [orN, Not] at h
-                 exact h
-     | h₁::h₂::t => by simp [orN, Not] at h
-                       have ⟨t₁, t₂⟩ := deMorganSmall h
-                       simp [orN, Not] at t₂
-                       simp [andN, notList, map]
-                       have ih := @deMorgan₃ (h₂::t) t₂
-                       exact ⟨t₁, ih⟩
+theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notList l) := by
+  intros l h
+  exact match l with
+  | [] => True.intro
+  | [t] => by
+    simp only [andN, notList, map]
+    simp only [orN, Not] at h
+    exact h
+  | h₁::h₂::t => by
+    simp only [orN, Not] at h
+    have ⟨t₁, t₂⟩ := deMorganSmall h
+    simp only [orN, Not] at t₂
+    simp [andN, notList, map]
+    have ih := @deMorgan₃ (h₂::t) t₂
+    exact ⟨t₁, ih⟩
 
 theorem cnfAndNeg' : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
   by intro l
@@ -652,7 +661,7 @@ theorem length_eraseIdx (h : i < l.length) : (eraseIdx l i).length = l.length -1
     | succ i =>
       simp
       rw [length_cons, succ_lt_succ_iff] at hi
-      rw [ih hi, Nat.succ_eq_add_one, Nat.sub_add_cancel (zero_lt_of_lt hi)]
+      rw [ih hi, Nat.sub_add_cancel (zero_lt_of_lt hi)]
 
 theorem take_append (a b : List α) : take a.length (a ++ b) = a := by
   have H3:= take_append_drop a.length (a ++ b)

@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-import Mathlib.Data.Nat.Parity
+import Mathlib.Algebra.Order.Ring.Nat
 import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.ArithMulSign.Lemmas
@@ -24,9 +24,9 @@ inductive Pol where
  deriving BEq
 
 def intLOR := mkApp2 (.const ``LinearOrderedCommRing.toLinearOrderedRing [.zero])
-                     (.const ``Int []) (.const ``Int.linearOrderedCommRing [])
+                     (.const ``Int []) (.const ``Int.instLinearOrderedCommRing [])
 
-def RealLOR := Expr.const ``Real.instLinearOrderedRingReal []
+def RealLOR := Expr.const ``Real.instLinearOrderedRing []
 
 
 def traceMulSign (r : Except Exception Unit) : MetaM MessageData :=
