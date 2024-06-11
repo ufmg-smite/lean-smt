@@ -22,9 +22,7 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
 
 @[smt_sort_reconstruct] def reconstructUS : SortReconstructor := fun s => do match s.getKind with
   | .INTERNAL_SORT_KIND
-  | .UNINTERPRETED_SORT =>
-    Name.mkSimple s.getSymbol
-    |> getFVarOrConstExpr!
+  | .UNINTERPRETED_SORT => getFVarOrConstExpr! (Name.mkSimple s.getSymbol)
   | _ => return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with
