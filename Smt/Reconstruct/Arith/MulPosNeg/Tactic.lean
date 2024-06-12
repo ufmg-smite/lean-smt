@@ -63,7 +63,8 @@ def arithMulMeta (va vb vc : Expr) (pos : Bool) (compId : Nat) (thms : List Name
     else throwError "[arithMul]: index too large"
 
   let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
-  let zeroR ← mkAppOptM' (.const ``OfNat.ofNat [.zero]) #[mkConst ``Real, (mkNatLit 0), none]
+  let zeroR ←
+    mkAppOptM ``OfNat.ofNat #[mkConst ``Real, (mkNatLit 0), none]
   let zeroC := if typeC == mkConst ``Int then zeroI else zeroR
   let premiseLeft ←
     if pos then mkAppM ``LT.lt #[zeroC, vc]

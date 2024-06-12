@@ -77,7 +77,10 @@ def Location.simpRwAt (loc : Location) (pf : Expr) : TacticM Unit := do
   }
   _ ← Tactic.simpLocation ctx #[] (loc := loc.toTacticLocation)
   let { ctx, .. } ← mkSimpContext Syntax.missing (eraseLocal := false) (kind := .dsimp)
-  Tactic.dsimpLocation { ctx with config := { ctx.config with failIfUnchanged := false } } (loc := loc.toTacticLocation)
+  Tactic.dsimpLocation
+    { ctx with config := { ctx.config with failIfUnchanged := false } }
+    (loc := loc.toTacticLocation)
+    (simprocs := #[])
 
 end Lean.Meta
 
@@ -209,7 +212,7 @@ def concretizeApp (e : Expr) : ConcretizeM TransformStep := do
     for (pi, a) in info.paramInfo.zip args do
       let argTp ← inferType a
       -- TODO: This has good results but might be expensive.
-      let a' := if !pi.isInstImplicit then ← whnf a else a
+      let a' ← if !pi.isInstImplicit then whnf a else pure a
       let isConcretizable :=
         !a'.hasLooseBVars ∧ !a'.hasFVar ∧ (argTp.isType ∨ pi.hasFwdDeps ∨ pi.isInstImplicit)
       if isConcretizable then
@@ -347,7 +350,7 @@ The Coq variant is in `snipe`:
 - https://github.com/smtcoq/sniper/blob/af7b0d22f496f8e7a0ee6ca495314d80ea2aa881/theories/elimination_polymorphism.v
 -/
 elab "concretize" "[" nms:ident,* "]" : tactic => do
-  let nms ← (nms : Array Syntax).mapM resolveGlobalConstNoOverloadWithInfo
+  let nms ← (nms : Array Syntax).mapM (liftM $ Elab.realizeGlobalConstNoOverloadWithInfo ·)
   let concretizeSet := nms.foldl (init := .empty) (NameSet.insert · ·)
   evalConcretize
     |>.run' { visitSet := #[.goal] }
