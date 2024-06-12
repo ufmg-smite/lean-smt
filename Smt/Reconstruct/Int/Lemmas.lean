@@ -15,37 +15,16 @@ private theorem Nat.even_add : (m + n) % 2 = 0 ↔ (m % 2 = 0 ↔ n % 2 = 0) := 
 private theorem Nat.even_add_one : (n + 1) % 2 = 0 ↔ n % 2 ≠ 0 := by
   simp [Nat.even_add]
 
-private theorem Int.lt_of_sub_neg {a b : Int} (h : a - b < 0) : a < b := by
-  have h := Int.add_lt_add_right h b
-  rwa [Int.sub_add_cancel, Int.zero_add] at h
-
-private theorem Int.sub_neg_of_lt {a b : Int} (h : a < b) : a - b < 0 := by
-  have h := Int.add_lt_add_right h (-b)
-  rwa [Int.add_right_neg] at h
-
-private theorem Int.mul_lt_mul_of_neg_left {a b c : Int} (h : b < a) (hc : c < 0) : c * a < c * b := by
-  have : c * (a - b) < 0 := sorry
-  rw [Int.mul_sub] at this
-  exact Int.lt_of_sub_neg this
-
-private theorem Int.sub_nonpos_of_le {a b : Int} (h : a ≤ b) : a - b ≤ 0 := by
-  have h := Int.add_le_add_right h (-b)
-  rwa [Int.add_right_neg] at h
-
-private theorem Int.le_of_sub_nonpos {a b : Int} (h : a - b ≤ 0) : a ≤ b := by
-  have h := Int.add_le_add_right h b
-  rwa [Int.sub_add_cancel, Int.zero_add] at h
-
 private theorem Int.mul_lt_mul_left {c x y : Int} (hc : c > 0) : (c * x < c * y) = (x < y) := by
   apply propext
   constructor
-  · sorry
+  · apply Int.lt_of_mul_lt_mul_left (h := Int.le_of_lt hc)
   · apply Int.mul_lt_mul_of_pos_left (h₂ := hc)
 
 private theorem Int.mul_le_mul_left {c x y : Int} (hc : c > 0) : (c * x ≤ c * y) = (x ≤ y) := by
   apply propext
   constructor
-  · sorry
+  · apply le_of_mul_le_mul_left (h := hc)
   · apply Int.mul_le_mul_of_nonneg_left (h₂ := Int.le_of_lt hc)
 
 private theorem Int.mul_eq_zero_left {x y : Int} (hx : x ≠ 0) (hxy : x * y = 0) : y = 0 := by
