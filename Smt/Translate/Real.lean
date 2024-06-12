@@ -27,7 +27,7 @@ open Translator Term
 @[smt_translate] def translateReal : Translator := fun (e : Q(Real)) => match e with
   | ~q((($x : Int) : Real)) => return appT (symbolT "to_real") (← applyTranslators! x)
   | ~q(@OfNat.ofNat _ _ (@instOfNatAtLeastTwo _ _ _ instNatAtLeastTwo)) =>
-    return if let some n := (e.getArg! 1).nat? then literalT s!"{n}.0" else none
+    return if let some n := (e.getArg! 1).rawNatLit? then literalT s!"{n}.0" else none
   | ~q(0)       => return (literalT "0.0")
   | ~q(1)       => return (literalT "1.0")
   | ~q(-$x)     => return appT (symbolT "-") (← applyTranslators! x)
