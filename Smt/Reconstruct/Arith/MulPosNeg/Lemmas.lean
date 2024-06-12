@@ -15,7 +15,7 @@ variable [LinearOrderedRing α]
 
 variable {a b c : α}
 
-@[simp] def zToR : Int → Real := Real.intCast.intCast
+@[simp] def zToR (i : Int) : Real := ↑i
 
 def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁ ∧ p₂) → p₃ := by
   intros h₁ h₂

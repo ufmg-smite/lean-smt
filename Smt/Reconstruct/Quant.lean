@@ -28,7 +28,7 @@ namespace Smt.Reconstruct.Quant
 open Lean Qq
 
 def getVariableName (t : cvc5.Term) : Name :=
-  if t.hasSymbol then t.getSymbol else Name.num `x t.getId
+  if t.hasSymbol then Name.mkSimple t.getSymbol else Name.num `x t.getId
 
 @[smt_term_reconstruct] def reconstructQuant : TermReconstructor := fun t => do match t.getKind with
   | .FORALL =>

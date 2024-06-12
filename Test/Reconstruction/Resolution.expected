@@ -1,0 +1,42 @@
+Test/Reconstruction/Resolution.lean:7:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:5:69: error: unsolved goals
+A B C D E F G : Prop
+h₁ : A ∨ B ∨ C ∨ D
+h₂ : E ∨ ¬C ∨ F ∨ G
+⊢ A ∨ B ∨ D ∨ E ∨ F ∨ G
+Test/Reconstruction/Resolution.lean:11:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:9:55: error: unsolved goals
+A B C D E : Prop
+h₁ : A ∨ B ∨ C ∨ D
+h₂ : E ∨ ¬B
+⊢ A ∨ (C ∨ D) ∨ E
+Test/Reconstruction/Resolution.lean:15:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:13:37: error: unsolved goals
+A B C : Prop
+h₁ : ¬A
+h₂ : B ∨ A ∨ C
+⊢ B ∨ C
+Test/Reconstruction/Resolution.lean:19:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:17:89: error: unsolved goals
+A B C D : Prop
+h₁ : ¬(A ∧ B) ∨ C ∨ ¬D ∨ ¬A
+h₂ : A ∨ ¬(A ∧ B)
+⊢ ¬(A ∧ B) ∨ C ∨ ¬D ∨ ¬(A ∧ B)
+Test/Reconstruction/Resolution.lean:23:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:21:45: error: unsolved goals
+A B C D : Prop
+h₁ : A ∨ B ∨ C ∨ D
+h₂ : ¬A
+⊢ B ∨ C ∨ D
+Test/Reconstruction/Resolution.lean:27:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:25:82: error: unsolved goals
+B A C D E F : Prop
+h₁ : B ∨ A ∨ C ∨ A
+h₂ : D ∨ ¬A ∨ E ∨ ¬A ∨ F
+⊢ B ∨ C ∨ A ∨ D ∨ E ∨ ¬A ∨ F
+Test/Reconstruction/Resolution.lean:31:3: error: unknown tactic
+Test/Reconstruction/Resolution.lean:29:29: error: unsolved goals
+A : Prop
+h₁ : A
+h₂ : ¬A
+⊢ False

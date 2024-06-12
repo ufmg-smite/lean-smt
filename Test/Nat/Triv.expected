@@ -1,4 +1,4 @@
-goal: Nat.zero + Nat.succ Nat.zero = Nat.succ Nat.zero
+goal: Nat.zero + Nat.zero.succ = Nat.zero.succ
 
 query:
 (assert (distinct (+ 0 1) (+ 0 1)))

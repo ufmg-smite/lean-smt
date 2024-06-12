@@ -1,4 +1,4 @@
-goal: MyInt.add a b = MyInt.add b a
+goal: a.add b = b.add a
 
 query:
 (define-sort MyInt () Int)

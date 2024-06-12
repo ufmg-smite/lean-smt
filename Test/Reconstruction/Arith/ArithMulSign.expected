@@ -1,35 +1,38 @@
 Test/Reconstruction/Arith/ArithMulSign.lean:6:2: error: type mismatch
-  _uniq.410
+  _uniq.436
 has type
   a + 3 > Int.ofNat 0 → (a + 3) ^ 2 > 0 : Prop
 but is expected to have type
   a + 3 > 0 → (a + 3) ^ 2 > 0 : Prop
 Test/Reconstruction/Arith/ArithMulSign.lean:12:2: error: application type mismatch
-  combineSigns₃ (powNegOdd _uniq.1721 (Nat.odd_iff.mpr rfl)) (powPos _uniq.1693)
+  combineSigns₃ (powNegOdd _uniq.1842 (Nat.odd_iff.mpr rfl)) (powPos _uniq.1813)
 argument
-  powPos _uniq.1693
+  powPos _uniq.1813
 has type
   a ^ 2 > 0 : Prop
 but is expected to have type
   Pow.pow a 2 > 0 : Prop
 Test/Reconstruction/Arith/ArithMulSign.lean:21:2: error: application type mismatch
-  combineSigns₂ (powPos _uniq.3314)
+  combineSigns₂ (powPos _uniq.3537)
 argument
-  powPos _uniq.3314
+  powPos _uniq.3537
 has type
   b ^ 2 > 0 : Prop
 but is expected to have type
   Pow.pow b 2 > 0 : Prop
-Test/Reconstruction/Arith/ArithMulSign.lean:24:2: error: type mismatch
-  _uniq.5807
-has type
-  a < Int.ofNat 0 → b < OfNat.ofNat 0 → zToR (Pow.pow a 3) * Pow.pow b 3 > 0 : Prop
-but is expected to have type
-  a < 0 → b < 0 → ↑a ^ 3 * b ^ 3 > 0 : Prop
-Test/Reconstruction/Arith/ArithMulSign.lean:33:2: error: application type mismatch
-  combineSigns₂ (powPos _uniq.8568)
+Test/Reconstruction/Arith/ArithMulSign.lean:24:2: error: application type mismatch
+  combineSigns₄ (powNegOdd _uniq.6270 (Nat.odd_iff.mpr rfl))
+    (castNeg (Pow.pow a 3) (powNegOdd _uniq.6211 (Nat.odd_iff.mpr rfl)))
 argument
-  powPos _uniq.8568
+  castNeg (Pow.pow a 3) (powNegOdd _uniq.6211 (Nat.odd_iff.mpr rfl))
+has type
+  Pow.pow a 3 < 0 : Prop
+but is expected to have type
+  zToR (Pow.pow a 3) < 0 : Prop
+Test/Reconstruction/Arith/ArithMulSign.lean:33:2: error: application type mismatch
+  combineSigns₂ (powPos _uniq.9015)
+argument
+  powPos _uniq.9015
 has type
   b ^ 2 > 0 : Prop
 but is expected to have type

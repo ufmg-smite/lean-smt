@@ -38,7 +38,7 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
 
 @[smt_term_reconstruct] def reconstructBuiltin : TermReconstructor := fun t => do match t.getKind with
   | .VARIABLE => getFVarExpr! (getVariableName t)
-  | .CONSTANT => getFVarOrConstExpr! t.getSymbol
+  | .CONSTANT => getFVarOrConstExpr! (Name.mkSimple t.getSymbol)
   | .EQUAL =>
     let α : Q(Type) ← reconstructSort t[0]!.getSort
     let x : Q($α) ← reconstructTerm t[0]!
@@ -65,7 +65,7 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _ => return none
 where
   getVariableName (t : cvc5.Term) : Name :=
-    if t.hasSymbol then t.getSymbol else Name.num `x t.getId
+    if t.hasSymbol then Name.mkSimple t.getSymbol else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with

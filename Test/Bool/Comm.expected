@@ -1,9 +1,9 @@
 goal: (f p q == f q p) = true
 
 query:
-(declare-const p Bool)
 (declare-const q Bool)
 (declare-fun f (Bool Bool) Bool)
+(declare-const p Bool)
 (assert (distinct (= (f p q) (f q p)) true))
 (check-sat)
 Test/Bool/Comm.lean:3:0: warning: declaration uses 'sorry'

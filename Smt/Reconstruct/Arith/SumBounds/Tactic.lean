@@ -17,7 +17,7 @@ namespace Smt.Reconstruct.Arith
 open Lean
 open Meta Elab.Tactic Expr
 
-theorem castEQ : ∀ {a b : Int}, a = b → Real.intCast.intCast a = Real.intCast.intCast b := by
+theorem castEQ : ∀ {a b : Int}, a = b → (↑a : Real) = (↑b : Real) := by
   intros a b h
   rw [h]
 

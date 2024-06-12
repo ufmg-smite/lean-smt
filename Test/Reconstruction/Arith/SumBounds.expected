@@ -13,9 +13,9 @@ has type
 but is expected to have type
   a + (b + (c + w)) ≤ d + (e + (f + z)) : Prop
 Test/Reconstruction/Arith/SumBounds.lean:16:2: error: type mismatch
-  _uniq.1532
+  _uniq.1647
 has type
-  c + b + IntCast.intCast a < f + e + IntCast.intCast d : Prop
+  c + b + ↑a < f + e + ↑d : Prop
 but is expected to have type
   ↑a + (b + c) < ↑d + (e + f) : Prop
 Test/Reconstruction/Arith/SumBounds.lean:20:2: error: application type mismatch

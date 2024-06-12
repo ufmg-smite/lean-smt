@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 import Lean
 
-import Mathlib.Data.Nat.Parity
+import Mathlib.Algebra.Order.Ring.Nat
 import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.ArithMulSign.Lemmas
@@ -24,9 +24,9 @@ inductive Pol where
  deriving BEq
 
 def intLOR := mkApp2 (.const ``LinearOrderedCommRing.toLinearOrderedRing [.zero])
-                     (.const ``Int []) (.const ``Int.linearOrderedCommRing [])
+                     (.const ``Int []) (.const ``Int.instLinearOrderedCommRing [])
 
-def RealLOR := Expr.const ``Real.instLinearOrderedRingReal []
+def RealLOR := Expr.const ``Real.instLinearOrderedRing []
 
 
 def traceMulSign (r : Except Exception Unit) : MetaM MessageData :=
@@ -181,7 +181,7 @@ where
         | _ => throwError "[arithMulSign]: unexpected type for expression"
       let lorInst := if exprIsInt then intLOR else RealLOR
       let zeroI := mkApp (mkConst ``Int.ofNat) (mkNatLit 0)
-      let zeroR ← mkAppOptM' (.const ``OfNat.ofNat [.zero]) #[mkConst ``Real, (mkNatLit 0), none]
+      let zeroR ← mkAppOptM ``OfNat.ofNat #[mkConst ``Real, (mkNatLit 0), none]
       -- zero with the same type as the current argument
       let currZero := if exprIsInt then zeroI else zeroR
       let bindedType: Expr ←

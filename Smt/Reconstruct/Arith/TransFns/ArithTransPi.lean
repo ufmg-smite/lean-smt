@@ -25,16 +25,20 @@ open Elab Tactic Meta
 open Real
 
 def expr_3141592 : Expr :=
-  mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero]) (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientificRat []) (.lit (.natVal 3141592)) (mkConst ``Bool.true) (.lit (.natVal 6))
+  mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
+    (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
+    (.lit (.natVal 3141592)) (mkConst ``Bool.true) (.lit (.natVal 6))
 
 def expr_3141593 : Expr :=
-  mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero]) (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientificRat []) (.lit (.natVal 3141593)) (mkConst ``Bool.true) (.lit (.natVal 6))
+  mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
+    (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
+    (.lit (.natVal 3141593)) (mkConst ``Bool.true) (.lit (.natVal 6))
 
 def ratCast_lt_mpr {x y : ℚ} : x < y → (x : ℝ) < (y : ℝ) := ratCast_lt.mpr
 
 def ratOfFloat : Expr → Expr
   | .app (.app (.app (.app (.app a _) _) d) e) f =>
-      .app (.app (.app (.app (.app a (mkConst ``Rat)) (mkConst ``Rat.instOfScientificRat)) d) e) f
+      .app (.app (.app (.app (.app a (mkConst ``Rat)) (mkConst ``Rat.instOfScientific)) d) e) f
   | e => e
 
 def isOfNatNatLit : Expr → Bool

@@ -16,7 +16,7 @@ open Lean Expr
 open Translator Term
 
 @[smt_translate] def translateNat : Translator := fun (e : Q(Nat)) => match e with
-  | ~q(OfNat.ofNat $n) => return if let some n := n.natLit? then literalT (toString n) else none
+  | ~q(OfNat.ofNat $n) => return if let some n := n.rawNatLit? then literalT (toString n) else none
   | ~q(.zero)    => return literalT "0"
   | ~q(.succ $n) => return mkApp2 (symbolT "+") (← applyTranslators! n) (literalT "1")
   | ~q($n + $m)  => return mkApp2 (symbolT "+") (← applyTranslators! n) (← applyTranslators! m)

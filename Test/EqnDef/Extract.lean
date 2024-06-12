@@ -2,7 +2,7 @@ import Smt
 
 open Lean Meta Elab Tactic in
 elab "extract_def" i:ident : tactic => do
-  let nm ← resolveGlobalConstNoOverloadWithInfo i
+  let nm ← Elab.realizeGlobalConstNoOverloadWithInfo i
   let _ ← Smt.addEqnDefForConst nm
 
 def foo : Int := 10

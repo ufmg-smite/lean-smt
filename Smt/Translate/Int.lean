@@ -19,7 +19,7 @@ open Translator Term
   | _       => return none
 
 @[smt_translate] def translateInt : Translator := fun (e : Q(Int)) => match e with
-  | ~q(OfNat.ofNat $n) => return if let some n := n.natLit? then literalT (toString n) else none
+  | ~q(OfNat.ofNat $n) => return if let some n := n.rawNatLit? then literalT (toString n) else none
   | ~q(-$x)     => return appT (symbolT "-") (← applyTranslators! x)
   | ~q($x + $y) => return mkApp2 (symbolT "+") (← applyTranslators! x) (← applyTranslators! y)
   | ~q($x - $y) => return mkApp2 (symbolT "-") (← applyTranslators! x) (← applyTranslators! y)

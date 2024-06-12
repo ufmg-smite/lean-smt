@@ -1,0 +1,10 @@
+Test/Reconstruction/LiftOrNToNeg.lean:7:3: error: unknown tactic
+Test/Reconstruction/LiftOrNToNeg.lean:5:51: error: unsolved goals
+A B C : Prop
+h : ¬A ∨ B ∨ ¬C ∨ False
+⊢ ¬A ∨ B ∨ ¬C
+Test/Reconstruction/LiftOrNToNeg.lean:11:3: error: unknown tactic
+Test/Reconstruction/LiftOrNToNeg.lean:9:63: error: unsolved goals
+A B C D : Prop
+h : ¬A ∨ ¬B ∨ ¬C ∨ ¬D ∨ False
+⊢ ¬(A ∧ B ∧ C ∧ D)

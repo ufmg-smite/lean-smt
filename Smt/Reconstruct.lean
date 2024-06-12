@@ -204,7 +204,7 @@ def solve (query : String) (timeout : Option Nat) : MetaM (Except Error cvc5.Pro
       let ps ← Solver.getProof
       if h : 0 < ps.size then
         return ps[0]
-    throw (self := instMonadExcept _ _) (Error.user_error "something went wrong")
+    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.user_error "something went wrong")
 
 syntax (name := reconstruct) "reconstruct" str : tactic
 

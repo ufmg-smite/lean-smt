@@ -28,12 +28,12 @@ open Qq
   | _             => return none
 
 def getTypeAndInst (s : cvc5.Sort) : Σ α : Q(Type), Q(LinearOrderedRing $α) := match s.isInteger with
-  | false => ⟨q(Real), q(Real.instLinearOrderedRingReal)⟩
-  | true  => ⟨q(Int), q(Int.linearOrderedCommRing.toLinearOrderedRing)⟩
+  | false => ⟨q(Real), q(Real.instLinearOrderedRing)⟩
+  | true  => ⟨q(Int), q(Int.instLinearOrderedCommRing.toLinearOrderedRing)⟩
 
 def getTypeAndInst' (s : cvc5.Sort) : Σ (α : Q(Type)) (_ : Q(LinearOrderedRing $α)), Q(FloorRing $α) := match s.isInteger with
-  | false => ⟨q(Real), q(Real.instLinearOrderedRingReal), q(Real.instFloorRingRealInstLinearOrderedRingReal)⟩
-  | true  => ⟨q(Int), q(Int.linearOrderedCommRing.toLinearOrderedRing), q(instFloorRingIntToLinearOrderedRingLinearOrderedCommRing)⟩
+  | false => ⟨q(Real), q(Real.instLinearOrderedRing), q(Real.instFloorRing)⟩
+  | true  => ⟨q(Int), q(Int.instLinearOrderedCommRing.toLinearOrderedRing), q(instFloorRingInt)⟩
 
 @[smt_term_reconstruct] def reconstructArith : TermReconstructor := fun t => do match t.getKind with
   | .SKOLEM => match t.getSkolemId with
@@ -130,7 +130,7 @@ where
     | 1     => q(1 : Real)
     | _ + 2 =>
       let h : Q(Nat.AtLeastTwo $n) := h ▸ q(instNatAtLeastTwo)
-      let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.natCast) h
+      let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
     let mut curr ← reconstructTerm t[0]!

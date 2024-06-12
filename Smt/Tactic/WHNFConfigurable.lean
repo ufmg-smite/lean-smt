@@ -980,7 +980,7 @@ def reduceProjOf? (e : Expr) (p : Name → Bool) : MetaM (Option Expr) := do
     | _ => pure none
 
 private instance [MonadAlwaysExcept ε m] [STWorld ω m] [BEq α] [Hashable α] : MonadAlwaysExcept ε (MonadCacheT α β m) :=
-  instMonadAlwaysExceptStateRefT' ε
+  instMonadAlwaysExceptStateRefT'
 
 partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : ReductionM Expr :=
   let rec visit (e : Expr) : MonadCacheT Expr Expr ReductionM Expr :=
@@ -1007,7 +1007,7 @@ partial def reduce (e : Expr) (explicitOnly skipTypes skipProofs := true) : Redu
             else
               args ← args.modifyM i visit
           if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isRawNatLit then
-            pure <| mkRawNatLit (args[0]!.natLit?.get! + 1)
+            pure <| mkRawNatLit (args[0]!.rawNatLit?.get! + 1)
           else
             pure <| mkAppN f args
         -- `let`-bindings are normally substituted by WHNF, but they are left alone when `zeta` is off,
