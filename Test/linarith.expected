@@ -1,11 +1,22 @@
-Test/linarith.lean:33:9: warning: unused variable `e` [linter.unusedVariables]
+Test/linarith.lean:33:9: warning: unused variable `e`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:52:0: warning: declaration uses 'sorry'
-Test/linarith.lean:100:9: warning: unused variable `a` [linter.unusedVariables]
-Test/linarith.lean:100:13: warning: unused variable `c` [linter.unusedVariables]
-Test/linarith.lean:105:9: warning: unused variable `a` [linter.unusedVariables]
-Test/linarith.lean:105:13: warning: unused variable `c` [linter.unusedVariables]
-Test/linarith.lean:117:60: warning: unused variable `h3` [linter.unusedVariables]
-Test/linarith.lean:124:9: warning: unused variable `a` [linter.unusedVariables]
-Test/linarith.lean:124:13: warning: unused variable `c` [linter.unusedVariables]
-Test/linarith.lean:167:34: warning: unused variable `z` [linter.unusedVariables]
-Test/linarith.lean:168:5: warning: unused variable `h5` [linter.unusedVariables]
+Test/linarith.lean:100:9: warning: unused variable `a`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:100:13: warning: unused variable `c`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:105:9: warning: unused variable `a`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:105:13: warning: unused variable `c`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:117:60: warning: unused variable `h3`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:124:9: warning: unused variable `a`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:124:13: warning: unused variable `c`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:145:2: error: [arithPolyNorm]: could not prove x - y = -x + y
+Test/linarith.lean:167:34: warning: unused variable `z`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:168:5: warning: unused variable `h5`
+note: this linter can be disabled with `set_option linter.unusedVariables false`

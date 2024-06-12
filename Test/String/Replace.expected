@@ -1,4 +1,4 @@
-goal: String.replace "a" "a" "b" = "b"
+goal: "a".replace "a" "b" = "b"
 
 query:
 (assert (distinct (str.replace_all "a" "a" "b") "b"))

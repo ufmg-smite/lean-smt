@@ -9,8 +9,8 @@ Test/BitVec/XorComm.lean:3:8: warning: declaration uses 'sorry'
 goal: x ^^^ y = y ^^^ x
 
 query:
-(declare-const x (_ BitVec 8))
 (declare-const y (_ BitVec 8))
+(declare-const x (_ BitVec 8))
 (assert (distinct (bvxor x y) (bvxor y x)))
 (check-sat)
 Test/BitVec/XorComm.lean:7:8: warning: declaration uses 'sorry'

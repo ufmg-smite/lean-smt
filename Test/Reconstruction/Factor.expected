@@ -1,0 +1,40 @@
+Test/Reconstruction/Factor.lean:7:3: error: unknown tactic
+Test/Reconstruction/Factor.lean:5:39: error: unsolved goals
+A B C : Prop
+h : A ∨ B ∨ C ∨ B
+⊢ A ∨ B ∨ C
+Test/Reconstruction/Factor.lean:11:3: error: unknown tactic
+Test/Reconstruction/Factor.lean:9:31: error: unsolved goals
+A B : Prop
+h : A ∨ B ∨ B
+⊢ A ∨ B
+Test/Reconstruction/Factor.lean:15:6: error: unknown tactic
+Test/Reconstruction/Factor.lean:14:2: error: unsolved goals
+A B C : Prop
+h : A ∨ A ∨ A ∨ A ∨ B ∨ A ∨ B ∨ A ∨ C ∨ B ∨ C ∨ B ∨ A
+⊢ A ∨ B ∨ C
+Test/Reconstruction/Factor.lean:19:3: error: unknown tactic
+Test/Reconstruction/Factor.lean:17:61: error: unsolved goals
+A B C D : Prop
+h : (A ∨ B) ∨ C ∨ D ∨ C ∨ A ∨ B
+⊢ (A ∨ B) ∨ C ∨ D
+Test/Reconstruction/Factor.lean:23:3: error: unknown tactic
+Test/Reconstruction/Factor.lean:21:51: error: unsolved goals
+A B C : Prop
+h : (A ∨ B ∨ C) ∨ A ∨ B ∨ C
+⊢ A ∨ B ∨ C
+Test/Reconstruction/Factor.lean:28:6: error: unknown tactic
+Test/Reconstruction/Factor.lean:27:2: error: unsolved goals
+A B E F : Prop
+h : A ∨ B ∨ (E ∨ F) ∨ A ∨ B ∨ E ∨ F
+⊢ A ∨ B ∨ E ∨ F
+Test/Reconstruction/Factor.lean:33:6: error: unknown tactic
+Test/Reconstruction/Factor.lean:32:2: error: unsolved goals
+A B C E F : Prop
+h : (A ∨ B ∨ C) ∨ (E ∨ F) ∨ (A ∨ B ∨ C) ∨ E ∨ F
+⊢ (A ∨ B ∨ C) ∨ E ∨ F
+Test/Reconstruction/Factor.lean:37:3: error: unknown tactic
+Test/Reconstruction/Factor.lean:35:61: error: unsolved goals
+A B C D : Prop
+h : (A ∨ B) ∨ C ∨ D ∨ C ∨ A ∨ B
+⊢ (A ∨ B) ∨ C ∨ D

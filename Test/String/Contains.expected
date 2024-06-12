@@ -1,4 +1,4 @@
-goal: String.contains "a" 'a' = true
+goal: "a".contains 'a' = true
 
 query:
 (declare-sort Char 0)

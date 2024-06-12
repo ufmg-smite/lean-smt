@@ -1,7 +1,7 @@
 goal: (p == q) = true → (q == p) = true
 
 query:
-(declare-const p Bool)
 (declare-const q Bool)
+(declare-const p Bool)
 (assert (not (=> (= (= p q) true) (= (= q p) true))))
 (check-sat)
