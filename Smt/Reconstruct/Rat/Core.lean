@@ -5,9 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Batteries.Logic
 import Batteries.Data.Rat
 
 namespace Rat
+protected theorem lt_iff_blt {x y : Rat} : x < y ↔ x.blt y := by
+  simp only [LT.lt]
 
 protected def abs (x : Rat) := if x < 0 then -x else x
 
