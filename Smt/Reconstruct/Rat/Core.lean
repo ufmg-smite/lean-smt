@@ -5,78 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Batteries.Logic
 import Batteries.Data.Rat
 
-
-namespace Int
-@[simp]
-protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by
-  omega
-
-protected theorem natCast_ne_zero {n : Nat} : (n : Int) ≠ 0 ↔ n ≠ 0 := by
-  exact not_congr Int.natCast_eq_zero
-
-protected theorem gcd_def (i j : Int) : i.gcd j = i.natAbs.gcd j.natAbs :=
-  rfl
-
-protected theorem gcd_def' (i : Int) (j : Nat) : i.gcd (ofNat j) = i.natAbs.gcd j :=
-  Int.gcd_def _ _
-
-theorem gcd_eq_zero_iff {i j : Int} : gcd i j = 0 ↔ i = 0 ∧ j = 0 := by
-  rw [gcd, Nat.gcd_eq_zero_iff, natAbs_eq_zero, natAbs_eq_zero]
-
-theorem gcd_ne_zero_iff {i j : Int} : gcd i j ≠ 0 ↔ i ≠ 0 ∨ j ≠ 0 := by
-  constructor
-  · intro h
-    let tmp := not_congr gcd_eq_zero_iff |>.mp h
-    if h_i : i = 0 then
-      simp [h_i] at tmp
-      exact Or.inr tmp
-    else
-      exact Or.inl h_i
-  · intro h gcd_zero
-    rw [gcd_eq_zero_iff] at gcd_zero
-    simp [gcd_zero.1, gcd_zero.2] at h
-
-protected theorem dvd_mul_left_of_dvd {i j : Int} (k : Int) : i ∣ j → i ∣ k * j
-| ⟨n, h⟩ => by
-  rw [h]
-  exists k * n
-  rw [
-    ← Int.mul_assoc k i n,
-    Int.mul_comm k i,
-    Int.mul_assoc i k n,
-  ]
-
-protected theorem dvd_mul_right_of_dvd {i j : Int} (k : Int) : i ∣ j → i ∣ j * k :=
-  Int.mul_comm j k ▸ Int.dvd_mul_left_of_dvd k
-
-theorem flatten_div_mul_eq_mul_div
-  {i1 i2 i3 i4 j : Int}
-  (j_pos : j ≠ 0)
-  (j_dvd_i1 : j ∣ i1)
-  (j_dvd_i4 : j ∣ i4)
-: i1 / j * i2 = i3 * (i4 / j) → i1 * i2 = i3 * i4 := by
-  intro h
-  rw [← Int.mul_eq_mul_left_iff j_pos] at h
-  conv at h =>
-    lhs
-    rw [← Int.mul_assoc]
-    rw [← Int.mul_ediv_assoc _ j_dvd_i1]
-    rw [Int.mul_ediv_cancel_left _ j_pos]
-  conv at h =>
-    rhs
-    rw [← Int.mul_assoc]
-    conv => lhs ; rw [Int.mul_comm]
-    rw [Int.mul_assoc]
-    rw [← Int.mul_ediv_assoc _ j_dvd_i4]
-    rw [Int.mul_ediv_cancel_left _ j_pos]
-  assumption
-end Int
+import Smt.Reconstruct.Int.Core
 
 
 
 namespace Rat
+protected theorem lt_iff_blt {x y : Rat} : x < y ↔ x.blt y := by
+  simp only [LT.lt]
 
 theorem num_divInt_den (q : Rat) : q.num /. q.den = q :=
   divInt_self _
@@ -174,4 +112,80 @@ protected theorem mul_assoc (a b c : Rat) : a + b + c = a + (b + c) :=
       numDenCasesOn' c fun n₃ d₃ _h₃ => by
         simp only [Rat.divInt_ofNat]
         exact Rat.add_assoc _ _ _
+
+
+
+@[simp]
+theorem mk'_zero (d) (h : d ≠ 0) (w) : mk' 0 d h w = 0 := by
+  congr
+
+
+
+variable {q : Rat}
+
+@[simp]
+theorem neg_neg : - -q = q := by
+  rw [← Rat.mkRat_self q]
+  simp [Rat.neg_mkRat]
+
+@[simp]
+theorem num_eq_zero : q.num = 0 ↔ q = 0 := by
+  induction q
+  constructor
+  · rintro rfl
+    exact mk'_zero _ _ _
+  · exact congr_arg num
+
+theorem num_ne_zero : q.num ≠ 0 ↔ q ≠ 0 := not_congr num_eq_zero
+
+@[simp]
+theorem num_nonneg : 0 ≤ q.num ↔ 0 ≤ q := by
+  simp [Int.le_iff_lt_or_eq, instLE, Rat.blt, Int.not_lt]
+  omega
+
+theorem nonneg_iff_sub_nonpos : 0 ≤ q ↔ -q ≤ 0 := by
+  rw [← num_nonneg]
+  conv => rhs ; simp [LE.le, Rat.blt]
+  omega
+
+theorem nonneg_sub_iff_nonpos : 0 ≤ -q ↔ q ≤ 0 := by
+  simp [nonneg_iff_sub_nonpos, Rat.neg_neg]
+
+
+@[simp]
+theorem num_nonpos : q.num ≤ 0 ↔ q ≤ 0 := by
+  conv => lhs ; rw [← Int.neg_nonneg]
+  simp [Rat.neg_num q ▸ @num_nonneg (-q)]
+  conv => rhs ; rw [← nonneg_sub_iff_nonpos]
+
+theorem not_nonpos : ¬ q ≤ 0 ↔ 0 < q := by
+  simp [Rat.lt_iff_blt, Rat.blt]
+  rw [← num_nonpos]
+  exact Int.not_le
+
+@[simp]
+theorem num_pos : 0 < q.num ↔ 0 < q := by
+  let tmp := not_congr (num_nonpos (q := q))
+  rw [Int.not_le] at tmp
+  simp [tmp, Rat.not_nonpos]
+
+theorem pos_iff_neg_nonpos : 0 < q ↔ -q < 0 := by
+  rw [← num_pos]
+  conv => rhs ; simp [Rat.lt_iff_blt] ; unfold Rat.blt ; simp
+  constructor <;> intro h
+  · apply Or.inl
+    exact num_pos.mp h
+  · let h : 0 < q := by
+      cases h
+      case inl h => exact h
+      case inr h => exact h.2.2
+    apply num_pos.mpr h
+
+@[simp]
+theorem num_neg : q.num < 0 ↔ q < 0 := by
+  let tmp := @num_pos (-q)
+  simp [Rat.neg_num q, Int.lt_neg_of_lt_neg] at tmp
+  rw [tmp]
+  apply Rat.neg_neg ▸ Rat.pos_iff_neg_nonpos (q := -q)
+
 end Rat
