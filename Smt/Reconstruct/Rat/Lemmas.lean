@@ -5,10 +5,73 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
+import Batteries.Data.Int
 import Batteries.Data.Rat
 
-private theorem Rat.mul_lt_mul_left {c x y : Rat} (hc : c > 0) : (c * x < c * y) = (x < y) := by
-  sorry
+import Smt.Reconstruct.Int.Core
+import Smt.Reconstruct.Rat.Core
+
+
+
+namespace Rat
+
+
+
+section le_lt_defs
+
+variable {x y : Rat}
+
+protected theorem le_antisymm (hxy : x ≤ y) (hyx : y ≤ x) : x = y := by
+    rw [Rat.le_iff_sub_nonneg] at hxy hyx
+    rw [Rat.sub_eq_add_neg] at hyx
+    rw [← Rat.neg_sub, Rat.sub_eq_add_neg] at hxy
+    have this := Rat.eq_neg_of_add_eq_zero_left (Rat.nonneg_antisymm hyx hxy)
+    rwa [Rat.neg_neg] at this
+
+protected theorem le_def : x ≤ y ↔ x.num * y.den ≤ y.num * x.den := by
+  rw [← num_divInt_den y, ← num_divInt_den x]
+  conv => rhs ; simp only [num_divInt_den]
+  exact Rat.divInt_le_divInt (mod_cast x.den_pos) (mod_cast y.den_pos)
+
+
+protected theorem le_total : x ≤ y ∨ y ≤ x := by
+  simp [Rat.le_def]
+  omega
+
+protected theorem lt_iff_le_not_le : x < y ↔ (x ≤ y ∧ ¬ y ≤ x) := by
+  rw [← Rat.not_le, and_iff_right_of_imp Rat.le_total.resolve_left]
+
+protected theorem lt_iff_le_and_ne : x < y ↔ x ≤ y ∧ x ≠ y := ⟨
+  fun h => ⟨Rat.le_of_lt h, Rat.ne_of_lt h⟩,
+  fun h => by
+    let ⟨h_le, h_ne⟩ := h
+    rw [Rat.lt_iff_le_not_le]
+    apply And.intro h_le
+    intro h_le'
+    let _ := Rat.le_antisymm h_le h_le'
+    contradiction
+⟩
+
+protected theorem lt_def : x < y ↔ x.num * y.den < y.num * x.den := by
+  rw [Rat.lt_iff_le_and_ne, Rat.le_def]
+  suffices x ≠ y ↔ x.num * y.den ≠ y.num * x.den by
+    constructor <;> intro h
+    · exact Int.lt_iff_le_and_ne.mpr ⟨h.left, this.mp h.right⟩
+    · have tmp := Int.lt_iff_le_and_ne.mp h
+      exact ⟨tmp.left, this.mpr tmp.right⟩
+  exact Decidable.not_iff_not.mpr Rat.eq_iff_mul_eq_mul
+
+end le_lt_defs
+
+end Rat
+
+
+
+private theorem Rat.mul_lt_mul_left {c x y : Rat} : 0 < c → ((c * x < c * y) ↔ (x < y)) :=
+  numDenCasesOn' x fun nx dx nz_dx =>
+    numDenCasesOn' y fun ny dy nz_dy =>
+      numDenCasesOn' c fun nc dc nz_dc => by
+        sorry
 
 private theorem Rat.mul_le_mul_left {c x y : Rat} (hc : c > 0) : (c * x ≤ c * y) = (x ≤ y) := by
   sorry
