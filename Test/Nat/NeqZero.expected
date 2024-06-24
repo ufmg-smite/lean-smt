@@ -1,10 +1,10 @@
-goal: ∀ (x : ℕ), x ≠ 0
+goal: ∀ (x : Nat), x ≠ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
 (check-sat)
 Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'
-goal: ∀ (x : ℕ), x + 1 ≠ 0
+goal: ∀ (x : Nat), x + 1 ≠ 0
 
 query:
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))

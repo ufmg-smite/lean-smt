@@ -96,10 +96,7 @@ theorem plus_cancel2 : ts + (-1 * x) + ss + x + rs = ts + ss + rs :=
   Int.neg_eq_neg_one_mul x ▸ Int.add_assoc ts (-x) ss ▸ Int.add_assoc ts (-x + ss) x ▸
   Int.add_comm (-x) ss ▸ (Int.neg_add_cancel_right ss x).symm ▸ rfl
 
--- theorem abs_elim : |x| = if x < 0 then -x else x :=
---   if h : x < 0 then
---     if_pos h ▸ abs_of_neg h
---   else
---     if_neg h ▸ abs_of_nonneg (le_of_not_lt h)
+theorem abs_elim : (if x < 0 then -x else x) = if x < 0 then -x else x :=
+  rfl
 
 end Smt.Reconstruct.Int.Rewrite
