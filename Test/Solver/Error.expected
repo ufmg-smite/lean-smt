@@ -1,2 +1,2 @@
 
-Test/Solver/Error.lean:15:0: error: Cannot bind x to symbol of type Int, maybe the symbol has already been defined?
+Test/Solver/Error.lean:26:0: error: Cannot bind x to symbol of type Int, maybe the symbol has already been defined?
