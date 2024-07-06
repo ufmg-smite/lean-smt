@@ -19,7 +19,7 @@ goal: z 3 = 10
 
 query:
 (declare-fun f (Int) Int)
-(define-fun z ((x._@.Test.Int.Let._hyg.295 Int)) Int (f 10))
+(define-fun z ((x._@.Test.Int.Let._hyg.300 Int)) Int (f 10))
 (assert (= (f 10) 10))
 (assert (distinct (z 3) 10))
 (check-sat)

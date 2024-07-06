@@ -3,7 +3,7 @@ goal: x = y → f x = f y
 query:
 (define-sort Nat () Int)
 (declare-fun f (Nat) Nat)
-(assert (forall ((_uniq.1521 Nat)) (=> (>= _uniq.1521 0) (>= (f _uniq.1521) 0))))
+(assert (forall ((_uniq.1520 Nat)) (=> (>= _uniq.1520 0) (>= (f _uniq.1520) 0))))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-const y Nat)
