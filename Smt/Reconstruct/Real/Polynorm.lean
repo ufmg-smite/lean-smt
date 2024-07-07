@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Mathlib.Data.Real.Star
+import Mathlib.Data.Real.Basic
 import Mathlib.Tactic.Ring.RingNF
 
 namespace Smt.Reconstruct.Real
