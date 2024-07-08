@@ -122,18 +122,15 @@ protected theorem sub_self : x - x = 0 :=
 protected theorem add_neg_self : x + -x = 0 :=
   Rat.sub_eq_add_neg x x ▸ Rat.sub_self
 
--- #TODO use `eq_iff_mul_eq_mul`
 protected theorem eq_neg_of_add_eq_zero_left : x + y = 0 → x = - y :=
-  numDenCasesOn'' x fun nx dx h_dx h_red =>
-  numDenCasesOn'' y fun ny dy h_dy h_red' => by
-    simp only [Rat.neg_divInt, Rat.add_def]
+  numDenCasesOn'' x fun nx dx h_dx h_dx_red =>
+  numDenCasesOn'' y fun ny dy h_dy h_dy_red => by
+    simp only [Rat.neg_divInt, Rat.add_def, Neg.neg]
+    simp only [Rat.neg, normalize_eq_zero]
+    simp only [eq_iff_mul_eq_mul, ← Int.neg_mul_eq_neg_mul]
     intro h
-    simp [Neg.neg] ; simp [Rat.neg]
-    simp only [Rat.normalize_eq_zero] at h
-    let h_dpos : 0 < ↑dx := Int.natCast_pos.mpr (Nat.pos_iff_ne_zero.mpr h_dx)
-    let h_dpos' : 0 < ↑dy := Int.natCast_pos.mpr (Nat.pos_iff_ne_zero.mpr h_dy)
-    let h' := Int.neg_eq_of_add_eq_zero h
-    sorry
+    apply Int.eq_neg_of_eq_neg
+    exact Int.neg_eq_of_add_eq_zero h |>.symm
 
 protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
   numDenCasesOn'' x fun nx dx h_dx _ =>
@@ -164,10 +161,10 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
     else
       simp [h]
       split
-      case inl nb_0 =>
+      case isTrue nb_0 =>
         simp [nb_0, Rat.sub_eq_add_neg, Rat.zero_add, Rat.nonneg_sub_iff_nonpos, ← Rat.num_nonpos]
         exact Int.not_lt
-      case inr nb_nz =>
+      case isFalse nb_nz =>
         simp only [Rat.sub_def, normalize_eq, ← Rat.num_nonneg]
         if ny_pos : 0 < ny then
           simp [ny_pos]
