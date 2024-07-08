@@ -1,6 +1,6 @@
 Test/Nat/Sum'.lean:7:12: error: tactic 'assumption' failed
 case zero.a
-_uniq✝¹¹⁶⁰³⁻⁰ :
+_uniq✝⁹⁹³⁹⁻⁰ :
   ¬((∀ (n : Int), sum n = if n = 0 then 0 else n + sum (if 1 ≤ n then n - 1 else 0)) ∧
       (∀ («_uniq.4976» : Int), «_uniq.4976» ≥ 0 → sum «_uniq.4976» ≥ 0) ∧ Smt.Reconstruct.Builtin.distinct [sum 0, 0])
 ⊢ ¬Smt.Reconstruct.andN' [Nat → Nat] ¬sum 0 = 0 * (0 + 1) / 2
@@ -11,7 +11,7 @@ query:
 (declare-const n Nat)
 (assert (>= n 0))
 (define-fun-rec sum ((n Nat)) Nat (ite (= n 0) 0 (+ n (sum (ite (<= 1 n) (- n 1) 0)))))
-(assert (forall ((_uniq.13678 Nat)) (=> (>= _uniq.13678 0) (>= (sum _uniq.13678) 0))))
+(assert (forall ((_uniq.12014 Nat)) (=> (>= _uniq.12014 0) (>= (sum _uniq.12014) 0))))
 (assert (= (sum n) (div (* n (+ n 1)) 2)))
 (assert (distinct (sum (+ n 1)) (div (* (+ n 1) (+ (+ n 1) 1)) 2)))
 (check-sat)

@@ -83,9 +83,9 @@ partial def parseOneAux : List Substring → Except ParseError (Sexp × List Sub
       return (atom tk.toString, tks)
   | [] => throw <| .incomplete "expected a token, got none"
 
-partial def parseManyAux :=
+partial def parseManyAux : List Substring → Except ParseError (Array Sexp × List Substring) :=
   go #[]
-where go (stk : Array Sexp) : List Substring → Except ParseError (Array Sexp × List Substring)
+where go (stk : Array Sexp)
   | tk :: tks => do
     if tk.front == ')' then .ok (stk, tk :: tks)
     else

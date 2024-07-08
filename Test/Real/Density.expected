@@ -6,3 +6,5 @@ query:
 (assert (not (=> (< x z) (exists ((y Real)) (and (< x y) (< y z))))))
 (check-sat)
 Test/Real/Density.lean:4:8: warning: declaration uses 'sorry'
+Test/Real/Density.lean:5:2: warning: 'smt_show' tactic does nothing
+note: this linter can be disabled with `set_option linter.unusedTactic false`

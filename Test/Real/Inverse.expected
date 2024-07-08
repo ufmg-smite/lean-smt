@@ -5,3 +5,5 @@ query:
 (assert (not (=> (distinct x 0.0) (exists ((y Real)) (= (* x y) 1.0)))))
 (check-sat)
 Test/Real/Inverse.lean:4:8: warning: declaration uses 'sorry'
+Test/Real/Inverse.lean:5:2: warning: 'smt_show' tactic does nothing
+note: this linter can be disabled with `set_option linter.unusedTactic false`

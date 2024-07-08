@@ -6,6 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Mathlib.Data.Real.Basic
+import Mathlib.Tactic.Ring.RingNF
 
 namespace Smt.Reconstruct.Real
 
