@@ -127,22 +127,22 @@ theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c.floor := by
 theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.ceil := by
   sorry
 
-theorem trichotomy₁ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
+theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
   sorry
 
-theorem trichotomy₂ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
+theorem trichotomy₂ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b := by
   sorry
 
-theorem trichotomy₃ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
+theorem trichotomy₃ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
   sorry
 
-theorem trichotomy₄ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b := by
+theorem trichotomy₄ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
   sorry
 
-theorem trichotomy₅ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
+theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
   sorry
 
-theorem trichotomy₆ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
+theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
   sorry
 
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by

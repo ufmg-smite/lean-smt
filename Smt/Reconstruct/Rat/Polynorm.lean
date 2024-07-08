@@ -235,23 +235,33 @@ partial def toRatConst (e : Q(Rat)) : PolyM Rat := do
   | ~q($x - $y) => pure ((← toRatConst x) - (← toRatConst y))
   | ~q($x * $y) => pure ((← toRatConst x) * (← toRatConst y))
   | ~q($x / $y) => pure ((← toRatConst x) / (← toRatConst y))
-  | e => throwError "[poly_norm] a rational number, got {e}"
+  | e => throwError "[poly_norm] expected a rational number, got {e}"
 
-partial def toArithExpr (e : Q(Rat)) : PolyM Q(PolyNorm.Expr) := do
+partial def toPolyNormExpr (e : Q(Rat)) : PolyM PolyNorm.Expr := do
+  match e with
+  | ~q(OfNat.ofNat $x) => pure (.val x.rawNatLit?.get!)
+  | ~q(-$x) => pure (.neg (← toPolyNormExpr x))
+  | ~q($x + $y) => pure (.add (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | ~q($x - $y) => pure (.sub (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | ~q($x * $y) => pure (.mul (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | ~q($x / $y) => pure (.divConst (← toPolyNormExpr x) (← toRatConst y))
+  | e => let v : Nat ← getIndex e; pure (.var v)
+
+partial def toQPolyNormExpr (e : Q(Rat)) : PolyM Q(PolyNorm.Expr) := do
   match e with
   | ~q(OfNat.ofNat $n) => pure q(.val (@OfNat.ofNat Rat $n _))
-  | ~q(-$x) => pure q(.neg $(← toArithExpr x))
-  | ~q($x + $y) => pure q(.add $(← toArithExpr x) $(← toArithExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toArithExpr x) $(← toArithExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toArithExpr x) $(← toArithExpr y))
-  | ~q($x / $y) => pure q(.divConst $(← toArithExpr x) $(PolyNorm.Monomial.toExpr.toExprCoeff (← toRatConst y)))
+  | ~q(-$x) => pure q(.neg $(← toQPolyNormExpr x))
+  | ~q($x + $y) => pure q(.add $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
+  | ~q($x - $y) => pure q(.sub $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
+  | ~q($x * $y) => pure q(.mul $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
+  | ~q($x / $y) => pure q(.divConst $(← toQPolyNormExpr x) $(PolyNorm.Monomial.toExpr.toExprCoeff (← toRatConst y)))
   | e => let v : Nat ← getIndex e; pure q(.var $v)
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, es) ← (toArithExpr l).run #[]
-  let (r, es) ← (toArithExpr r).run es
+  let (l, es) ← (toQPolyNormExpr l).run #[]
+  let (r, es) ← (toQPolyNormExpr r).run es
   let is : Q(Array Rat) := es.foldl (fun acc e => q(«$acc».push $e)) q(#[])
   let ctx : Q(PolyNorm.Context) := q(fun v => if h : v < «$is».size then $is[v] else 0)
   let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)

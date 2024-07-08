@@ -1,4 +1,5 @@
 import Smt
+import Smt.Real
 
 example {x y : Real} {f : Real → Real} : ¬(((1/2 : Real) = 1/2) ∧ x ≤ y ∧ y ≤ x ∧ ¬f x = f y) := by
   smt

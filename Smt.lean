@@ -5,10 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Arith
 import Smt.BitVec
 import Smt.Bool
 import Smt.Builtin
+import Smt.Int
 import Smt.Nat
 import Smt.Options
 import Smt.Prop

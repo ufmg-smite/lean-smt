@@ -1,29 +1,3 @@
-goal: let y := 10;
-f y = 10
-
-query:
-(declare-fun f (Int) Int)
-(assert (= (f 10) 10))
-(assert (distinct (f 10) 10))
-(check-sat)
-Test/Int/Let.lean:5:51: error: unsolved goals
-f : ℤ → ℤ
-h : f 10 = 10
-⊢ let y := 10;
-  f y = 10
-goal: f 10 = 10
-
-query:
-(declare-fun f (Int) Int)
-(assert (= (f 10) 10))
-(assert (distinct (f 10) 10))
-(check-sat)
-Test/Int/Let.lean:8:51: error: unsolved goals
-f : ℤ → ℤ
-h :
-  let y := 10;
-  f y = 10
-⊢ f 10 = 10
 goal: f z = z
 
 query:
@@ -45,7 +19,7 @@ goal: z 3 = 10
 
 query:
 (declare-fun f (Int) Int)
-(define-fun z ((x._@.Test.Int.Let._hyg.293 Int)) Int (f 10))
+(define-fun z ((x._@.Test.Int.Let._hyg.300 Int)) Int (f 10))
 (assert (= (f 10) 10))
 (assert (distinct (z 3) 10))
 (check-sat)

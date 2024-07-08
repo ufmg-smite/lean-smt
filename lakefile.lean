@@ -6,7 +6,7 @@ require cvc5 from
   git "https://github.com/abdoo8080/lean-cvc5.git" @ "main"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.8.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.9.0"
 
 def libcpp : String :=
   if System.Platform.isWindows then "libstdc++-6.dll"
@@ -72,13 +72,11 @@ script test do
 where
   runTest (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
     IO.println s!"Start : {test}"
-    -- Note: this only works on Unix since it needs the shared library `libSmt`
-    -- to also loads its transitive dependencies.
-    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: Could not find `{nameToSharedLib "Smt"}`"; return 2
+    let imports ← Lean.parseImports' (← IO.FS.readFile test) test.fileName.get!
+    let modules ← imports.filterMapM (findModule? ·.module)
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={libcpp}"] ++ modules.map (s!"--load-dynlib={·.dynlibFile}") ++ #[test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -118,11 +116,11 @@ where
   updateTest (test : FilePath) : ScriptM UInt32 := do
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
-    let some dynlib := (← findModule? `Smt).map (·.dynlibFile)
-      | do IO.println s!"Error: Could not find `{nameToSharedLib "Smt"}`"; return 2
+    let imports ← Lean.parseImports' (← IO.FS.readFile test) test.fileName.get!
+    let modules ← imports.filterMapM (findModule? ·.module)
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={dynlib}", test.toString]
+      args := #[s!"--load-dynlib={libcpp}"] ++ modules.map (s!"--load-dynlib={·.dynlibFile}") ++ #[test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout

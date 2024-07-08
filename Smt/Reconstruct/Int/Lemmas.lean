@@ -31,13 +31,13 @@ namespace Smt.Reconstruct.Int
 variable {a b c d : Int}
 
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
-  have r₁: a + c < a + d := Int.add_lt_add_left h₂ a
-  have r₂: a + d < b + d := Int.add_lt_add_right h₁ d
+  have r₁ : a + c < a + d := Int.add_lt_add_left h₂ a
+  have r₂ : a + d < b + d := Int.add_lt_add_right h₁ d
   exact Int.lt_trans r₁ r₂
 
 theorem sum_ub₂ (h₁ : a < b) (h₂ : c ≤ d) : a + c < b + d := by
-  have r₁: a + c ≤ a + d := Int.add_le_add_left h₂ a
-  have r₂: a + d < b + d := Int.add_lt_add_right h₁ d
+  have r₁ : a + c ≤ a + d := Int.add_le_add_left h₂ a
+  have r₂ : a + d < b + d := Int.add_lt_add_right h₁ d
   exact Int.lt_of_le_of_lt r₁ r₂
 
 theorem sum_ub₃ (h₁ : a < b) (h₂ : c = d) : a + c < b + d := by
@@ -70,29 +70,35 @@ theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c ≤ b + d := by
   rewrite [h₁, h₂]
   exact Int.le_refl (b + d)
 
-theorem trichotomy₁ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
-  have tr := Int.lt_trichotomy a b
-  exact Or.resolve_left (Or.resolve_left tr (Int.not_lt.mpr h₁)) h₂
+theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c - 1 :=
+  Int.le_sub_one_of_lt h
 
-theorem trichotomy₂ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
-  have tr := Int.lt_trichotomy a b
-  exact Or.resolve_left (Or.resolve_left tr (Int.not_lt.mpr h₂)) h₁
+theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c + 1 :=
+  h
 
-theorem trichotomy₃ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
+theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
   have tr := Int.lt_trichotomy a b
-  exact Or.resolve_right (Or.resolve_left tr (Int.not_lt.mpr h₁)) (Int.not_lt.mpr h₂)
+  exact Or.resolve_right (Or.resolve_right (or_assoc.mpr tr) (Int.not_lt.mpr h₁)) h₂
 
-theorem trichotomy₄ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b := by
+theorem trichotomy₂ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b := by
   have tr := Int.lt_trichotomy a b
   exact Or.resolve_right (Or.resolve_left tr (Int.not_lt.mpr h₂)) (Int.not_lt.mpr h₁)
 
-theorem trichotomy₅ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
+theorem trichotomy₃ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
   have tr := Int.lt_trichotomy a b
   exact Or.resolve_right (Or.resolve_right (or_assoc.mpr tr) (Int.not_lt.mpr h₂)) h₁
 
-theorem trichotomy₆ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
+theorem trichotomy₄ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
   have tr := Int.lt_trichotomy a b
-  exact Or.resolve_right (Or.resolve_right (or_assoc.mpr tr) (Int.not_lt.mpr h₁)) h₂
+  exact Or.resolve_left (Or.resolve_left tr (Int.not_lt.mpr h₂)) h₁
+
+theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
+  have tr := Int.lt_trichotomy a b
+  exact Or.resolve_right (Or.resolve_left tr (Int.not_lt.mpr h₁)) (Int.not_lt.mpr h₂)
+
+theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
+  have tr := Int.lt_trichotomy a b
+  exact Or.resolve_left (Or.resolve_left tr (Int.not_lt.mpr h₁)) h₂
 
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by
   apply propext

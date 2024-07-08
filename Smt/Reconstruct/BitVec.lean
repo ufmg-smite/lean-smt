@@ -47,7 +47,7 @@ partial def synthDecidableInst (t : cvc5.Term) : ReconstructM Expr := do match t
         return q(@instDecidableEqBitVec $w)
       let p : Q(Prop) ← reconstructTerm t
       Meta.synthInstance q(Decidable $p)
-    | .BITVECTOR_BITOF =>
+    | .BITVECTOR_BIT =>
       let w : Nat := t[0]!.getSort.getBitVectorSize.val
       let x : Q(BitVec $w) ← reconstructTerm t[0]!
       let i : Nat := t.getOp[0]!.getIntegerValue.toNat
@@ -70,16 +70,6 @@ where
     let w : Nat := t.getSort.getBitVectorSize.val
     let v : Nat := (t.getBitVectorValue 10).toNat!
     return q(BitVec.ofNat $w $v)
-  | .BITVECTOR_BB_TERM =>
-    let w : Nat := t.getNumChildren
-    let bs : Q(BitVec 0) := q(.nil)
-    let f (bs : Expr) (i : Nat) : ReconstructM Expr := do
-      let p : Q(Prop) ← reconstructTerm t[i]!
-      let bs : Q(BitVec $i) := bs
-      let hp : Q(Decidable $p) ← synthDecidableInst t[i]!
-      return q(@BitVec.cons $i (@decide $p $hp) $bs)
-    let bs : Q(BitVec $w) ← (List.range w).foldlM f bs
-    return q($bs)
   | .BITVECTOR_CONCAT =>
     let n : Nat := t.getNumChildren
     let w₁ : Nat := t[0]!.getSort.getBitVectorSize.val
@@ -192,11 +182,6 @@ where
     let j : Nat := t.getOp[1]!.getIntegerValue.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».extractLsb $i $j)
-  | .BITVECTOR_BITOF =>
-    let w : Nat := t[0]!.getSort.getBitVectorSize.val
-    let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp[0]!.getIntegerValue.toNat
-    return q(«$x».getLsb $i = true)
   | .BITVECTOR_REPEAT =>
     let w : Nat := t.getSort.getBitVectorSize.val
     let n : Nat := t.getOp[0]!.getIntegerValue.toNat
@@ -230,6 +215,21 @@ where
     let w : Nat := t[0]!.getSort.getBitVectorSize.val
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».toNat)
+  | .BITVECTOR_FROM_BOOLS =>
+    let w : Nat := t.getNumChildren
+    let bs : Q(BitVec 0) := q(.nil)
+    let f (bs : Expr) (i : Nat) : ReconstructM Expr := do
+      let p : Q(Prop) ← reconstructTerm t[i]!
+      let bs : Q(BitVec $i) := bs
+      let hp : Q(Decidable $p) ← synthDecidableInst t[i]!
+      return q(@BitVec.cons $i (@decide $p $hp) $bs)
+    let bs : Q(BitVec $w) ← (List.range w).foldlM f bs
+    return q($bs)
+  | .BITVECTOR_BIT =>
+    let w : Nat := t[0]!.getSort.getBitVectorSize.val
+    let x : Q(BitVec $w) ← reconstructTerm t[0]!
+    let i : Nat := t.getOp[0]!.getIntegerValue.toNat
+    return q(«$x».getLsb $i = true)
   | _ => return none
 where
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do

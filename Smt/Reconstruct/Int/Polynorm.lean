@@ -191,20 +191,29 @@ def getIndex (e : Q(Int)) : PolyM Nat := do
     set (es.push e)
     return size
 
-partial def toArithExpr (e : Q(Int)) : PolyM Q(PolyNorm.Expr) := do
+partial def toPolyNormExpr (e : Q(Int)) : PolyM PolyNorm.Expr := do
+  match e with
+  | ~q(OfNat.ofNat $x) => pure (.val x.rawNatLit?.get!)
+  | ~q(-$x) => pure (.neg (← toPolyNormExpr x))
+  | ~q($x + $y) => pure (.add (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | ~q($x - $y) => pure (.sub (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | ~q($x * $y) => pure (.mul (← toPolyNormExpr x) (← toPolyNormExpr y))
+  | e => let v : Nat ← getIndex e; pure (.var v)
+
+partial def toQPolyNormExpr (e : Q(Int)) : PolyM Q(PolyNorm.Expr) := do
   match e with
   | ~q(OfNat.ofNat $x) => pure q(.val (@OfNat.ofNat Int $x _))
-  | ~q(-$x) => pure q(.neg $(← toArithExpr x))
-  | ~q($x + $y) => pure q(.add $(← toArithExpr x) $(← toArithExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toArithExpr x) $(← toArithExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toArithExpr x) $(← toArithExpr y))
+  | ~q(-$x) => pure q(.neg $(← toQPolyNormExpr x))
+  | ~q($x + $y) => pure q(.add $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
+  | ~q($x - $y) => pure q(.sub $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
+  | ~q($x * $y) => pure q(.mul $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
   | e => let v : Nat ← getIndex e; pure q(.var $v)
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, es) ← (toArithExpr l).run #[]
-  let (r, es) ← (toArithExpr r).run es
+  let (l, es) ← (toQPolyNormExpr l).run #[]
+  let (r, es) ← (toQPolyNormExpr r).run es
   let is : Q(Array Int) := es.foldl (fun acc e => q(«$acc».push $e)) q(#[])
   let ctx : Q(PolyNorm.Context) := q(fun v => if h : v < «$is».size then $is[v] else 0)
   let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)

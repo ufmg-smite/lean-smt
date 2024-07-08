@@ -7,7 +7,6 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Reconstruct
 import Smt.Reconstruct.Builtin.Lemmas
-import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Int.Lemmas
 import Smt.Reconstruct.Int.Polynorm
 import Smt.Reconstruct.Int.Rewrites
@@ -150,14 +149,14 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t < $s) = ¬($t ≥ $s)) q(@Rewrite.elim_lt $t $s)
-  -- | .ARITH_ELIM_INT_GT =>
-  --   let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-  --   let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
-  --   addThm q(($t > $s) = ($t ≥ $s + 1)) q(@Rewrite.elim_int_gt $t $s)
-  -- | .ARITH_ELIM_INT_LT =>
-  --   let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-  --   let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
-  --   addThm q(($t < $s) = ($s ≥ $t + 1)) q(@Rewrite.elim_int_lt $t $s)
+  | .ARITH_ELIM_INT_GT =>
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q(($t > $s) = ($t ≥ $s + 1)) q(@Rewrite.elim_int_gt $t $s)
+  | .ARITH_ELIM_INT_LT =>
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q(($t < $s) = ($s ≥ $t + 1)) q(@Rewrite.elim_int_lt $t $s)
   | .ARITH_ELIM_LEQ =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -350,43 +349,84 @@ where
   | .ARITH_SUM_UB =>
     if !pf.getResult[0]!.getSort.isInteger then return none
     reconstructSumUB pf
+  | .INT_TIGHT_UB =>
+    if !pf.getResult[0]!.getSort.isInteger then return none
+    let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
+    let c : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
+    let h : Q($i < $c) ← reconstructProof pf.getChildren[0]!
+    addThm q($i ≤ $c - 1) q(@Int.int_tight_ub $c $i $h)
+  | .INT_TIGHT_LB =>
+    if !pf.getResult[0]!.getSort.isInteger then return none
+    let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
+    let c : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
+    let h : Q($i > $c) ← reconstructProof pf.getChildren[0]!
+    addThm q($i ≥ $c + 1) q(@Int.int_tight_lb $c $i $h)
   | .ARITH_TRICHOTOMY =>
     if !pf.getResult[0]!.getSort.isInteger then return none
     let x : Q(Int) ← reconstructTerm pf.getResult[0]!
     let c : Q(Int) ← reconstructTerm pf.getResult[1]!
     let k₁ := pf.getChildren[0]!.getResult.getKind
     let k₂ := pf.getChildren[1]!.getResult.getKind
-    if k₁ == .GEQ && k₂ == .NOT then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
+    if k₁ == .LEQ && k₂ == .NOT then
+      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
       let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Int.trichotomy₁ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .GEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Int.trichotomy₂ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .LEQ then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Int.trichotomy₃ $h₁ $h₂)
+      addThm q($x < $c) q(Int.trichotomy₁ $h₁ $h₂)
     else if k₁ == .LEQ && k₂ == .GEQ then
       let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
       let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Int.trichotomy₄ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .LT then
+      addThm q($x = $c) q(Int.trichotomy₂ $h₁ $h₂)
+    else if k₁ == .NOT && k₂ == .LEQ then
       let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
       let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Int.trichotomy₅ $h₁ $h₂)
-    else if k₁ == .LT && k₂ == .NOT then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
+      addThm q($x < $c) q(Int.trichotomy₃ $h₁ $h₂)
+    else if k₁ == .NOT && k₂ == .GEQ then
+      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
+      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
+      addThm q($x > $c) q(Int.trichotomy₄ $h₁ $h₂)
+    else if k₁ == .GEQ && k₂ == .LEQ then
+      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
+      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
+      addThm q($x = $c) q(Int.trichotomy₅ $h₁ $h₂)
+    else if k₁ == .GEQ && k₂ == .NOT then
+      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
       let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Int.trichotomy₆ $h₁ $h₂)
+      addThm q($x > $c) q(Int.trichotomy₆ $h₁ $h₂)
     else
       return none
   | .ARITH_POLY_NORM =>
-    if !pf.getResult[0]!.getSort.isInteger then return none
-    let a : Q(Int) ← reconstructTerm pf.getResult[0]!
-    let b : Q(Int) ← reconstructTerm pf.getResult[1]!
-    addTac q($a = $b) Int.polyNorm
+    if pf.getResult[0]!.getSort.getKind == .BOOLEAN_SORT then
+      if !pf.getResult[0]![0]!.getSort.isInteger then return none
+      let a₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
+      let a₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
+      let b₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!
+      let b₂ : Q(Int) ← reconstructTerm pf.getResult[1]![1]!
+      let (l, es) ← (toPolyNormExpr q($a₁ - $a₂)).run #[]
+      let (r, _) ← (toPolyNormExpr q($b₁ - $b₂)).run es
+      let c₁ : Q(Int) :=
+        if h : 0 < r.toPolynomial.length then let n : Nat := r.toPolynomial[0].coeff.natAbs; q(OfNat.ofNat $n) else q(1)
+      let c₂ : Q(Int) :=
+        if h : 0 < l.toPolynomial.length then let n : Nat := l.toPolynomial[0].coeff.natAbs; q(OfNat.ofNat $n) else q(1)
+      let hc₁ : Q($c₁ > 0) := .app q(@of_decide_eq_true ($c₁ > 0) _) q(Eq.refl true)
+      let hc₂ : Q($c₂ > 0) := .app q(@of_decide_eq_true ($c₂ > 0) _) q(Eq.refl true)
+      let h : Q($c₁ * ($a₁ - $a₂) = $c₂ * ($b₁ - $b₂)) ← Meta.mkFreshExprMVar q($c₁ * ($a₁ - $a₂) = $c₂ * ($b₁ - $b₂))
+      Int.polyNorm h.mvarId!
+      match pf.getResult[0]!.getKind with
+      | .LT =>
+        addThm q(($a₁ < $a₂) = ($b₁ < $b₂)) q(Int.lt_of_sub_eq $hc₁ $hc₂ $h)
+      | .LEQ =>
+        addThm q(($a₁ ≤ $a₂) = ($b₁ ≤ $b₂)) q(Int.le_of_sub_eq $hc₁ $hc₂ $h)
+      | .EQUAL =>
+        addThm q(($a₁ = $a₂) = ($b₁ = $b₂)) q(Int.eq_of_sub_eq $hc₁ $hc₂ $h)
+      | .GEQ =>
+        addThm q(($a₁ ≥ $a₂) = ($b₁ ≥ $b₂)) q(Int.ge_of_sub_eq $hc₁ $hc₂ $h)
+      | .GT =>
+        addThm q(($a₁ > $a₂) = ($b₁ > $b₂)) q(Int.gt_of_sub_eq $hc₁ $hc₂ $h)
+      | _   => return none
+    else
+      if !pf.getResult[0]!.getSort.isInteger then return none
+      let a : Q(Int) ← reconstructTerm pf.getResult[0]!
+      let b : Q(Int) ← reconstructTerm pf.getResult[1]!
+      addTac q($a = $b) Int.polyNorm
   | .ARITH_MULT_SIGN =>
     if !pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf
