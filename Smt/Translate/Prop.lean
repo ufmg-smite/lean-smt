@@ -22,7 +22,8 @@ open Translator Term
 @[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
   | ~q(True)                  => return symbolT "true"
   | ~q(False)                 => return symbolT "false"
-  | ~q($x = $y)               => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x = $y)
+  | ~q($x ↔ $y)               => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
   | ~q($x ≠ $y)               => return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
   | ~q(¬$p)                   => return appT (symbolT "not") (← applyTranslators! p)
   | ~q($p ∧ $q)               => return mkApp2 (symbolT "and") (← applyTranslators! p) (← applyTranslators! q)
