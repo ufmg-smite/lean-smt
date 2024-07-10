@@ -15,6 +15,7 @@ abbrev Var := Nat
 def Context := Var → Int
 
 structure Monomial where
+  mk ::
   coeff : Int
   vars : List Var
 deriving Inhabited, Repr
@@ -60,8 +61,104 @@ def denote (ctx : Context) (m : Monomial) : Int :=
 theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
   simp only [neg, denote, Int.neg_mul_eq_neg_mul]
 
-theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.denote ctx * m₂.denote ctx :=
-  sorry
+theorem eq : ∀ {m n : Monomial}, m.coeff = n.coeff → m.vars = n.vars → m = n
+  | ⟨_, _⟩, ⟨_, _⟩, rfl, rfl => rfl
+
+
+
+
+section
+variable {op : α → α → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+
+-- Can be generalized to `List.foldl_assoc`.
+theorem foldl_assoc {g : β → α} (z1 z2 : α) :
+  List.foldl (fun z a => op z (g a)) (op z1 z2) l =
+  op z1 (List.foldl (fun z a => op z (g a)) z2 l) := by
+  revert z1 z2
+  induction l with
+  | nil => simp
+  | cons y ys ih =>
+    intro z1 z2
+    simp only [List.foldl_cons, ih, assoc]
+
+theorem foldr_assoc {g : β → α} (z1 z2 : α) :
+  List.foldr (fun z a => op a (g z)) (op z1 z2) l =
+  op z1 (List.foldr (fun z a => op a (g z)) z2 l) := by
+  revert z1 z2
+  induction l with
+  | nil => simp
+  | cons y ys ih =>
+    intro z1 z2
+    simp only [List.foldr_cons, ih, assoc]
+
+
+end
+-- Can be generazlized.
+theorem foldl_mul_insert {ctx : Context} :
+  List.foldl (fun z a => z * (ctx a)) 1 (mul.insert y ys) =
+  (ctx y) * List.foldl (fun z a => z * (ctx a)) 1 ys := by
+  induction ys with
+  | nil => simp [mul.insert]
+  | cons x ys ih =>
+    by_cases h : y ≤ x
+    · simp [mul.insert, h, foldl_assoc Int.mul_assoc (ctx y) (ctx x), Int.mul_assoc]
+    · simp only [mul.insert, h, List.foldl_cons, ite_false, Int.mul_comm,
+                 foldl_assoc Int.mul_assoc, ih]
+      rw [← Int.mul_assoc, Int.mul_comm (ctx x) (ctx y), Int.mul_assoc]
+
+theorem denote_add {m n : Monomial} (h : m.vars = n.vars) :
+  (m.add n h).denote ctx = m.denote ctx + n.denote ctx := by
+  simp only [add, denote, Int.add_mul, h]
+
+theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.denote ctx * m₂.denote ctx := by
+  simp only [denote, mul, Int.mul_assoc]; congr 1
+  rw [← Int.mul_assoc, Int.mul_comm _ m₂.coeff, Int.mul_assoc]; congr 1
+  induction m₁.vars with
+  | nil => simp [Int.mul_assoc]
+  | cons y ys ih =>
+    simp [foldl_mul_insert, ←foldl_assoc Int.mul_assoc, ih]
+
+theorem foldl_ite {m : Monomial} (g : Var → Int) (hi : i ∈ m.vars) :
+  ∃ k : Nat, List.foldl (fun acc v => acc * (if v = i then (g i) else 1)) z m.vars = z * (g i)^k := by
+  revert z hi
+  induction m.vars with
+  | nil => intro z hi; simp at hi
+  | cons v l ih =>
+    intro z hi
+    cases hi with
+    | head =>
+      simp [foldl_assoc Int.mul_assoc]
+      sorry
+    | tail _ ha =>
+      simp only [List.foldl_cons, Int.one_mul]
+      have ⟨k, hk⟩ := @ih (z * if v = i then g i else 1) ha
+      rw [hk]
+      split
+      case inl hv => rw [Int.mul_assoc, Int.mul_comm (g i), ←Int.pow_succ]
+                     exact ⟨k + 1, rfl⟩
+      case inr _ =>  rw [Int.mul_one]
+                     exact ⟨k, rfl⟩
+
+
+-- theorem denote_eq {m n : Monomial} (h : ∀ ctx : Context, m.denote ctx = n.denote ctx) : m = n := by
+--   apply eq
+--   · sorry
+--   · induction m.vars, n.vars using List.rec with
+--     | nil nil => sorry
+--     | nil cons a b => sorry
+--     | cons a b nil => sorry
+--     | cons a b ih cons c d ih1 => sorry
+
+
+
+
+  -- · sorry
+  -- · apply List.ext_get
+  --   · sorry
+  --   · intro i h1 h2;
+  --     have h3 := h (fun j => if i = j then i else 1)
+  --     simp [denote] at h3
+  --     sorry
 
 end Monomial
 
@@ -97,6 +194,10 @@ where
       else
         n :: insert m ns
 
+#eval add [⟨5, [0, 1]⟩, ⟨7, [0, 1, 1]⟩] [⟨3, [0, 1, 1]⟩, ⟨2, [0, 1]⟩]
+#eval add [⟨3, [0, 1, 1]⟩, ⟨2, [0, 1]⟩] [⟨5, [0, 1]⟩, ⟨7, [0, 1, 1]⟩]
+
+
 def sub (p q : Polynomial) : Polynomial :=
   p.add q.neg
 
@@ -111,20 +212,147 @@ def mul (p q : Polynomial) : Polynomial :=
 def denote (ctx : Context) (p : Polynomial) : Int :=
   p.foldl (fun acc m => acc + m.denote ctx) 0
 
-theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx :=
-  sorry
+theorem foldl_add_insert (ctx : Context) :
+  List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 (add.insert m p) =
+  (Monomial.denote ctx m) + List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 p := by
+  induction p with
+  | nil => simp [add.insert]
+  | cons n p ih =>
+    simp only [add.insert]
+    split
+    <;> simp only [List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc]
+    case cons.inr h =>
+      split
+      case inl h1 =>
+        split
+        case inl h2 =>
+          rw [←Int.add_assoc, Int.add_comm, ←Monomial.denote_add h1]
+          simp [Monomial.denote, h2]
+        case inr h2 =>
+          simp [-Int.add_zero, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote_add h1, Int.add_assoc]
+      case inr h1 =>
+        simp only [List.foldl_cons, Int.add_comm 0, ih, Monomial.foldl_assoc Int.add_assoc]
+        rw [←Int.add_assoc, Int.add_comm (Monomial.denote ctx n), Int.add_assoc]
 
-theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.denote ctx :=
-  sorry
+theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx := by
+  simp only [denote, neg]
+  induction p with
+  | nil => simp
+  | cons m p ih =>
+    simp only [List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc,Int.neg_add, ←ih, List.map, Monomial.denote_neg]
+
+theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
+  simp only [denote, add]
+  induction p with
+  | nil => simp [add.insert]
+  | cons x ys ih =>
+    simp only [List.foldr_cons, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Int.add_assoc]
+    rw [← ih, foldl_add_insert]
+
 
 theorem denote_sub {p q : Polynomial} : (p.sub q).denote ctx = p.denote ctx - q.denote ctx := by
   simp only [sub, denote_neg, denote_add, Int.sub_eq_add_neg]
 
-theorem denote_mulMonomial {p : Polynomial} : (p.mulMonomial m).denote ctx = m.denote ctx * p.denote ctx :=
-  sorry
+theorem denote_mulMonomial {p : Polynomial} : (p.mulMonomial m).denote ctx = m.denote ctx * p.denote ctx := by
+  simp only [denote, mulMonomial, add]
+  induction p with
+  | nil => simp
+  | cons n p ih =>
+    simp only [List.foldl_cons, List.foldr_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Int.mul_add, ←ih]
+    simp [foldl_add_insert, Monomial.denote_mul]
 
-theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.denote ctx :=
-  sorry
+theorem denote_cons {p : List Monomial} {ctx : Context} : denote ctx (m :: p) = m.denote ctx + denote ctx p := by
+  simp only [denote, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc]
+
+
+theorem denote_add_insert {g : Monomial → Polynomial} :
+  denote ctx (List.foldl (fun acc m => List.foldr add.insert (g m) acc) (g n) p) = denote ctx (g n) + denote ctx (List.foldl (fun acc m => List.foldr add.insert (g m) acc) [] p) := by
+  induction p with
+  | nil => simp [denote]
+  | cons k p ih =>
+    simp only [List.foldl_cons, List.foldr]
+    sorry
+
+
+
+theorem denote_foldl {g : Monomial → Polynomial} :
+  denote ctx (List.foldl (fun acc m => (acc.add (g m))) [] p) = List.foldl (fun acc m => (g m).denote ctx + acc) 0 p := by
+  induction p with
+  | nil => simp [denote]
+  | cons n p ih =>
+    simp only [List.foldl_cons, add, Int.add_comm, List.foldr] at *
+    rw [Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, ←ih]
+
+    sorry
+
+-- #check Fin.mk
+-- theorem denote_cast {p : List Monomial} :
+--   denote ctx (List.foldl f [] p) = List.foldl (fun acc m => denote ctx (f [m] ⟨acc, []⟩)) 0 p := by
+--   induction p with
+--   | nil => simp [denote]
+--   | cons n p ih =>
+--     simp only [List.foldl_cons]
+--     rw [← Int.add_zero (denote ctx (f [n] ⟨0, []⟩)), Monomial.foldl_assoc Int.add_assoc]
+
+theorem denote_ite {p : Polynomial} : denote (fun j => if j = i then 1 else 0) p = if h : i < p.length then Monomial.denote (fun _ => 1) (p.get ⟨i, h⟩) else 0:= by
+  induction p with
+  | nil => sorry
+  | cons n p ih =>
+    split
+    case cons.inl h1 =>
+      simp only [denote, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote]
+      sorry
+    sorry
+
+
+#check List.ext_get
+
+theorem denote_eq {p q : Polynomial} (h : ∀ ctx, p.denote ctx = q.denote ctx) : p = q := by
+  apply List.ext_get
+  · sorry
+  · intro i h1 h2
+    have h' := h (fun j => if j = i then 1 else 0)
+    rw [denote_ite, denote_ite] at h'
+    simp [h1, h2, Monomial.denote] at h'
+    apply Monomial.eq
+    · sorry
+    · sorry
+
+theorem add_assoc :∀ (p q r : Polynomial), add (add p q) r = add p (add q r) := by
+  intro p q r; simp only [add]; revert p q
+  induction r with
+  | nil => sorry
+  | cons n r ih =>
+    intro p q
+    simp only [add, add.insert, List.foldr_cons, ih p q]
+    induction q with
+    | nil => simp
+    | cons => sorry
+
+theorem add_comm : ∀ (p q : Polynomial), add p q = add q p := by
+  intro p; simp only [add]
+  induction p with
+  | nil => sorry
+  | cons n p ih =>
+    intro q
+    simp only [add, add.insert, List.foldr_cons, ih q]
+    induction q with
+    | nil => unfold add.insert
+             simp
+             sorryAx
+    | cons => sorry
+
+
+
+theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.denote ctx := by
+  simp only [mul]
+  induction p with
+  | nil => simp [denote]
+  | cons n p ih =>
+    simp only [List.foldl_cons, denote_cons, Int.add_mul, ← ih, add_comm]
+    rw [add_comm, Monomial.foldl_assoc add_assoc]
+    simp [denote_add, denote_mulMonomial]
+
 
 end Polynomial
 
