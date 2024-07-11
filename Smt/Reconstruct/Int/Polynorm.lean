@@ -324,9 +324,8 @@ theorem add_assoc :∀ (p q r : Polynomial), add (add p q) r = add p (add q r) :
   | nil => sorry
   | cons n r ih =>
     intro p q
-    simp only [add, add.insert, List.foldr_cons, ih p q]
     induction q with
-    | nil => simp
+    | nil => sorry
     | cons => sorry
 
 theorem add_comm : ∀ (p q : Polynomial), add p q = add q p := by
@@ -339,7 +338,7 @@ theorem add_comm : ∀ (p q : Polynomial), add p q = add q p := by
     induction q with
     | nil => unfold add.insert
              simp
-             sorryAx
+             sorry
     | cons => sorry
 
 
