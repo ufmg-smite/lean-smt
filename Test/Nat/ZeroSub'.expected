@@ -1,6 +1,6 @@
 Test/Nat/ZeroSub'.lean:6:12: error: tactic 'assumption' failed
 case zero
-_uniq✝⁴⁷⁸⁻⁰ : ¬Smt.Reconstruct.Builtin.distinct [0, 0]
+_uniq✝⁵¹⁷⁻⁰ : ¬Smt.Reconstruct.Builtin.distinct [0, 0]
 ⊢ ¬Smt.Reconstruct.andN' [] ¬0 - 0 = 0
 Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch
   HAdd.hAdd x

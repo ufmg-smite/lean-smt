@@ -11,6 +11,7 @@ import Smt.Dsl.Sexp
 import Smt.Reconstruct
 import Smt.Reconstruct.Prop.Lemmas
 import Smt.Translate.Query
+import Smt.Preprocess
 import Smt.Util
 
 namespace Smt
@@ -39,10 +40,11 @@ where
         go mv hs (.fvar fv :: fvs) k
 
 def smt (mv : MVarId) (hs : List Expr) (timeout : Option Nat := none) : MetaM (List MVarId) := mv.withContext do
-  let mv ← Util.rewriteIffMeta mv
-  let goalType : Q(Prop) ← mv.getType
   -- 1. Process the hints passed to the tactic.
   withProcessedHints mv hs fun mv hs => mv.withContext do
+  let (hs, mv) ← Preprocess.elimIff mv hs
+  mv.withContext do
+  let goalType : Q(Prop) ← mv.getType
   -- 2. Generate the SMT query.
   let cmds ← prepareSmtQuery hs (← mv.getType)
   let cmds := .setLogic "ALL" :: cmds
@@ -122,11 +124,12 @@ def parseTimeout : TSyntax `smtTimeout → TacticM (Option Nat)
 
 @[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
   let g ← Meta.mkFreshExprMVar (← getMainTarget)
-  let mv ← Util.rewriteIffMeta g.mvarId!
-  let goalType ← mv.getType
-  let mut hs ← parseHints ⟨stx[1]⟩
-  hs := hs.eraseDups
+  let mv := g.mvarId!
+  let hs ← parseHints ⟨stx[1]⟩
   withProcessedHints mv hs fun mv hs => mv.withContext do
+  let (hs, mv) ← Preprocess.elimIff mv hs
+  mv.withContext do
+  let goalType ← mv.getType
   let cmds ← prepareSmtQuery hs (← mv.getType)
   let cmds := cmds ++ [.checkSat]
   logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
