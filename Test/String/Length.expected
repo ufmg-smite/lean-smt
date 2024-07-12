@@ -3,6 +3,6 @@ goal: "a".length = 1
 query:
 (define-sort Nat () Int)
 (declare-fun String.length (String) Nat)
-(assert (forall ((_uniq.769 String)) (>= (String.length _uniq.769) 0)))
+(assert (forall ((_uniq.805 String)) (>= (String.length _uniq.805) 0)))
 (assert (distinct (String.length "a") 1))
 (check-sat)
