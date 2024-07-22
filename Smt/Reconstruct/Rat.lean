@@ -347,39 +347,6 @@ where
     let c : Q(Rat) ← reconstructTerm pf.getResult[1]!
     let k₁ := pf.getChildren[0]!.getResult.getKind
     let k₂ := pf.getChildren[1]!.getResult.getKind
-<<<<<<< HEAD
-    if k₁ == .GEQ && k₂ == .NOT then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Rat.trichotomy₁ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .GEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Rat.trichotomy₂ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .LEQ then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Rat.trichotomy₃ $h₁ $h₂)
-    else if k₁ == .LEQ && k₂ == .GEQ then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Rat.trichotomy₄ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .LT then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Rat.trichotomy₅ $h₁ $h₂)
-    else if k₁ == .LT && k₂ == .NOT then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Rat.trichotomy₆ $h₁ $h₂)
-    else
-      return none
-  | .ARITH_POLY_NORM =>
-    if pf.getResult[0]!.getSort.isInteger then return none
-    let a : Q(Rat) ← reconstructTerm pf.getResult[0]!
-    let b : Q(Rat) ← reconstructTerm pf.getResult[1]!
-    addTac q($a = $b) Rat.polyNorm
-=======
     if k₁ == .LEQ && k₂ == .NOT then
       let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
       let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
@@ -440,7 +407,6 @@ where
       let a : Q(Int) ← reconstructTerm pf.getResult[0]!
       let b : Q(Int) ← reconstructTerm pf.getResult[1]!
       addTac q($a = $b) Rat.polyNorm
->>>>>>> upstream/main
   | .ARITH_MULT_SIGN =>
     if pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf
@@ -490,7 +456,3 @@ where
   | _ => return none
 
 end Smt.Reconstruct.Rat
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/main
