@@ -23,6 +23,26 @@ theorem num_divInt_den (q : Rat) : q.num /. q.den = q :=
 theorem mk'_eq_divInt {n d h c} : (⟨n, d, h, c⟩ : Rat) = n /. d :=
   (num_divInt_den _).symm
 
+theorem divInt_num (q : Rat) : (q.num /. q.den).num = q.num := by
+  simp [mkRat, q.den_nz, normalize, Rat.reduced]
+
+theorem divInt_num'
+  {n : Int} {d : Nat}
+  (nz_d : d ≠ 0 := by omega)
+  (reduced : n.natAbs.Coprime d := by assumption)
+: (n /. d).num = n := by
+  simp [mkRat, nz_d, normalize, reduced]
+
+theorem divInt_den (q : Rat) : (q.num /. q.den).den = q.den := by
+  simp [mkRat, q.den_nz, normalize, Rat.reduced]
+
+theorem divInt_den'
+  {n : Int} {d : Nat}
+  (nz_d : d ≠ 0 := by omega)
+  (reduced : n.natAbs.Coprime d := by assumption)
+: (n /. d).den = d := by
+  simp [mkRat, nz_d, normalize, reduced]
+
 @[elab_as_elim]
 def numDenCasesOn.{u} {C : Rat → Sort u}
 : ∀ (a : Rat) (_ : ∀ n d, 0 < d → (Int.natAbs n).Coprime d → C (n /. d)), C a

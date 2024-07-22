@@ -49,6 +49,13 @@ protected theorem dvd_mul_left_of_dvd {i j : Int} (k : Int) : i ∣ j → i ∣ 
     Int.mul_assoc i k n,
   ]
 
+protected theorem natAbs_gcd_dvd {i : Int} {n : Nat} : ↑(i.natAbs.gcd n) ∣ i := by
+  refine ofNat_dvd_left.mpr ?_
+  exact Nat.gcd_dvd_left _ _
+
+protected theorem natAbs_gcd_dvd' (i : Int) (n : Nat) : ↑(i.natAbs.gcd n) ∣ i :=
+  Int.natAbs_gcd_dvd
+
 protected theorem dvd_mul_right_of_dvd {i j : Int} (k : Int) : i ∣ j → i ∣ j * k :=
   Int.mul_comm j k ▸ Int.dvd_mul_left_of_dvd k
 
