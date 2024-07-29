@@ -2,7 +2,7 @@
 Copyright (c) 2021-2024 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
 import Lean
@@ -118,48 +118,6 @@ theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.de
   | cons y ys ih =>
     simp [foldl_mul_insert, ←foldl_assoc Int.mul_assoc, ih]
 
-theorem foldl_ite {m : Monomial} (g : Var → Int) (hi : i ∈ m.vars) :
-  ∃ k : Nat, List.foldl (fun acc v => acc * (if v = i then (g i) else 1)) z m.vars = z * (g i)^k := by
-  revert z hi
-  induction m.vars with
-  | nil => intro z hi; simp at hi
-  | cons v l ih =>
-    intro z hi
-    cases hi with
-    | head =>
-      simp [foldl_assoc Int.mul_assoc]
-      sorry
-    | tail _ ha =>
-      simp only [List.foldl_cons, Int.one_mul]
-      have ⟨k, hk⟩ := @ih (z * if v = i then g i else 1) ha
-      rw [hk]
-      split
-      case inl hv => rw [Int.mul_assoc, Int.mul_comm (g i), ←Int.pow_succ]
-                     exact ⟨k + 1, rfl⟩
-      case inr _ =>  rw [Int.mul_one]
-                     exact ⟨k, rfl⟩
-
-
--- theorem denote_eq {m n : Monomial} (h : ∀ ctx : Context, m.denote ctx = n.denote ctx) : m = n := by
---   apply eq
---   · sorry
---   · induction m.vars, n.vars using List.rec with
---     | nil nil => sorry
---     | nil cons a b => sorry
---     | cons a b nil => sorry
---     | cons a b ih cons c d ih1 => sorry
-
-
-
-
-  -- · sorry
-  -- · apply List.ext_get
-  --   · sorry
-  --   · intro i h1 h2;
-  --     have h3 := h (fun j => if i = j then i else 1)
-  --     simp [denote] at h3
-  --     sorry
-
 end Monomial
 
 abbrev Polynomial := List Monomial
@@ -193,10 +151,6 @@ where
         if m'.coeff = 0 then ns else m' :: ns
       else
         n :: insert m ns
-
-#eval add [⟨5, [0, 1]⟩, ⟨7, [0, 1, 1]⟩] [⟨3, [0, 1, 1]⟩, ⟨2, [0, 1]⟩]
-#eval add [⟨3, [0, 1, 1]⟩, ⟨2, [0, 1]⟩] [⟨5, [0, 1]⟩, ⟨7, [0, 1, 1]⟩]
-
 
 def sub (p q : Polynomial) : Polynomial :=
   p.add q.neg
@@ -290,64 +244,6 @@ theorem denote_foldl {g : Monomial → Polynomial} :
   | cons n p ih =>
     simp only [List.foldl_cons, Int.add_comm, List.foldr] at *
     rw [Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, ←ih, denote_add_insert, denote_nil_add]
-
--- #check Fin.mk
--- theorem denote_cast {p : List Monomial} :
---   denote ctx (List.foldl f [] p) = List.foldl (fun acc m => denote ctx (f [m] ⟨acc, []⟩)) 0 p := by
---   induction p with
---   | nil => simp [denote]
---   | cons n p ih =>
---     simp only [List.foldl_cons]
---     rw [← Int.add_zero (denote ctx (f [n] ⟨0, []⟩)), Monomial.foldl_assoc Int.add_assoc]
-
-theorem denote_ite {p : Polynomial} : denote (fun j => if j = i then 1 else 0) p = if h : i < p.length then Monomial.denote (fun _ => 1) (p.get ⟨i, h⟩) else 0:= by
-  induction p with
-  | nil => sorry
-  | cons n p ih =>
-    split
-    case cons.inl h1 =>
-      simp only [denote, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote]
-      sorry
-    sorry
-
-
-#check List.ext_get
-
-theorem denote_eq {p q : Polynomial} (h : ∀ ctx, p.denote ctx = q.denote ctx) : p = q := by
-  apply List.ext_get
-  · sorry
-  · intro i h1 h2
-    have h' := h (fun j => if j = i then 1 else 0)
-    rw [denote_ite, denote_ite] at h'
-    simp [h1, h2, Monomial.denote] at h'
-    apply Monomial.eq
-    · sorry
-    · sorry
-
-theorem add_assoc :∀ (p q r : Polynomial), add (add p q) r = add p (add q r) := by
-  intro p q r; simp only [add]; revert p q
-  induction r with
-  | nil => sorry
-  | cons n r ih =>
-    intro p q
-    induction q with
-    | nil => sorry
-    | cons => sorry
-
-theorem add_comm : ∀ (p q : Polynomial), add p q = add q p := by
-  intro p; simp only [add]
-  induction p with
-  | nil => sorry
-  | cons n p ih =>
-    intro q
-    simp only [add, add.insert, List.foldr_cons, ih q]
-    induction q with
-    | nil => unfold add.insert
-             simp
-             sorry
-    | cons => sorry
-
-
 
 theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.denote ctx := by
   simp only [mul]
