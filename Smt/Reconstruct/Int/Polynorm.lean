@@ -67,6 +67,7 @@ theorem eq : ∀ {m n : Monomial}, m.coeff = n.coeff → m.vars = n.vars → m =
 
 
 section
+
 variable {op : α → α → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
 
 -- Can be generalized to `List.foldl_assoc`.
