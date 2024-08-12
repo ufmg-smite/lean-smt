@@ -83,11 +83,9 @@ theorem foldl_assoc {g : β → α} (z1 z2 : α) :
 theorem foldr_assoc {g : β → α} (z1 z2 : α) :
   List.foldr (fun z a => op a (g z)) (op z1 z2) l =
   op z1 (List.foldr (fun z a => op a (g z)) z2 l) := by
-  revert z1 z2
-  induction l with
-  | nil => simp
+  induction l generalizing z1 z2 with
+  | nil => rfl
   | cons y ys ih =>
-    intro z1 z2
     simp only [List.foldr_cons, ih, assoc]
 
 
