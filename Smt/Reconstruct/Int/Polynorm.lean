@@ -247,8 +247,7 @@ theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.
   | nil => simp [denote]
   | cons n p ih =>
     simp only [List.foldl_cons, denote_cons, Int.add_mul, ← ih]
-    rw [denote_foldl]
-    rw [denote_add_insert, ←denote_mulMonomial, denote_nil_add, denote_foldl]
+    rw [denote_foldl, denote_add_insert, ←denote_mulMonomial, denote_nil_add, denote_foldl]
 
 end Polynomial
 
