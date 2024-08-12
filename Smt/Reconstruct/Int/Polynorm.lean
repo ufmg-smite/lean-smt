@@ -97,7 +97,7 @@ theorem foldl_mul_insert {ctx : Context} :
   List.foldl (fun z a => z * (ctx a)) 1 (mul.insert y ys) =
   (ctx y) * List.foldl (fun z a => z * (ctx a)) 1 ys := by
   induction ys with
-  | nil => simp [mul.insert]
+  | nil => rfl
   | cons x ys ih =>
     by_cases h : y ≤ x
     · simp [mul.insert, h, foldl_assoc Int.mul_assoc (ctx y) (ctx x), Int.mul_assoc]
