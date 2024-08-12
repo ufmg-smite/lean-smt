@@ -233,9 +233,6 @@ theorem denote_add_insert {g : Monomial → Polynomial} :
     simp only [List.foldl_cons, List.foldr, @ih n]
     rw [ih, @ih ((g k).add []), ← Int.add_assoc, denote_nil_add, denote_add, Int.add_comm _ (denote ctx n)]
 
-
-
-
 theorem denote_foldl {g : Monomial → Polynomial} :
   denote ctx (List.foldl (fun acc m => ((g m).add (acc))) [] p) = List.foldl (fun acc m => (g m).denote ctx + acc) 0 p := by
   induction p with
