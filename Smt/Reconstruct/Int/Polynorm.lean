@@ -60,12 +60,6 @@ def denote (ctx : Context) (m : Monomial) : Int :=
 theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
   simp only [neg, denote, Int.neg_mul_eq_neg_mul]
 
-theorem eq : ∀ {m n : Monomial}, m.coeff = n.coeff → m.vars = n.vars → m = n
-  | ⟨_, _⟩, ⟨_, _⟩, rfl, rfl => rfl
-
-
-
-
 section
 
 variable {op : α → α → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
