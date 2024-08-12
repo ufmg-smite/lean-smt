@@ -15,7 +15,6 @@ abbrev Var := Nat
 def Context := Var → Int
 
 structure Monomial where
-  mk ::
   coeff : Int
   vars : List Var
 deriving Inhabited, Repr
