@@ -387,7 +387,7 @@ theorem and_elim (hps : andN ps) (i : Nat) {hi : i < ps.length} : ps[i] := match
     | _ + 1 => nomatch hi
   | p₁ :: p₂ :: ps => match i with
     | 0     => hps.left
-    | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ and_elim hps.right i
+    | i + 1 => Eq.symm (List.getElem_cons_succ p₁ (p₂ :: ps) i hi) ▸ and_elim hps.right i
 
 theorem not_or_elim (hnps : ¬orN ps) (i : Nat) {hi : i < ps.length} : ¬ps[i] := match ps with
   | []  => nomatch hi
@@ -396,7 +396,7 @@ theorem not_or_elim (hnps : ¬orN ps) (i : Nat) {hi : i < ps.length} : ¬ps[i] :
     | _ + 1 => nomatch hi
   | p₁ :: p₂ :: ps => match i with
     | 0     => (deMorganSmall hnps).left
-    | i + 1 => Eq.symm (List.cons_getElem_succ p₁ (p₂ :: ps) i hi) ▸ not_or_elim (deMorganSmall hnps).right i
+    | i + 1 => Eq.symm (List.getElem_cons_succ p₁ (p₂ :: ps) i hi) ▸ not_or_elim (deMorganSmall hnps).right i
 
 def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
@@ -606,10 +606,10 @@ theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (o
     intro j hj
     cases j with
     | zero =>
-      simp only [eraseIdx_cons_zero, cons_getElem_zero, orN_cons, eraseIdx_cons_succ, cons_getElem_succ]
+      simp only [eraseIdx_cons_zero, getElem_cons_zero, orN_cons, eraseIdx_cons_succ, getElem_cons_succ]
       rw [or_comm]
     | succ j =>
-      simp only [eraseIdx_cons_succ, cons_getElem_succ, orN_cons, eraseIdx, or_assoc]
+      simp only [eraseIdx_cons_succ, getElem_cons_succ, orN_cons, eraseIdx, or_assoc]
       congr
       rw [@ih j (by rw [length_cons, succ_lt_succ_iff] at hj; exact hj)]
 

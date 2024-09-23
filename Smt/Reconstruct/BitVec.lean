@@ -259,7 +259,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let h : Q(«$x».bb = $x') ← Meta.mkFreshExprMVar q(«$x».bb = $x')
       let mv ← Bool.boolify h.mvarId!
       let ds := [``BitVec.bb, ``BitVec.iunfoldr, ``Fin.hIterate, ``Fin.hIterateFrom]
-      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDite]
+      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDIte]
       let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
       let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
       let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
@@ -291,7 +291,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let mv ← Bool.boolify h.mvarId!
       let ds := [``BitVec.adc', ``BitVec.adcb', ``BitVec.iunfoldr, ``Fin.hIterate, ``Fin.hIterateFrom]
       let ts := [``BitVec.getLsb_cons, ``Nat.succ.injEq]
-      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDite, ``reduceIte]
+      let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDIte, ``reduceIte]
       let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
       let simpTheorems ← ts.foldrM (fun n a => a.addConst n) simpTheorems
       let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
