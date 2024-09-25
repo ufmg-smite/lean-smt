@@ -8,11 +8,9 @@ example : p ∧ q → p := by
 
 example (a b : Int) : b < 0 → a > 0 → b * (- 2)  * a * b* b * (- 3) * a * a < 0 := by
   smt
-  all_goals sorry
 
 example (a b : Int) (hb : b < 0) (ha : a < 0) : b * (- 2)  * a *  b * (- 3) * a * a < 0 := by
   smt [hb, ha]
-  all_goals sorry
 
 -- example (m n : Int) (h : m > 0) : n % m < m := by
 --   smt [h]
@@ -20,7 +18,6 @@ example (a b : Int) (hb : b < 0) (ha : a < 0) : b * (- 2)  * a *  b * (- 3) * a 
 
 example {x y : Int} {f : Int → Int} : ¬(x ≤ y ∧ y ≤ x ∧ ¬f x = f y) := by
   smt
-  all_goals sorry
 
 example {p q r : Prop} (hp : ¬p) (hq : ¬q) (hr : r) : ¬(p ∨ q ∨ ¬r) := by
   smt [hp, hq, hr]
@@ -33,7 +30,6 @@ example {p q r : Prop} : ((p ∧ q) ∧ r) = (r ∧ True ∧ q ∧ p ∧ p) := b
 
 example {a b : Int} (h : a < b) (w : b < a) : False := by
   smt [h, w]
-  all_goals sorry
 
 example
     {a b c : Int}
@@ -46,32 +42,25 @@ example
     (h₂ : (1 - a) * (b * b) ≤ 0) :
     0 < 1 - a := by
   smt [ha, hb, hc', h₁, hc, w, h₂]
-  all_goals sorry
 
 example (e b c a v0 v1 : Int) (h1 : v0 = 5*a) (h2 : v1 = 3*b)
     (h3 : v0 + v1 + c = 10) : v0 + 5 + (v1 - 3) + (c - 2) = 10 := by
   smt [h1, h2, h3]
-  all_goals sorry
 
 example (h : (1 : Int) < 0) (g : ¬ (37 : Int) < 42) (_k : True) (l : (-7 : Int) < 5): (3 : Int) < 7 := by
   smt [h, g, _k, l]
-  all_goals sorry
 
 example (u v r s t : Int) (h : 0 < u*(t*v + t*r + s)) : 0 < (t*(r + v) + s)*3*u := by
   smt [h]
-  all_goals sorry
 
 example (A B : Int) (h : 0 < 3 * A * B) : 0 < 8*A*B := by
   smt [h]
-  all_goals sorry
 
 example (A B : Int) (h : 0 < 8 * A * B) : 0 < A*B := by
   smt [h]
-  all_goals sorry
 
 example (A B : Int) (h : 0 < A * B) : 0 < A*8*B := by
   smt [h]
-  all_goals sorry
 
 example (x : Int) : 0 ≤ x := by
   have h : 0 ≤ x := sorry
@@ -80,25 +69,20 @@ example (x : Int) : 0 ≤ x := by
 example (u v r s t : Int) (h : 0 < u*(t*v + t*r + s)) :
     0 < (t*(r + v) + s)*3*u := by
   smt [h]
-  all_goals sorry
 
 example (A B : Int) (h : 0 < A * B) : 0 < 8*A*B := by
   smt [h]
-  all_goals sorry
 
 example (x y z : Int) (h1 : 2*x < 3*y) (h2 : -4*x + 2*z < 0) (h3 : 12*y - 4* z < 0) : False := by
   smt [h1, h2, h3]
-  all_goals sorry
 
 example (x y z : Int) (h1 : 2*x < 3*y) (h2 : -4*x + 2*z < 0) (h3 : x*y < 5) (h3 : 12*y - 4* z < 0) :
     False := by
   smt [h1, h2, h3]
-  all_goals sorry
 
 example (prime : Int → Prop) (w x y z : Int) (h1 : 4*x + (-3)*y + 6*w ≤ 0) (h2 : (-1)*x < 0) (h3 : y < 0) (h4 : w ≥ 0)
     (h5 : prime x) : False := by
   smt [h1, h2, h3, h4]
-  all_goals sorry
 
 -- set_option maxRecDepth 2000000
 
@@ -196,4 +180,3 @@ example (u v x y A B : Int)
 ->
  u * y + v * x + u * v < 3 * A * B := by
   smt [a, a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8]
-  all_goals sorry
