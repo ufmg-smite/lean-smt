@@ -402,41 +402,56 @@ where
     else
       return none
   | .ARITH_POLY_NORM =>
-    if pf.getResult[0]!.getSort.getKind == .BOOLEAN_SORT then
-      if pf.getResult[0]![0]!.getSort.isInteger then return none
-      let a₁ : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
-      let a₂ : Q(Real) ← reconstructTerm pf.getResult[0]![1]!
-      let b₁ : Q(Real) ← reconstructTerm pf.getResult[1]![0]!
-      let b₂ : Q(Real) ← reconstructTerm pf.getResult[1]![1]!
-      -- ≠ is a hack to avoid closing the goal (if it's true)
-      let h : Q($a₁ - $a₂ ≠ $b₁ - $b₂) ← Meta.mkFreshExprMVar q($a₁ - $a₂ ≠ $b₁ - $b₂)
-      let some mv ← polyNormCore h.mvarId! | return none
-      let t ← mv.getType
-      let c₁ : Q(Real) ← Real.findConst t.appArg!
-      let c₂ : Q(Real) ← Real.findConst t.appFn!.appArg!
-      let hc₁ : Q($c₁ > 0) ← Meta.mkFreshExprMVar q($c₁ > 0)
-      let hc₂ : Q($c₂ > 0) ← Meta.mkFreshExprMVar q($c₂ > 0)
-      Real.normNum hc₁.mvarId!
-      Real.normNum hc₂.mvarId!
-      let h : Q($c₁ * ($a₁ - $a₂) = $c₂ * ($b₁ - $b₂)) ← Meta.mkFreshExprMVar q($c₁ * ($a₁ - $a₂) = $c₂ * ($b₁ - $b₂))
-      Real.polyNorm h.mvarId!
-      match pf.getResult[0]!.getKind with
+    if pf.getResult[0]!.getSort.isInteger then return none
+    let a : Q(Real) ← reconstructTerm pf.getResult[0]!
+    let b : Q(Real) ← reconstructTerm pf.getResult[1]!
+    addTac q($a = $b) Real.polyNorm
+  | .ARITH_POLY_NORM_REL =>
+    if !pf.getResult[0]![0]!.getSort.isInteger then return none
+    let cx : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
+    let x₁ : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
+    let x₂ : Q(Real) ← reconstructTerm pf.getResult[0]![1]!
+    let cy : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[1]![0]!
+    let y₁ : Q(Real) ← reconstructTerm pf.getResult[1]![0]!
+    let y₂ : Q(Real) ← reconstructTerm pf.getResult[1]![1]!
+    let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
+    let k := pf.getResult[0]!.getKind
+    if k == .EQUAL then
+      let hcx : Q($cx ≠ 0) ← Meta.mkFreshExprMVar q($cx ≠ 0)
+      let hcy : Q($cy ≠ 0) ← Meta.mkFreshExprMVar q($cy ≠ 0)
+      Real.normNum hcx.mvarId!
+      Real.normNum hcy.mvarId!
+      addThm q(($x₁ = $x₂) = ($y₁ = $y₂)) q(Real.eq_of_sub_eq $hcx $hcy $h)
+    else if pf.getChildren[0]!.getResult[0]![0]!.getRationalValue > 0 then
+      let hcx : Q($cx > 0) ← Meta.mkFreshExprMVar q($cx > 0)
+      let hcy : Q($cy > 0) ← Meta.mkFreshExprMVar q($cy > 0)
+      Real.normNum hcx.mvarId!
+      Real.normNum hcy.mvarId!
+      match k with
       | .LT =>
-        addThm q(($a₁ < $a₂) = ($b₁ < $b₂)) q(Real.lt_of_sub_eq $hc₁ $hc₂ $h)
+        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(lt_of_sub_eq_pos $hcx $hcy $h)
       | .LEQ =>
-        addThm q(($a₁ ≤ $a₂) = ($b₁ ≤ $b₂)) q(Real.le_of_sub_eq $hc₁ $hc₂ $h)
-      | .EQUAL =>
-        addThm q(($a₁ = $a₂) = ($b₁ = $b₂)) q(Real.eq_of_sub_eq $hc₁ $hc₂ $h)
+        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Real.le_of_sub_eq_pos $hcx $hcy $h)
       | .GEQ =>
-        addThm q(($a₁ ≥ $a₂) = ($b₁ ≥ $b₂)) q(Real.ge_of_sub_eq $hc₁ $hc₂ $h)
+        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Real.ge_of_sub_eq_pos $hcx $hcy $h)
       | .GT =>
-        addThm q(($a₁ > $a₂) = ($b₁ > $b₂)) q(Real.gt_of_sub_eq $hc₁ $hc₂ $h)
+        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Real.gt_of_sub_eq_pos $hcx $hcy $h)
       | _   => return none
     else
-      if pf.getResult[0]!.getSort.isInteger then return none
-      let a : Q(Real) ← reconstructTerm pf.getResult[0]!
-      let b : Q(Real) ← reconstructTerm pf.getResult[1]!
-      addTac q($a = $b) Real.polyNorm
+      let hcx : Q($cx < 0) ← Meta.mkFreshExprMVar q($cx < 0)
+      let hcy : Q($cy < 0) ← Meta.mkFreshExprMVar q($cy < 0)
+      Real.normNum hcx.mvarId!
+      Real.normNum hcy.mvarId!
+      match k with
+      | .LT =>
+        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Real.lt_of_sub_eq_neg $hcx $hcy $h)
+      | .LEQ =>
+        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Real.le_of_sub_eq_neg $hcx $hcy $h)
+      | .GEQ =>
+        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Real.ge_of_sub_eq_neg $hcx $hcy $h)
+      | .GT =>
+        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Real.gt_of_sub_eq_neg $hcx $hcy $h)
+      | _   => return none
   | .ARITH_MULT_SIGN =>
     if pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf
