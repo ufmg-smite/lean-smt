@@ -57,37 +57,13 @@ def getVariableName (t : cvc5.Term) : Name :=
   | .SKOLEM => match t.getSkolemId with
     | .QUANTIFIERS_SKOLEMIZE =>
       let q := t.getSkolemIndices[0]!
-      let x := t.getSkolemIndices[1]!
-      let n := getVariableIndex q x
-      let es ← if q.getKind == .EXISTS then reconstructExistsSkolems q n else reconstructForallSkolems q n
+      let n := t.getSkolemIndices[1]!.getIntegerValue.toNat
+      let es ← reconstructForallSkolems q n
       return es[n]!
     | _ => return none
   | _ => return none
 where
-  getVariableIndex (q : cvc5.Term) (x : cvc5.Term) : Nat := Id.run do
-    let xs := q[0]!
-    let mut i := 0
-    while xs[i]! != x do
-      i := i + 1
-    i
   reconstructForallSkolems (q : cvc5.Term) (n : Nat) : ReconstructM (Array Expr) := do
-    let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
-    let mut es := #[]
-    for x in q[0]![0]! do
-      xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
-    let F := q[0]![1]!
-    for i in [0:n + 1] do
-      let α : Q(Type) ← reconstructSort q[0]![0]![i]!.getSort
-      let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
-      let e ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
-        let F ← reconstructTerm F
-        let ysF : Q(Prop) ← Meta.mkForallFVars xs[i + 1:] F
-        let xysF ← Meta.mkLambdaFVars #[xs[i]!] q(¬$ysF)
-        let xysF : Q($α → Prop) := xysF.replaceFVars xs[0:i] es
-        return q(@Classical.epsilon $α $h $xysF)
-      es := es.push e
-    return es
-  reconstructExistsSkolems (q : cvc5.Term) (n : Nat) : ReconstructM (Array Expr) := do
     let mut xs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
     let mut es := #[]
     for x in q[0]! do
@@ -98,8 +74,8 @@ where
       let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
       let e ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
         let F ← reconstructTerm F
-        let ysF ← Meta.mkExistsFVars xs[i + 1:] F
-        let xysF ← Meta.mkLambdaFVars #[xs[i]!] ysF
+        let ysF : Q(Prop) ← Meta.mkForallFVars xs[i + 1:] F
+        let xysF ← Meta.mkLambdaFVars #[xs[i]!] q(¬$ysF)
         let xysF : Q($α → Prop) := xysF.replaceFVars xs[0:i] es
         return q(@Classical.epsilon $α $h $xysF)
       es := es.push e
@@ -248,26 +224,15 @@ where
     addThm q($p = $q) h
   reconstructSkolemize (pf : cvc5.Proof) : ReconstructM Expr := do
     let res := pf.getChildren[0]!.getResult
-    if res.getKind == .EXISTS then
-      let es ← reconstructQuant.reconstructExistsSkolems res (res[0]![0]!.getNumChildren - 1)
-      let f := fun h e => do
-        let α : Q(Type) ← pure (e.getArg! 0)
-        let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
-        let p : Q($α → Prop)  ← pure (e.getArg! 2)
-        let h : Q(∃ x, $p x) ← pure h
-        return q(@Classical.epsilon_spec_aux $α $hα $p $h)
-      let h : Expr ← es.foldlM f (← reconstructProof pf.getChildren[0]!)
-      addThm (← reconstructTerm pf.getResult) h
-    else
-      let es ← reconstructQuant.reconstructForallSkolems res (res[0]![0]!.getNumChildren - 1)
-      let f := fun h e => do
-        let α : Q(Type) ← pure (e.getArg! 0)
-        let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
-        let .lam n _ (.app _ b) bi := e.getArg! 2 | throwError "[skolemize]: expected a predicate with a negated body: {e}"
-        let p : Q($α → Prop)  ← pure (.lam n α b bi)
-        let h : Q(¬∀ x, $p x) ← pure h
-        return q(@Classical.epsilon_spec_aux' $α $hα $p $h)
-      let h : Expr ← es.foldlM f (← reconstructProof pf.getChildren[0]!)
-      addThm (← reconstructTerm pf.getResult) h
+    let es ← reconstructQuant.reconstructForallSkolems res[0]! (res[0]![0]!.getNumChildren - 1)
+    let f := fun h e => do
+      let α : Q(Type) ← pure (e.getArg! 0)
+      let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      let .lam n _ (.app _ b) bi := e.getArg! 2 | throwError "[skolemize]: expected a predicate with a negated body: {e}"
+      let p : Q($α → Prop)  ← pure (.lam n α b bi)
+      let h : Q(¬∀ x, $p x) ← pure h
+      return q(@Classical.epsilon_spec_aux' $α $hα $p $h)
+    let h : Expr ← es.foldlM f (← reconstructProof pf.getChildren[0]!)
+    addThm (← reconstructTerm pf.getResult) h
 
 end Smt.Reconstruct.Quant
