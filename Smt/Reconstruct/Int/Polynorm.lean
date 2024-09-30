@@ -81,20 +81,19 @@ theorem foldr_assoc {g : β → α} (z1 z2 : α) :
   | cons y ys ih =>
     simp only [List.foldr_cons, ih, assoc]
 
-
 end
 -- Can be generazlized.
 theorem foldl_mul_insert {ctx : Context} :
   List.foldl (fun z a => z * (ctx a)) 1 (mul.insert y ys) =
   (ctx y) * List.foldl (fun z a => z * (ctx a)) 1 ys := by
   induction ys with
-  | nil => rfl
+  | nil => simp [List.foldl]
   | cons x ys ih =>
     by_cases h : y ≤ x
     · simp [mul.insert, h, foldl_assoc Int.mul_assoc (ctx y) (ctx x), Int.mul_assoc]
     · simp only [mul.insert, h, List.foldl_cons, ite_false, Int.mul_comm,
                  foldl_assoc Int.mul_assoc, ih]
-      rw [← Int.mul_assoc, Int.mul_comm (ctx x) (ctx y), Int.mul_assoc]
+      rw [←Int.mul_assoc, Int.mul_comm (ctx x) (ctx y), Int.mul_assoc]
 
 theorem denote_add {m n : Monomial} (h : m.vars = n.vars) :
   (m.add n h).denote ctx = m.denote ctx + n.denote ctx := by
