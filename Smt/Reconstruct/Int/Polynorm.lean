@@ -163,19 +163,13 @@ theorem foldl_add_insert (ctx : Context) :
   | nil => simp [add.insert]
   | cons n p ih =>
     simp only [add.insert]
-    split
-    <;> simp only [List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc]
-    case cons.inr h =>
-      split
-      case inl h1 =>
-        split
-        case inl h2 =>
-          rw [←Int.add_assoc, Int.add_comm, ←Monomial.denote_add h1]
-          simp [Monomial.denote, h2]
-        case inr h2 =>
-          simp [-Int.add_zero, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote_add h1, Int.add_assoc]
-      case inr h1 =>
-        simp only [List.foldl_cons, Int.add_comm 0, ih, Monomial.foldl_assoc Int.add_assoc]
+    split <;> rename_i hlt <;> simp only [List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc]
+    · split <;> rename_i heq
+      · split <;> rename_i hneq
+        · rw [←Int.add_assoc, Int.add_comm, ←Monomial.denote_add heq]
+          simp [Monomial.denote, hneq]
+        · simp [-Int.add_zero, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote_add, heq, Int.add_assoc]
+      · simp only [List.foldl_cons, Int.add_comm 0, ih, Monomial.foldl_assoc Int.add_assoc]
         rw [←Int.add_assoc, Int.add_comm (Monomial.denote ctx n), Int.add_assoc]
 
 theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx := by
