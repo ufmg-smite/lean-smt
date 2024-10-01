@@ -9,8 +9,8 @@ axiom ident   : ∀ a, op e a = a
 theorem inverse' : ∀ a, op a (inv a) = e := by
   smt [assoc op, inverse op inv e, ident op e]
 
-theorem identity' : ∀ a, op a e = a := by
+theorem identity' {inv : G → G} : ∀ a, op a e = a := by
   smt [assoc op, inverse op inv e, ident op e, inverse' op inv e]
 
-theorem unique_identity e' : (∀ z, op e' z = z) → e' = e := by
+theorem unique_identity {inv : G → G} : ∀ e', (∀ z, op e' z = z) → e' = e := by
   smt [assoc op, inverse op inv e, ident op e]

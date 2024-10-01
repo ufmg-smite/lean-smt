@@ -407,7 +407,7 @@ where
     let b : Q(Real) ← reconstructTerm pf.getResult[1]!
     addTac q($a = $b) Real.polyNorm
   | .ARITH_POLY_NORM_REL =>
-    if !pf.getResult[0]![0]!.getSort.isInteger then return none
+    if pf.getResult[0]![0]!.getSort.isInteger then return none
     let cx : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
     let x₁ : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
     let x₂ : Q(Real) ← reconstructTerm pf.getResult[0]![1]!

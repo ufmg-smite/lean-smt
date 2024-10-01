@@ -11,6 +11,20 @@ import Smt.Attribute
 import Smt.Translate.Term
 import Smt.Util
 
+/-- Return true iff `e` contains a free variable which satisfies `p`. -/
+@[inline] private def Lean.Expr.hasAnyFVar' [Monad m] (e : Expr) (p : FVarId → m Bool) : m Bool :=
+  let rec @[specialize] visit (e : Expr) := do if !e.hasFVar then return false else
+    match e with
+    | Expr.forallE _ d b _   => return (← visit d) || (← visit b)
+    | Expr.lam _ d b _       => return (← visit d) || (← visit b)
+    | Expr.mdata _ e         => visit e
+    | Expr.letE _ t v b _    => return (← visit t) || (← visit v) || (← visit b)
+    | Expr.app f a           => return (← visit f) || (← visit a)
+    | Expr.proj _ _ e        => visit e
+    | Expr.fvar fvarId       => p fvarId
+    | _                      => return false
+  visit e
+
 namespace Smt
 
 open Lean Meta Expr
@@ -25,6 +39,9 @@ structure TranslationM.State where
   depFVars : FVarIdSet := .empty
   /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants` and `depFVars`. -/
   cache : HashMap Expr (Option (Term × NameSet × FVarIdSet)) := .empty
+  /-- A mapping from a scopped name to a suffix index that makes it unique. This field does not handle
+  scopping, which should be handled by `withScopedName` -/
+  scopedNames : HashMap Name Nat := .empty
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -78,6 +95,19 @@ def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
     }
     return ret?
 
+def withScopedName (n : Name) (b : Expr) (k : Name → TranslationM α) : TranslationM α := do
+  let state ← get
+  let mut n' := n
+  let mut scopedNames := state.scopedNames
+  while ← b.hasAnyFVar' (·.getUserName >>= (return · == n')) do
+    let i := scopedNames.findD n 1
+    n' := n.appendIndexAfter i
+    scopedNames := scopedNames.insert n (i + 1)
+  set { state with scopedNames := scopedNames }
+  let k := k n'
+  set state
+  k
+
 mutual
 
 /-- Like `applyTranslators?` but must succeed. -/
@@ -104,15 +134,14 @@ partial def applyTranslators? : Translator := fun e => do
       -- Then try splitting subexpressions
       match e with
       | fvar fv =>
-        let ld ← fv.getDecl
         modify fun st => { st with depFVars := st.depFVars.insert fv }
-        return symbolT ld.userName.toString
+        return symbolT (← fv.getUserName).toString
       | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
         return symbolT nm.toString
       | app f e => return appT (← applyTranslators! f) (← applyTranslators! e)
       | lam .. => throwError "cannot translate {e}, SMT-LIB does not support lambdas"
-      | forallE n t b bi =>
+      | forallE n t b bi => withScopedName n b fun n => do
         let tmB ← Meta.withLocalDecl n bi t (translateBody b)
         if !b.hasLooseBVars /- not a dependent arrow -/ then
           return arrowT (← applyTranslators! t) tmB
