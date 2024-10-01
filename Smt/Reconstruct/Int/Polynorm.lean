@@ -62,10 +62,11 @@ theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
 
 section
 
-variable {op : α → α → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+variable {op : α → α → α}
 
 -- Can be generalized to `List.foldl_assoc`.
-theorem foldl_assoc {g : β → α} (z1 z2 : α) :
+theorem foldl_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+  (z1 z2 : α) :
   List.foldl (fun z a => op z (g a)) (op z1 z2) l =
   op z1 (List.foldl (fun z a => op z (g a)) z2 l) := by
   induction l generalizing z1 z2 with
@@ -73,7 +74,8 @@ theorem foldl_assoc {g : β → α} (z1 z2 : α) :
   | cons y ys ih =>
     simp only [List.foldl_cons, ih, assoc]
 
-theorem foldr_assoc {g : β → α} (z1 z2 : α) :
+theorem foldr_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+  (z1 z2 : α) :
   List.foldr (fun z a => op a (g z)) (op z1 z2) l =
   op z1 (List.foldr (fun z a => op a (g z)) z2 l) := by
   induction l generalizing z1 z2 with
@@ -82,7 +84,8 @@ theorem foldr_assoc {g : β → α} (z1 z2 : α) :
     simp only [List.foldr_cons, ih, assoc]
 
 end
--- Can be generazlized.
+
+-- Can be generalized.
 theorem foldl_mul_insert {ctx : Context} :
   List.foldl (fun z a => z * (ctx a)) 1 (mul.insert y ys) =
   (ctx y) * List.foldl (fun z a => z * (ctx a)) 1 ys := by
