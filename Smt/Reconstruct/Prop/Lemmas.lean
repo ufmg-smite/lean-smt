@@ -600,8 +600,7 @@ theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (o
   induction qs with
   | nil =>
     intro j hj
-    simp at hj; exfalso
-    exact not_succ_le_zero j hj
+    simp at hj
   | cons t l ih =>
     intro j hj
     cases j with
@@ -630,7 +629,7 @@ theorem orN_subList (hps : orN ps) (hpq : ps = subList' qs i j): orN qs := by
     | zero =>
       simp [*, orN] at *
     | succ j =>
-      simp only [take_cons_succ] at hps
+      simp only [List.take_succ_cons] at hps
       cases i with
       | zero =>
         simp only [hps, orN_cons, drop_zero] at hp

@@ -10,7 +10,6 @@ import Lean
 namespace Smt.Attribute
 
 open Lean
-open Std
 
 /-- An extension to Lean's runtime environment to support SMT attributes.
     Maintains a set of function declarations for the `smt` tactic to utilize

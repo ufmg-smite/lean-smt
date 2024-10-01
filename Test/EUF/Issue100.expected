@@ -1,0 +1,19 @@
+Test/EUF/Issue100.lean:20:2: error: tactic 'assumption' failed
+case a
+node round value : Type
+rel upd_rel : node → round → round → value → Bool
+hnext : ∀ (x : node) (x_1 x_2 : round) (x_3 : value), upd_rel x x_1 x_2 x_3 = rel x x_1 x_2 x_3
+_uniq✝⁴⁷²¹⁻⁰ : ¬((∀ (x : node) (x_1 x_2 : round) (x_3 : value), upd_rel x x_1 x_2 x_3 = rel x x_1 x_2 x_3) ∧ ¬True)
+⊢ ¬Smt.Reconstruct.andN' [∀ (x : node) (x_1 x_2 : round) (x_3 : value), upd_rel x x_1 x_2 x_3 = rel x x_1 x_2 x_3] ¬True
+[smt] goal: True
+[smt] 
+    query:
+    (set-logic ALL)
+    (declare-sort node 0)
+    (declare-sort round 0)
+    (declare-sort value 0)
+    (declare-fun rel (node round round value) Bool)
+    (declare-fun upd_rel (node round round value) Bool)
+    (assert (forall ((x node)) (forall ((x_1 round)) (forall ((x_2 round)) (forall ((x_3 value)) (= (upd_rel x x_1 x_2 x_3) (rel x x_1 x_2 x_3)))))))
+    (assert (not true))
+    (check-sat)
