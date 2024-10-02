@@ -33,12 +33,17 @@ open Translator Term
 @[smt_translate] def translateExists : Translator
   | e@(app (app (const `Exists _) _) f) => do
     let lam n t b bi := f | throwError "unexpected predicate {f} in {e}"
-    withScopedName n b fun n => Meta.withLocalDecl n bi t fun x => do
+    withScopedName n b fun n => do
       let tmT ← applyTranslators! t
-      let tmB ← applyTranslators! (b.instantiate #[x])
-      modify fun s => { s with depFVars := s.depFVars.erase x.fvarId! }
+      let tmB ← Meta.withLocalDecl n bi t (translateBody b)
       return existsT n.toString tmT tmB
   | _ => return none
+where
+  translateBody (b : Expr) (x : Expr) : TranslationM Term := do
+    modify fun s => { s with localFVars := s.localFVars.insert x.fvarId! }
+    let tmB ← applyTranslators! (b.instantiate #[x])
+    modify fun s => { s with localFVars := s.localFVars.erase x.fvarId! }
+    return tmB
 
 /- @Eq.rec : {α : Sort u_2} →
   {a : α} → {motive : (a_1 : α) → a = a_1 → Sort u_1} → motive a (_ : a = a) → {a_1 : α} → (t : a = a_1) → motive a_1 t -/

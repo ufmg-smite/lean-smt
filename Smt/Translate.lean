@@ -37,6 +37,9 @@ structure TranslationM.State where
   /-- Free variables that the translated result depends on. We propagate these upwards during translation
   in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
   depFVars : FVarIdSet := .empty
+  /-- Free variables introduced during translation (from binder expressions). Those should NOT be
+  propegated upwards during translation. -/
+  localFVars : FVarIdSet := .empty
   /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants` and `depFVars`. -/
   cache : HashMap Expr (Option (Term × NameSet × FVarIdSet)) := .empty
   /-- A mapping from a scopped name to a suffix index that makes it unique. This field does not handle
@@ -86,7 +89,7 @@ def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
   | none =>
     let depConstantsBefore := (← get).depConstants
     let depFVarsBefore := (← get).depFVars
-    modify fun st => { st with depConstants := .empty }
+    modify fun st => { st with depConstants := .empty, depFVars := .empty }
     let ret? ← k e
     modify fun st => { st with
       depConstants := st.depConstants.union depConstantsBefore
@@ -119,7 +122,7 @@ partial def applyTranslators! (e : Expr) : TranslationM Term := do
 expression and if one succeeds, its result is returned. Otherwise, `e` is split into subexpressions
 which are then recursively translated and put together into an SMT-LIB term. The traversal proceeds
 in a top-down, depth-first order. -/
-partial def applyTranslators? : Translator := fun e => do
+partial def applyTranslators? : Translator := withCache fun e => do
   let ts ← getTranslators
   go ts e
   where
@@ -134,7 +137,8 @@ partial def applyTranslators? : Translator := fun e => do
       -- Then try splitting subexpressions
       match e with
       | fvar fv =>
-        modify fun st => { st with depFVars := st.depFVars.insert fv }
+        if !(← get).localFVars.contains fv then
+          modify fun st => { st with depFVars := st.depFVars.insert fv }
         return symbolT (← fv.getUserName).toString
       | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
@@ -153,8 +157,9 @@ partial def applyTranslators? : Translator := fun e => do
       | mdata _ e => go ts e
       | e         => throwError "cannot translate {e}"
     translateBody (b : Expr) (x : Expr) : TranslationM Term := do
+      modify fun s => { s with localFVars := s.localFVars.insert x.fvarId! }
       let tmB ← applyTranslators! (b.instantiate #[x])
-      modify fun s => { s with depFVars := s.depFVars.erase x.fvarId! }
+      modify fun s => { s with localFVars := s.localFVars.erase x.fvarId! }
       return tmB
 
 end

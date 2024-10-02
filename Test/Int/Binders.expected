@@ -11,8 +11,8 @@ goal: partCurryAdd a b = partCurryAdd b a
 
 query:
 (define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.36 Int)) Int (+ a a._@.Test.Int.Binders._hyg.36))
-(declare-const a Int)
 (declare-const b Int)
+(declare-const a Int)
 (assert (distinct (partCurryAdd a b) (partCurryAdd b a)))
 (check-sat)
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
@@ -20,8 +20,8 @@ goal: partCurryAdd' a b = partCurryAdd' b a
 
 query:
 (define-fun |partCurryAdd'| ((a Int) (a._@.Init.Prelude._hyg.2495 Int)) Int (+ a a._@.Init.Prelude._hyg.2495))
-(declare-const b Int)
 (declare-const a Int)
+(declare-const b Int)
 (assert (distinct (+ a b) (+ b a)))
 (check-sat)
 Test/Int/Binders.lean:15:0: warning: declaration uses 'sorry'
