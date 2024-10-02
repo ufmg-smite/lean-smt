@@ -125,3 +125,25 @@ where
     }
     IO.FS.writeFile expected out.stdout
     return 0
+
+/--
+Run Lean profiler and generate profiler information.
+
+USAGE:
+  lake script run profile
+
+Update expected output of tests.
+-/
+script profile args do
+  let file : FilePath := args[0]!
+  let log : FilePath := args[1]!
+  let imports ← Lean.parseImports' (← IO.FS.readFile file) file.fileName.get!
+  let modules ← imports.filterMapM (findModule? ·.module)
+  let s ← IO.Process.run {
+    cmd := (← getLean).toString
+    args := #[s!"--load-dynlib={libcpp}"] ++ modules.map (s!"--load-dynlib={·.dynlibFile}") ++
+            #["-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}"] ++ #[file.toString]
+    env := ← getAugmentedEnv
+  }
+  IO.println s
+  return 0

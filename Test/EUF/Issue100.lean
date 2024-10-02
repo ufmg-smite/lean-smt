@@ -9,8 +9,8 @@ theorem funextEq {α β : Type} (f g : α → β) :
 
 set_option trace.smt true in
 theorem extracted {node round value : Type}
-  (rel : node → round → round → value → Bool)
-  (upd_rel : node → round → round → value → Bool)
+  (rel : node → round → round → value → Prop)
+  (upd_rel : node → round → round → value → Prop)
   (hnext : upd_rel = rel)
   : True := by
   simp only [funextEq] at hnext

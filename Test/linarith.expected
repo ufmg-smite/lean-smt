@@ -3,10 +3,10 @@ Test/linarith.lean:8:2: error: [arithPolyNorm]: could not prove y - x = -(-y + x
 Test/linarith.lean:34:9: warning: unused variable `e`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:53:0: warning: declaration uses 'sorry'
-Test/linarith.lean:65:2: error: [arithPolyNorm]: could not prove B * A * (1 / 8) = (-(B * A) - 0) * (-1 / 8)
-Test/linarith.lean:68:2: error: [arithPolyNorm]: could not prove A * B * (1 / 8) = (-(A * B) - 0) * (-1 / 8)
+Test/linarith.lean:65:2: error: [arithPolyNorm]: could not prove A * B * (1 / 8) = (-(A * B) - 0) * (-1 / 8)
+Test/linarith.lean:68:2: error: [arithPolyNorm]: could not prove B * A * (1 / 8) = (-(B * A) - 0) * (-1 / 8)
 Test/linarith.lean:71:2: error: [arithPolyNorm]: could not prove ε * (1 / 42) = (-ε - 0) * (-1 / 42)
-Test/linarith.lean:75:2: error: [arithPolyNorm]: could not prove -(x * 2) + y * 3 = -((x * (2 / 3) - y - 0) * 3)
+Test/linarith.lean:75:2: error: [arithPolyNorm]: could not prove z * (1 / 2) - x * 4 = (z - x * 8 - 0) * (1 / 2)
 Test/linarith.lean:78:2: error: [arithPolyNorm]: could not prove ε * (1 / 2) = (-ε - 0) * (-1 / 2)
 Test/linarith.lean:84:2: error: [arithPolyNorm]: could not prove x = -(-x - 0)
 Test/linarith.lean:87:2: error: [arithPolyNorm]: could not prove x = x - 0
@@ -30,8 +30,8 @@ Test/linarith.lean:126:2: error: [arithPolyNorm]: could not prove b = -(-b - 0)
 Test/linarith.lean:129:2: error: [arithPolyNorm]: could not prove z * 2 - y = (z + y * (-1 / 2) - 0) * 2
 Test/linarith.lean:135:2: error: [arithPolyNorm]: could not prove z * 2 - y = (z + y * (-1 / 2) - 0) * 2
 Test/linarith.lean:143:2: error: [arithPolyNorm]: could not prove a * 2 = (a - 0) * 2
-Test/linarith.lean:146:2: error: [arithPolyNorm]: could not prove x - y = x - y - 0
-Test/linarith.lean:162:2: error: [arithPolyNorm]: could not prove y * 3 - x * 2 = -((-y + x * (2 / 3) - 0) * 3)
+Test/linarith.lean:146:2: error: [arithPolyNorm]: could not prove -x + y = -(x - y - 0)
+Test/linarith.lean:162:2: error: [arithPolyNorm]: could not prove z * 2 - x * 4 = (z - x * 2 - 0) * 2
 Test/linarith.lean:166:2: error: [arithPolyNorm]: could not prove -(x * 4) + z * 2 = (-(x * 2) + z - 0) * 2
 Test/linarith.lean:168:34: warning: unused variable `z`
 note: this linter can be disabled with `set_option linter.unusedVariables false`

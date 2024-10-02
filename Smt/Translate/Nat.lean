@@ -49,8 +49,9 @@ open Translator Term
   | _ => return none
 where
   translateBody (b : Expr) (x : Expr) : TranslationM Term := do
+    modify fun s => { s with localFVars := s.localFVars.insert x.fvarId! }
     let tmB ← applyTranslators! (b.instantiate #[x])
-    modify fun s => { s with depFVars := s.depFVars.erase x.fvarId! }
+    modify fun s => { s with localFVars := s.localFVars.erase x.fvarId! }
     return tmB
 
 end Smt.Translate.Nat
