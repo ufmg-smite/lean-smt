@@ -16,6 +16,7 @@ open Lean
 open Attribute
 
 structure Reconstruct.state where
+  userNames : HashMap String FVarId
   termCache : HashMap cvc5.Term Expr
   proofCache : HashMap cvc5.Proof Expr
   count : Nat
@@ -62,9 +63,10 @@ def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : Reconstru
     | .error _ => m!"{bombEmoji}"
 
 def withNewTermCache (k : ReconstructM α) : ReconstructM α := do
-  let state ← get
+  let termCache := (← get).termCache
+  modify fun state => { state with termCache := {} }
   let r ← k
-  set { ← get with termCache := state.termCache }
+  modify fun state => { state with termCache := termCache }
   return r
 
 def reconstructTerm : cvc5.Term → ReconstructM Expr := withTermCache fun t => do
@@ -89,9 +91,10 @@ where
     throwError "Failed to reconstruct term {t} with kind {t.getKind}"
 
 def withNewProofCache (k : ReconstructM α) : ReconstructM α := do
-  let state ← get
+  let proofCache := (← get).proofCache
+  modify fun state => { state with proofCache := {} }
   let r ← k
-  set { ← get with proofCache := state.proofCache }
+  modify fun state => { state with proofCache := proofCache }
   return r
 
 def withProofCache (r : cvc5.Proof → ReconstructM Expr) (pf : cvc5.Proof) : ReconstructM Expr := do
@@ -172,10 +175,10 @@ def traceReconstructProof (r : Except Exception (Expr × Expr × List MVarId)) :
   | _     => m!"{bombEmoji}"
 
 open Qq in
-partial def reconstructProof (pf : cvc5.Proof) : MetaM (Expr × Expr × List MVarId) := do
+partial def reconstructProof (pf : cvc5.Proof) (fvNames : HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
-  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨{}, {}, 0, #[], #[]⟩
-  let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
+  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨fvNames, {}, {}, 0, #[], #[]⟩
+  let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
   return (p, q($h trivial), mvs.toList)
 
 open cvc5 in
@@ -217,10 +220,15 @@ open Lean.Elab Tactic in
     match r with
       | .error e => logInfo (repr e)
       | .ok pf =>
-        let (p, hp, mvs) ← reconstructProof pf
+        let (p, hp, mvs) ← reconstructProof pf (← getFVarNames)
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1
         replaceMainGoal (mv :: mvs)
+where
+  getFVarNames : MetaM (HashMap String FVarId) := do
+    let lCtx ← getLCtx
+    return lCtx.getFVarIds.foldl (init := {}) fun m fvarId =>
+      m.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId
 
 end Smt

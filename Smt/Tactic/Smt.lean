@@ -20,10 +20,19 @@ open Lean hiding Command
 open Elab Tactic Qq
 open Smt Translate Query Reconstruct Util
 
-def prepareSmtQuery (hs : List Expr) (goalType : Expr) : MetaM (List Command) := do
+def genUniqueFVarNames : MetaM (HashMap FVarId String × HashMap String FVarId) := do
+  let lCtx ← getLCtx
+  let st : NameSanitizerState := { options := {}}
+  let (lCtx, _) := (lCtx.sanitizeNames st).run
+  return lCtx.getFVarIds.foldl (init := ({}, {})) fun (m₁, m₂) fvarId =>
+    let m₁ := m₁.insert fvarId (lCtx.getRoundtrippingUserName? fvarId).get!.toString
+    let m₂ := m₂.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId
+    (m₁, m₂)
+
+def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : HashMap FVarId String) : MetaM (List Command) := do
   let goalId ← Lean.mkFreshMVarId
   Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g =>
-  Query.generateQuery g hs
+  Query.generateQuery g hs fvNames
 
 def withProcessedHints (mv : MVarId) (hs : List Expr) (k : MVarId → List Expr → MetaM α): MetaM α :=
   go mv hs [] k
@@ -46,7 +55,8 @@ def smt (mv : MVarId) (hs : List Expr) (timeout : Option Nat := none) : MetaM (L
   mv.withContext do
   let goalType : Q(Prop) ← mv.getType
   -- 2. Generate the SMT query.
-  let cmds ← prepareSmtQuery hs (← mv.getType)
+  let (fvNames₁, fvNames₂) ← genUniqueFVarNames
+  let cmds ← prepareSmtQuery hs (← mv.getType) fvNames₁
   let cmds := .setLogic "ALL" :: cmds
   trace[smt] "goal: {goalType}"
   trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
@@ -61,7 +71,7 @@ def smt (mv : MVarId) (hs : List Expr) (timeout : Option Nat := none) : MetaM (L
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .ok pf =>
     -- 4b. Reconstruct proof.
-    let (p, hp, mvs) ← reconstructProof pf
+    let (p, hp, mvs) ← reconstructProof pf fvNames₂
     let mv ← mv.assert (← mkFreshId) p hp
     let ⟨_, mv⟩ ← mv.intro1
     let ts ← hs.mapM Meta.inferType
@@ -130,7 +140,7 @@ def parseTimeout : TSyntax `smtTimeout → TacticM (Option Nat)
   let (hs, mv) ← Preprocess.elimIff mv hs
   mv.withContext do
   let goalType ← mv.getType
-  let cmds ← prepareSmtQuery hs (← mv.getType)
+  let cmds ← prepareSmtQuery hs (← mv.getType) (← genUniqueFVarNames).fst
   let cmds := cmds ++ [.checkSat]
   logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
 

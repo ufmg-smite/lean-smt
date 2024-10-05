@@ -13,16 +13,18 @@ namespace Smt.Reconstruct.UF
 
 open Lean Qq
 
-def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
-  match (← getLCtx).findFromUserName? n with
-  | some d => return d.toExpr
-  | none   =>
-    let c ← getConstInfo n
-    return .const c.name (c.numLevelParams.repeat (.zero :: ·) [])
+def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
+  match (← get).userNames.find? n with
+  | some fv => return .fvar fv
+  | none   => match (← getLCtx).findFromUserName? n.toName with
+    | some d => return d.toExpr
+    | none   =>
+      let c ← getConstInfo n.toName
+      return .const c.name (c.numLevelParams.repeat (.zero :: ·) [])
 
 @[smt_sort_reconstruct] def reconstructUS : SortReconstructor := fun s => do match s.getKind with
   | .INTERNAL_SORT_KIND
-  | .UNINTERPRETED_SORT => getFVarOrConstExpr! (Name.mkSimple s.getSymbol)
+  | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol
   | _ => return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with

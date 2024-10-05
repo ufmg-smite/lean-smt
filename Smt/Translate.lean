@@ -45,6 +45,8 @@ structure TranslationM.State where
   /-- A mapping from a scopped name to a suffix index that makes it unique. This field does not handle
   scopping, which should be handled by `withScopedName` -/
   scopedNames : HashMap Name Nat := .empty
+  /-- A mapping from fvars to unique names. -/
+  uniqueFVarNames : HashMap FVarId String := .empty
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -137,9 +139,13 @@ partial def applyTranslators? : Translator := withCache fun e => do
       -- Then try splitting subexpressions
       match e with
       | fvar fv =>
-        if !(← get).localFVars.contains fv then
+        if (← get).localFVars.contains fv then
+          return symbolT (← fv.getUserName).toString
+        else
           modify fun st => { st with depFVars := st.depFVars.insert fv }
-        return symbolT (← fv.getUserName).toString
+          match (← get).uniqueFVarNames.find? fv with
+          | some n => return symbolT n
+          | none   => return symbolT (← fv.getUserName).toString
       | const nm _ =>
         modify fun st => { st with depConstants := st.depConstants.insert nm }
         return symbolT nm.toString

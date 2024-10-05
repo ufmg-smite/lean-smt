@@ -1,6 +1,8 @@
 import Smt
 
-theorem extracted_1 (n a r v : Type) (b : a → Prop)
+theorem extracted_1 (n a r v : Type)
+  [Nonempty n] [Nonempty a] [Nonempty r] [Nonempty v]
+  (b : a → Prop)
   (nmm : a → n → Prop) (ne ngt nm : n → Prop)
   (nsih : ∀ (s1 s2 : n), ∃ a, nmm a s1 ∧ nmm a s2 ∧ ¬b a)
   (noh : ∀ (s : n), ngt s → ∃ a, nmm a s ∧ ¬b a)
@@ -75,4 +77,5 @@ theorem extracted_1 (n a r v : Type) (b : a → Prop)
       (∃ q, nm q ∧ ∀ (s : a), nmm s q → tb s n o r v) ∨
         ∃ q,
           ngt q ∧ ∀ (s : a), nmm s q → tc s n o r v := by
-  smt_show [nsih, noh, nsg, nne, ha, hb]
+  smt [nsih, noh, nsg, nne, ha, hb]
+  all_goals sorry
