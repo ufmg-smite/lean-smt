@@ -5,7 +5,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "ea389d54a9050342df6980427c4da451475da0a2",
+   "rev": "c97ff4cfc218c11af8c1598b8225a6fcc094f5cd",
    "name": "cvc5",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",

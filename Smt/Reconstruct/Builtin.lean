@@ -29,16 +29,18 @@ def getFVarExpr! (n : Name) : MetaM Expr := do
   | some d => return d.toExpr
   | none   => throwError "unknown free variable '{n}'"
 
-def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
-  match (← getLCtx).findFromUserName? n with
-  | some d => return d.toExpr
-  | none   =>
-    let c ← getConstInfo n
-    return .const c.name (c.numLevelParams.repeat (.zero :: ·) [])
+def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
+  match (← get).userNames.find? n with
+  | some fv => return .fvar fv
+  | none   => match (← getLCtx).findFromUserName? n.toName with
+    | some d => return d.toExpr
+    | none   =>
+      let c ← getConstInfo n.toName
+      return .const c.name (c.numLevelParams.repeat (.zero :: ·) [])
 
 @[smt_term_reconstruct] def reconstructBuiltin : TermReconstructor := fun t => do match t.getKind with
   | .VARIABLE => getFVarExpr! (getVariableName t)
-  | .CONSTANT => getFVarOrConstExpr! (Name.mkSimple t.getSymbol)
+  | .CONSTANT => getFVarOrConstExpr! t.getSymbol
   | .EQUAL =>
     let α : Q(Type) ← reconstructSort t[0]!.getSort
     let x : Q($α) ← reconstructTerm t[0]!
@@ -65,7 +67,12 @@ def getFVarOrConstExpr! (n : Name) : MetaM Expr := do
   | _ => return none
 where
   getVariableName (t : cvc5.Term) : Name :=
-    if t.hasSymbol then Name.mkSimple t.getSymbol else Name.num `x t.getId
+    if t.hasSymbol then
+      if t.getSymbol.toName == .anonymous then
+        Name.mkSimple t.getSymbol
+      else
+        t.getSymbol.toName
+    else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with

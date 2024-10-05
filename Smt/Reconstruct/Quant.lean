@@ -28,7 +28,12 @@ namespace Smt.Reconstruct.Quant
 open Lean Qq
 
 def getVariableName (t : cvc5.Term) : Name :=
-  if t.hasSymbol then Name.mkSimple t.getSymbol else Name.num `x t.getId
+  if t.hasSymbol then
+    if t.getSymbol.toName == .anonymous then
+      Name.mkSimple t.getSymbol
+    else
+      t.getSymbol.toName
+  else Name.num `x t.getId
 
 @[smt_term_reconstruct] def reconstructQuant : TermReconstructor := fun t => do match t.getKind with
   | .FORALL =>
@@ -223,8 +228,8 @@ where
       xs.foldrM f (p, q, h)
     addThm q($p = $q) h
   reconstructSkolemize (pf : cvc5.Proof) : ReconstructM Expr := do
-    let res := pf.getChildren[0]!.getResult
-    let es ← reconstructQuant.reconstructForallSkolems res[0]! (res[0]![0]!.getNumChildren - 1)
+    let chRes := pf.getChildren[0]!.getResult
+    let es ← reconstructQuant.reconstructForallSkolems chRes[0]! (chRes[0]![0]!.getNumChildren - 1)
     let f := fun h e => do
       let α : Q(Type) ← pure (e.getArg! 0)
       let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)

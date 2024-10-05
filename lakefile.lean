@@ -127,12 +127,12 @@ where
     return 0
 
 /--
-Run Lean profiler and generate profiler information.
+Run Lean profiler and generate profiling information.
 
 USAGE:
-  lake script run profile
+  lake script run profile <File>.lean <log>.json
 
-Update expected output of tests.
+Use Firefox Profiler UI to view profiling information.
 -/
 script profile args do
   let file : FilePath := args[0]!
