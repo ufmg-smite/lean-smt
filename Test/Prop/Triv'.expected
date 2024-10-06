@@ -1,8 +1,0 @@
-Test/Prop/Triv'.lean:4:2: error: tactic 'rfl' failed, equality lhs
-  p ∨ ¬p
-is not definitionally equal to rhs
-  True
-case s.2
-a.0 : ¬∀ (p : Prop), p → p
-p : Prop
-⊢ (p ∨ ¬p) = True

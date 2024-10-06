@@ -80,46 +80,46 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q(($p → $q) = (¬$p ∨ $q)) q(@Prop.bool_impl_elim $p $q)
-  -- | .BOOL_OR_TRUE =>
-  --   let args ← reconstructArgs pf.getArguments
-  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_true) args)
+  | .BOOL_OR_TRUE =>
+    let args ← reconstructArgs pf.getArguments
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_true) args)
   | .BOOL_OR_FALSE =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_false) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_false) args)
   | .BOOL_OR_FLATTEN =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_flatten) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_flatten) args)
   | .BOOL_OR_DUP =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_dup) args)
-  -- | .BOOL_AND_TRUE =>
-  --   let args ← reconstructArgs pf.getArguments[1:]
-  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_true) args)
-  -- | .BOOL_AND_FALSE =>
-  --   let args ← reconstructArgs pf.getArguments[1:]
-  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_false) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_dup) args)
+  | .BOOL_AND_TRUE =>
+    let args ← reconstructArgs pf.getArguments[1:]
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_true) args)
+  | .BOOL_AND_FALSE =>
+    let args ← reconstructArgs pf.getArguments[1:]
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_false) args)
   | .BOOL_AND_FLATTEN =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_flatten) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_flatten) args)
   | .BOOL_AND_DUP =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_dup) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_dup) args)
   | .BOOL_AND_CONF =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_conf) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_conf) args)
   | .BOOL_OR_TAUT =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_taut) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_taut) args)
   | .BOOL_OR_DE_MORGAN =>
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.or_assoc_eq) q(or_false) q(@Prop.bool_or_de_morgan) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_de_morgan) args)
   | .BOOL_IMPLIES_DE_MORGAN =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q((¬($p → $q)) = ($p ∧ ¬$q)) q(@Prop.bool_implies_de_morgan $p $q)
-  -- | .BOOL_AND_DE_MORGAN =>
-  --   let args ← reconstructArgs pf.getArguments[1:]
-  --   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@Prop.and_assoc_eq) q(and_true) q(@Prop.bool_and_de_morgan) args)
+  | .BOOL_AND_DE_MORGAN =>
+    let args ← reconstructArgs pf.getArguments[1:]
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_de_morgan) args)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -191,8 +191,11 @@ where
     let mut args' := #[]
     for arg in args do
       let mut arg' := #[]
-      for subarg in arg do
-        arg' := arg'.push (← reconstructTerm subarg)
+      if arg.getKind == .SEXPR then
+        for subarg in arg do
+          arg' := arg'.push (← reconstructTerm subarg)
+      else
+        arg' := arg'.push (← reconstructTerm arg)
       args' := args'.push arg'
     return args'
 
