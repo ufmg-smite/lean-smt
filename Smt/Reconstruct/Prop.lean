@@ -81,7 +81,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q(($p → $q) = (¬$p ∨ $q)) q(@Prop.bool_impl_elim $p $q)
   | .BOOL_OR_TRUE =>
-    let args ← reconstructArgs pf.getArguments
+    let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_true) args)
   | .BOOL_OR_FALSE =>
     let args ← reconstructArgs pf.getArguments[1:]
