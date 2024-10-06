@@ -78,4 +78,3 @@ theorem extracted_1 (n a r v : Type)
         ∃ q,
           ngt q ∧ ∀ (s : a), nmm s q → tc s n o r v := by
   smt [nsih, noh, nsg, nne, ha, hb]
-  all_goals sorry

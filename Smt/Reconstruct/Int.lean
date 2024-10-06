@@ -95,15 +95,15 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_PLUS_ZERO =>
     if !pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.add_assoc) q(Int.add_zero) q(@Rewrite.plus_zero) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_zero) args)
   | .ARITH_MUL_ONE =>
     if !pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.mul_assoc) q(Int.mul_one) q(@Rewrite.mul_one) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mul_one) args)
   | .ARITH_MUL_ZERO =>
     if !pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.mul_assoc) q(Int.mul_one) q(@Rewrite.mul_zero) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mul_zero) args)
   | .ARITH_INT_DIV_TOTAL =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
@@ -199,23 +199,23 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_PLUS_FLATTEN =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.add_assoc) q(Int.add_zero) q(@Rewrite.plus_flatten) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_flatten) args)
   | .ARITH_MULT_FLATTEN =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.mul_assoc) q(Int.mul_one) q(@Rewrite.mult_flatten) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_flatten) args)
   | .ARITH_MULT_DIST =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.mul_assoc) q(Int.mul_one) q(@Rewrite.mult_dist) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_dist) args)
   | .ARITH_PLUS_CANCEL1 =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.mul_assoc) q(Int.mul_one) q(@Rewrite.plus_cancel1) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_cancel1) args)
   | .ARITH_PLUS_CANCEL2 =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Int.add_assoc) q(Int.add_zero) q(@Rewrite.plus_cancel2) args)
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_cancel2) args)
   | .ARITH_ABS_ELIM =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -226,8 +226,11 @@ where
     let mut args' := #[]
     for arg in args do
       let mut arg' := #[]
-      for subarg in arg do
-        arg' := arg'.push (← reconstructTerm subarg)
+      if arg.getKind == .SEXPR then
+        for subarg in arg do
+          arg' := arg'.push (← reconstructTerm subarg)
+      else
+        arg' := arg'.push (← reconstructTerm arg)
       args' := args'.push arg'
     return args'
 
