@@ -84,8 +84,6 @@ example (prime : Int → Prop) (w x y z : Int) (h1 : 4*x + (-3)*y + 6*w ≤ 0) (
     (h5 : prime x) : False := by
   smt [h1, h2, h3, h4]
 
--- set_option maxRecDepth 2000000
-
 example (u v x y A B : Int)
 (a : 0 < A)
 (a_1 : 0 <= 1 - A)

@@ -13,7 +13,12 @@ namespace Smt.Reconstruct.Bool
 
 open Lean
 
-def boolify (mv : MVarId) : MetaM MVarId := do
+def traceBoolify (r : Except Exception MVarId) : MetaM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
+def boolify (mv : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruct.boolify traceBoolify do
   let ns := [``Bool.decide_eq_true, ``decide_true_eq, ``decide_false_eq, ``decide_not_eq, ``decide_and_eq, ``decide_or_eq, ``decide_eq_eq, ``decide_xor_eq]
   let simpTheorems ← ns.foldrM (fun n a => a.addTheorem (.decl n) (.const n [])) {}
   let (some mv, _) ← Meta.simpTarget mv { simpTheorems } | throwError "failed to boolify goal:{mv}"

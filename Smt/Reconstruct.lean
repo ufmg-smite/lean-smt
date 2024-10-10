@@ -57,11 +57,6 @@ where
         return e
     throwError "Failed to reconstruct sort {s} with kind {s.getKind}"
 
-def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : ReconstructM MessageData :=
-  return m!"{t} ↦ " ++ match r with
-    | .ok e    => m!"{e}"
-    | .error _ => m!"{bombEmoji}"
-
 def withNewTermCache (k : ReconstructM α) : ReconstructM α := do
   let termCache := (← get).termCache
   modify fun state => { state with termCache := {} }
@@ -69,8 +64,13 @@ def withNewTermCache (k : ReconstructM α) : ReconstructM α := do
   modify fun state => { state with termCache := termCache }
   return r
 
+def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : ReconstructM MessageData :=
+  return m!"{t} ↦ " ++ match r with
+    | .ok e    => m!"{e}"
+    | .error _ => m!"{bombEmoji}"
+
 def reconstructTerm : cvc5.Term → ReconstructM Expr := withTermCache fun t => do
-  withTraceNode `smt.reconstruct.term (traceReconstructTerm t) do
+  withTraceNode ((`smt.reconstruct.term).str t.getKind.toString) (traceReconstructTerm t) do
     let rs ← getReconstructors ``TermReconstructor TermReconstructor
     go rs t
 where
@@ -155,11 +155,17 @@ def addTrust (type : Expr) (pf : cvc5.Proof) : ReconstructM Expr := do
     m!"rule : {pf.getRule}\npremises : {pf.getChildren.map (·.getResult)}\nargs : {pf.getArguments}\nconclusion : {pf.getResult}"
   return mv
 
+def traceReconstructStep (r : Except Exception Expr) : ReconstructM MessageData :=
+  return match r with
+  | .ok _ => m!"{checkEmoji}"
+  | _     => m!"{bombEmoji}"
+
 partial def reconstructProof : cvc5.Proof → ReconstructM Expr := withProofCache fun pf => do
   let rs ← getReconstructors ``ProofReconstructor ProofReconstructor
   go rs pf
 where
-  go (rs : List (ProofReconstructor × Name)) (pf : cvc5.Proof) : ReconstructM Expr := do
+  go (rs : List (ProofReconstructor × Name)) (pf : cvc5.Proof) : ReconstructM Expr :=
+  withTraceNode ((`smt.reconstruct.proof).str pf.getRule.toString) traceReconstructStep do
     for (r, _) in rs do
       if let some e ← r pf then
         return e

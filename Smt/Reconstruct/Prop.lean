@@ -185,6 +185,12 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
     addThm q(ite $c $p $c = ite $c $p False) q(@Prop.ite_else_lookahead_self $c $p $h)
+  | .BOOL_NOT_ITE_ELIM =>
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[3]!
+    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    addThm q((¬ite $c $p $q) = ite $c (¬$p) (¬$q)) q(@Prop.bool_not_ite_elim $c $p $q $h)
   | _ => return none
 where
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
