@@ -6,13 +6,8 @@ namespace Lean.Meta.AC
 
 open Lean.Elab Tactic
 
-def traceACRflTop (r : Except Exception Unit) : MetaM MessageData :=
-  return match r with
-  | .ok _ => m!"{checkEmoji}"
-  | _     => m!"{bombEmoji}"
-
 /-- Similar to `rewriteUnnormalized`, but rewrite is only applied at the top level. -/
-def rewriteUnnormalizedTop (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.acRflTop traceACRflTop do
+def rewriteUnnormalizedTop (mv : MVarId) : MetaM Unit := do
   let some (α, l, r) := (← mv.getType).eq?
     | throwError "[ac_rfl_top] expected a top level equality with AC operator on lhs and/or rhs, got {← mv.getType}"
   let lvl ← Meta.getLevel α

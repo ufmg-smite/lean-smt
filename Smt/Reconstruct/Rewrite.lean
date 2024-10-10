@@ -23,7 +23,7 @@ def traceSmtRw (r : Except Exception Unit) : MetaM MessageData :=
   | _     => m!"{bombEmoji}"
 
 def smtRw (mv : MVarId) (op : Expr) (id : Expr) (rr : Expr) (xss : Array (Array Expr)) : MetaM Unit :=
-  withTraceNode `smt.reconstruct.smtRw traceSmtRw do
+  withTraceNode `smt.reconstruct.DSL_REWRITE.tac traceSmtRw do
   let xs := xss.map (fun xs => xs[1:].foldr (mkApp2 op) (xs[0]?.getD id))
   let some (α, l, r) := (← mv.getType).eq?
     | throwError "[smt_rw] expected a top level equality with AC operator on lhs and/or rhs, got {← mv.getType}"

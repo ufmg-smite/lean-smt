@@ -126,4 +126,8 @@ theorem ite_else_lookahead_self [h : Decidable c] : ite c x c = ite c x False :=
   (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
   (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_false hnc)
 
+theorem bool_not_ite_elim [h : Decidable c] : (¬ite c x y) = ite c (¬x) (¬y) := h.byCases
+  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
+  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+
 end Smt.Reconstruct.Prop
