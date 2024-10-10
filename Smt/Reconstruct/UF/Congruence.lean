@@ -18,11 +18,6 @@ namespace Smt.Reconstruct.UF
 open Lean Elab Tactic
 open Qq
 
-def traceSmtCongr (r : Except Exception Unit) : MetaM MessageData :=
-  return match r with
-  | .ok _ => m!"{checkEmoji}"
-  | _     => m!"{bombEmoji}"
-
 def smtCongrArrow (mv : MVarId) (hs : Array Expr) : MetaM Unit := do
   let f := fun h₁ h₂ => do
     let (_, (a₁ : Q(Prop)), (b₁ : Q(Prop))) := (← Meta.inferType h₁).eq?.get!
@@ -84,8 +79,7 @@ def smtCongrRightAssocOp (mv : MVarId) (op : Expr) (hs : Array Expr) : MetaM Uni
   let (_, _, h) ← hs[:hs.size - 1].foldrM f (y₁, y₂, hs[hs.size - 1]!)
   mv.assign h
 
-def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := withTraceNode `smt.reconstruct.smtCongr traceSmtCongr do
-  mv.withContext do
+def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
   let some (_, l, r) := (← mv.getType).eq? | throwError "[smt_congr]: target is not an equality: {← mv.getType}"
   if l.isArrow then
     smtCongrArrow mv hs
