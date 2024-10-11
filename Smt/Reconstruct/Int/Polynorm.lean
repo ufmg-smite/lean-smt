@@ -8,6 +8,20 @@ Authors: Abdalrhman Mohamed, Harun Khan
 import Lean
 import Qq
 
+private theorem Int.neg_congr {x y : Int} (h : x = y) : -x = -y := by
+  simp [h]
+
+private theorem Int.add_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ + y₁ = x₂ + y₂ := by
+  simp [h₁, h₂]
+
+private theorem Int.sub_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ - y₁ = x₂ - y₂ := by
+  simp [h₁, h₂]
+
+private theorem Int.mul_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ * y₁ = x₂ * y₂ := by
+  simp [h₁, h₂]
+
+private theorem Eq.trans₂' (hba : b = a) (hbc : b = c) (hcd : c = d) : a = d := hba ▸ hbc ▸ hcd ▸ rfl
+
 namespace Smt.Reconstruct.Int.PolyNorm
 
 abbrev Var := Nat
@@ -17,7 +31,7 @@ def Context := Var → Int
 structure Monomial where
   coeff : Int
   vars : List Var
-deriving Inhabited, Repr
+deriving Inhabited, Repr, DecidableEq
 
 namespace Monomial
 
@@ -189,7 +203,6 @@ theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.
     simp only [List.foldr_cons, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Int.add_assoc]
     rw [← ih, foldl_add_insert]
 
-
 theorem denote_sub {p q : Polynomial} : (p.sub q).denote ctx = p.denote ctx - q.denote ctx := by
   simp only [sub, denote_neg, denote_add, Int.sub_eq_add_neg]
 
@@ -290,49 +303,97 @@ end PolyNorm.Expr
 
 open Lean Qq
 
-abbrev PolyM := StateT (Array Q(Int)) MetaM
-
-def getIndex (e : Q(Int)) : PolyM Nat := do
-  let es ← get
-  if let some i := es.findIdx? (· == e) then
-    return i
-  else
-    let size := es.size
-    set (es.push e)
-    return size
-
-partial def toPolyNormExpr (e : Q(Int)) : PolyM PolyNorm.Expr := do
+partial def genCtx (e : Q(Int)) : StateT (Array Q(Int) × HashSet Q(Int)) MetaM Unit := do
+  if !(← get).snd.contains e then
+    go
+    modify fun (es, cache) => (es, cache.insert e)
+where
+  go : StateT (Array Q(Int) × HashSet Q(Int)) MetaM Unit := do
   match e with
-  | ~q(OfNat.ofNat $x) => pure (.val x.rawNatLit?.get!)
-  | ~q(-$x) => pure (.neg (← toPolyNormExpr x))
-  | ~q($x + $y) => pure (.add (← toPolyNormExpr x) (← toPolyNormExpr y))
-  | ~q($x - $y) => pure (.sub (← toPolyNormExpr x) (← toPolyNormExpr y))
-  | ~q($x * $y) => pure (.mul (← toPolyNormExpr x) (← toPolyNormExpr y))
-  | e => let v : Nat ← getIndex e; pure (.var v)
+  | ~q(OfNat.ofNat $x) => pure ()
+  | ~q(-$x)            => genCtx x
+  | ~q($x + $y)        => genCtx x >>= fun _ => genCtx y
+  | ~q($x - $y)        => genCtx x >>= fun _ => genCtx y
+  | ~q($x * $y)        => genCtx x >>= fun _ => genCtx y
+  | _                  => if !(← get).fst.contains e then modify fun (es, cache) => (es.push e, cache)
 
-partial def toQPolyNormExpr (e : Q(Int)) : PolyM Q(PolyNorm.Expr) := do
-  match e with
-  | ~q(OfNat.ofNat $x) => pure q(.val (@OfNat.ofNat Int $x _))
-  | ~q(-$x) => pure q(.neg $(← toQPolyNormExpr x))
-  | ~q($x + $y) => pure q(.add $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toQPolyNormExpr x) $(← toQPolyNormExpr y))
-  | e => let v : Nat ← getIndex e; pure q(.var $v)
+partial def toQPolyNormExpr (ctx : Q(PolyNorm.Context)) (es : Array Q(Int)) (e : Q(Int)) (cache : HashMap Expr (Expr × Expr)) :
+  MetaM (HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do
+  match cache.find? e with
+  | some (e, h) => return ⟨cache, e, h⟩
+  | none   =>
+    let ⟨cache, o, h⟩ ← go
+    return ⟨cache.insert e (o, h), o, h⟩
+where
+  go : MetaM (HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do match e with
+    | ~q(OfNat.ofNat $x) =>
+      pure ⟨cache, q(.val (@OfNat.ofNat Int $x _)), q(rfl)⟩
+    | ~q(-$x) =>
+      let ⟨cache, o, h⟩ ← toQPolyNormExpr ctx es x cache
+      pure ⟨cache, q(.neg $o), q(Int.neg_congr $h)⟩
+    | ~q($x + $y) =>
+      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
+      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
+      pure ⟨cache, q(.add $ox $oy), q(Int.add_congr $hx $hy)⟩
+    | ~q($x - $y) =>
+      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
+      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
+      pure ⟨cache, q(.sub $ox $oy), q(Int.sub_congr $hx $hy)⟩
+    | ~q($x * $y) =>
+      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
+      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
+      pure ⟨cache, q(.mul $ox $oy), q(Int.mul_congr $hx $hy)⟩
+    | _ =>
+      let some v := (es.findIdx? (· == e)) | throwError "variable not found"
+      pure ⟨cache, q(.var $v), .app q(@Eq.refl Int) e⟩
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
-  let some (_, l, r) := (← mv.getType).eq?
+  let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, es) ← (toQPolyNormExpr l).run #[]
-  let (r, es) ← (toQPolyNormExpr r).run es
-  let is : Q(Array Int) := es.foldl (fun acc e => q(«$acc».push $e)) q(#[])
-  let ctx : Q(PolyNorm.Context) := q(fun v => if h : v < «$is».size then $is[v] else 0)
-  let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)
-  mv.assign q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $l $r $h)
+  let (_, (es, _)) ← (genCtx l >>= fun _ => genCtx r).run (#[], {})
+  let is : Q(Array Int) ← pure (es.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
+  let ctx : Q(PolyNorm.Context) ← pure q((«$is».getD · 0))
+  let ⟨cache, el, _⟩ ← toQPolyNormExpr ctx es l {}
+  let ⟨_, er, _⟩ ← toQPolyNormExpr ctx es r cache
+  let hp : Q(«$el».toPolynomial = «$er».toPolynomial) := (.app q(@Eq.refl PolyNorm.Polynomial) q(«$el».toPolynomial))
+  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $el $er $hp)
+  mv.assign he
 where
   logPolynomial (e : Q(PolyNorm.Expr)) (es : Array Q(Int)) := do
-  let p ← unsafe Meta.evalExpr PolyNorm.Expr q(PolyNorm.Expr) e
-  let ppCtx := fun v => if h : v < es.size then es[v] else q(0)
-  logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
+    let p ← unsafe Meta.evalExpr PolyNorm.Expr q(PolyNorm.Expr) e
+    let ppCtx := (es.getD · q(0))
+    logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
+
+def nativePolyNorm (mv : MVarId) : MetaM Unit := do
+  let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
+    | throwError "[poly_norm] expected an equality, got {← mv.getType}"
+  let (_, (es, _)) ← (genCtx l >>= fun _ => genCtx r).run (#[], {})
+  let is : Q(List Int) ← pure (es.foldr (fun e acc => q($e :: $acc)) q([]))
+  let ctx : Q(PolyNorm.Context) ← pure q((«$is».getD · 0))
+  let ⟨cache, el, _⟩ ← toQPolyNormExpr ctx es l {}
+  let ⟨_, er, _⟩ ← toQPolyNormExpr ctx es r cache
+  let hp  ← nativeDecide q(«$el».toPolynomial = «$er».toPolynomial)
+  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $el $er $hp)
+  mv.assign he
+where
+  logPolynomial (e : Q(PolyNorm.Expr)) (es : Array Q(Int)) := do
+    let p ← unsafe Meta.evalExpr PolyNorm.Expr q(PolyNorm.Expr) e
+    let ppCtx := (es.getD · q(0))
+    logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
+  nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
+    let b : Q(Bool) := .const auxDeclName []
+    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
+  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
+    let auxName ← Lean.mkAuxName baseName 1
+    let decl := Declaration.defnDecl {
+      name := auxName, levelParams := [], type, value
+      hints := .abbrev
+      safety := .safe
+    }
+    addAndCompile decl
+    pure auxName
 
 namespace Tactic
 
@@ -345,7 +406,19 @@ open Lean.Elab Tactic in
     Int.polyNorm mv
     replaceMainGoal []
 
+syntax (name := nativePolyNorm) "native_poly_norm" : tactic
+
+open Lean.Elab Tactic in
+@[tactic nativePolyNorm] def evalNativePolyNorm : Tactic := fun _ =>
+  withMainContext do
+    let mv ← Tactic.getMainGoal
+    Int.nativePolyNorm mv
+    replaceMainGoal []
+
 end Smt.Reconstruct.Int.Tactic
 
 example (x y z : Int) : 1 * (x + y) * z  = z * y + x * z := by
   poly_norm
+
+example (x y z : Int) : 1 * (x + y) * z  = z * y + x * z := by
+  native_poly_norm
