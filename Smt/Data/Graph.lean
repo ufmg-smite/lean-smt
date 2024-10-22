@@ -11,7 +11,7 @@ import Lean.Message
 
 open Lean Std
 
-def Graph (α) (β) [BEq α] [Hashable α] := HashMap α (HashMap α β)
+def Graph (α) (β) [BEq α] [Hashable α] := Lean.HashMap α (Lean.HashMap α β)
 
 namespace Graph
 
@@ -39,7 +39,7 @@ partial def dfs [Monad m] (f : α → m Unit) : m Unit :=
     for v in g.vertices do
       visitVertex v
 where
-  visitVertex (v : α) : StateT (HashSet α) m Unit := do
+  visitVertex (v : α) : StateT (Lean.HashSet α) m Unit := do
     let vs ← get
     if vs.contains v then
       return
@@ -53,7 +53,7 @@ partial def orderedDfs [Monad m] (vs : List α) (f : α → m Unit) : m Unit :=
     for v in vs do
       visitVertex v
 where
-  visitVertex (v : α) : StateT (HashSet α) m Unit := do
+  visitVertex (v : α) : StateT (Lean.HashSet α) m Unit := do
     let vs ← get
     if vs.contains v then
       return
