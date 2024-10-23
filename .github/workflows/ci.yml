@@ -25,6 +25,7 @@ jobs:
         lake update
         lake build
         lake build +Smt:dynlib
+        lake build +Smt.Rat:dynlib
         lake build +Smt.Real:dynlib
     - name: Test lean-smt
       run: lake run test

@@ -256,8 +256,8 @@ inductive Expr where
   | var (v : Nat)
   | neg (a : Expr)
   | add (a b : Expr)
-  | mul (a b : Expr)
   | sub (a b : Expr)
+  | mul (a b : Expr)
 deriving Inhabited, Repr
 
 namespace Expr
@@ -372,7 +372,7 @@ def nativePolyNorm (mv : MVarId) : MetaM Unit := do
   let ctx : Q(PolyNorm.Context) ← pure q((«$is».getD · 0))
   let ⟨cache, el, _⟩ ← toQPolyNormExpr ctx es l {}
   let ⟨_, er, _⟩ ← toQPolyNormExpr ctx es r cache
-  let hp  ← nativeDecide q(«$el».toPolynomial = «$er».toPolynomial)
+  let hp ← nativeDecide q(«$el».toPolynomial = «$er».toPolynomial)
   let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $el $er $hp)
   mv.assign he
 where

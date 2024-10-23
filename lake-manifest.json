@@ -8,7 +8,7 @@
    "rev": "c97ff4cfc218c11af8c1598b8225a6fcc094f5cd",
    "name": "cvc5",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "main",
+   "inputRev": "c97ff4cfc218c11af8c1598b8225a6fcc094f5cd",
    "inherited": false,
    "configFile": "lakefile.lean"},
   {"url": "https://github.com/leanprover-community/batteries",

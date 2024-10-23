@@ -422,7 +422,6 @@ where
       | .GT =>
         addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Rat.gt_of_sub_eq_neg $hcx $hcy $h)
       | _   => return none
-    return none
   | .ARITH_MULT_SIGN =>
     if pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf
