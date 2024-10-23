@@ -264,3 +264,9 @@ example (u v x y A B : Int)
 ->
  u * y + v * x + u * v < 3 * A * B := by
   smt [a, a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8]
+
+example : ∃ (x : Real), x > 2 ∧ x * x < 24 := by
+  smt
+
+example : ∃ (x : Real), x > 2 ∧ x * 2 < 24 := by
+  smt

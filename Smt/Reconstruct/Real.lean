@@ -411,6 +411,7 @@ where
     addTac q($a = $b) Real.polyNorm
   | .ARITH_POLY_NORM_REL =>
     if pf.getResult[0]![0]!.getSort.isInteger then return none
+    let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue
     let cx : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
     let x₁ : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
     let x₂ : Q(Real) ← reconstructTerm pf.getResult[0]![1]!
@@ -425,14 +426,14 @@ where
       Real.normNum hcx.mvarId!
       Real.normNum hcy.mvarId!
       addThm q(($x₁ = $x₂) = ($y₁ = $y₂)) q(Real.eq_of_sub_eq $hcx $hcy $h)
-    else if pf.getChildren[0]!.getResult[0]![0]!.getRationalValue > 0 then
+    else if lcx > 0 then
       let hcx : Q($cx > 0) ← Meta.mkFreshExprMVar q($cx > 0)
       let hcy : Q($cy > 0) ← Meta.mkFreshExprMVar q($cy > 0)
       Real.normNum hcx.mvarId!
       Real.normNum hcy.mvarId!
       match k with
       | .LT =>
-        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(lt_of_sub_eq_pos $hcx $hcy $h)
+        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Real.lt_of_sub_eq_pos $hcx $hcy $h)
       | .LEQ =>
         addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Real.le_of_sub_eq_pos $hcx $hcy $h)
       | .GEQ =>

@@ -136,7 +136,7 @@ def addThm (type : Expr) (val : Expr) : ReconstructM Expr := do
   let name := Name.num `s (← incCount)
   let mv ← Meta.mkFreshExprMVar type .natural name
   mv.mvarId!.assign val
-  trace[smt.reconstruct.proof] "have {name} : {type} := {mv}"
+  trace[smt.reconstruct.proof] "have {name} : {type} := {val}"
   return mv
 
 def addTac (type : Expr) (tac : MVarId → MetaM Unit) : ReconstructM Expr := do
@@ -202,6 +202,7 @@ def solve (query : String) (timeout : Option Nat) : MetaM (Except Error cvc5.Pro
     Solver.setOption "dag-thresh" "0"
     Solver.setOption "simplification" "none"
     Solver.setOption "enum-inst" "true"
+    Solver.setOption "cegqi-midpoint" "true"
     Solver.setOption "produce-models" "true"
     Solver.setOption "produce-proofs" "true"
     Solver.setOption "proof-elim-subtypes" "true"

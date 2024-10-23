@@ -82,8 +82,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let c : Q($α) ← reconstructTerm cpfs[i]!.getResult[1]!
       let hab : Q($a = $b) := curr
       let hbc : Q($b = $c) ← reconstructProof cpfs[i]!
-      curr ← addThm q($a = $c) q(Eq.trans $hab $hbc)
-    return curr
+      curr := q(Eq.trans $hab $hbc)
+    addThm (← reconstructTerm pf.getResult) curr
   | .CONG =>
     let k := pf.getResult[0]!.getKind
     if k == .FORALL || k == .EXISTS || k == .WITNESS || k == .LAMBDA || k == .SET_COMPREHENSION then
