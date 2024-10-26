@@ -48,7 +48,8 @@ def adc' (x y : BitVec w) : Bool → Bool × BitVec w :=
 
 theorem adc_eq_adc' : @adc = @adc' := by
   funext x y c
-  simp only [adc, adc', adcb_eq_adcb']
+  rw [adc, adc', adcb_eq_adcb']
+  rfl
 
 theorem add_eq_adc' (x y : BitVec w) : x + y = (adc' x y false).snd := by
   rw [add_eq_adc, adc_eq_adc']
