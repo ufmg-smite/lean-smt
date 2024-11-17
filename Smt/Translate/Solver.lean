@@ -95,11 +95,11 @@ private def getSexp : SolverT m Sexp := do
   let state ← get
   let mut line ← state.proc.stdout.getLine
   let mut out := line
-  let mut parseRes := Sexp.parseOne out
-  while !line.isEmpty && parseRes matches .error (.incomplete _) do
+  let mut parseRes := Sexp.Parser.sexp.run out
+  while !line.isEmpty && parseRes matches .error _ do
     line ← state.proc.stdout.getLine
     out := out ++ line
-    parseRes := Sexp.parseOne out
+    parseRes := Sexp.Parser.sexp.run out
   match parseRes with
   | .ok sexp!{(error {.atom e})} => (throw (IO.userError (unquote e)) : IO _)
   | .ok sexp => return sexp
@@ -108,7 +108,7 @@ private def getSexp : SolverT m Sexp := do
     (throw (IO.userError (parseErrMsg e out err)) : IO _)
 where
   unquote s := s.extract ⟨1⟩ ⟨s.length - 1⟩
-  parseErrMsg (e : Sexp.ParseError) (out err : String) :=
+  parseErrMsg (e : String) (out err : String) :=
     s!"could not parse solver output: {e}\nsolver stdout:\n{out}\nsolver stderr:\n{err}"
 
 /-- Create an instance of a generic SMT solver.
