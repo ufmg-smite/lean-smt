@@ -23,8 +23,7 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
       return .const c.name (c.numLevelParams.repeat (.zero :: ·) [])
 
 @[smt_sort_reconstruct] def reconstructUS : SortReconstructor := fun s => do match s.getKind with
-  | .INTERNAL_SORT_KIND
-  | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol
+  | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol!
   | _ => return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with
@@ -46,6 +45,13 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     let s : Q($α) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t = $s) = ($s = $t)) q(@UF.eq_symm $α $t $s)
+  | .EQ_COND_DEQ =>
+    let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
+    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
+    let s : Q($α) ← reconstructTerm pf.getArguments[2]!
+    let r : Q($α) ← reconstructTerm pf.getArguments[3]!
+    let h : Q(($s = $r) = False) ← reconstructProof pf.getChildren[0]!
+    addThm q((($t = $s) = ($t = $r)) = (¬$t = $s ∧ ¬$t = $r)) q(@UF.eq_cond_deq $α $t $s $r $h)
   | .DISTINCT_BINARY_ELIM =>
     let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!

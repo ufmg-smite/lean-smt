@@ -219,7 +219,7 @@ def solve (query : String) (timeout : Option Nat) : MetaM (Except Error cvc5.Pro
       if h : 0 < ps.size then
         trace[smt.solve] "proof:\n{← Solver.proofToString ps[0]}"
         return ps[0]
-    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.user_error "something went wrong")
+    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.error s!"Expected unsat, got {r}")
 
 syntax (name := reconstruct) "reconstruct" str : tactic
 

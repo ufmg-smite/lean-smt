@@ -16,11 +16,11 @@ open Lean Qq
 
 @[smt_sort_reconstruct] def reconstructBuiltinSort : SortReconstructor := fun s => do match s.getKind with
   | .FUNCTION_SORT =>
-    let mut ct : Q(Type) ← reconstructSort s.getFunctionCodomainSort
+    let mut ct : Q(Type) ← reconstructSort s.getFunctionCodomainSort!
     let f s (a : Q(Type)) := do
       let t : Q(Type) ← reconstructSort s
       return q($t → $a)
-    let t ← s.getFunctionDomainSorts.foldrM f ct
+    let t ← s.getFunctionDomainSorts!.foldrM f ct
     return t
   | _              => return none
 
@@ -40,7 +40,7 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
 
 @[smt_term_reconstruct] def reconstructBuiltin : TermReconstructor := fun t => do match t.getKind with
   | .VARIABLE => getFVarExpr! (getVariableName t)
-  | .CONSTANT => getFVarOrConstExpr! t.getSymbol
+  | .CONSTANT => getFVarOrConstExpr! t.getSymbol!
   | .EQUAL =>
     let α : Q(Type) ← reconstructSort t[0]!.getSort
     let x : Q($α) ← reconstructTerm t[0]!
@@ -61,17 +61,17 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)
-  | .SKOLEM => match t.getSkolemId with
-    | .PURIFY => reconstructTerm t.getSkolemIndices[0]!
+  | .SKOLEM => match t.getSkolemId! with
+    | .PURIFY => reconstructTerm t.getSkolemIndices![0]!
     | _ => return none
   | _ => return none
 where
   getVariableName (t : cvc5.Term) : Name :=
     if t.hasSymbol then
-      if t.getSymbol.toName == .anonymous then
-        Name.mkSimple t.getSymbol
+      if t.getSymbol!.toName == .anonymous then
+        Name.mkSimple t.getSymbol!
       else
-        t.getSymbol.toName
+        t.getSymbol!.toName
     else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do

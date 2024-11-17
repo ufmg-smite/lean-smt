@@ -19,14 +19,22 @@ but function has type
 Test/linarith.lean:34:9: warning: unused variable `e`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:53:0: warning: declaration uses 'sorry'
-Test/linarith.lean:101:9: warning: unused variable `a`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/linarith.lean:101:13: warning: unused variable `c`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/linarith.lean:106:9: warning: unused variable `a`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/linarith.lean:106:13: warning: unused variable `c`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:102:2: error: application type mismatch
+  1 ≥ 0
+argument
+  0
+has type
+  ℤ : Type
+but is expected to have type
+  ℝ : Type
+Test/linarith.lean:107:2: error: application type mismatch
+  1 ≥ 0
+argument
+  0
+has type
+  ℤ : Type
+but is expected to have type
+  ℝ : Type
 Test/linarith.lean:118:60: warning: unused variable `h3`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:125:9: warning: unused variable `a`

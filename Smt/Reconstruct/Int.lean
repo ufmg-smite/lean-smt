@@ -22,12 +22,12 @@ open Qq
   | _             => return none
 
 @[smt_term_reconstruct] def reconstructInt : TermReconstructor := fun t => do match t.getKind with
-  | .SKOLEM => match t.getSkolemId with
+  | .SKOLEM => match t.getSkolemId! with
     | .INT_DIV_BY_ZERO => return q(fun (x : Int) => x / 0)
     | .MOD_BY_ZERO => return q(fun (x : Int) => x % 0)
     | _ => return none
   | .CONST_INTEGER =>
-    let x : Int := t.getIntegerValue
+    let x : Int := t.getIntegerValue!
     let x' : Q(Nat) := mkRawNatLit x.natAbs
     if x ≥ 0 then
       return q(OfNat.ofNat $x' : Int)
@@ -92,6 +92,12 @@ where
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
+  | .ARITH_POW_ELIM =>
+    if !pf.getResult[0]![0]!.getSort.isInteger then return none
+    let x : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
+    let c : Q(Nat) ← reconstructTerm pf.getResult[0]![1]!
+    let y : Q(Int) ← reconstructTerm pf.getResult[1]!
+    addThm q($x ^ $c = $y) q(Eq.refl ($x ^ $c))
   | .ARITH_PLUS_ZERO =>
     if !pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -126,19 +132,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_INT_MOD_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q($t % 0 = $t) q(@Rewrite.int_mod_total_zero $t)
-  | .ARITH_NEG_NEG_ONE =>
-    if !pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-1 * (-1 * $t) = $t) q(@Rewrite.neg_neg_one $t)
-  | .ARITH_ELIM_UMINUS =>
-    if !pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-$t = -1 * $t) q(@Rewrite.elim_uminus $t)
-  | .ARITH_ELIM_MINUS =>
-    if !pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    addThm q($t - $s = $t + -1 * $s) q(@Rewrite.elim_minus $t $s)
   | .ARITH_ELIM_GT =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -208,14 +201,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_dist) args)
-  | .ARITH_PLUS_CANCEL1 =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_cancel1) args)
-  | .ARITH_PLUS_CANCEL2 =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_cancel2) args)
   | .ARITH_ABS_ELIM =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -403,10 +388,10 @@ where
     addTac q($a = $b) Int.nativePolyNorm
   | .ARITH_POLY_NORM_REL =>
     if !pf.getResult[0]![0]!.getSort.isInteger then return none
-    let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue
+    let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
     let x₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
     let x₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
-    let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue
+    let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
     let y₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!
     let y₂ : Q(Int) ← reconstructTerm pf.getResult[1]![1]!
     let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!

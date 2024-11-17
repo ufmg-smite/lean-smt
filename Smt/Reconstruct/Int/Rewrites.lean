@@ -9,7 +9,7 @@ namespace Smt.Reconstruct.Int.Rewrite
 
 open Function
 
--- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/arith/rewrites
+-- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
 
 variable {t ts x xs : Int}
 
@@ -35,15 +35,8 @@ theorem int_mod_total_one {t : Int} : t % 1 = 0 :=
 theorem int_mod_total_zero {t : Int} : t % 0 = t :=
   Int.emod_zero t
 
-theorem neg_neg_one : -1 * (-1 * t) = t :=
-  Int.neg_mul _ t ▸ (Int.one_mul t).symm ▸ Int.neg_mul_neg _ t ▸ (Int.one_mul t).symm ▸ rfl
-
 -- Eliminations
 
-theorem elim_uminus : -t = -1 * t :=
-  Int.neg_eq_neg_one_mul t ▸ rfl
-theorem elim_minus : t - s = t + -1 * s :=
-  Int.neg_eq_neg_one_mul s ▸ Int.sub_eq_add_neg ▸ rfl
 theorem elim_gt : (t > s) = ¬(t ≤ s) :=
   propext Int.not_le.symm
 theorem elim_lt : (t < s) = ¬(t ≥ s) :=
@@ -88,13 +81,6 @@ theorem mult_flatten : xs * (w * ys) * zs = xs * w * ys * zs :=
 
 theorem mult_dist : x * (y + z + ws) = x * y + x * (z + ws) :=
   Int.add_assoc y z ws ▸ Int.mul_add x y (z + ws) ▸ rfl
-
-theorem plus_cancel1 : ts + x + ss + (-1 * x) + rs = ts + ss + rs :=
-  Int.neg_eq_neg_one_mul x ▸ Int.add_assoc ts x ss ▸ Int.add_assoc ts (x + ss) (-x) ▸
-  Int.add_comm x ss ▸ (Int.add_neg_cancel_right ss x).symm ▸ rfl
-theorem plus_cancel2 : ts + (-1 * x) + ss + x + rs = ts + ss + rs :=
-  Int.neg_eq_neg_one_mul x ▸ Int.add_assoc ts (-x) ss ▸ Int.add_assoc ts (-x + ss) x ▸
-  Int.add_comm (-x) ss ▸ (Int.neg_add_cancel_right ss x).symm ▸ rfl
 
 theorem abs_elim : (if x < 0 then -x else x) = if x < 0 then -x else x :=
   rfl
