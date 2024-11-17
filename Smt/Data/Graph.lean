@@ -9,37 +9,37 @@ import Lean.Data.HashMap
 import Lean.Data.HashSet
 import Lean.Message
 
-open Lean Std
+open Lean
 
-def Graph (α) (β) [BEq α] [Hashable α] := Lean.HashMap α (Lean.HashMap α β)
+abbrev Graph (α) (β) [BEq α] [Hashable α] := Std.HashMap α (Std.HashMap α β)
 
 namespace Graph
 
 variable {α} {β} [BEq α] [Hashable α] (g : Graph α β) (v u : α) (e : β)
 
-def empty : Graph α β := HashMap.empty
+def empty : Graph α β := {}
 
 def vertices : List α := g.fold (fun a v _ => v :: a) []
 
 def neighbors? : Option (List α) :=
-  g.find? v >>= fun es => some (es.fold (fun a v _ => v :: a) [])
+  g[v]? >>= fun es => some (es.fold (fun a v _ => v :: a) [])
 
 def neighbors! : List α := match (g.neighbors? v) with
   | some ns => ns
   | none    => panic! "vertex is not in the graph"
 
-def addVertex : Graph α β := g.insert v HashMap.empty
+def addVertex : Graph α β := g.insert v {}
 
-def addEdge : Graph α β := g.insert v ((g.find! v).insert u e)
+def addEdge : Graph α β := g.insert v ((g[v]!).insert u e)
 
-def weight? : Option β := g.find? v >>= fun es => es.find? u
+def weight? : Option β := g[v]? >>= fun es => es[u]?
 
 partial def dfs [Monad m] (f : α → m Unit) : m Unit :=
-  StateT.run' (s := HashSet.empty) do
+  StateT.run' (s := {}) do
     for v in g.vertices do
       visitVertex v
 where
-  visitVertex (v : α) : StateT (Lean.HashSet α) m Unit := do
+  visitVertex (v : α) : StateT (Std.HashSet α) m Unit := do
     let vs ← get
     if vs.contains v then
       return
@@ -49,11 +49,11 @@ where
     f v
 
 partial def orderedDfs [Monad m] (vs : List α) (f : α → m Unit) : m Unit :=
-  StateT.run' (s := HashSet.empty) do
+  StateT.run' (s := {}) do
     for v in vs do
       visitVertex v
 where
-  visitVertex (v : α) : StateT (Lean.HashSet α) m Unit := do
+  visitVertex (v : α) : StateT (Std.HashSet α) m Unit := do
     let vs ← get
     if vs.contains v then
       return
@@ -62,7 +62,7 @@ where
       visitVertex u
     f v
 
-open Format in
+open Std.Format in
 protected def format [ToFormat α] [ToFormat β] : Format :=
   bracket "{" (joinSep (g.vertices.map formatVertex) ("," ++ line)) "}"
 where

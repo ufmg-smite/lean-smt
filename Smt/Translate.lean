@@ -9,7 +9,6 @@ import Lean
 
 import Smt.Attribute
 import Smt.Translate.Term
-import Smt.Util
 
 /-- Return true iff `e` contains a free variable which satisfies `p`. -/
 @[inline] private def Lean.Expr.hasAnyFVar' [Monad m] (e : Expr) (p : FVarId → m Bool) : m Bool :=
@@ -33,20 +32,20 @@ open Attribute Term
 structure TranslationM.State where
   /-- Constants that the translated result depends on. We propagate these upwards during translation
   in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
-  depConstants : NameSet := .empty
+  depConstants : NameSet := {}
   /-- Free variables that the translated result depends on. We propagate these upwards during translation
   in order to build a dependency graph. The value is reset at the `translateExpr` entry point. -/
-  depFVars : FVarIdSet := .empty
+  depFVars : FVarIdSet := {}
   /-- Free variables introduced during translation (from binder expressions). Those should NOT be
   propegated upwards during translation. -/
-  localFVars : FVarIdSet := .empty
+  localFVars : FVarIdSet := {}
   /-- Memoizes `applyTranslators?` calls together with what they add to `depConstants` and `depFVars`. -/
-  cache : HashMap Expr (Option (Term × NameSet × FVarIdSet)) := .empty
+  cache : Std.HashMap Expr (Option (Term × NameSet × FVarIdSet)) := {}
   /-- A mapping from a scopped name to a suffix index that makes it unique. This field does not handle
   scopping, which should be handled by `withScopedName` -/
-  scopedNames : HashMap Name Nat := .empty
+  scopedNames : Std.HashMap Name Nat := {}
   /-- A mapping from fvars to unique names. -/
-  uniqueFVarNames : HashMap FVarId String := .empty
+  uniqueFVarNames : Std.HashMap FVarId String := {}
 
 abbrev TranslationM := StateT TranslationM.State MetaM
 
@@ -63,7 +62,7 @@ namespace Translator
 
 private unsafe def getTranslatorsUnsafe : MetaM (List (Translator × Name)) := do
   let env ← getEnv
-  let names := ((smtExt.getState env).findD ``Translator {}).toList
+  let names := ((smtExt.getState env).getD ``Translator {}).toList
   -- trace[smt.attr] "Translators: {names}"
   let mut translators := []
   for name in names do
@@ -79,7 +78,7 @@ opaque getTranslators : MetaM (List (Translator × Name))
 
 /-- Return a cached translation of `e` if found, otherwise run `k e` and cache the result. -/
 def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
-  match (← get).cache.find? e with
+  match (← get).cache[e]? with
   | some (some (tm, depConsts, depFVars)) =>
     modify fun st => { st with
       depConstants := st.depConstants.union depConsts
@@ -105,7 +104,7 @@ def withScopedName (n : Name) (b : Expr) (k : Name → TranslationM α) : Transl
   let mut n' := n
   let mut scopedNames := state.scopedNames
   while ← b.hasAnyFVar' (·.getUserName >>= (return · == n')) do
-    let i := scopedNames.findD n 1
+    let i := scopedNames.getD n 1
     n' := n.appendIndexAfter i
     scopedNames := scopedNames.insert n (i + 1)
   set { state with scopedNames := scopedNames }
@@ -143,7 +142,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
           return symbolT (← fv.getUserName).toString
         else
           modify fun st => { st with depFVars := st.depFVars.insert fv }
-          match (← get).uniqueFVarNames.find? fv with
+          match (← get).uniqueFVarNames[fv]? with
           | some n => return symbolT n
           | none   => return symbolT (← fv.getUserName).toString
       | const nm _ =>

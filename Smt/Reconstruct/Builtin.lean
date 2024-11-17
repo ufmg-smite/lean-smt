@@ -30,7 +30,7 @@ def getFVarExpr! (n : Name) : MetaM Expr := do
   | none   => throwError "unknown free variable '{n}'"
 
 def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
-  match (← get).userNames.find? n with
+  match (← get).userNames[n]? with
   | some fv => return .fvar fv
   | none   => match (← getLCtx).findFromUserName? n.toName with
     | some d => return d.toExpr

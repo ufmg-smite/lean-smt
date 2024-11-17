@@ -14,12 +14,12 @@ open Lean
 /-- An extension to Lean's runtime environment to support SMT attributes.
     Maintains a set of function declarations for the `smt` tactic to utilize
     while generating the SMT query. -/
-abbrev SmtExtension := SimpleScopedEnvExtension (Name × Name) (HashMap Name (HashSet Name))
+abbrev SmtExtension := SimpleScopedEnvExtension (Name × Name) (Std.HashMap Name (Std.HashSet Name))
 
 /-- Adds a declaration to the set of function declarations maintained by the SMT
     environment extension. -/
-def addSmtEntry (d : HashMap Name (HashSet Name)) (e : (Name × Name)) :=
-  d.insert e.fst ((d.findD e.fst {}).insert e.snd)
+def addSmtEntry (d : Std.HashMap Name (Std.HashSet Name)) (e : (Name × Name)) :=
+  d.insert e.fst ((d.getD e.fst {}).insert e.snd)
 
 initialize smtExt : SmtExtension ← registerSimpleScopedEnvExtension {
   name     := `SmtExt

@@ -3,8 +3,8 @@ goal: a.add b = b.add a
 query:
 (define-sort MyInt () Int)
 (define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
-(declare-const a MyInt)
 (declare-const b MyInt)
+(declare-const a MyInt)
 (assert (distinct (MyInt.add a b) (MyInt.add b a)))
 (check-sat)
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'

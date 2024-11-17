@@ -20,7 +20,7 @@ open Lean hiding Command
 open Elab Tactic Qq
 open Smt Translate Query Reconstruct Util
 
-def genUniqueFVarNames : MetaM (HashMap FVarId String × HashMap String FVarId) := do
+def genUniqueFVarNames : MetaM (Std.HashMap FVarId String × Std.HashMap String FVarId) := do
   let lCtx ← getLCtx
   let st : NameSanitizerState := { options := {}}
   let (lCtx, _) := (lCtx.sanitizeNames st).run
@@ -29,7 +29,7 @@ def genUniqueFVarNames : MetaM (HashMap FVarId String × HashMap String FVarId) 
     let m₂ := m₂.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId
     (m₁, m₂)
 
-def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : HashMap FVarId String) : MetaM (List Command) := do
+def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : Std.HashMap FVarId String) : MetaM (List Command) := do
   let goalId ← Lean.mkFreshMVarId
   Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g =>
   Query.generateQuery g hs fvNames
