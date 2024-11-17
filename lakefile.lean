@@ -14,7 +14,6 @@ def libcpp : String :=
   else "libstdc++.so.6"
 
 package smt where
-  precompileModules := true
   moreLeanArgs := #[s!"--load-dynlib={libcpp}"]
   moreGlobalServerArgs := #[s!"--load-dynlib={libcpp}"]
 
