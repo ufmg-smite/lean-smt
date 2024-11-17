@@ -131,7 +131,7 @@ elab "extract_def" i:ident : tactic => do
   let _ ← addEqnDefForConst nm
 
 /-- Specialize an equational definition via partial evaluation. See `specialize_def`. -/
-def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : HashSet Name := {})
+def specializeEqnDef (x : FVarId) (args : Array Expr) (opaqueConsts : Std.HashSet Name := {})
     : TacticM FVarId := do
   withMainContext do
     let eqn ← inferType (mkFVar x)
@@ -193,14 +193,14 @@ open Lean Meta Elab Tactic in
   | `(tactic|specialize_def $i [ $ts,* ]) => go i ts {}
   | `(tactic|specialize_def $i [ $ts,* ] blocking [ $bs,* ]) =>
     withMainContext do
-      let opaqueConsts ← bs.getElems.foldlM (init := HashSet.empty) fun cs b => do
+      let opaqueConsts ← bs.getElems.foldlM (init := {}) fun cs b => do
         match ← elabTerm b none with
         | .const nm _ => return cs.insert nm
         | .fvar fv    => return cs.insert (← fv.getDecl).userName
         | _           => throwError "expected a (local) constant, got{indentD b}"
       go i ts opaqueConsts
   | stx => throwError "unexpected syntax {stx}"
-where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : HashSet Name) : TacticM Unit :=
+where go (i : TSyntax `ident) (ts : TSyntaxArray `term) (opaqueConsts : Std.HashSet Name) : TacticM Unit :=
   withMainContext do
     let nm := i.getId
     let ld ← getLocalDeclFromUserName (eqnDefName nm)

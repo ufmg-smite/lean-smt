@@ -303,12 +303,12 @@ end PolyNorm.Expr
 
 open Lean Qq
 
-partial def genCtx (e : Q(Int)) : StateT (Array Q(Int) × HashSet Q(Int)) MetaM Unit := do
+partial def genCtx (e : Q(Int)) : StateT (Array Q(Int) × Std.HashSet Q(Int)) MetaM Unit := do
   if !(← get).snd.contains e then
     go
     modify fun (es, cache) => (es, cache.insert e)
 where
-  go : StateT (Array Q(Int) × HashSet Q(Int)) MetaM Unit := do
+  go : StateT (Array Q(Int) × Std.HashSet Q(Int)) MetaM Unit := do
   match e with
   | ~q(OfNat.ofNat $x) => pure ()
   | ~q(-$x)            => genCtx x
@@ -317,15 +317,15 @@ where
   | ~q($x * $y)        => genCtx x >>= fun _ => genCtx y
   | _                  => if !(← get).fst.contains e then modify fun (es, cache) => (es.push e, cache)
 
-partial def toQPolyNormExpr (ctx : Q(PolyNorm.Context)) (es : Array Q(Int)) (e : Q(Int)) (cache : HashMap Expr (Expr × Expr)) :
-  MetaM (HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do
-  match cache.find? e with
+partial def toQPolyNormExpr (ctx : Q(PolyNorm.Context)) (es : Array Q(Int)) (e : Q(Int)) (cache : Std.HashMap Expr (Expr × Expr)) :
+  MetaM (Std.HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do
+  match cache.get? e with
   | some (e, h) => return ⟨cache, e, h⟩
   | none   =>
     let ⟨cache, o, h⟩ ← go
     return ⟨cache.insert e (o, h), o, h⟩
 where
-  go : MetaM (HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do match e with
+  go : MetaM (Std.HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do match e with
     | ~q(OfNat.ofNat $x) =>
       pure ⟨cache, q(.val (@OfNat.ofNat Int $x _)), q(rfl)⟩
     | ~q(-$x) =>

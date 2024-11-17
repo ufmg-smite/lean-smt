@@ -58,10 +58,10 @@ theorem neg_lt_neg (h : a < b) : -a > -b := by
 theorem neg_le_neg (h : a ≤ b) : -a ≥ -b := by
   sorry
 
-theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c.floor := by
+theorem int_tight_ub (h : i < c) : i ≤ c.floor := by
   sorry
 
-theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.ceil := by
+theorem int_tight_lb (h : i > c) : i ≥ c.ceil := by
   sorry
 
 theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by

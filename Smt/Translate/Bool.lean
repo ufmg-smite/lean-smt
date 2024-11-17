@@ -21,8 +21,12 @@ open Translator Term
 @[smt_translate] def translateBool : Translator := fun (e : Q(Bool)) => match e with
   | ~q(true)              => return symbolT "true"
   | ~q(false)             => return symbolT "false"
+  | ~q(!$x)               => return appT (symbolT "not") (← applyTranslators! x)
   | ~q(($x : Bool) == $y) => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
   | ~q(($x : Bool) != $y) => return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x && $y)          => return mkApp2 (symbolT "and") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x || $y)          => return mkApp2 (symbolT "or") (← applyTranslators! x) (← applyTranslators! y)
+  | ~q($x ^^ $y)         => return mkApp2 (symbolT "xor") (← applyTranslators! x) (← applyTranslators! y)
   | _                     => return none
 
 @[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with

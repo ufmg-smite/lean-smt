@@ -54,8 +54,8 @@ def countConst (e : Expr) (c : Name) : Nat :=
   visit e
 
 /-- Set of constants defined by SMT-LIB. -/
-def smtConsts : HashSet String :=
-  List.foldr (fun c s => s.insert c) HashSet.empty
+def smtConsts : Std.HashSet String :=
+  List.foldr (fun c s => s.insert c) Std.HashSet.empty
   [
     "=",
     "distinct",

@@ -289,7 +289,7 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let ts := pf.getResult[0]!.getChildren
   let mut hs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
-  let mut map : HashMap cvc5.Term Nat := {}
+  let mut map : Std.HashMap cvc5.Term Nat := {}
   for h : i in [0:ts.size] do
     let t := ts[i]'(h.right)
     let p : Q(Prop) ← reconstructTerm t
@@ -303,43 +303,43 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let ps : Q(List Prop) ← ts.foldrM f q([])
   let q : Q(Prop) ← reconstructTerm t
   let h : Q(impliesN $ps $q) ← Meta.withLocalDeclsD hs fun hs => do
-    let h : Q($q) ← if ts[map.find! vs[0]!]!.getKind == .NOT then
+    let h : Q($q) ← if ts[map[vs[0]!]!]!.getKind == .NOT then
         let a : Q(Int) ← reconstructTerm vs[0]!
-        let ha : Q($a ≠ 0) := hs[map.find! vs[0]!]!
+        let ha : Q($a ≠ 0) := hs[map[vs[0]!]!]!
         go vs ts hs map .GT q($a * $a) q(Int.mul_sign₀ $ha) 2
       else
         let a : Q(Int) ← reconstructTerm vs[0]!
-        go vs ts hs map ts[map.find! vs[0]!]!.getKind a hs[map.find! vs[0]!]! 1
+        go vs ts hs map ts[map[vs[0]!]!]!.getKind a hs[map[vs[0]!]!]! 1
     Meta.mkLambdaFVars hs h
   addThm q(andN $ps → $q) q(Builtin.scopes $h)
 where
   go vs ts hs map ka (a : Q(Int)) (ha : Expr) i : ReconstructM Expr := do
     if hi : i < vs.size then
       let b : Q(Int) ← reconstructTerm vs[i]
-      let k := ts[map.find! vs[i]]!.getKind
+      let k := ts[map[vs[i]]!]!.getKind
       if ka == .LT && k == .LT then
         let ha : Q($a < 0) := ha
-        let hb : Q($b < 0) := hs[map.find! vs[i]]!
+        let hb : Q($b < 0) := hs[map[vs[i]]!]!
         go vs ts hs map .GT q($a * $b) q(Int.mul_sign₁ $ha $hb) (i + 1)
       else if ka == .LT && k == .NOT then
         let ha : Q($a < 0) := ha
-        let hb : Q($b ≠ 0) := hs[map.find! vs[i]]!
+        let hb : Q($b ≠ 0) := hs[map[vs[i]]!]!
         go vs ts hs map .LT q($a * $b * $b) q(Int.mul_sign₂ $ha $hb) (i + 2)
       else if ka == .LT && k == .GT then
         let ha : Q($a < 0) := ha
-        let hb : Q($b > 0) := hs[map.find! vs[i]]!
+        let hb : Q($b > 0) := hs[map[vs[i]]!]!
         go vs ts hs map .LT q($a * $b) q(Int.mul_sign₃ $ha $hb) (i + 1)
       else if ka == .GT && k == .LT then
         let ha : Q($a > 0) := ha
-        let hb : Q($b < 0) := hs[map.find! vs[i]]!
+        let hb : Q($b < 0) := hs[map[vs[i]]!]!
         go vs ts hs map .LT q($a * $b) q(Int.mul_sign₄ $ha $hb) (i + 1)
       else if ka == .GT && k == .NOT then
         let ha : Q($a > 0) := ha
-        let hb : Q($b ≠ 0) := hs[map.find! vs[i]]!
+        let hb : Q($b ≠ 0) := hs[map[vs[i]]!]!
         go vs ts hs map .GT q($a * $b * $b) q(Int.mul_sign₅ $ha $hb) (i + 2)
       else if ka == .GT && k == .GT then
         let ha : Q($a > 0) := ha
-        let hb : Q($b > 0) := hs[map.find! vs[i]]!
+        let hb : Q($b > 0) := hs[map[vs[i]]!]!
         go vs ts hs map .GT q($a * $b) q(Int.mul_sign₆ $ha $hb) (i + 1)
       else
         throwError "[mul_sign]: invalid kinds: {ka}, {k}"
@@ -400,7 +400,7 @@ where
     if !pf.getResult[0]!.getSort.isInteger then return none
     let a : Q(Int) ← reconstructTerm pf.getResult[0]!
     let b : Q(Int) ← reconstructTerm pf.getResult[1]!
-    addTac q($a = $b) Int.polyNorm
+    addTac q($a = $b) Int.nativePolyNorm
   | .ARITH_POLY_NORM_REL =>
     if !pf.getResult[0]![0]!.getSort.isInteger then return none
     let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue

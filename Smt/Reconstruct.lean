@@ -16,9 +16,9 @@ open Lean
 open Attribute
 
 structure Reconstruct.state where
-  userNames : HashMap String FVarId
-  termCache : HashMap cvc5.Term Expr
-  proofCache : HashMap cvc5.Proof Expr
+  userNames : Std.HashMap String FVarId
+  termCache : Std.HashMap cvc5.Term Expr
+  proofCache : Std.HashMap cvc5.Proof Expr
   count : Nat
   currAssums : Array Expr
   skippedGoals : Array MVarId
@@ -35,7 +35,7 @@ namespace Reconstruct
 
 private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (List (rcons × Name)) := do
   let env ← getEnv
-  let names := ((smtExt.getState env).findD n {}).toList
+  let names := ((smtExt.getState env).getD n {}).toList
   let mut reconstructors := []
   for name in names do
     let fn ← IO.ofExcept <| Id.run <| ExceptT.run <|
@@ -75,7 +75,7 @@ def reconstructTerm : cvc5.Term → ReconstructM Expr := withTermCache fun t => 
     go rs t
 where
   withTermCache (r : cvc5.Term → ReconstructM Expr) (t : cvc5.Term) : ReconstructM Expr := do
-    match (← get).termCache.find? t with
+    match (← get).termCache[t]? with
     -- TODO: cvc5's global bound variables mess up the cache. Find a better fix.
     | some e => return e
     | none   => reconstruct r t
@@ -98,7 +98,7 @@ def withNewProofCache (k : ReconstructM α) : ReconstructM α := do
   return r
 
 def withProofCache (r : cvc5.Proof → ReconstructM Expr) (pf : cvc5.Proof) : ReconstructM Expr := do
-  match (← get).proofCache.find? pf with
+  match (← get).proofCache[pf]? with
   | some e => return e
   | none   => reconstruct r pf
 where
@@ -181,11 +181,15 @@ def traceReconstructProof (r : Except Exception (Expr × Expr × List MVarId)) :
   | _     => m!"{bombEmoji}"
 
 open Qq in
-partial def reconstructProof (pf : cvc5.Proof) (fvNames : HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
+partial def reconstructProof (pf : cvc5.Proof) (fvNames : Std.HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
   let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨fvNames, {}, {}, 0, #[], #[]⟩
-  let Prod.mk (h : Q(True → $p)) (.mk _ _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
-  return (p, q($h trivial), mvs.toList)
+  let (h, .mk _ _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
+  if pf.getArguments.isEmpty then
+    let h : Q(True → $p) ← pure h
+    return (p, q($h trivial), mvs.toList)
+  else
+    return (p, h, mvs.toList)
 
 open cvc5 in
 def traceSolve (r : Except Exception (Except SolverError Proof)) : MetaM MessageData :=
@@ -233,7 +237,7 @@ open Lean.Elab Tactic in
         let (_, mv) ← mv.intro1
         replaceMainGoal (mv :: mvs)
 where
-  getFVarNames : MetaM (HashMap String FVarId) := do
+  getFVarNames : MetaM (Std.HashMap String FVarId) := do
     let lCtx ← getLCtx
     return lCtx.getFVarIds.foldl (init := {}) fun m fvarId =>
       m.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId

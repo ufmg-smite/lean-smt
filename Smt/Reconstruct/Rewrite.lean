@@ -33,8 +33,8 @@ def smtRw (mv : MVarId) (op : Expr) (id : Expr) (rr : Expr) (xss : Array (Array 
   let lvl ← Meta.getLevel α
   let h₁ ← Meta.mkFreshExprMVar (mkApp3 (.const ``Eq [lvl]) α l ml)
   let h₃ ← Meta.mkFreshExprMVar (mkApp3 (.const ``Eq [lvl]) α mr r)
-  Meta.AC.rewriteUnnormalized h₁.mvarId!
-  Meta.AC.rewriteUnnormalized h₃.mvarId!
+  Meta.AC.rewriteUnnormalizedRefl h₁.mvarId!
+  Meta.AC.rewriteUnnormalizedRefl h₃.mvarId!
   mv.assign (mkApp8 (.const ``Eq.trans₂ [lvl]) α l ml mr r h₁ h₂ h₃)
 
 syntax inner := "[" term,* "]"

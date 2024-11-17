@@ -239,7 +239,7 @@ private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : A
    =========================== -/
 
 /-- Auxiliary function for reducing `Quot.lift` and `Quot.ind` applications. -/
-private def reduceQuotRec (recVal  : QuotVal) (recLvls : List Level) (recArgs : Array Expr)
+private def reduceQuotRec (recVal  : QuotVal) (recArgs : Array Expr)
     (failK : Unit → ReductionM α) (successK : Expr → ReductionM α)
     : ReductionM α :=
   let process (majorPos argPos : Nat) : ReductionM α :=
@@ -583,7 +583,7 @@ where
               matchConstAux f (fun _ => return e) fun cinfo lvls =>
                 match cinfo with
                 | ConstantInfo.recInfo rec    => reduceRec rec lvls revArgs.reverse (fun _ => return e) go
-                | ConstantInfo.quotInfo rec   => reduceQuotRec rec lvls revArgs.reverse (fun _ => return e) go
+                | ConstantInfo.quotInfo rec   => reduceQuotRec rec revArgs.reverse (fun _ => return e) go
                 | c@(ConstantInfo.defnInfo _) => do
                   if (← isAuxDef c.name) then
                     deltaBetaDefinition c lvls revArgs (fun _ => return e) go
@@ -850,7 +850,7 @@ def reduceRecMatcher? (e : Expr) : ReductionM (Option Expr) := do
     | _ => matchConstAux e.getAppFn (fun _ => pure none) fun cinfo lvls => do
       match cinfo with
       | ConstantInfo.recInfo «rec»  => reduceRec «rec» lvls e.getAppArgs (fun _ => pure none) (fun e => pure (some e))
-      | ConstantInfo.quotInfo «rec» => reduceQuotRec «rec» lvls e.getAppArgs (fun _ => pure none) (fun e => pure (some e))
+      | ConstantInfo.quotInfo «rec» => reduceQuotRec «rec» e.getAppArgs (fun _ => pure none) (fun e => pure (some e))
       | c@(ConstantInfo.defnInfo _) =>
         if (← isAuxDef c.name) then
           deltaBetaDefinition c lvls e.getAppRevArgs (fun _ => pure none) (fun e => pure (some e))

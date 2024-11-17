@@ -26,8 +26,8 @@ structure QueryBuilderM.Config where
   toDefine : List Expr := []
 
 structure QueryBuilderM.State where
-  graph : Graph Expr Unit := .empty
-  commands : HashMap Expr Command := .empty
+  graph : Graph Expr Unit := {}
+  commands : Std.HashMap Expr Command := {}
 
 abbrev QueryBuilderM := ReaderT QueryBuilderM.Config <| StateT QueryBuilderM.State TranslationM
 
@@ -159,7 +159,7 @@ def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
   -- Otherwise it is a local/global declaration with name `nm`.
   let nm ← match e with
     | fvar id .. =>
-      match (← (get : TranslationM _)).uniqueFVarNames.find? id with
+      match (← (get : TranslationM _)).uniqueFVarNames[id]? with
       | some nm => pure nm
       | none    => pure (← id.getUserName).toString
     | const n .. => pure n.toString
@@ -251,12 +251,12 @@ def addCommand (cmd : Command) (cmds : List Command) : MetaM (List Command) := d
   | _ => pure ()
   return cmds
 
-def emitVertex (cmds : HashMap Expr Command) (e : Expr) : StateT (List Command) MetaM Unit := do
+def emitVertex (cmds : Std.HashMap Expr Command) (e : Expr) : StateT (List Command) MetaM Unit := do
   trace[smt.translate.query] "emitting {e}"
-  let some cmd := cmds.find? e | throwError "no command was computed for {e}"
+  let some cmd := cmds[e]? | throwError "no command was computed for {e}"
   set (← addCommand cmd (← get))
 
-def generateQuery (goal : Expr) (hs : List Expr) (fvNames : HashMap FVarId String) : MetaM (List Command) :=
+def generateQuery (goal : Expr) (hs : List Expr) (fvNames : Std.HashMap FVarId String) : MetaM (List Command) :=
   withTraceNode `smt.translate.query (fun _ => pure .nil) do
     trace[smt.translate.query] "Goal: {← inferType goal}"
     trace[smt.translate.query] "Provided Hints: {hs}"

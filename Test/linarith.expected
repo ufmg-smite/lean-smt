@@ -1,3 +1,21 @@
+Test/linarith.lean:10:0: error: application type mismatch
+  @Smt.Reconstruct.Real.int_tight_ub 1
+argument has type
+  ℤ
+but function has type
+  ∀ {c : ℝ} {i : ℤ}, ↑i < c → i ≤ ⌊c⌋
+Test/linarith.lean:19:0: error: application type mismatch
+  @Smt.Reconstruct.Real.int_tight_ub 0
+argument has type
+  ℤ
+but function has type
+  ∀ {c : ℝ} {i : ℤ}, ↑i < c → i ≤ ⌊c⌋
+Test/linarith.lean:22:0: error: application type mismatch
+  @Smt.Reconstruct.Real.int_tight_ub 0
+argument has type
+  ℤ
+but function has type
+  ∀ {c : ℝ} {i : ℤ}, ↑i < c → i ≤ ⌊c⌋
 Test/linarith.lean:34:9: warning: unused variable `e`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:53:0: warning: declaration uses 'sorry'
@@ -19,3 +37,9 @@ Test/linarith.lean:168:34: warning: unused variable `z`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:169:5: warning: unused variable `h5`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
+Test/linarith.lean:173:0: error: application type mismatch
+  @Smt.Reconstruct.Real.int_tight_ub 0
+argument has type
+  ℤ
+but function has type
+  ∀ {c : ℝ} {i : ℤ}, ↑i < c → i ≤ ⌊c⌋
