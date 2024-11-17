@@ -155,6 +155,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
     addThm q($t / $s = $t / $s) q(@Rewrite.div_total $t $s $h)
+  | .ARITH_DIV_TOTAL_ZERO =>
+    let x : Q(Real) ← reconstructTerm pf.getArguments[1]!
+    addThm q($x / 0 = 0) q(@Rewrite.div_total_zero $x)
   | .ARITH_ELIM_GT =>
     if pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
