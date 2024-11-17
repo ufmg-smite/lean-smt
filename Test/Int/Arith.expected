@@ -18,12 +18,10 @@ h : 0 < m
 
 n m : Int
 h : 0 < m
-⊢ 0 < m → ¬n % m < m → n % m = n - m * (n / m)
-
-n m : Int
-h : 0 < m
 ⊢ 0 < m →
-    ¬n % m < m → (m > 0 → m * (n / m) ≤ n ∧ n < m * (n / m + 1)) ∧ (m < 0 → m * (n / m) ≤ n ∧ n < m * (n / m + -1))
+    ¬n % m < m →
+      n % m = n - m * (n / m) ∧
+        (m > 0 → m * (n / m) ≤ n ∧ n < m * (n / m + 1)) ∧ (m < 0 → m * (n / m) ≤ n ∧ n < m * (n / m + -1))
 
 n m : Int
 h : 0 < m

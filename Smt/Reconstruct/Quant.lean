@@ -29,10 +29,10 @@ open Lean Qq
 
 def getVariableName (t : cvc5.Term) : Name :=
   if t.hasSymbol then
-    if t.getSymbol.toName == .anonymous then
-      Name.mkSimple t.getSymbol
+    if t.getSymbol!.toName == .anonymous then
+      Name.mkSimple t.getSymbol!
     else
-      t.getSymbol.toName
+      t.getSymbol!.toName
   else Name.num `x t.getId
 
 @[smt_term_reconstruct] def reconstructQuant : TermReconstructor := fun t => do match t.getKind with
@@ -59,10 +59,10 @@ def getVariableName (t : cvc5.Term) : Name :=
       Meta.mkLambdaFVars xs b
   | .HO_APPLY =>
     return (← reconstructTerm t[0]!).app (← reconstructTerm t[1]!)
-  | .SKOLEM => match t.getSkolemId with
+  | .SKOLEM => match t.getSkolemId! with
     | .QUANTIFIERS_SKOLEMIZE =>
-      let q := t.getSkolemIndices[0]!
-      let n := t.getSkolemIndices[1]!.getIntegerValue.toNat
+      let q := t.getSkolemIndices![0]!
+      let n := t.getSkolemIndices![1]!.getIntegerValue!.toNat
       let es ← reconstructForallSkolems q n
       return es[n]!
     | _ => return none

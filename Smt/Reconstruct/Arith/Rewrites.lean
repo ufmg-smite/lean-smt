@@ -24,7 +24,7 @@ theorem arith_div_by_const_elim_real_pos {t c₁ c₂ : Real} : t / (c₁ / c₂
 theorem arith_div_by_const_elim_real_neg {t c₁ c₂ : Real} : t / (-c₁ / c₂) = t * (-c₂ / c₁) :=
   div_eq_mul_one_div t (-c₁ / c₂) ▸ one_div_div (-c₁) c₂ ▸ div_neg c₂ ▸ neg_div c₁ c₂ ▸ rfl
 
--- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/arith/rewrites
+-- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
 
 variable {α : Type} [h : LinearOrderedRing α]
 

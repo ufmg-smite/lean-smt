@@ -7,7 +7,7 @@ Authors: Abdalrhman Mohamed
 
 namespace Smt.Reconstruct.Builtin
 
--- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/builtin/rewrites
+-- https://github.com/cvc5/cvc5/blob/main/src/theory/builtin/rewrites
 
 -- ITE
 

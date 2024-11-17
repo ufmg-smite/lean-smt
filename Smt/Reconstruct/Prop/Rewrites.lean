@@ -9,7 +9,7 @@ import Smt.Reconstruct.Prop.Core
 
 namespace Smt.Reconstruct.Prop
 
--- https://github.com/cvc5/cvc5/blob/proof-new/src/theory/booleans/rewrites
+-- https://github.com/cvc5/cvc5/blob/main/src/theory/booleans/rewrites
 
 open Function
 
@@ -58,9 +58,14 @@ theorem bool_and_dup : (xs ∧ b ∧ ys ∧ b ∧ zs) = (xs ∧ b ∧ ys ∧ zs)
 
 theorem bool_and_conf : (xs ∧ w ∧ ys ∧ ¬w ∧ zs) = False :=
   propext ⟨fun ⟨_, hw, _, hnw, _⟩ => absurd hw hnw, False.elim⟩
+theorem bool_and_conf2 : (xs ∧ ¬w ∧ ys ∧ w ∧ zs) = False :=
+  propext ⟨fun ⟨_, hnw, _, hw, _⟩ => absurd hw hnw, False.elim⟩
 theorem bool_or_taut : (xs ∨ w ∨ ys ∨ ¬w ∨ zs) = True := propext $ .intro
   (const _ trivial)
   (eq_true (Classical.em w) ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
+theorem bool_or_taut2 : (xs ∨ ¬w ∨ ys ∨ w ∨ zs) = True := propext $ .intro
+  (const _ trivial)
+  (eq_true (Classical.em w).symm ▸ (·.elim (Or.inr ∘ Or.inl) (Or.inr ∘ Or.inr ∘ Or.inr ∘ Or.inl)))
 
 theorem bool_or_de_morgan : (¬(x ∨ y ∨ zs)) = (¬x ∧ ¬(y ∨ zs)) :=
   propext not_or
@@ -125,6 +130,13 @@ theorem ite_then_lookahead_self [h : Decidable c] : ite c c x = ite c True x := 
 theorem ite_else_lookahead_self [h : Decidable c] : ite c x c = ite c x False := h.byCases
   (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
   (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_false hnc)
+
+theorem ite_then_lookahead_not_self [h : Decidable c] : ite c (¬c) x = ite c False x := h.byCases
+  (fun hc => if_pos hc ▸ if_pos hc ▸ eq_false (not_not_intro hc))
+  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+theorem ite_else_lookahead_not_self [h : Decidable c] : ite c x (¬c) = ite c x True := h.byCases
+  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
+  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_true hnc)
 
 theorem bool_not_ite_elim [h : Decidable c] : (¬ite c x y) = ite c (¬x) (¬y) := h.byCases
   (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)

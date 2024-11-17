@@ -23,11 +23,11 @@ open Qq
   | _          => return none
 
 @[smt_term_reconstruct] def reconstructRat : TermReconstructor := fun t => do match t.getKind with
-  | .SKOLEM => match t.getSkolemId with
+  | .SKOLEM => match t.getSkolemId! with
     | .DIV_BY_ZERO => return q(fun (x : Rat) => x / 0)
     | _ => return none
   | .CONST_RATIONAL =>
-    let c : Lean.Rat := t.getRationalValue
+    let c : Lean.Rat := t.getRationalValue!
     let num : Q(Rat) := mkRatLit c.num.natAbs
     if c.den == 1 then
       if c.num ≥ 0 then
@@ -107,6 +107,12 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
     let c : Q(Rat) ← reconstructTerm pf.getResult[0]![1]!
     addThm q($t / $c = $t * (1 / $c)) q(@Rewrite.div_by_const_elim $t $c)
+  | .ARITH_POW_ELIM =>
+    if pf.getResult[0]![0]!.getSort.isInteger then return none
+    let x : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
+    let c : Q(Nat) ← reconstructTerm pf.getResult[0]![1]!
+    let y : Q(Rat) ← reconstructTerm pf.getResult[1]!
+    addThm q($x ^ $c = $y) q(Eq.refl ($x ^ $c))
   | .ARITH_PLUS_ZERO =>
     if pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -124,19 +130,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let s : Q(Rat) ← reconstructTerm pf.getArguments[2]!
     let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
     addThm q($t / $s = $t / $s) q(@Rewrite.div_total $t $s $h)
-  | .ARITH_NEG_NEG_ONE =>
-    if pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Rat) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-1 * (-1 * $t) = $t) q(@Rewrite.neg_neg_one $t)
-  | .ARITH_ELIM_UMINUS =>
-    if pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Rat) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-$t = -1 * $t) q(@Rewrite.elim_uminus $t)
-  | .ARITH_ELIM_MINUS =>
-    if pf.getArguments[1]!.getSort.isInteger then return none
-    let t : Q(Rat) ← reconstructTerm pf.getArguments[1]!
-    let s : Q(Rat) ← reconstructTerm pf.getArguments[2]!
-    addThm q($t - $s = $t + -1 * $s) q(@Rewrite.elim_minus $t $s)
+  | .ARITH_DIV_TOTAL_ZERO =>
+    let x : Q(Rat) ← reconstructTerm pf.getArguments[1]!
+    addThm q($x / 0 = 0) q(@Rewrite.div_total_zero $x)
   | .ARITH_ELIM_GT =>
     if pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Rat) ← reconstructTerm pf.getArguments[1]!
@@ -190,14 +186,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Rat Rat Rat _) q(1 : Rat) q(@Rewrite.mult_dist) args)
-  | .ARITH_PLUS_CANCEL1 =>
-    if pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Rat Rat Rat _) q(0 : Rat) q(@Rewrite.plus_cancel1) args)
-  | .ARITH_PLUS_CANCEL2 =>
-    if pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Rat Rat Rat _) q(0 : Rat) q(@Rewrite.plus_cancel2) args)
   | .ARITH_ABS_ELIM =>
     if pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Rat) ← reconstructTerm pf.getArguments[1]!
@@ -385,7 +373,7 @@ where
     addTac q($a = $b) Rat.nativePolyNorm
   | .ARITH_POLY_NORM_REL =>
     if pf.getResult[0]![0]!.getSort.isInteger then return none
-    let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue
+    let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue!
     let cx : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
     let x₁ : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
     let x₂ : Q(Rat) ← reconstructTerm pf.getResult[0]![1]!
@@ -466,7 +454,7 @@ where
     let y : Q(Rat) ← reconstructTerm pf.getArguments[1]!
     let a : Q(Rat) ← reconstructTerm pf.getArguments[2]!
     let b : Q(Rat) ← reconstructTerm pf.getArguments[3]!
-    if pf.getArguments[4]!.getIntegerValue == -1 then
+    if pf.getArguments[4]!.getBooleanValue! == false then
       addThm q(($x * $y ≤ $b * $x + $a * $y - $a * $b) = ($x ≤ $a ∧ $y ≥ $b ∨ $x ≥ $a ∧ $y ≤ $b)) q(@Rat.mul_tangent_lower_eq $a $b $x $y)
     else
       addThm q(($x * $y ≥ $b * $x + $a * $y - $a * $b) = ($x ≤ $a ∧ $y ≤ $b ∨ $x ≥ $a ∧ $y ≥ $b)) q(@Rat.mul_tangent_upper_eq $a $b $x $y)

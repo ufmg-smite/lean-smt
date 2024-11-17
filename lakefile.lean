@@ -3,7 +3,7 @@ import Lake
 open Lake DSL
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "c97ff4cfc218c11af8c1598b8225a6fcc094f5cd"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "aff591ae23965f28f15d8a1437a06d9febb704b0"
 
 require mathlib from
   git "https://github.com/leanprover-community/mathlib4.git" @ "v4.13.0"
