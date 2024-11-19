@@ -56,11 +56,11 @@ theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c ≤ b + d := by
   rewrite [h₁, h₂]
   exact le_refl (b + d)
 
-theorem int_tight_ub {i : Int} (h : i < c) : i ≤ ⌊c⌋ :=
-  Int.le_floor.mpr (le_of_lt h)
+theorem int_tight_ub {i : Int} (h : i < c) : i ≤ ⌈c⌉ - 1 :=
+  Int.le_of_lt_add_one (Int.sub_add_cancel _ _ ▸ Int.lt_ceil.mpr h)
 
-theorem int_tight_lb {i : Int} (h : i > c) : i ≥ ⌈c⌉ :=
-  Int.ceil_le.mpr (le_of_lt h)
+theorem int_tight_lb {i : Int} (h : i > c) : i ≥ ⌊c⌋ + 1 :=
+  Int.add_one_le_of_lt (Int.floor_lt.mpr h)
 
 theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
   have tr := lt_trichotomy a b
