@@ -356,15 +356,17 @@ where
     if pf.getResult[0]!.getSort.isInteger then return none
     reconstructSumUB pf
   | .INT_TIGHT_UB =>
+    if pf.getChildren[0]!.getResult[1]!.getSort.isInteger then return none
     let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let c : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let h : Q($i < $c) ← reconstructProof pf.getChildren[0]!
-    addThm q($i ≤ ⌊$c⌋) q(@Real.int_tight_ub $c $i $h)
+    addThm q($i ≤ ⌈$c⌉ - 1) q(@Real.int_tight_ub $c $i $h)
   | .INT_TIGHT_LB =>
+    if pf.getChildren[0]!.getResult[1]!.getSort.isInteger then return none
     let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let c : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let h : Q($i > $c) ← reconstructProof pf.getChildren[0]!
-    addThm q($i ≥ ⌈$c⌉) q(@Real.int_tight_lb $c $i $h)
+    addThm q($i ≥ ⌊$c⌋ + 1) q(@Real.int_tight_lb $c $i $h)
   | .ARITH_TRICHOTOMY =>
     if pf.getResult[0]!.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm pf.getResult[0]!

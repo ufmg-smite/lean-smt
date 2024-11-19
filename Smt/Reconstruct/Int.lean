@@ -338,13 +338,13 @@ where
     if !pf.getResult[0]!.getSort.isInteger then return none
     reconstructSumUB pf
   | .INT_TIGHT_UB =>
-    if !pf.getResult[0]!.getSort.isInteger then return none
+    if !pf.getChildren[0]!.getResult[1]!.getSort.isInteger then return none
     let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let c : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let h : Q($i < $c) ← reconstructProof pf.getChildren[0]!
     addThm q($i ≤ $c - 1) q(@Int.int_tight_ub $c $i $h)
   | .INT_TIGHT_LB =>
-    if !pf.getResult[0]!.getSort.isInteger then return none
+    if !pf.getChildren[0]!.getResult[1]!.getSort.isInteger then return none
     let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
     let c : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let h : Q($i > $c) ← reconstructProof pf.getChildren[0]!
