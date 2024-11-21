@@ -13,26 +13,23 @@ open Function
 
 variable {t ts x xs : Int}
 
-theorem plus_zero : ts + 0 + ss = ts + ss :=
-  (Int.add_zero ts).symm ▸ rfl
-
 theorem mul_one : ts * 1 * ss = ts * ss :=
   (_root_.Int.mul_one ts).symm ▸ rfl
 theorem mul_zero : ts * 0 * ss = 0 :=
   (_root_.Int.mul_zero ts).symm ▸ (Int.zero_mul ss).symm ▸ rfl
 
-theorem int_div_total {t s : Int} : s ≠ 0 → t / s = t / s :=
+theorem div_total {t s : Int} : s ≠ 0 → t / s = t / s :=
   const _ rfl
-theorem int_div_total_one {t : Int} : t / 1 = t :=
+theorem div_total_one {t : Int} : t / 1 = t :=
   Int.ediv_one t
-theorem int_div_total_zero {t : Int} : t / 0 = 0 :=
+theorem div_total_zero {t : Int} : t / 0 = 0 :=
   Int.ediv_zero t
 
-theorem int_mod_total {t s : Int} : s ≠ 0 → t % s = t % s :=
+theorem mod_total {t s : Int} : s ≠ 0 → t % s = t % s :=
   const _ rfl
-theorem int_mod_total_one {t : Int} : t % 1 = 0 :=
+theorem mod_total_one {t : Int} : t % 1 = 0 :=
   Int.emod_one t
-theorem int_mod_total_zero {t : Int} : t % 0 = t :=
+theorem mod_total_zero {t : Int} : t % 0 = t :=
   Int.emod_zero t
 
 -- Eliminations
@@ -41,9 +38,9 @@ theorem elim_gt : (t > s) = ¬(t ≤ s) :=
   propext Int.not_le.symm
 theorem elim_lt : (t < s) = ¬(t ≥ s) :=
   propext Int.not_le.symm
-theorem elim_int_gt {t s : Int} : (t > s) = (t ≥ s + 1) :=
+theorem elim_gt_add_one {t s : Int} : (t > s) = (t ≥ s + 1) :=
   propext Int.lt_iff_add_one_le
-theorem elim_int_lt {t s : Int} : (t < s) = (s ≥ t + 1) :=
+theorem elim_lt_add_one {t s : Int} : (t < s) = (s ≥ t + 1) :=
   propext Int.lt_iff_add_one_le
 theorem elim_leq : (t ≤ s) = (s ≥ t) :=
   propext ge_iff_le
@@ -70,7 +67,7 @@ theorem refl_geq : (t ≥ t) = True :=
 theorem refl_gt : (t > t) = False :=
   propext ⟨(Int.lt_irrefl t), False.elim⟩
 
-theorem int_eq_elim {t s : Int} : (t = s) = (t ≥ s ∧ t ≤ s) :=
+theorem eq_elim {t s : Int} : (t = s) = (t ≥ s ∧ t ≤ s) :=
   propext ⟨(· ▸ And.intro (Int.le_refl t) (Int.le_refl t)), fun ⟨hst, hts⟩ => Int.le_antisymm hts hst⟩
 
 theorem plus_flatten : xs + (w + ys) + zs = xs + w + ys + zs :=

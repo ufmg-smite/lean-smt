@@ -100,13 +100,6 @@ example (x : Real) (h : 0 < x) : 0 < x/(2/3) := by
 
 example (a b c : Real) (h2 : b + 2 > 3 + b) : False := by
   smt [h2]
-  all_goals (ring_nf; simp)
-  norm_num
-
-example (a b c : Real) (h2 : b + 2 > 3 + b) : False := by
-  smt [h2]
-  all_goals (ring_nf; simp)
-  norm_num
 
 example (g v V c h : Real) (h1 : h = 0) (h2 : v = V) (h3 : V > 0) (h4 : g > 0)
     (h5 : 0 ≤ c) (h6 : c < 1) : v ≤ V := by
@@ -145,8 +138,8 @@ example (a : Real) (ha : 0 ≤ a) : 0 * 0 ≤ 2 * a := by
 example (x y : Real) (h : x < y) : x ≠ y := by
   smt [h]
 
--- example (x y : Real) (h : x < y) : ¬ x = y := by
---   smt [h]
+example (x y : Real) (h : x < y) : ¬ x = y := by
+  smt [h]
 
 -- example (x : Real) : id x ≥ x := by
 --   let idℝ := fun (x : Real) => x

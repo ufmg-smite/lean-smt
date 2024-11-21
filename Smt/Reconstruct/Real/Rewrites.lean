@@ -19,9 +19,9 @@ theorem div_by_const_elim_num_pos {t c : Real} : t / c = t * (1 / c) :=
   div_eq_mul_one_div t c
 theorem div_by_const_elim_num_neg {t c : Real} : t / -c = t * (-1 / c) :=
   div_eq_mul_one_div t (-c) ▸ div_neg (1 : Real) ▸ neg_div c 1 ▸ rfl
-theorem div_by_const_elim_real_pos {t c₁ c₂ : Real} : t / (c₁ / c₂) = t * (c₂ / c₁) :=
+theorem div_by_const_elim_pos {t c₁ c₂ : Real} : t / (c₁ / c₂) = t * (c₂ / c₁) :=
   div_eq_mul_one_div t (c₁ / c₂) ▸ one_div_div c₁ c₂ ▸ rfl
-theorem div_by_const_elim_real_neg {t c₁ c₂ : Real} : t / (-c₁ / c₂) = t * (-c₂ / c₁) :=
+theorem div_by_const_elim_neg {t c₁ c₂ : Real} : t / (-c₁ / c₂) = t * (-c₂ / c₁) :=
   div_eq_mul_one_div t (-c₁ / c₂) ▸ one_div_div (-c₁) c₂ ▸ div_neg c₂ ▸ neg_div c₁ c₂ ▸ rfl
 
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
