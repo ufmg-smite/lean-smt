@@ -71,15 +71,8 @@ example (x : Rat) (h : 0 < x) : 0 < x/2/3 := by
 example (x : Rat) (h : 0 < x) : 0 < x/(2/3) := by
   smt [h]
 
--- example (a b c : Rat) (h2 : b + 2 > 3 + b) : False := by
---   smt [h2]
---   all_goals (ring_nf; simp)
---   norm_num
-
--- example (a b c : Rat) (h2 : b + 2 > 3 + b) : False := by
---   smt [h2]
---   all_goals (ring_nf; simp)
---   norm_num
+example (a b c : Rat) (h2 : b + 2 > 3 + b) : False := by
+  smt [h2]
 
 example (g v V c h : Rat) (h1 : h = 0) (h2 : v = V) (h3 : V > 0) (h4 : g > 0)
     (h5 : 0 ≤ c) (h6 : c < 1) : v ≤ V := by

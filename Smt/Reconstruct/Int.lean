@@ -98,10 +98,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let c : Q(Nat) ← reconstructTerm pf.getResult[0]![1]!
     let y : Q(Int) ← reconstructTerm pf.getResult[1]!
     addThm q($x ^ $c = $y) q(Eq.refl ($x ^ $c))
-  | .ARITH_PLUS_ZERO =>
-    if !pf.getArguments[1]![0]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_zero) args)
   | .ARITH_MUL_ONE =>
     if !pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -114,24 +110,24 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
-    addThm q($t / $s = $t / $s) q(@Rewrite.int_div_total $t $s $h)
+    addThm q($t / $s = $t / $s) q(@Rewrite.div_total $t $s $h)
   | .ARITH_INT_DIV_TOTAL_ONE =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q($t / 1 = $t) q(@Rewrite.int_div_total_one $t)
+    addThm q($t / 1 = $t) q(@Rewrite.div_total_one $t)
   | .ARITH_INT_DIV_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q($t / 0 = 0) q(@Rewrite.int_div_total_zero $t)
+    addThm q($t / 0 = 0) q(@Rewrite.div_total_zero $t)
   | .ARITH_INT_MOD_TOTAL =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
-    addThm q($t % $s = $t % $s) q(@Rewrite.int_mod_total $t $s $h)
+    addThm q($t % $s = $t % $s) q(@Rewrite.mod_total $t $s $h)
   | .ARITH_INT_MOD_TOTAL_ONE =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q($t % 1 = 0) q(@Rewrite.int_mod_total_one $t)
+    addThm q($t % 1 = 0) q(@Rewrite.mod_total_one $t)
   | .ARITH_INT_MOD_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q($t % 0 = $t) q(@Rewrite.int_mod_total_zero $t)
+    addThm q($t % 0 = $t) q(@Rewrite.mod_total_zero $t)
   | .ARITH_ELIM_GT =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -145,11 +141,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_ELIM_INT_GT =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    addThm q(($t > $s) = ($t ≥ $s + 1)) q(@Rewrite.elim_int_gt $t $s)
+    addThm q(($t > $s) = ($t ≥ $s + 1)) q(@Rewrite.elim_gt_add_one $t $s)
   | .ARITH_ELIM_INT_LT =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    addThm q(($t < $s) = ($s ≥ $t + 1)) q(@Rewrite.elim_int_lt $t $s)
+    addThm q(($t < $s) = ($s ≥ $t + 1)) q(@Rewrite.elim_lt_add_one $t $s)
   | .ARITH_ELIM_LEQ =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -163,8 +159,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q((¬($t ≥ $s)) = ($s ≥ $t + 1)) q(@Rewrite.geq_tighten $t $s)
-  | .ARITH_GEQ_NORM1 =>
-    if !pf.getArguments[1]!.getSort.isInteger then return none
+  | .ARITH_GEQ_NORM1_INT =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Rewrite.geq_norm1 $t $s)
@@ -189,6 +184,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q(($t > $t) = False) q(@Rewrite.refl_gt $t)
+  | .ARITH_EQ_ELIM_INT =>
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q(($t = $s) = ($t ≥ $s ∧ $t ≤ $s)) q(@Rewrite.eq_elim $t $s)
   | .ARITH_PLUS_FLATTEN =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -201,8 +200,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_dist) args)
-  | .ARITH_ABS_ELIM =>
-    if !pf.getArguments[1]!.getSort.isInteger then return none
+  | .ARITH_ABS_ELIM_INT =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q(ite ($t < 0) (-$t) $t = ite ($t < 0) (-$t) $t) q(@Rewrite.abs_elim $t)
   | _ => return none

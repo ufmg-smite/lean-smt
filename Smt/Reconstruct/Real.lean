@@ -124,9 +124,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let c₁ : Q(Real) := reconstructReal.mkRealLit r.num.natAbs
       let c₂ : Q(Real) := reconstructReal.mkRealLit r.den
       if r.num ≥ 0 then
-        addThm q($t / ($c₁ / $c₂) = $t * ($c₂ / $c₁)) q(@Rewrite.div_by_const_elim_real_pos $t $c₁ $c₂)
+        addThm q($t / ($c₁ / $c₂) = $t * ($c₂ / $c₁)) q(@Rewrite.div_by_const_elim_pos $t $c₁ $c₂)
       else
-        addThm q($t / (-$c₁ / $c₂) = $t * (-$c₂ / $c₁)) q(@Rewrite.div_by_const_elim_real_neg $t $c₁ $c₂)
+        addThm q($t / (-$c₁ / $c₂) = $t * (-$c₂ / $c₁)) q(@Rewrite.div_by_const_elim_neg $t $c₁ $c₂)
   | .ARITH_POW_ELIM =>
     if pf.getResult[0]![0]!.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
@@ -138,10 +138,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let p : Q(Real → Prop) := .lam `x q(Real) q($qPow = $y) .default
       h := .app q(Eq.subst (motive := $p) (one_mul $x).symm) h
     addThm q($x ^ $c = $y) h
-  | .ARITH_PLUS_ZERO =>
-    if pf.getArguments[1]![0]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Real Real Real _) q(0 : Real) q(@Rewrite.plus_zero) args)
   | .ARITH_MUL_ONE =>
     if pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -150,12 +146,12 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getArguments[1]![0]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Real Real Real _) q(1 : Real) q(@Rewrite.mul_zero) args)
-  | .ARITH_DIV_TOTAL =>
+  | .ARITH_DIV_TOTAL_REAL =>
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
     addThm q($t / $s = $t / $s) q(@Rewrite.div_total $t $s $h)
-  | .ARITH_DIV_TOTAL_ZERO =>
+  | .ARITH_DIV_TOTAL_ZERO_REAL =>
     let x : Q(Real) ← reconstructTerm pf.getArguments[1]!
     addThm q($x / 0 = 0) q(@Rewrite.div_total_zero $x)
   | .ARITH_ELIM_GT =>
@@ -173,8 +169,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t ≤ $s) = ($s ≥ $t)) q(@Rewrite.elim_leq $t $s)
-  | .ARITH_GEQ_NORM1 =>
-    if pf.getArguments[1]!.getSort.isInteger then return none
+  | .ARITH_GEQ_NORM1_REAL =>
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Rewrite.geq_norm1 $t $s)
@@ -199,6 +194,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     addThm q(($t > $t) = False) q(@Rewrite.refl_gt $t)
+  | .ARITH_EQ_ELIM_REAL =>
+    let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
+    addThm q(($t = $s) = ($t ≥ $s ∧ $t ≤ $s)) q(@Rewrite.eq_elim $t $s)
   | .ARITH_PLUS_FLATTEN =>
     if pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
@@ -211,8 +210,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getArguments[2]!.getSort.isInteger then return none
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Real Real Real _) q(1 : Real) q(@Rewrite.mult_dist) args)
-  | .ARITH_ABS_ELIM =>
-    if pf.getArguments[1]!.getSort.isInteger then return none
+  | .ARITH_ABS_ELIM_REAL =>
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     addThm q(ite ($t < 0) (-$t) $t = ite ($t < 0) (-$t) $t) q(@Rewrite.abs_elim $t)
   | _ => return none
