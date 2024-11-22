@@ -29,16 +29,44 @@ end Classical
 
 namespace Smt.Reconstruct.Quant
 
-theorem miniscope {p q : α → Prop} : (∀ x, p x ∧ q x) = ((∀ x, p x) ∧ (∀ x, q x)) :=
+theorem miniscope_and {p q : α → Prop} : (∀ x, p x ∧ q x) = ((∀ x, p x) ∧ (∀ x, q x)) :=
   propext forall_and
 
-theorem miniscopeN {α : Type u} {ps : List (α → Prop)} : (∀ x, andN (ps.map (· x))) = andN (ps.map (∀ x, · x)) :=
+theorem miniscope_andN {α : Type u} {ps : List (α → Prop)} : (∀ x, andN (ps.map (· x))) = andN (ps.map (∀ x, · x)) :=
   match ps with
   | []             => by simp [andN]
   | [_]            => rfl
   | p₁ :: p₂ :: ps =>
     show _ = (_ ∧ _) from
-    @miniscopeN α (p₂ :: ps) ▸
-    @miniscope α p₁ (fun x => andN ((p₂ :: ps).map (· x))) ▸ rfl
+    @miniscope_and α p₁ (fun x => andN ((p₂ :: ps).map (· x))) ▸
+    @miniscope_andN α (p₂ :: ps) ▸ rfl
+
+theorem miniscope_or_left {p : α → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((∀ x, p x) ∨ q) := by
+  apply propext
+  apply Iff.intro
+  · by_cases hq : q
+    · intro; right; exact hq
+    · intro h; left; intro x; exact (h x).resolve_right hq
+  · intro h x
+    cases h <;> rename_i h
+    · left; exact h x
+    · right; exact h
+
+theorem miniscope_or_right {p : Prop} {q : α → Prop} : (∀ x, p ∨ q x) = (p ∨ (∀ x, q x)) :=
+  propext or_comm ▸ miniscope_or_left ▸ forall_congr (fun _ => propext or_comm)
+
+theorem miniscope_orN {ps : List Prop} {q : α → Prop} {rs : List Prop} : (∀ x, orN (ps ++ q x :: rs)) = orN (ps ++ (∀ x, q x) :: rs) :=
+  match ps with
+  | []             => by cases rs <;> simp [orN, miniscope_or_left]
+  | [p]            => miniscope_or_right ▸ @miniscope_orN α [] q rs ▸ rfl
+  | p₁ :: p₂ :: ps => miniscope_or_right ▸ @miniscope_orN α (p₂ :: ps) q rs ▸ rfl
+
+theorem var_elim_eq {t : α} : (∀ x, x ≠ t) = False :=
+  propext ⟨fun hnxt => absurd rfl (hnxt t), False.elim⟩
+
+theorem var_elim_eq_or {t : α} {p : α → Prop} : (∀ x, x ≠ t ∨ p x) = p t :=
+  propext <| Iff.intro
+    (fun hpx => (hpx t).resolve_left (absurd rfl ·))
+    (fun hpt x => (Classical.em (x = t)).elim (Or.inr $ · ▸ hpt) (Or.inl ·))
 
 end Smt.Reconstruct.Quant

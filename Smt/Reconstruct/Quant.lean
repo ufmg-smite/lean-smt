@@ -161,9 +161,57 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
         let hx : Q(∀ x, $lp x = andN («$lps».map (· x))) ← Meta.mkLambdaFVars #[x] h
         let ap ← Meta.mkForallFVars #[x] p
         let aps ← liftM (ps.mapM (Meta.mkForallFVars #[x]))
-        return (ap, aps, q(Eq.trans (forall_congr $hx) (@miniscopeN $α $lps)))
+        return (ap, aps, q(Eq.trans (forall_congr $hx) (@miniscope_andN $α $lps)))
       xs.foldrM f (b, ps, h)
     addThm (← reconstructTerm pf.getResult) h
+  | .QUANT_MINISCOPE_FV =>
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
+    let (_, _, _, _, h) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
+      let mut xss := #[]
+      let mut ci := 0
+      for xsF in pf.getResult[1]! do
+        if xsF.getKind == .FORALL then
+          xss := xss.push xs[ci:ci + xsF[0]!.getNumChildren]
+          ci := ci + xsF[0]!.getNumChildren
+        else
+          xss := xss.push xs[ci:ci]
+      let ps : List Q(Prop) := (← pf.getResult[0]![1]!.getChildren.mapM reconstructTerm).toList
+      let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
+      let h : Q($b = $b) := q(Eq.refl $b)
+      let fin := fun x (p, ps, q, rs, h) => do
+        let α : Q(Type) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
+        let qps : Q(List Prop) ← pure (ps.foldr (fun (p : Q(Prop)) qps => q($p :: $qps)) q([]))
+        let qrs : Q(List Prop) ← pure (rs.foldr (fun (r : Q(Prop)) qrs => q($r :: $qrs)) q([]))
+        let hx : Q(∀ x, $lp x = orN ($qps ++ $lq x :: $qrs)) ← Meta.mkLambdaFVars #[x] h
+        let ap ← Meta.mkForallFVars #[x] p
+        let aq ← Meta.mkForallFVars #[x] q
+        return (ap, ps, aq, rs, q(Eq.trans (forall_congr $hx) (@miniscope_orN $α $qps $lq $qrs)))
+      let fout := fun xs (p, ps, q, rs, h) => do
+        let (p, ps, q, rs, h) ← xs.foldrM fin (p, ps, q, rs, h)
+        return (p, ps.dropLast, ps.getLastD q(False), q :: rs, h)
+      xss.foldrM fout (b, ps.dropLast, ps.getLast!, [], h)
+    addThm (← reconstructTerm pf.getResult) h
+  | .QUANT_VAR_ELIM_EQ =>
+    let lb := pf.getResult[0]![1]!
+    if lb.getKind == .OR then
+      let α : Q(Type) ← reconstructSort lb[0]![0]![0]!.getSort
+      let n : Name := getVariableName lb[0]![0]![0]!
+      let t : Q($α) ← reconstructTerm lb[0]![0]![1]!
+      let p : Q($α → Prop) ← Meta.withLocalDeclD n α fun x => withNewTermCache do
+        let mut b : Q(Prop) ← reconstructTerm lb[lb.getNumChildren - 1]!
+        for i in [1:lb.getNumChildren - 1] do
+          let p : Q(Prop) ← reconstructTerm lb[lb.getNumChildren - i - 1]!
+          b := q($p ∨ $b)
+        Meta.mkLambdaFVars #[x] b
+      addThm (← reconstructTerm pf.getResult) q(@Quant.var_elim_eq_or $α $t $p)
+    else
+      let α : Q(Type) ← reconstructSort lb[0]![0]!.getSort
+      let t : Q($α) ← reconstructTerm lb[0]![1]!
+      addThm (← reconstructTerm pf.getResult) q(@Quant.var_elim_eq $α $t)
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructQuantProof : ProofReconstructor := fun pf => do match pf.getRule with
@@ -189,6 +237,27 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
+  | .QUANT_VAR_REORDERING =>
+    let xs := pf.getResult[0]![0]!.getChildren
+    let ys := pf.getResult[1]![0]!.getChildren
+    let g xs := Id.run do
+      let mut is : Std.HashMap cvc5.Term Expr := {}
+      for h : i in [:xs.size] do
+        is := is.insert xs[i] (.bvar (xs.size - i - 1))
+      return is
+    let (is, js) := (g xs, g ys)
+    let (is, js) := (xs.map js.get!, ys.map is.get!)
+    let f x h := do
+      let n := getVariableName x
+      let α ← reconstructSort x.getSort
+      return .lam n α h .default
+    let p : Q(Prop) ← reconstructTerm pf.getResult[0]!
+    let q : Q(Prop) ← reconstructTerm pf.getResult[1]!
+    let hpq ← ys.foldrM f (mkAppN (.bvar js.size) is)
+    let hpq : Q($p → $q) ← pure (.lam `hp p hpq .default)
+    let hqp ← xs.foldrM f (mkAppN (.bvar is.size) js)
+    let hqp : Q($q → $p) ← pure (.lam `hq q hqp .default)
+    addThm q($p = $q) q(propext ⟨$hpq, $hqp⟩)
   | _ => return none
 where
   reconstructForallCong (pf : cvc5.Proof) : ReconstructM Expr := do
