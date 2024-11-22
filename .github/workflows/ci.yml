@@ -18,8 +18,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Build and Test lean-cvc5
+    - name: Configure lean-smt
       uses: leanprover/lean-action@v1
       with:
-        build-args: "Smt Smt.Rat Smt.Real"
+        build: false
+        test: false
         use-github-cache: false
+    - name: Build lean-smt
+      run: lake build Smt Smt.Rat Smt.Real
+    - name: Test lean-smt
+      run: lake run test
