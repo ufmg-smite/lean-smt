@@ -36,21 +36,12 @@ theorem miniscope_andN {α : Type u} {ps : List (α → Prop)} : (∀ x, andN (p
   match ps with
   | []             => by simp [andN]
   | [_]            => rfl
-  | p₁ :: p₂ :: ps =>
-    show _ = (_ ∧ _) from
-    @miniscope_and α p₁ (fun x => andN ((p₂ :: ps).map (· x))) ▸
-    @miniscope_andN α (p₂ :: ps) ▸ rfl
+  | p₁ :: p₂ :: ps => miniscope_and ▸ @miniscope_andN α (p₂ :: ps) ▸ rfl
 
-theorem miniscope_or_left {p : α → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((∀ x, p x) ∨ q) := by
-  apply propext
-  apply Iff.intro
-  · by_cases hq : q
-    · intro; right; exact hq
-    · intro h; left; intro x; exact (h x).resolve_right hq
-  · intro h x
-    cases h <;> rename_i h
-    · left; exact h x
-    · right; exact h
+theorem miniscope_or_left {p : α → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((∀ x, p x) ∨ q) :=
+  propext <| Iff.intro
+    (fun hpxq => (Classical.em q).elim (Or.inr ·) (fun hnq => Or.inl (fun x => (hpxq x).resolve_right hnq)))
+    (fun hpxq x => hpxq.elim (fun hpx => Or.inl (hpx x)) (Or.inr ·))
 
 theorem miniscope_or_right {p : Prop} {q : α → Prop} : (∀ x, p ∨ q x) = (p ∨ (∀ x, q x)) :=
   propext or_comm ▸ miniscope_or_left ▸ forall_congr (fun _ => propext or_comm)
