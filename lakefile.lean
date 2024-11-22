@@ -3,7 +3,7 @@ import Lake
 open Lake DSL
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "aff591ae23965f28f15d8a1437a06d9febb704b0"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "b7a6933c50aea5bb294eeff9ed2555640bc9c435"
 
 require mathlib from
   git "https://github.com/leanprover-community/mathlib4.git" @ "v4.13.0"
@@ -40,7 +40,7 @@ USAGE:
 
 Run tests.
 -/
-script test do
+@[test_driver] script test do
   let files ← readAllFiles (FilePath.mk "Test")
   let mut tests : Array FilePath := #[]
   let mut expected : Array FilePath := #[]

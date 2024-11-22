@@ -9,10 +9,12 @@ jobs:
     strategy:
       matrix:
         include:
-        - name: Linux
+        - name: Linux-x86_64
           os: ubuntu-latest
-        - name: macOS
+        - name: macOS-aarch64
           os: macos-latest
+        - name: macOS-x86_64
+          os: macos-13
     steps:
     - name: Install Elan
       run: |
@@ -25,4 +27,4 @@ jobs:
         lake update
         lake build Smt Smt.Rat Smt.Real
     - name: Test lean-smt
-      run: lake run test
+      run: lake test
