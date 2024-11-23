@@ -16,15 +16,10 @@ jobs:
         - name: macOS-x86_64
           os: macos-13
     steps:
-    - name: Install Elan
-      run: |
-        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-        echo "$HOME/.elan/bin" >> $GITHUB_PATH
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Build lean-smt
-      run: |
-        lake update
-        lake build Smt Smt.Rat Smt.Real
-    - name: Test lean-smt
-      run: lake test
+    - name: Build and Test lean-smt
+      uses: leanprover/lean-action@v1
+      with:
+        build-args: "Smt Smt.Rat Smt.Real"
+        use-github-cache: false
