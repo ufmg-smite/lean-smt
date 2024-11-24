@@ -21,5 +21,5 @@ jobs:
     - name: Build and Test lean-smt
       uses: leanprover/lean-action@v1
       with:
-        build-args: "Smt Smt.Rat Smt.Real"
+        build-args: "Smt Smt.Auto Smt.Rat Smt.Real"
         use-github-cache: false

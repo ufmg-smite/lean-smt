@@ -2,6 +2,9 @@ import Lake
 
 open Lake DSL
 
+require auto from
+  git "https://github.com/leanprover-community/lean-auto.git" @ "5367bcd32133a50ee5c4c39fb6cfa345893387bf"
+
 require cvc5 from
   git "https://github.com/abdoo8080/lean-cvc5.git" @ "b7a6933c50aea5bb294eeff9ed2555640bc9c435"
 
