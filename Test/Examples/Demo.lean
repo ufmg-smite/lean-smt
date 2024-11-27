@@ -1,6 +1,6 @@
 import Smt
 
-variable {G : Type} [Nonempty G] (op : G → G → G) (inv : G → G) (e : G)
+variable [Nonempty G] (op : G → G → G) (inv : G → G) (e : G)
 
 axiom assoc   : ∀ a b c, op a (op b c) = op (op a b) c
 axiom inverse : ∀ a, op (inv a) a = e

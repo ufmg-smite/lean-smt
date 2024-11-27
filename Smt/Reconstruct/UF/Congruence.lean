@@ -31,7 +31,8 @@ def smtCongrArrow (mv : MVarId) (hs : Array Expr) : MetaM Unit := do
 def smtCongrIte (mv : MVarId) (e₁ e₂ : Expr) (hs : Array Expr) : MetaM Unit := do
   let as₁ := e₁.getAppArgs
   let as₂ := e₂.getAppArgs
-  let α : Q(Type) ← pure as₁[0]!
+  let u ← Meta.getLevel as₁[0]!
+  let α : Q(Sort u) ← pure as₁[0]!
   let (c₁, c₂) : Q(Prop) × Q(Prop) := (as₁[1]!, as₂[1]!)
   let (_, _) : Q(Decidable $c₁) × Q(Decidable $c₂) := (as₁[2]!, as₂[2]!)
   let (x₁, x₂) : Q($α) × Q($α) := (as₁[3]!, as₂[3]!)
@@ -46,7 +47,11 @@ def smtCongrUF (mv : MVarId) (e₁ e₂ : Expr) (hs : Array Expr) : MetaM Unit :
   let f := e₁.getBoundedAppFn n
   let hs := (e₁.getBoundedAppArgs n).zip ((e₂.getBoundedAppArgs n).zip hs)
   let buildProof := fun (f₁, f₂, h₁) (a₁, a₂, h₂) => do
-    let some ⟨(α : Q(Type)), (β : Q(Type))⟩ := (← Meta.inferType f₁).arrow? | throwError "[smt_congr]: expected function type"
+    let some (α, β) := (← Meta.inferType f₁).arrow? | throwError "[smt_congr]: expected function type"
+    let .sort u ← Meta.inferType α | throwError "[smt_congr]: expected the type of {α} to be a sort"
+    let .sort v ← Meta.inferType β | throwError "[smt_congr]: expected the type of {β} to be a sort"
+    let α : Q(Sort u) ← pure α
+    let β : Q(Sort v) ← pure β
     let a₁ : Q($α) ← pure a₁
     let a₂ : Q($α) ← pure a₂
     let f₁ : Q($α → $β) ← pure f₁
@@ -137,7 +142,7 @@ example (a b c d e f : Prop) : a = b → c = d → e = f → (a → c → e) = (
   intros h₁ h₂ h₃
   smtCongr [h₁, h₂, h₃]
 
-example [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : Int} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
+example [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
   smtCongr [h₁, h₂, h₃]
 
 end Smt.Reconstruct.UF.Tactic

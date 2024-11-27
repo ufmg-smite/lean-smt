@@ -405,5 +405,5 @@ example (x y z : Rat) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
 example (x y : Int) (z : Rat) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
   poly_norm
 
-example (x y : Int) (z : Rat) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
+example (x y : Int) (z : Rat) : 1 * ↑(x + y) * z / 4 = 1 / (2 * 2) * (z * ↑y + ↑x * z) := by
   native_poly_norm

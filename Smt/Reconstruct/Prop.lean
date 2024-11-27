@@ -288,7 +288,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf
   | .ITE_EQ =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[0]![1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]![1]!.getSort
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
     let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
     let x : Q($α) ← reconstructTerm pf.getArguments[0]![1]!

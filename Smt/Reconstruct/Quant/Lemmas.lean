@@ -32,11 +32,26 @@ namespace Smt.Reconstruct.Quant
 theorem miniscope_and {p q : α → Prop} : (∀ x, p x ∧ q x) = ((∀ x, p x) ∧ (∀ x, q x)) :=
   propext forall_and
 
-theorem miniscope_andN {α : Type u} {ps : List (α → Prop)} : (∀ x, andN (ps.map (· x))) = andN (ps.map (∀ x, · x)) :=
+/-- A list that can store proofs. Mainly for `miniscope_andN`. -/
+inductive PList (α : Sort u) where
+  | nil : PList α
+  | cons (head : α) (tail : PList α) : PList α
+
+def PList.map (f : α → β) : PList α → PList β
+  | .nil        => .nil
+  | .cons h t   => .cons (f h) (map f t)
+
+def pAndN : PList Prop → Prop
+  | .nil         => True
+  | .cons h .nil => h
+  | .cons h t    => h ∧ pAndN t
+
+theorem miniscope_andN {ps : PList (α → Prop)} :
+  (∀ x, pAndN (ps.map (· x))) = pAndN (ps.map (∀ x, · x)) :=
   match ps with
-  | []             => by simp [andN]
-  | [_]            => rfl
-  | p₁ :: p₂ :: ps => miniscope_and ▸ @miniscope_andN α (p₂ :: ps) ▸ rfl
+  | .nil             => propext ⟨fun _ => trivial, fun _ _ => trivial⟩
+  | .cons _ .nil     => rfl
+  | .cons _ (.cons p₂ ps) => miniscope_and ▸ @miniscope_andN α (.cons p₂ ps) ▸ rfl
 
 theorem miniscope_or_left {p : α → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((∀ x, p x) ∨ q) :=
   propext <| Iff.intro
@@ -46,7 +61,8 @@ theorem miniscope_or_left {p : α → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((
 theorem miniscope_or_right {p : Prop} {q : α → Prop} : (∀ x, p ∨ q x) = (p ∨ (∀ x, q x)) :=
   propext or_comm ▸ miniscope_or_left ▸ forall_congr (fun _ => propext or_comm)
 
-theorem miniscope_orN {ps : List Prop} {q : α → Prop} {rs : List Prop} : (∀ x, orN (ps ++ q x :: rs)) = orN (ps ++ (∀ x, q x) :: rs) :=
+theorem miniscope_orN {ps : List Prop} {q : α → Prop} {rs : List Prop} :
+  (∀ x, orN (ps ++ q x :: rs)) = orN (ps ++ (∀ x, q x) :: rs) :=
   match ps with
   | []             => by cases rs <;> simp [orN, miniscope_or_left]
   | [p]            => miniscope_or_right ▸ @miniscope_orN α [] q rs ▸ rfl

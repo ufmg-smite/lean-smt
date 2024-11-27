@@ -14,7 +14,7 @@ namespace Smt.Reconstruct.UF
 open Lean Qq
 
 def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
-  match (← get).userNames[n]? with
+  match (← read).userNames[n]? with
   | some fv => return .fvar fv
   | none   => match (← getLCtx).findFromUserName? n.toName with
     | some d => return d.toExpr
@@ -37,23 +37,23 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
   | .EQ_REFL =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     addThm q(($t = $t) = True) q(@UF.eq_refl $α $t)
   | .EQ_SYMM =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     let s : Q($α) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t = $s) = ($s = $t)) q(@UF.eq_symm $α $t $s)
   | .EQ_COND_DEQ =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     let s : Q($α) ← reconstructTerm pf.getArguments[2]!
     let r : Q($α) ← reconstructTerm pf.getArguments[3]!
     let h : Q(($s = $r) = False) ← reconstructProof pf.getChildren[0]!
     addThm q((($t = $s) = ($t = $r)) = (¬$t = $s ∧ ¬$t = $r)) q(@UF.eq_cond_deq $α $t $s $r $h)
   | .DISTINCT_BINARY_ELIM =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
     let s : Q($α) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t ≠ $s) = ¬($t = $s)) q(@UF.distinct_binary_elim $α $t $s)
@@ -62,25 +62,25 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 @[smt_proof_reconstruct] def reconstructUFProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf
   | .REFL =>
-    let α : Q(Type) ← reconstructSort pf.getArguments[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]!.getSort
     let a : Q($α) ← reconstructTerm pf.getArguments[0]!
     addThm q($a = $a) q(Eq.refl $a)
   | .SYMM =>
     if pf.getResult.getKind == .EQUAL then
-      let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
       let a : Q($α) ← reconstructTerm pf.getResult[1]!
       let b : Q($α) ← reconstructTerm pf.getResult[0]!
       let h : Q($a = $b) ← reconstructProof pf.getChildren[0]!
       addThm q($b = $a) q(Eq.symm $h)
     else
-      let α : Q(Type) ← reconstructSort pf.getResult[0]![0]!.getSort
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]![0]!.getSort
       let a : Q($α) ← reconstructTerm pf.getResult[0]![1]!
       let b : Q($α) ← reconstructTerm pf.getResult[0]![0]!
       let h : Q($a ≠ $b) ← reconstructProof pf.getChildren[0]!
       addThm q($b ≠ $a) q(Ne.symm $h)
   | .TRANS =>
     let cpfs := pf.getChildren
-    let α : Q(Type) ← reconstructSort cpfs[0]!.getResult[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort cpfs[0]!.getResult[0]!.getSort
     let a : Q($α) ← reconstructTerm cpfs[0]!.getResult[0]!
     let mut curr ← reconstructProof cpfs[0]!
     for i in [1:cpfs.size] do
