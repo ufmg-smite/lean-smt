@@ -1,9 +1,8 @@
 # SMT Lean
-This project is inspired by [SMTCoq](https://smtcoq.github.io/) and aims to
-provide Lean tactics that discharge goals into SMT solvers. It is under active
-development and is currently in a beta phase. While it is ready for use, it is
-important to note that there are still some rough edges and ongoing improvements
-being made.
+This project aims to provide Lean tactics that discharge goals into SMT solvers.
+It is under active development and is currently in a beta phase. While it is
+ready for use, it is important to note that there are still some rough edges and
+ongoing improvements being made.
 
 ## Supported Theories
 `lean-smt` currently supports the theories of Uninterpreted Functions and Linear
