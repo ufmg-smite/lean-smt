@@ -75,7 +75,7 @@ where
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
     let F := q[1]!
     for i in [0:n + 1] do
-      let α : Q(Type) ← reconstructSort q[0]![i]!.getSort
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort q[0]![i]!.getSort
       let h : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
       let e ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
         let F ← reconstructTerm F
@@ -89,7 +89,7 @@ where
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
   | .BETA_REDUCE =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
@@ -101,7 +101,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
       let h := q(Classical.not_not_eq $b)
       let f := fun x (p, q, h) => do
-        let α : Q(Type) ← Meta.inferType x
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
         let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
         let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
         let hx : Q(∀ x : $α, (¬$lp x) = $lq x) ← Meta.mkLambdaFVars #[x] h
@@ -119,7 +120,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
       let h : Q($b = $b) := q(Eq.refl $b)
       let f := fun i (j, p, q, (h : Q($p = $q))) => do
-        let α : Q(Type) ← reconstructSort pf.getResult[0]![0]![i]!.getSort
+        let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]![0]![i]!.getSort
         if let some j := j then
           if pf.getResult[0]![0]![i]! == pf.getResult[1]![0]![j]! then
             let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[ys[j]!] p
@@ -136,7 +137,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       (List.range i).foldrM f (j, b, b, h)
     addThm q($p = $q) h
   | .QUANT_MERGE_PRENEX =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
@@ -151,14 +152,15 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
         ps := ps.push q($p)
       let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
       let h : Q($b = $b) := q(Eq.refl $b)
-      let lf := fun x (α : Q(Type)) p lps => do
+      let lf := fun x (u, (α : Q(Sort u))) p lps => do
         let lp : Q($α → Prop) ← (return ← Meta.mkLambdaFVars #[x] p)
-        return q($lp :: $lps)
+        return .app q(PList.cons $lp) lps
       let f := fun x (p, ps, h) => do
-        let α : Q(Type) ← Meta.inferType x
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
         let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
-        let lps : Q(List ($α → Prop)) ← ps.foldrM (lf x α) q([])
-        let hx : Q(∀ x, $lp x = andN («$lps».map (· x))) ← Meta.mkLambdaFVars #[x] h
+        let (lps : Q(PList ($α → Prop))) ← ps.foldrM (lf x (u, α)) q(@PList.nil ($α → Prop))
+        let hx : Q(∀ x, $lp x = pAndN («$lps».map (· x))) ← Meta.mkLambdaFVars #[x] h
         let ap ← Meta.mkForallFVars #[x] p
         let aps ← liftM (ps.mapM (Meta.mkForallFVars #[x]))
         return (ap, aps, q(Eq.trans (forall_congr $hx) (@miniscope_andN $α $lps)))
@@ -181,7 +183,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let b : Q(Prop) ← reconstructTerm pf.getResult[0]![1]!
       let h : Q($b = $b) := q(Eq.refl $b)
       let fin := fun x (p, ps, q, rs, h) => do
-        let α : Q(Type) ← Meta.inferType x
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
         let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
         let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
         let qps : Q(List Prop) ← pure (ps.foldr (fun (p : Q(Prop)) qps => q($p :: $qps)) q([]))
@@ -198,7 +201,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .QUANT_VAR_ELIM_EQ =>
     let lb := pf.getResult[0]![1]!
     if lb.getKind == .OR then
-      let α : Q(Type) ← reconstructSort lb[0]![0]![0]!.getSort
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort lb[0]![0]![0]!.getSort
       let n : Name := getVariableName lb[0]![0]![0]!
       let t : Q($α) ← reconstructTerm lb[0]![0]![1]!
       let p : Q($α → Prop) ← Meta.withLocalDeclD n α fun x => withNewTermCache do
@@ -209,7 +212,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
         Meta.mkLambdaFVars #[x] b
       addThm (← reconstructTerm pf.getResult) q(@Quant.var_elim_eq_or $α $t $p)
     else
-      let α : Q(Type) ← reconstructSort lb[0]![0]!.getSort
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort lb[0]![0]!.getSort
       let t : Q($α) ← reconstructTerm lb[0]![1]!
       addThm (← reconstructTerm pf.getResult) q(@Quant.var_elim_eq $α $t)
   | _ => return none
@@ -233,7 +236,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       es := es.push (← reconstructTerm t)
     addThm (← reconstructTerm pf.getResult) (mkAppN xsF es)
   | .ALPHA_EQUIV =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
@@ -269,7 +272,8 @@ where
       let q : Q(Prop) ← reconstructTerm pf.getResult[1]![1]!
       let h : Q($p = $q) ← reconstructProof pf.getChildren[0]!
       let f := fun x (p, q, h) => do
-        let α : Q(Type) ← Meta.inferType x
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
         let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
         let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
         let hx : Q(∀ x : $α, $lp x = $lq x) ← Meta.mkLambdaFVars #[x] h
@@ -287,7 +291,8 @@ where
       let q : Q(Prop) ← reconstructTerm pf.getResult[1]![1]!
       let h : Q($p = $q) ← reconstructProof pf.getChildren[0]!
       let f := fun x (p, q, h) => do
-        let α : Q(Type) ← Meta.inferType x
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
         let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
         let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
         let hx : Q(∀ x : $α, $lp x = $lq x) ← Meta.mkLambdaFVars #[x] h
@@ -300,7 +305,8 @@ where
     let chRes := pf.getChildren[0]!.getResult
     let es ← reconstructQuant.reconstructForallSkolems chRes[0]! (chRes[0]![0]!.getNumChildren - 1)
     let f := fun h e => do
-      let α : Q(Type) ← pure (e.getArg! 0)
+      let u ← Meta.getLevel (e.getArg! 0)
+      let α : Q(Sort u) ← pure (e.getArg! 0)
       let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
       let .lam n _ (.app _ b) bi := e.getArg! 2 | throwError "[skolemize]: expected a predicate with a negated body: {e}"
       let p : Q($α → Prop)  ← pure (.lam n α b bi)

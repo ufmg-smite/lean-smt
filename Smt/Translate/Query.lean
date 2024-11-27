@@ -112,12 +112,6 @@ def translateDefinitionBody (params : Array Expr) : Expr → QueryBuilderM (Term
     return (tm, deps, Util.countConst val nm > 0)
   | e           => throwError "internal error, expected fvar or const but got{indentD e}\nof kind {e.ctorName}"
 
-/-- Assuming `e : Sort u` and `u` is constant, return `u`. Otherwise fail. -/
-def getSortLevel (e : Expr) : QueryBuilderM Nat := do
-  let sort l .. ← inferType e | throwError "sort expected, got{indentD e}"
-  let some l := l.toNat | throwError "type{indentD e}\nhas varying universe level {l}"
-  return l
-
 def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Expr)
     : QueryBuilderM (Array Expr) := do
   -- Translate the body and the parameter types.
@@ -128,7 +122,7 @@ def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Ex
     return ((n, tm) :: tmParams, deps ++ deps')
 
   -- Is `e` a type?
-  if 1 < (← getSortLevel cod) then
+  if cod.isSort && !cod.isProp then
     addCommand e <| .defineSort nm (tmParams.map (·.snd)) tmVal
     return deps
   else -- Otherwise it is a function or constant.
@@ -138,7 +132,7 @@ def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Ex
 
 def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod : Expr)
     : QueryBuilderM (Array Expr) := do
-  if 1 < (← getSortLevel cod) then
+  if cod.isSort && !cod.isProp then
     addCommand e <| .declareSort nm params.size
     return #[]
   else
@@ -149,12 +143,12 @@ def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod 
 /-- Build the command for `e : tp` and add it to the graph. Return the command's dependencies. -/
 def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
   -- Is `tp` a `Prop` to assert?
-  if let 0 ← getSortLevel tp then
+  if (← Meta.inferType tp).isProp then
     let (tmTp, deps) ← translateAndFindDeps tp
     addCommand e <| .assert tmTp
     return deps
 
-  trace[smt.translate.query] "{tp} : Sort {← getSortLevel tp}"
+  trace[smt.translate.query] "{tp} : {← Meta.inferType tp}"
 
   -- Otherwise it is a local/global declaration with name `nm`.
   let nm ← match e with

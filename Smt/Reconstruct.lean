@@ -15,15 +15,17 @@ namespace Smt
 open Lean
 open Attribute
 
-structure Reconstruct.state where
-  userNames : Std.HashMap String FVarId
-  termCache : Std.HashMap cvc5.Term Expr
-  proofCache : Std.HashMap cvc5.Proof Expr
-  count : Nat
-  currAssums : Array Expr
-  skippedGoals : Array MVarId
+structure Reconstruct.Context where
+  userNames : Std.HashMap String FVarId := {}
 
-abbrev ReconstructM := StateT Reconstruct.state MetaM
+structure Reconstruct.State where
+  termCache : Std.HashMap cvc5.Term Expr := {}
+  proofCache : Std.HashMap cvc5.Proof Expr := {}
+  count : Nat := 0
+  currAssums : Array Expr := #[]
+  skippedGoals : Array MVarId := #[]
+
+abbrev ReconstructM := ReaderT Reconstruct.Context (StateT Reconstruct.State MetaM)
 
 abbrev SortReconstructor := cvc5.Sort → ReconstructM (Option Expr)
 
@@ -56,6 +58,11 @@ where
         trace[smt.reconstruct.sort] "{s} =({n})=> {e}"
         return e
     throwError "Failed to reconstruct sort {s} with kind {s.getKind}"
+
+def reconstructSortLevelAndSort (s : cvc5.Sort) : ReconstructM (Level × Expr) := do
+  let t ← reconstructSort s
+  let .sort u ← Meta.inferType t | throwError "expected a sort, but got\n{t}"
+  return ⟨u, t⟩
 
 def withNewTermCache (k : ReconstructM α) : ReconstructM α := do
   let termCache := (← get).termCache
@@ -181,10 +188,10 @@ def traceReconstructProof (r : Except Exception (Expr × Expr × List MVarId)) :
   | _     => m!"{bombEmoji}"
 
 open Qq in
-partial def reconstructProof (pf : cvc5.Proof) (fvNames : Std.HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
+partial def reconstructProof (pf : cvc5.Proof) (userNames : Std.HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
-  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run ⟨fvNames, {}, {}, 0, #[], #[]⟩
-  let (h, .mk _ _ _ _ _ mvs) ← (Reconstruct.reconstructProof pf).run state
+  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run { userNames } {}
+  let (h, ⟨_, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run { userNames } state
   if pf.getArguments.isEmpty then
     let h : Q(True → $p) ← pure h
     return (p, q($h trivial), mvs.toList)
@@ -231,13 +238,13 @@ open Lean.Elab Tactic in
     match r with
       | .error e => logInfo (repr e)
       | .ok pf =>
-        let (p, hp, mvs) ← reconstructProof pf (← getFVarNames)
+        let (p, hp, mvs) ← reconstructProof pf (← getUserNames)
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1
         replaceMainGoal (mv :: mvs)
 where
-  getFVarNames : MetaM (Std.HashMap String FVarId) := do
+  getUserNames : MetaM (Std.HashMap String FVarId) := do
     let lCtx ← getLCtx
     return lCtx.getFVarIds.foldl (init := {}) fun m fvarId =>
       m.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId

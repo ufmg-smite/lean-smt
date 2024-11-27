@@ -341,7 +341,7 @@ where
 
 @[smt_proof_reconstruct] def reconstructRealProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .EVALUATE =>
-    let α : Q(Type) ← reconstructSort pf.getResult[0]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     let h : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
