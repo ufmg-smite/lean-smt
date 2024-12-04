@@ -329,6 +329,36 @@ where
     else
       return ha
 
+def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
+  let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
+  let x₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
+  let x₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
+  let y₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!
+  let y₂ : Q(Int) ← reconstructTerm pf.getResult[1]![1]!
+  let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
+  let k := pf.getResult[0]!.getKind
+  let (hcx, hcy) :=
+    if k == .EQUAL then (q(@of_decide_eq_true ($cx ≠ 0) _), q(@of_decide_eq_true ($cy ≠ 0) _))
+    else if cx > 0 then (q(@of_decide_eq_true ($cx > 0) _), q(@of_decide_eq_true ($cy > 0) _))
+    else (q(@of_decide_eq_true ($cx < 0) _), q(@of_decide_eq_true ($cy < 0) _))
+  let hcx := .app hcx q(Eq.refl true)
+  let hcy := .app hcy q(Eq.refl true)
+  let n ← getThmName k (cx > 0)
+  return mkApp9 (.const n []) x₁ x₂ y₁ y₂ q($cx) q($cy) hcx hcy h
+where
+  getThmName (k : cvc5.Kind) (sign : Bool) : ReconstructM Name :=
+    if k == .LT && sign == true then pure ``Int.lt_of_sub_eq_pos
+    else if k == .LT && sign == false then pure ``Int.lt_of_sub_eq_neg
+    else if k == .LEQ && sign == true then pure ``Int.le_of_sub_eq_pos
+    else if k == .LEQ && sign == false then pure ``Int.le_of_sub_eq_neg
+    else if k == .EQUAL then pure ``Int.eq_of_sub_eq
+    else if k == .GEQ && sign == true then pure ``Int.ge_of_sub_eq_pos
+    else if k == .GEQ && sign == false then pure ``Int.ge_of_sub_eq_neg
+    else if k == .GT && sign == true then pure ``Int.gt_of_sub_eq_pos
+    else if k == .GT && sign == false then pure ``Int.gt_of_sub_eq_neg
+    else throwError "[arith_poly_norm_rel]: invalid combination of kind and sign: {k}, {sign}"
+
 @[smt_proof_reconstruct] def reconstructIntProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
@@ -385,45 +415,8 @@ where
     let b : Q(Int) ← reconstructTerm pf.getResult[1]!
     addTac q($a = $b) Int.nativePolyNorm
   | .ARITH_POLY_NORM_REL =>
-    if !pf.getResult[0]![0]!.getSort.isInteger then return none
-    let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
-    let x₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
-    let x₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
-    let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
-    let y₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!
-    let y₂ : Q(Int) ← reconstructTerm pf.getResult[1]![1]!
-    let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
-    let k := pf.getResult[0]!.getKind
-    if k == .EQUAL then
-      let hcx : Q($cx ≠ 0) := .app q(@of_decide_eq_true ($cx ≠ 0) _) q(Eq.refl true)
-      let hcy : Q($cy ≠ 0) := .app q(@of_decide_eq_true ($cy ≠ 0) _) q(Eq.refl true)
-      addThm q(($x₁ = $x₂) = ($y₁ = $y₂)) q(Int.eq_of_sub_eq $hcx $hcy $h)
-    else if cx > 0 then
-      let hcx : Q($cx > 0) := .app q(@of_decide_eq_true ($cx > 0) _) q(Eq.refl true)
-      let hcy : Q($cy > 0) := .app q(@of_decide_eq_true ($cy > 0) _) q(Eq.refl true)
-      match k with
-      | .LT =>
-        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Int.lt_of_sub_eq_pos $hcx $hcy $h)
-      | .LEQ =>
-        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Int.le_of_sub_eq_pos $hcx $hcy $h)
-      | .GEQ =>
-        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Int.ge_of_sub_eq_pos $hcx $hcy $h)
-      | .GT =>
-        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Int.gt_of_sub_eq_pos $hcx $hcy $h)
-      | _   => return none
-    else
-      let hcx : Q($cx < 0) := .app q(@of_decide_eq_true ($cx < 0) _) q(Eq.refl true)
-      let hcy : Q($cy < 0) := .app q(@of_decide_eq_true ($cy < 0) _) q(Eq.refl true)
-      match k with
-      | .LT =>
-        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Int.lt_of_sub_eq_neg $hcx $hcy $h)
-      | .LEQ =>
-        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Int.le_of_sub_eq_neg $hcx $hcy $h)
-      | .GEQ =>
-        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Int.ge_of_sub_eq_neg $hcx $hcy $h)
-      | .GT =>
-        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Int.gt_of_sub_eq_neg $hcx $hcy $h)
-      | _   => return none
+    if !pf.getChildren[0]!.getResult[0]![0]!.getSort.isInteger then return none
+    reconstructArithPolyNormRel pf
   | .ARITH_MULT_SIGN =>
     if !pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf

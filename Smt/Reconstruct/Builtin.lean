@@ -175,6 +175,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
   | .ACI_NORM =>
     addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
+  | .ENCODE_EQ_INTRO =>
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
+    let x : Q($α) ← reconstructTerm pf.getResult[0]!
+    let y : Q($α) ← reconstructTerm pf.getResult[1]!
+    addThm q($x = $y) q(Eq.refl $y)
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
   | .ITE_ELIM1 =>

@@ -9,7 +9,7 @@ namespace Smt.Reconstruct.UF
 
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/uf/rewrites
 
-variable {t s r : α}
+variable {c : Prop} [h : Decidable c] {t s r : α}
 
 -- Equality
 
@@ -21,6 +21,10 @@ theorem eq_cond_deq (h : (s = r) = False) : ((t = s) = (t = r)) = (¬t = s ∧ �
     (fun hsr => And.intro (fun hts => absurd (hts ▸ hsr ▸ hts) (of_eq_false h))
                           (fun htr => absurd (htr ▸ Eq.symm (hsr ▸ htr)) (of_eq_false h)))
     (fun hnsr => propext ⟨(absurd · hnsr.left), (absurd · hnsr.right)⟩)
+
+theorem eq_ite_lift : (ite c t s = r) = (ite c (t = r) (s = r)) := h.byCases
+  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
+  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
 
 theorem distinct_binary_elim : (t ≠ s) = ¬(t = s) := rfl
 

@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed
 
 import Mathlib.Data.Real.Basic
 import Mathlib.Tactic.Ring.RingNF
+import Mathlib.Tactic.Zify
 
 namespace Smt.Reconstruct.Real
 
@@ -32,6 +33,11 @@ def traceArithPolyNorm (r : Except Exception Unit) : MetaM MessageData :=
 /-- Use `arithPolyNorm` to rewrite the main goal. -/
 def polyNorm (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.arithPolyNorm traceArithPolyNorm do
   mv.withContext do
+  let some zifySimps ← Meta.getSimpExtension? `zify_simps | throwError "zify_simps simp set is not available"
+  let some pushCast ← Meta.getSimpExtension? `push_cast | throwError "push_cast simp set is not available"
+  let ctx := { config := { decide := false },  simpTheorems := #[← zifySimps.getTheorems, ← pushCast.getTheorems] }
+  let (some mv, _) ← Meta.simpTarget mv ctx | throwError "simp failed"
+  mv.withContext do
   if let .some mv ← polyNormCore mv then
     throwError "[arithPolyNorm]: could not prove {← mv.getType}"
 
@@ -44,24 +50,6 @@ open Mathlib.Meta.NormNum in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
   if let some (_, mv) ← normNumAt mv {} #[] true false then
     throwError "[norm_num]: could not prove {← mv.getType}"
-
-open Qq in
-partial def findConst (e : Q(Real)) : MetaM Q(Real) := do
-  match e with
-  | ~q($a * $b) => findConst b
-  | ~q($a + $b) => findConst b
-  | ~q($a - $b) => findConst b
-  | ~q(-$a)     => findConst a
-  | _           =>
-    if e.hasFVar || e.hasLooseBVars then
-      return q(1)
-    else if e.getUsedConstants.contains ``Neg.neg then
-      let e : Q(Real) := e
-      match e with
-      | ~q((-$a) / $b) => return q($a / $b)
-      | _              => return e
-    else
-      return e
 
 namespace Tactic
 
@@ -77,4 +65,7 @@ open Lean.Elab Tactic in
 end Smt.Reconstruct.Real.Tactic
 
 example (x y z : Real) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
+  poly_norm
+
+example (x y : Int) (z : Real) : 1 * ↑(x + y) * z / 4 = 1 / (2 * 2) * (z * ↑y + ↑x * z) := by
   poly_norm
