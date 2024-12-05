@@ -314,6 +314,55 @@ where
     else
       return ha
 
+def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue!
+  let cx : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
+  let cy : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[1]![0]!
+  let x₁ : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
+  let x₂ : Q(Rat) ← reconstructTerm pf.getResult[0]![1]!
+  let y₁ : Q(Rat) ← reconstructTerm pf.getResult[1]![0]!
+  let y₂ : Q(Rat) ← reconstructTerm pf.getResult[1]![1]!
+  let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
+  let k := pf.getResult[0]!.getKind
+  let (hcx, hcy) :=
+    if k == .EQUAL then (q(@of_decide_eq_true ($cx ≠ 0) _), q(@of_decide_eq_true ($cy ≠ 0) _))
+    else if lcx > 0 then (q(@of_decide_eq_true ($cx > 0) _), q(@of_decide_eq_true ($cy > 0) _))
+    else (q(@of_decide_eq_true ($cx < 0) _), q(@of_decide_eq_true ($cy < 0) _))
+  let hcx := .app hcx q(Eq.refl true)
+  let hcy := .app hcy q(Eq.refl true)
+  let n ← getThmName k pf.getResult[0]![0]!.getSort.isInteger pf.getResult[1]![0]!.getSort.isInteger (lcx > 0)
+  return mkApp9 (.const n []) x₁ x₂ y₁ y₂ cx cy hcx hcy h
+where
+  getThmName (k : cvc5.Kind) (il ir sign : Bool) : ReconstructM Name :=
+    if k == .LT && il == false && ir == false && sign == true then pure ``Rat.lt_of_sub_eq_pos
+    else if k == .LT && il == false && ir == false && sign == false then pure ``Rat.lt_of_sub_eq_neg
+    else if k == .LT && il == false && ir == true && sign == true then pure ``Rat.lt_of_sub_eq_pos_int_right
+    else if k == .LT && il == false && ir == true && sign == false then pure ``Rat.lt_of_sub_eq_neg_int_right
+    else if k == .LT && il == true && ir == false && sign == true then pure ``Rat.lt_of_sub_eq_pos_int_left
+    else if k == .LT && il == true && ir == false && sign == false then pure ``Rat.lt_of_sub_eq_neg_int_left
+    else if k == .LEQ && il == false && ir == false && sign == true then pure ``Rat.le_of_sub_eq_pos
+    else if k == .LEQ && il == false && ir == false && sign == false then pure ``Rat.le_of_sub_eq_neg
+    else if k == .LEQ && il == false && ir == true && sign == true then pure ``Rat.le_of_sub_eq_pos_int_right
+    else if k == .LEQ && il == false && ir == true && sign == false then pure ``Rat.le_of_sub_eq_neg_int_right
+    else if k == .LEQ && il == true && ir == false && sign == true then pure ``Rat.le_of_sub_eq_pos_int_left
+    else if k == .LEQ && il == true && ir == false && sign == false then pure ``Rat.le_of_sub_eq_neg_int_left
+    else if k == .EQUAL && il == false && ir == false then pure ``Rat.eq_of_sub_eq
+    else if k == .EQUAL && il == false && ir == true then pure ``Rat.eq_of_sub_eq_int_right
+    else if k == .EQUAL && il == true && ir == false then pure ``Rat.eq_of_sub_eq_int_left
+    else if k == .GEQ && il == false && ir == false && sign == true then pure ``Rat.ge_of_sub_eq_pos
+    else if k == .GEQ && il == false && ir == false && sign == false then pure ``Rat.ge_of_sub_eq_neg
+    else if k == .GEQ && il == false && ir == true && sign == true then pure ``Rat.ge_of_sub_eq_pos_int_right
+    else if k == .GEQ && il == false && ir == true && sign == false then pure ``Rat.ge_of_sub_eq_neg_int_right
+    else if k == .GEQ && il == true && ir == false && sign == true then pure ``Rat.ge_of_sub_eq_pos_int_left
+    else if k == .GEQ && il == true && ir == false && sign == false then pure ``Rat.ge_of_sub_eq_neg_int_left
+    else if k == .GT && il == false && ir == false && sign == true then pure ``Rat.gt_of_sub_eq_pos
+    else if k == .GT && il == false && ir == false && sign == false then pure ``Rat.gt_of_sub_eq_neg
+    else if k == .GT && il == false && ir == true && sign == true then pure ``Rat.gt_of_sub_eq_pos_int_right
+    else if k == .GT && il == false && ir == true && sign == false then pure ``Rat.gt_of_sub_eq_neg_int_right
+    else if k == .GT && il == true && ir == false && sign == true then pure ``Rat.gt_of_sub_eq_pos_int_left
+    else if k == .GT && il == true && ir == false && sign == false then pure ``Rat.gt_of_sub_eq_neg_int_left
+    else throwError "[arith_poly_norm_rel]: invalid combination of kind, integer operands, and sign: {k}, {il}, {ir}, {sign}"
+
 @[smt_proof_reconstruct] def reconstructRatProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
@@ -370,46 +419,8 @@ where
     let b : Q(Rat) ← reconstructTerm pf.getResult[1]!
     addTac q($a = $b) Rat.nativePolyNorm
   | .ARITH_POLY_NORM_REL =>
-    if pf.getResult[0]![0]!.getSort.isInteger then return none
-    let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue!
-    let cx : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
-    let x₁ : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
-    let x₂ : Q(Rat) ← reconstructTerm pf.getResult[0]![1]!
-    let cy : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[1]![0]!
-    let y₁ : Q(Rat) ← reconstructTerm pf.getResult[1]![0]!
-    let y₂ : Q(Rat) ← reconstructTerm pf.getResult[1]![1]!
-    let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
-    let k := pf.getResult[0]!.getKind
-    if k == .EQUAL then
-      let hcx : Q($cx ≠ 0) := .app q(@of_decide_eq_true ($cx ≠ 0) _) q(Eq.refl true)
-      let hcy : Q($cy ≠ 0) := .app q(@of_decide_eq_true ($cy ≠ 0) _) q(Eq.refl true)
-      addThm q(($x₁ = $x₂) = ($y₁ = $y₂)) q(Rat.eq_of_sub_eq $hcx $hcy $h)
-    else if lcx > 0 then
-      let hcx : Q($cx > 0) := .app q(@of_decide_eq_true ($cx > 0) _) q(Eq.refl true)
-      let hcy : Q($cy > 0) := .app q(@of_decide_eq_true ($cy > 0) _) q(Eq.refl true)
-      match k with
-      | .LT =>
-        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Rat.lt_of_sub_eq_pos $hcx $hcy $h)
-      | .LEQ =>
-        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Rat.le_of_sub_eq_pos $hcx $hcy $h)
-      | .GEQ =>
-        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Rat.ge_of_sub_eq_pos $hcx $hcy $h)
-      | .GT =>
-        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Rat.gt_of_sub_eq_pos $hcx $hcy $h)
-      | _   => return none
-    else
-      let hcx : Q($cx < 0) := .app q(@of_decide_eq_true ($cx < 0) _) q(Eq.refl true)
-      let hcy : Q($cy < 0) := .app q(@of_decide_eq_true ($cy < 0) _) q(Eq.refl true)
-      match k with
-      | .LT =>
-        addThm q(($x₁ < $x₂) = ($y₁ < $y₂)) q(Rat.lt_of_sub_eq_neg $hcx $hcy $h)
-      | .LEQ =>
-        addThm q(($x₁ ≤ $x₂) = ($y₁ ≤ $y₂)) q(Rat.le_of_sub_eq_neg $hcx $hcy $h)
-      | .GEQ =>
-        addThm q(($x₁ ≥ $x₂) = ($y₁ ≥ $y₂)) q(Rat.ge_of_sub_eq_neg $hcx $hcy $h)
-      | .GT =>
-        addThm q(($x₁ > $x₂) = ($y₁ > $y₂)) q(Rat.gt_of_sub_eq_neg $hcx $hcy $h)
-      | _   => return none
+    if pf.getChildren[0]!.getResult[0]![0]!.getSort.isInteger then return none
+    reconstructArithPolyNormRel pf
   | .ARITH_MULT_SIGN =>
     if pf.getResult[1]![0]!.getSort.isInteger then return none
     reconstructMulSign pf

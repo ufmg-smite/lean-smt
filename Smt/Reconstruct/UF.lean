@@ -52,6 +52,14 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let r : Q($α) ← reconstructTerm pf.getArguments[3]!
     let h : Q(($s = $r) = False) ← reconstructProof pf.getChildren[0]!
     addThm q((($t = $s) = ($t = $r)) = (¬$t = $s ∧ ¬$t = $r)) q(@UF.eq_cond_deq $α $t $s $r $h)
+  | .EQ_ITE_LIFT =>
+    let c : Q(Bool) ← reconstructTerm pf.getArguments[1]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[2]!.getSort
+    let t : Q($α) ← reconstructTerm pf.getArguments[2]!
+    let s : Q($α) ← reconstructTerm pf.getArguments[3]!
+    let r : Q($α) ← reconstructTerm pf.getArguments[4]!
+    addThm q((ite $c $t $s = $r) = (ite $c ($t = $r) ($s = $r))) q(@UF.eq_ite_lift $α $c $hc $t $s $r)
   | .DISTINCT_BINARY_ELIM =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
