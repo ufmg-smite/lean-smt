@@ -6,9 +6,15 @@ Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
 import Batteries.Data.Rat
+import Smt.Reconstruct.Rat.Core
+
+#check Rat.numDenCasesOn
 
 private theorem Rat.mul_lt_mul_left {c x y : Rat} (hc : c > 0) : (c * x < c * y) = (x < y) := by
-  sorry
+  apply propext
+  constructor
+  · intro hc; admit
+  · intro hxy; admit
 
 private theorem Rat.mul_le_mul_left {c x y : Rat} (hc : c > 0) : (c * x ≤ c * y) = (x ≤ y) := by
   sorry
