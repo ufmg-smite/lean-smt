@@ -144,6 +144,7 @@ theorem le_iff_sub_nonneg (a b : Rat) : a ≤ b ↔ 0 ≤ b - a :=
             simp only [natCast_pos, Nat.pos_iff_ne_zero]
             exact Nat.gcd_ne_zero_right (Nat.mul_ne_zero hb ha)
 
+
 theorem add_le_add_left {a b c : Rat} : c + a ≤ c + b ↔ a ≤ b := by
   rw [le_iff_sub_nonneg, add_sub_add_left_eq_sub, ← le_iff_sub_nonneg]
 
@@ -176,6 +177,58 @@ theorem divInt_le_divInt {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d) :
   simp only [Rat.sub_eq_add_neg, Rat.neg_divInt, ne_eq, ne_of_gt d0, not_false_eq_true, ne_of_gt b0,
     Rat.divInt_add_divInt, Int.neg_mul, Int.mul_pos d0 b0, divInt_nonneg_iff_of_pos_right,
     le_add_neg_iff_add_le, Int.zero_add, sub_nonneg]
+
+
+theorem Rat.not_le {a b : Rat} : ¬a ≤ b ↔ b < a := (Bool.not_eq_false _).to_iff
+
+theorem Int.neg_nonneg (a : Int) : 0 ≤ -a ↔ a ≤ 0 := ⟨Int.nonpos_of_neg_nonneg, Int.neg_nonneg_of_nonpos⟩
+
+theorem Rat.nonneg_total (a : Rat) : 0 ≤ a ∨ 0 ≤ -a := by
+  simp [← num_nonneg, Rat.neg_num, Int.neg_nonneg]; exact Int.le_total _ _
+
+theorem neg_def (q : Rat) : -q = Rat.divInt (-q.num) q.den := by rw [← Rat.neg_divInt, Rat.divInt_self]
+
+theorem Rat.neg_neg (a : Rat) : -(-a) = a := by
+  rw [neg_def, Rat.neg_num, Rat.neg_den, Int.neg_neg]
+  exact Rat.divInt_self a
+
+theorem Rat.neg_sub {a b : Rat} : -(a - b) = b - a := by
+  rw [Rat.sub_eq_add_neg, Rat.neg_add, Rat.sub_eq_add_neg, Rat.add_comm, ← Rat.sub_eq_add_neg, Rat.neg_neg]
+
+theorem Rat.le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
+  simpa only [← le_iff_sub_nonneg, Rat.neg_sub] using Rat.nonneg_total (b - a)
+
+theorem Rat.lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
+  rw [← not_le]
+  refine Iff.symm ((and_iff_right_of_imp (a := a ≤ b) (b := ¬ b ≤ a)) ?_)
+  intro h
+  cases Rat.le_total a b with
+  | inl hl => exact hl
+  | inr hr => exact False.elim (h hr)
+
+example (q : Rat) : q.num = 0 ↔ q = 0 := by exact?
+example (q : Rat) : 0 ≤ q.num ↔ 0 ≤ q := by exact?
+
+theorem Rat.nonneg_antisymm {q : Rat} : 0 ≤ q → 0 ≤ -q → q = 0 := by
+  intros h1 h2
+  rw [zero_iff_num_zero, le_antisymm_iff, num_nonneg]
+  constructor
+  · have h' := (num_nonneg (-q)).mpr h2
+    exact (Left.nonneg_neg_iff q.num).mp h'
+  · exact h1
+
+theorem Rat.le_antisymm {a b : Rat} (hab : a ≤  b) (hba : b ≤ a) : a = b := by
+  rw [le_iff_sub_nonneg] at hab hba
+  rw [Rat.sub_eq_add_neg] at hba
+  rw [← neg_sub, Rat.sub_eq_add_neg] at hab
+  have := Rat.nonneg_antisymm hba hab
+  have := congrArg (fun x => x + b) this
+  simp at this
+  rw [zero_add] at this
+  rw [Rat.add_assoc, neg_self_add] at this
+  rw [Rat.add_zero] at this
+  exact this
+
 
 -- Look at Mathlib/Algebra/Order/Ring/Unbundled/Rat.lean
 private theorem Rat.mul_lt_mul_left {c x y : Rat} (hc : c > 0) : (c * x < c * y) = (x < y) := by
@@ -300,41 +353,62 @@ theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.floor + 1 := by
   sorry
 
 theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
-  sorry
+  refine Rat.not_le.mp ?_
+  intro abs
+  have h := Rat.le_antisymm h₁ abs
+  exact h₂ h
 
 theorem trichotomy₂ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b := by
-  sorry
+  exact Rat.le_antisymm h₁ h₂
 
 theorem trichotomy₃ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
-  sorry
+  exact trichotomy₁ h₂ h₁
 
 theorem trichotomy₄ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
-  sorry
+  exact trichotomy₃ (id (Ne.symm h₁)) h₂
 
 theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
-  sorry
+  exact trichotomy₂ h₂ h₁
 
 theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
-  sorry
+  exact trichotomy₃ (id (Ne.symm h₂)) h₁
 
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by
   sorry
 
 theorem le_eq_sub_le_zero : (a ≤ b) = (a - b ≤ 0) := by
-  sorry
+  apply propext
+  constructor
+  · intro h
+    have h' := (add_le_add_left (c := -b)).mpr h
+    rw [Rat.add_comm, Rat.add_comm (-b) b] at h'
+    simp [Rat.add_neg_self, <- Rat.sub_eq_add_neg] at h'
+    exact h'
+  · intro h
+    have h' := (add_le_add_left (c := b)).mpr h
+    rw [Rat.sub_eq_add_neg, Rat.add_comm, Rat.add_assoc, Rat.neg_self_add] at h'
+    simp [Rat.add_zero] at h'
+    exact h'
 
 theorem eq_eq_sub_eq_zero : (a = b) = (a - b = 0) := by
   apply propext
   constructor
   · intro h; rw [h]; simp [Rat.sub_def]
-  · intro h; admit
+  · intro h
+    have h' := congrArg (fun x => x + b) h
+    simp at h'
+    rw [Rat.sub_eq_add_neg, Rat.add_assoc, Rat.neg_self_add, Rat.add_zero, Rat.zero_add] at h'
+    exact h'
 
 theorem ge_eq_sub_ge_zero : (a ≥ b) = (a - b ≥ 0) := by
   apply propext
   exact le_iff_sub_nonneg b a
 
 theorem gt_eq_sub_gt_zero : (a > b) = (a - b > 0) := by
-  sorry
+  apply propext
+  constructor
+  · admit
+  · admit
 
 theorem lt_of_sub_eq_pos {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   have {c x y : Rat} (hc : c > 0) : (c * (x - y) < 0) = (x - y < 0) := by
