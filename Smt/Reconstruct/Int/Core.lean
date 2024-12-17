@@ -5,10 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
-import Batteries.Data.Int
-
-
-
 namespace Int
 @[simp]
 protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by
