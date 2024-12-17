@@ -11,9 +11,6 @@ namespace Smt.Reconstruct.Rat.Rewrite
 
 open Function
 
-theorem div_by_const_elim {t c : Rat} : t / c = t * (1 / c) :=
-  sorry
-
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
 
 variable {t ts x xs : Rat}

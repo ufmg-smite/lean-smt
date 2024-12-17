@@ -188,20 +188,20 @@ deriving Inhabited, Repr
 namespace IntExpr
 
 def toPolynomial : IntExpr → Polynomial
-  | val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
-  | var v => [{ coeff := 1, vars := [⟨false, v⟩] }]
-  | neg a => a.toPolynomial.neg
-  | add a b => Polynomial.add a.toPolynomial b.toPolynomial
-  | sub a b => Polynomial.sub a.toPolynomial b.toPolynomial
-  | mul a b => Polynomial.mul a.toPolynomial b.toPolynomial
+  | .val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
+  | .var v => [{ coeff := 1, vars := [⟨false, v⟩] }]
+  | .neg a => a.toPolynomial.neg
+  | .add a b => Polynomial.add a.toPolynomial b.toPolynomial
+  | .sub a b => Polynomial.sub a.toPolynomial b.toPolynomial
+  | .mul a b => Polynomial.mul a.toPolynomial b.toPolynomial
 
 def denote (ctx : IntContext) : IntExpr → Int
-  | val v => v
-  | var v => ctx v
-  | neg a => -a.denote ctx
-  | add a b => a.denote ctx + b.denote ctx
-  | sub a b => a.denote ctx - b.denote ctx
-  | mul a b => a.denote ctx * b.denote ctx
+  | .val v => v
+  | .var v => ctx v
+  | .neg a => -a.denote ctx
+  | .add a b => a.denote ctx + b.denote ctx
+  | .sub a b => a.denote ctx - b.denote ctx
+  | .mul a b => a.denote ctx * b.denote ctx
 
 theorem denote_toPolynomial {rctx : RatContext} {e : IntExpr} : e.denote ictx = e.toPolynomial.denote (fun ⟨b, n⟩ => if b then rctx n else ictx n) := by
   induction e with
@@ -237,24 +237,24 @@ deriving Inhabited, Repr
 namespace RatExpr
 
 def toPolynomial : RatExpr → Polynomial
-  | val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
-  | var v => [{ coeff := 1, vars := [⟨true, v⟩] }]
-  | neg a => a.toPolynomial.neg
-  | add a b => Polynomial.add a.toPolynomial b.toPolynomial
-  | sub a b => Polynomial.sub a.toPolynomial b.toPolynomial
-  | mul a b => Polynomial.mul a.toPolynomial b.toPolynomial
-  | divConst a c => Polynomial.divConst a.toPolynomial c
-  | cast a => a.toPolynomial
+  | .val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
+  | .var v => [{ coeff := 1, vars := [⟨true, v⟩] }]
+  | .neg a => a.toPolynomial.neg
+  | .add a b => Polynomial.add a.toPolynomial b.toPolynomial
+  | .sub a b => Polynomial.sub a.toPolynomial b.toPolynomial
+  | .mul a b => Polynomial.mul a.toPolynomial b.toPolynomial
+  | .divConst a c => Polynomial.divConst a.toPolynomial c
+  | .cast a => a.toPolynomial
 
 def denote (ictx : IntContext) (rctx : RatContext)  : RatExpr → Rat
-  | val v => v
-  | var v => rctx v
-  | neg a => -a.denote ictx rctx
-  | add a b => a.denote ictx rctx + b.denote ictx rctx
-  | sub a b => a.denote ictx rctx - b.denote ictx rctx
-  | mul a b => a.denote ictx rctx * b.denote ictx rctx
-  | divConst a c => a.denote ictx rctx / c
-  | cast a => a.denote ictx
+  | .val v => v
+  | .var v => rctx v
+  | .neg a => -a.denote ictx rctx
+  | .add a b => a.denote ictx rctx + b.denote ictx rctx
+  | .sub a b => a.denote ictx rctx - b.denote ictx rctx
+  | .mul a b => a.denote ictx rctx * b.denote ictx rctx
+  | .divConst a c => a.denote ictx rctx / c
+  | .cast a => a.denote ictx
 
 theorem denote_toPolynomial {e : RatExpr} : e.denote ictx rctx = e.toPolynomial.denote (fun ⟨b, n⟩ => if b then rctx n else ictx n) := by
   induction e with
@@ -297,7 +297,7 @@ def getRatIndex (e : Q(Rat)) : PolyM Nat := do
     set (is, rs.push e)
     return size
 
-def getIntIndex (e : Q(Rat)) : PolyM Nat := do
+def getIntIndex (e : Q(Int)) : PolyM Nat := do
   let ⟨is, rs⟩ ← get
   if let some i := is.findIdx? (· == e) then
     return i
@@ -397,12 +397,10 @@ open Lean.Elab Tactic in
 
 end Smt.Reconstruct.Rat.Tactic
 
-open Smt.Reconstruct.Rat.PolyNorm.RatExpr
-
-example (x y z : Rat) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
+example (x y z : Rat) : 1 * (x + y) * z / 4 = 1 / (2 * 2) * (z * y + x * z) := by
   poly_norm
 
-example (x y : Int) (z : Rat) : 1 * (x + y) * z / 4  = 1/(2 * 2) * (z * y + x * z) := by
+example (x y : Int) (z : Rat) : 1 * (x + y) * z / 4 = 1 / (2 * 2) * (z * y + x * z) := by
   poly_norm
 
 example (x y : Int) (z : Rat) : 1 * ↑(x + y) * z / 4 = 1 / (2 * 2) * (z * ↑y + ↑x * z) := by

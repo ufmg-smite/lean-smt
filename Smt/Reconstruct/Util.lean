@@ -91,7 +91,7 @@ def collectPropsInAndChain' : Nat → Expr → MetaM (List Expr)
   pure (pref ++ suffE)
 
 def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
-  List.join
+  List.flatten
     [ xs.take i
     , [xs.get! j]
     , List.drop i (xs.eraseIdx j)

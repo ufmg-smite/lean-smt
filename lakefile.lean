@@ -3,13 +3,13 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/leanprover-community/lean-auto.git" @ "5367bcd32133a50ee5c4c39fb6cfa345893387bf"
+  git "https://github.com/leanprover-community/lean-auto.git" @ "fa3040aa203ea9d88ae958fab0fca8284c3640de"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "b7a6933c50aea5bb294eeff9ed2555640bc9c435"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "8ca855f444a3a9c71bba1ddd539fcd0d44dc8529"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.13.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.14.0"
 
 def libcpp : String :=
   if System.Platform.isWindows then "libstdc++-6.dll"
@@ -138,11 +138,10 @@ script profile args do
   let file : FilePath := args[0]!
   let log : FilePath := args[1]!
   let some cvc5 ← findModule? ``cvc5 | return 2
-  let s ← IO.Process.run {
+  let child ← IO.Process.spawn {
     cmd := (← getLean).toString
     args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={cvc5.dynlibFile}",
               "-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}", file.toString]
     env := ← getAugmentedEnv
   }
-  IO.println s
-  return 0
+  child.wait

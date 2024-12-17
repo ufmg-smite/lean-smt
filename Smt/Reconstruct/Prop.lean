@@ -83,27 +83,15 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .BOOL_OR_TRUE =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_true) args)
-  | .BOOL_OR_FALSE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_false) args)
   | .BOOL_OR_FLATTEN =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_flatten) args)
-  | .BOOL_OR_DUP =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_dup) args)
-  | .BOOL_AND_TRUE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_true) args)
   | .BOOL_AND_FALSE =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_false) args)
   | .BOOL_AND_FLATTEN =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_flatten) args)
-  | .BOOL_AND_DUP =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_dup) args)
   | .BOOL_AND_CONF =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_conf) args)
@@ -126,6 +114,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .BOOL_AND_DE_MORGAN =>
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_de_morgan) args)
+  | .BOOL_OR_AND_DISTRIB =>
+    let args ← reconstructArgs pf.getArguments[1:]
+    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_and_distrib) args)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -150,10 +141,14 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q((¬XOr $p $q) = ($p = $q)) q(@Prop.bool_not_xor_elim $p $q)
-  | .BOOL_NOT_EQ_ELIM =>
+  | .BOOL_NOT_EQ_ELIM1 =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    addThm q((¬$p = $q) = ((¬$p) = $q)) q(@Prop.bool_not_eq_elim $p $q)
+    addThm q((¬$p = $q) = ((¬$p) = $q)) q(@Prop.bool_not_eq_elim1 $p $q)
+  | .BOOL_NOT_EQ_ELIM2 =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    addThm q((¬$p = $q) = ($p = (¬$q))) q(@Prop.bool_not_eq_elim2 $p $q)
   | .ITE_NEG_BRANCH =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
@@ -201,6 +196,12 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
     addThm q(ite $c $p (¬$c) = ite $c $p True) q(@Prop.ite_else_lookahead_not_self $c $p $h)
+  | .ITE_EXPAND =>
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[3]!
+    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    addThm q(ite $c $p $q = ((¬$c ∨ $p) ∧ ($c ∨ $q))) q(@Prop.ite_expand $c $p $q $h)
   | .BOOL_NOT_ITE_ELIM =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
@@ -356,8 +357,8 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
     addThm (← reconstructTerm pf.getResult) q(@Prop.and_elim _ $hps $i $hi)
   | .AND_INTRO =>
     let cpfs := pf.getChildren
-    let q : Q(Prop) ← reconstructTerm cpfs.back.getResult
-    let hq : Q($q) ← reconstructProof cpfs.back
+    let q : Q(Prop) ← reconstructTerm cpfs.back!.getResult
+    let hq : Q($q) ← reconstructProof cpfs.back!
     let f := fun pf ⟨q, hq⟩ => do
       let p : Q(Prop) ← reconstructTerm pf.getResult
       let hp : Q($p) ← reconstructProof pf

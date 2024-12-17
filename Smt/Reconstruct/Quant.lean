@@ -141,7 +141,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!
     let t' : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($t = $t') q(Eq.refl $t)
-  | .QUANT_MINISCOPE =>
+  | .QUANT_MINISCOPE_AND =>
     let mut xs := #[]
     for x in pf.getResult[0]![0]! do
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
@@ -166,7 +166,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
         return (ap, aps, q(Eq.trans (forall_congr $hx) (@miniscope_andN $α $lps)))
       xs.foldrM f (b, ps, h)
     addThm (← reconstructTerm pf.getResult) h
-  | .QUANT_MINISCOPE_FV =>
+  | .QUANT_MINISCOPE_OR =>
     let mut xs := #[]
     for x in pf.getResult[0]![0]! do
       xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
@@ -197,6 +197,29 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
         let (p, ps, q, rs, h) ← xs.foldrM fin (p, ps, q, rs, h)
         return (p, ps.dropLast, ps.getLastD q(False), q :: rs, h)
       xss.foldrM fout (b, ps.dropLast, ps.getLast!, [], h)
+    addThm (← reconstructTerm pf.getResult) h
+  | .QUANT_MINISCOPE_ITE =>
+    let mut xs := #[]
+    for x in pf.getResult[0]![0]! do
+      xs := xs.push (getVariableName x, fun _ => reconstructSort x.getSort)
+    let (_, _, _, h) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
+      let c : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![0]!
+      let p : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![1]!
+      let q : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![2]!
+      let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+      let h : Q((ite $c $p $q) = (ite $c $p $q)) := q(Eq.refl (ite $c $p $q))
+      let f := fun x (p, q, r, h) => do
+        let u ← Meta.getLevel (← Meta.inferType x)
+        let α : Q(Sort u) ← Meta.inferType x
+        let lp : Q($α → Prop) ← Meta.mkLambdaFVars #[x] p
+        let lq : Q($α → Prop) ← Meta.mkLambdaFVars #[x] q
+        let lr : Q($α → Prop) ← Meta.mkLambdaFVars #[x] r
+        let hx : Q(∀ x, $lr x = ite $c ($lp x) ($lq x)) ← Meta.mkLambdaFVars #[x] h
+        let ap ← Meta.mkForallFVars #[x] p
+        let aq ← Meta.mkForallFVars #[x] q
+        let ar ← Meta.mkForallFVars #[x] r
+        return (ap, aq, ar, q(Eq.trans (forall_congr $hx) (@miniscope_ite $α $c $hc $lp $lq)))
+      xs.foldrM f (p, q, q(ite $c $p $q), h)
     addThm (← reconstructTerm pf.getResult) h
   | .QUANT_VAR_ELIM_EQ =>
     let lb := pf.getResult[0]![1]!
