@@ -2,7 +2,7 @@
 Copyright (c) 2021-2023 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
+Authors: Adrien Champion
 -/
 
 namespace Int
@@ -112,11 +112,11 @@ theorem neg_neg_iff_pos : -a < 0 ↔ 0 < a := ⟨Int.pos_of_neg_neg, Int.neg_neg
 theorem neg_nonpos_iff_nonneg : -a ≤ 0 ↔ 0 ≤ a :=
   ⟨Int.nonneg_of_neg_nonpos, Int.neg_nonpos_of_nonneg⟩
 
-@[simp] protected
-theorem sub_pos : 0 < a - b ↔ b < a := ⟨Int.lt_of_sub_pos, Int.sub_pos_of_lt⟩
+@[simp]
+protected theorem sub_pos : 0 < a - b ↔ b < a := ⟨Int.lt_of_sub_pos, Int.sub_pos_of_lt⟩
 
-@[simp] protected
-theorem sub_nonneg : 0 ≤ a - b ↔ b ≤ a := ⟨Int.le_of_sub_nonneg, Int.sub_nonneg_of_le⟩
+@[simp]
+protected theorem sub_nonneg : 0 ≤ a - b ↔ b ≤ a := ⟨Int.le_of_sub_nonneg, Int.sub_nonneg_of_le⟩
 
 protected theorem le_rfl : a ≤ a := a.le_refl
 protected theorem lt_or_lt_of_ne : a ≠ b → a < b ∨ b < a := Int.lt_or_gt_of_ne
@@ -134,8 +134,6 @@ protected theorem le_iff_eq_or_lt {a b : Int} : a ≤ b ↔ a = b ∨ a < b := b
   simp [Decidable.em]
 protected theorem le_iff_lt_or_eq : a ≤ b ↔ a < b ∨ a = b := by rw [Int.le_iff_eq_or_lt, or_comm]
 
-
-
 protected theorem div_gcd_nonneg_iff_of_pos
   {b : Nat} (b_pos : 0 < b)
 : 0 ≤ a / (a.gcd b) ↔ 0 ≤ a := by
@@ -145,11 +143,8 @@ protected theorem div_gcd_nonneg_iff_of_pos
     apply Nat.gcd_pos_of_pos_right _ b_pos
   exact Int.div_nonneg_iff_of_pos nz_den
 
-protected theorem div_gcd_nonneg_iff_of_nz
-  {b : Nat} (nz_b : b ≠ 0)
-: 0 ≤ a / (a.gcd b) ↔ 0 ≤ a :=
+protected theorem div_gcd_nonneg_iff_of_nz {b : Nat} (nz_b : b ≠ 0) : 0 ≤ a / (a.gcd b) ↔ 0 ≤ a :=
   Nat.pos_of_ne_zero nz_b |> Int.div_gcd_nonneg_iff_of_pos
-
 
 @[simp]
 theorem mul_nonneg_iff_of_pos_right (c_pos : 0 < c) : 0 ≤ b * c ↔ 0 ≤ b := ⟨

@@ -5,17 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
-import Batteries.Data.Int
 import Batteries.Data.Rat
 
 import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Rat.Core
 
-
-
 namespace Rat
-
-
 
 section le_lt_defs
 
