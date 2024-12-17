@@ -11,19 +11,6 @@ namespace Smt.Reconstruct.Real.Rewrite
 
 open Function
 
-theorem div_by_const_elim_1_pos {t : Real} : t / 1 = t * 1 :=
-  div_eq_mul_one_div t 1 ▸ Eq.symm (@one_div_one Real _) ▸ rfl
-theorem div_by_const_elim_1_neg {t : Real} : t / -1 = t * -1 :=
-  div_eq_mul_one_div t (-1) ▸ div_neg (1 : Real) ▸ Eq.symm (@one_div_one Real _) ▸ rfl
-theorem div_by_const_elim_num_pos {t c : Real} : t / c = t * (1 / c) :=
-  div_eq_mul_one_div t c
-theorem div_by_const_elim_num_neg {t c : Real} : t / -c = t * (-1 / c) :=
-  div_eq_mul_one_div t (-c) ▸ div_neg (1 : Real) ▸ neg_div c 1 ▸ rfl
-theorem div_by_const_elim_pos {t c₁ c₂ : Real} : t / (c₁ / c₂) = t * (c₂ / c₁) :=
-  div_eq_mul_one_div t (c₁ / c₂) ▸ one_div_div c₁ c₂ ▸ rfl
-theorem div_by_const_elim_neg {t c₁ c₂ : Real} : t / (-c₁ / c₂) = t * (-c₂ / c₁) :=
-  div_eq_mul_one_div t (-c₁ / c₂) ▸ one_div_div (-c₁) c₂ ▸ div_neg c₂ ▸ neg_div c₁ c₂ ▸ rfl
-
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
 
 variable {t ts x xs : Real}

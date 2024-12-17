@@ -103,7 +103,7 @@ private def mkNullaryCtor (type : Expr) (nparams : Nat) : MetaM (Option Expr) :=
   match type.getAppFn with
   | Expr.const d lvls =>
     let (some ctor) ← getFirstCtor d | pure none
-    return mkAppN (mkConst ctor lvls) (type.getAppArgs.shrink nparams)
+    return mkAppN (mkConst ctor lvls) (type.getAppArgs.take nparams)
   | _ =>
     return none
 
@@ -124,7 +124,7 @@ private def toCtorWhenK (recVal : RecursorVal) (major : Expr) : ReductionM Expr 
   let majorType ← inferType major
   let majorType ← instantiateMVars (← whnf majorType)
   let majorTypeI := majorType.getAppFn
-  if !majorTypeI.isConstOf recVal.getInduct then
+  if !majorTypeI.isConstOf recVal.getMajorInduct then
     return major
   else if majorType.hasExprMVar && majorType.getAppArgs[recVal.numParams:].any Expr.hasExprMVar then
     return major
@@ -181,7 +181,7 @@ private def toCtorWhenStructure (inductName : Name) (major : Expr) : ReductionM 
       else
         let some ctorName ← getFirstCtor d | pure major
         let ctorInfo ← getConstInfoCtor ctorName
-        let params := majorType.getAppArgs.shrink ctorInfo.numParams
+        let params := majorType.getAppArgs.take ctorInfo.numParams
         let mut result := mkAppN (mkConst ctorName us) params
         for i in [:ctorInfo.numFields] do
           result := mkApp result (← mkProjFn ctorInfo us params i major)
@@ -200,7 +200,7 @@ private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : A
       if recVal.k then
         major ← toCtorWhenK recVal major
       major := toCtorIfLit major
-      major ← toCtorWhenStructure recVal.getInduct major
+      major ← toCtorWhenStructure recVal.getMajorInduct major
       let some rule := getRecRuleFor recVal major | return none
       let majorArgs := major.getAppArgs
       guard (recLvls.length == recVal.levelParams.length)

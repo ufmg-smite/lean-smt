@@ -296,10 +296,10 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     Meta.mkLambdaFVars hs h
   addThm q(andN $ps → $q) q(Builtin.scopes $h)
 where
-  go vs ts hs map ka (a : Q(Int)) (ha : Expr) i : ReconstructM Expr := do
+  go vs ts hs map (ka : cvc5.Kind) (a : Q(Int)) (ha : Expr) i : ReconstructM Expr := do
     if hi : i < vs.size then
       let b : Q(Int) ← reconstructTerm vs[i]
-      let k := ts[map[vs[i]]!]!.getKind
+      let k : cvc5.Kind := ts[map[vs[i]]!]!.getKind
       if ka == .LT && k == .LT then
         let ha : Q($a < 0) := ha
         let hb : Q($b < 0) := hs[map[vs[i]]!]!

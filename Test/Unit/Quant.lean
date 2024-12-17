@@ -18,6 +18,12 @@ example {p q r : U → Prop} : (∀ x y z, p x ∨ q y ∨ r z) = ((∀ x, p x) 
 example {p : U → Prop} {q : U → U → Prop} {r : Prop} : (∀ x y₁ y₂, p x ∨ q y₁ y₂ ∨ r) = ((∀ x, p x) ∨ (∀ y₁ y₂, q y₁ y₂) ∨ r) := by
   smt
 
+example [Decidable c] {p q : U → Prop} : (∀ x, ite c (p x) (q x)) = ite c (∀ x, p x) (∀ x, q x) := by
+  smt
+
+example [Decidable c] {p q : U → U → Prop} : (∀ x y, ite c (p x y) (q x y)) = ite c (∀ x y, p x y) (∀ x y, q x y) := by
+  smt
+
 example {p : U → U → U → Prop} : (∀ x y z, p x y z) = (∀ y z x, p x y z) := by
   smt
 

@@ -74,7 +74,7 @@ lambdas. For example, if `def foo (a : Int) : Int → Int := (+) a`, then `e = f
 supposing `params = #[a, b]`, we return `(+) a b`. -/
 def makeFullyAppliedBody (e : Expr) (params : Array Expr) : MetaM Expr := do
   let numXs := countLams e
-  let e ← instantiateLambda e (params.shrink numXs)
+  let e ← instantiateLambda e (params.take numXs)
   mkAppOptM' e (params.toList.drop numXs |>.map some |>.toArray)
 where
   countLams : Expr → Nat

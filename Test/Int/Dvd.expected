@@ -3,8 +3,8 @@ goal: dvd a c = true
 query:
 (declare-fun dvd (Int Int) Bool)
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
-(declare-const c Int)
 (declare-const b Int)
+(declare-const c Int)
 (assert (= (dvd b c) true))
 (declare-const a Int)
 (assert (= (dvd a b) true))

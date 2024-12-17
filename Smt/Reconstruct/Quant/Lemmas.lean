@@ -68,6 +68,12 @@ theorem miniscope_orN {ps : List Prop} {q : α → Prop} {rs : List Prop} :
   | [p]            => miniscope_or_right ▸ @miniscope_orN α [] q rs ▸ rfl
   | p₁ :: p₂ :: ps => miniscope_or_right ▸ @miniscope_orN α (p₂ :: ps) q rs ▸ rfl
 
+theorem miniscope_ite {c : Prop} [h : Decidable c] {p q : α → Prop} :
+  (∀ x, ite c (p x) (q x)) = ite c (∀ x, p x) (∀ x, q x) :=
+  h.byCases
+    (fun hc => if_pos hc ▸ propext ⟨((if_pos hc).mp $ · ·), (if_pos hc ▸ · ·)⟩)
+    (fun hnc => if_neg hnc ▸ propext ⟨((if_neg hnc).mp $ · ·), (if_neg hnc ▸ · ·)⟩)
+
 theorem var_elim_eq {t : α} : (∀ x, x ≠ t) = False :=
   propext ⟨fun hnxt => absurd rfl (hnxt t), False.elim⟩
 

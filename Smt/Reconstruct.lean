@@ -120,7 +120,7 @@ def incCount : ReconstructM Nat :=
 def withAssums (as : Array Expr) (k : ReconstructM α) : ReconstructM α := do
   modify fun state => { state with currAssums := state.currAssums ++ as }
   let r ← k
-  modify fun state => { state with currAssums := state.currAssums.shrink (state.currAssums.size - as.size) }
+  modify fun state => { state with currAssums := state.currAssums.take (state.currAssums.size - as.size) }
   return r
 
 def findAssumWithType? (t : Expr) : ReconstructM (Option Expr) := do

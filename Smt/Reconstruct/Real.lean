@@ -105,28 +105,6 @@ where
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
-  | .ARITH_DIV_BY_CONST_ELIM =>
-    let t : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
-    let r := pf.getResult[0]![1]!.getRationalValue!
-    if r.den == 1 then
-      let c : Q(Real) := reconstructReal.mkRealLit r.num.natAbs
-      if r.num ≥ 0 then
-        if r.num == 1 then
-          addThm q($t / 1 = $t * 1) q(@Rewrite.div_by_const_elim_1_pos $t)
-        else
-          addThm q($t / $c = $t * (1 / $c)) q(@Rewrite.div_by_const_elim_num_pos $t $c)
-      else
-        if r.num == -1 then
-          addThm q($t / -1 = $t * -1) q(@Rewrite.div_by_const_elim_1_neg $t)
-        else
-          addThm q($t / -$c = $t * (-1 / $c)) q(@Rewrite.div_by_const_elim_num_neg $t $c)
-    else
-      let c₁ : Q(Real) := reconstructReal.mkRealLit r.num.natAbs
-      let c₂ : Q(Real) := reconstructReal.mkRealLit r.den
-      if r.num ≥ 0 then
-        addThm q($t / ($c₁ / $c₂) = $t * ($c₂ / $c₁)) q(@Rewrite.div_by_const_elim_pos $t $c₁ $c₂)
-      else
-        addThm q($t / (-$c₁ / $c₂) = $t * (-$c₂ / $c₁)) q(@Rewrite.div_by_const_elim_neg $t $c₁ $c₂)
   | .ARITH_POW_ELIM =>
     if pf.getResult[0]![0]!.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
@@ -306,10 +284,10 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     Meta.mkLambdaFVars hs h
   addThm q(andN $ps → $q) q(Builtin.scopes $h)
 where
-  go vs ts hs map ka (a : Q(Real)) (ha : Expr) i : ReconstructM Expr := do
+  go vs ts hs map (ka : cvc5.Kind) (a : Q(Real)) (ha : Expr) i : ReconstructM Expr := do
     if hi : i < vs.size then
       let b : Q(Real) ← reconstructTerm vs[i]
-      let k := ts[map[vs[i]]!]!.getKind
+      let k : cvc5.Kind := ts[map[vs[i]]!]!.getKind
       if ka == .LT && k == .LT then
         let ha : Q($a < 0) := ha
         let hb : Q($b < 0) := hs[map[vs[i]]!]!

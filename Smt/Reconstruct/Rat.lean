@@ -103,10 +103,6 @@ where
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
-  | .ARITH_DIV_BY_CONST_ELIM =>
-    let t : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
-    let c : Q(Rat) ← reconstructTerm pf.getResult[0]![1]!
-    addThm q($t / $c = $t * (1 / $c)) q(@Rewrite.div_by_const_elim $t $c)
   | .ARITH_POW_ELIM =>
     if pf.getResult[0]![0]!.getSort.isInteger then return none
     let x : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
@@ -281,10 +277,10 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     Meta.mkLambdaFVars hs h
   addThm q(andN $ps → $q) q(Builtin.scopes $h)
 where
-  go vs ts hs map ka (a : Q(Rat)) (ha : Expr) i : ReconstructM Expr := do
+  go vs ts hs map (ka : cvc5.Kind) (a : Q(Rat)) (ha : Expr) i : ReconstructM Expr := do
     if hi : i < vs.size then
       let b : Q(Rat) ← reconstructTerm vs[i]
-      let k := ts[map[vs[i]]!]!.getKind
+      let k : cvc5.Kind := ts[map[vs[i]]!]!.getKind
       if ka == .LT && k == .LT then
         let ha : Q($a < 0) := ha
         let hb : Q($b < 0) := hs[map[vs[i]]!]!
