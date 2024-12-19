@@ -71,6 +71,18 @@ theorem lt_iff_sub_pos (a b : Rat) : a < b ↔ 0 < b - a := by
     | inl eq => rw [eq] at h; simp at h; apply False.elim; exact (Bool.eq_not_self (Rat.blt 0 0)).mp h
     | inr lt => exact lt
 
+protected theorem divInt_lt_divInt
+  {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
+: a /. b < c /. d ↔ a * d < c * b := by
+  rw [Rat.lt_iff_sub_pos, ← Int.sub_pos]
+  simp [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
+  rw [Rat.divInt_add_divInt]
+  simp [Rat.divInt_pos_iff_of_pos_right (Int.mul_pos d0 b0)]
+  rw [← Int.sub_pos (a := c * b)]
+  rw [← Int.sub_eq_add_neg]
+  · exact Ne.symm (Int.ne_of_lt d0)
+  · exact Ne.symm (Int.ne_of_lt b0)
+
 variable {x y : Rat}
 
 theorem neg_self_add (c : Rat) : -c + c = 0 := by
@@ -192,7 +204,6 @@ private theorem Rat.mul_le_mul_left {c x y : Rat} (hc : c > 0) : (c * x ≤ c * 
               Int.mul_assoc]
           exact Int.mul_le_mul_of_nonneg_left h (Int.ofNat_zero_le c.den)
 
-
 private theorem Rat.mul_lt_mul_left {c x y : Rat} : 0 < c → ((c * x < c * y) ↔ (x < y)) :=
   numDenCasesOn' x fun n₁ d₁ h₁ =>
     numDenCasesOn' y fun n₂ d₂ h₂ => by
@@ -208,9 +219,35 @@ private theorem Rat.mul_lt_mul_left {c x y : Rat} : 0 < c → ((c * x < c * y) �
         have d2_pos : (0 : Int) < d₂ := Int.cast_pos h₂
         have den_pos1 : (0 : Int) < c.den * d₁ := Int.mul_pos c_den_pos d1_pos
         have den_pos2 : (0 : Int) < c.den * d₂ := Int.mul_pos c_den_pos d2_pos
-        /- rw [Rat.divInt_le_divInt den_pos1 den_pos2] -- we want Rat.divInt_lt_divInt -/
-        /- rw [Rat.divInt_le_divInt d1_pos d2_pos] -/
-        admit
+        rw [Rat.divInt_lt_divInt den_pos1 den_pos2]
+        rw [Rat.divInt_lt_divInt d1_pos d2_pos]
+        intro h
+        have c_pos : 0 < c.num := (divInt_pos_iff_of_pos_right c_den_pos).mp h
+        constructor
+        · intro h2
+          rw [Int.mul_assoc] at h2
+          rw [Int.mul_assoc] at h2
+          have h2' := Int.lt_of_mul_lt_mul_left (a := c.num) h2 (Int.le_of_lt c_pos)
+          rw [<- Int.mul_assoc, <- Int.mul_assoc, Int.mul_comm n₁ c.den, Int.mul_comm n₂ c.den] at h2'
+          rw [Int.mul_assoc, Int.mul_assoc] at h2'
+          exact Int.lt_of_mul_lt_mul_left (a := c.den) h2' (Int.ofNat_zero_le c.den)
+        · intro h2
+          have h2' := Int.mul_lt_mul_of_pos_left h2 c_pos
+          have h2'' := Int.mul_lt_mul_of_pos_left h2' c_den_pos
+          rw [<- Int.mul_assoc] at h2''
+          rw [<- Int.mul_assoc] at h2''
+          rw [<- Int.mul_assoc] at h2''
+          rw [<- Int.mul_assoc] at h2''
+          rw [Int.mul_comm c.den c.num] at h2''
+          rw [Int.mul_assoc c.num c.den n₁] at h2''
+          rw [Int.mul_comm c.den n₁] at h2''
+          rw [<- Int.mul_assoc] at h2''
+          rw [Int.mul_assoc] at h2''
+          rw [Int.mul_assoc c.num c.den n₂] at h2''
+          rw [Int.mul_comm c.den n₂] at h2''
+          rw [<- Int.mul_assoc c.num n₂ c.den] at h2''
+          rw [Int.mul_assoc (c.num * n₂) c.den d₁] at h2''
+          exact h2''
 
 private theorem Rat.mul_eq_zero_left {x y : Rat} : x ≠ 0 → x * y = 0 → y = 0 :=
   numDenCasesOn' x fun nx dx nz_dx =>
