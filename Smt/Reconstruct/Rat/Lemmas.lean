@@ -435,9 +435,17 @@ theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
 
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by
   apply propext
+  rw [Rat.lt_iff_sub_pos]
   constructor
-  · intro h; admit
-  · intro h; admit
+  · intro h
+    have h' := Rat.neg_lt_neg h
+    rw [Rat.neg_sub] at h'
+    exact h'
+  · intro h
+    have h' := Rat.neg_lt_neg h
+    simp at h'
+    rw [Rat.neg_sub] at h'
+    exact h'
 
 theorem le_eq_sub_le_zero : (a ≤ b) = (a - b ≤ 0) := by
   apply propext
@@ -457,7 +465,15 @@ theorem eq_eq_sub_eq_zero : (a = b) = (a - b = 0) := by
   apply propext
   constructor
   · intro h; rw [h]; simp
-  · intro h; admit
+  · intro h
+    have h' := congrArg (fun z => z +  b) h
+    simp at h'
+    rw [Rat.zero_add] at h'
+    rw [Rat.sub_eq_add_neg] at h'
+    rw [Rat.add_assoc] at h'
+    rw [Rat.neg_self_add] at h'
+    rw [Rat.add_zero] at h'
+    exact h'
 
 theorem ge_eq_sub_ge_zero : (a ≥ b) = (a - b ≥ 0) := by
   apply propext
@@ -487,9 +503,17 @@ theorem eq_of_sub_eq {c₁ c₂ : Rat} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0)
   apply propext
   apply Iff.intro
   · intro ha
-    sorry
+    rw [ha] at h
+    simp at h
+    have := Rat.mul_eq_zero_left hc₂ (Eq.symm h)
+    rw [eq_eq_sub_eq_zero]
+    exact this
   · intro hb
-    sorry
+    rw [hb] at h
+    simp at h
+    have := Rat.mul_eq_zero_left hc₁ h
+    rw [eq_eq_sub_eq_zero]
+    exact this
 
 theorem ge_of_sub_eq_pos {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   have {c x y : Rat} (hc : c > 0) : (c * (x - y) ≥ 0) = (x - y ≥ 0) := by
@@ -573,8 +597,17 @@ theorem mul_sign₄ (ha : a > 0) (hb : b < 0) : a * b < 0 := by
 theorem mul_sign₆ (ha : a > 0) (hb : b > 0) : a * b > 0 := by
   sorry
 
+#check Rat.num_pos
+
 theorem mul_sign₀ (ha : a ≠ 0) : a * a > 0 :=
-  sorry
+  Rat.numDenCasesOn' a fun na da da_nz => by
+    /- have : 0 ≠ na := Rat.num_pos.mpr ha -/
+    /- rw [Rat.divInt_mul_divInt] -/
+    /- simp -/
+    /- have : (0 : Int) < da := Int.cast_pos da_nz -/
+    /- rw [Rat.divInt_pos_iff_of_pos_right (Int.mul_pos this this)] -/
+
+    admit
 
 theorem mul_sign₂ (ha : a < 0) (hb : b ≠ 0) : a * b * b < 0 :=
   sorry
