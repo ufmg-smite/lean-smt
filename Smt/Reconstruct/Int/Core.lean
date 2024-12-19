@@ -6,12 +6,18 @@ Authors: Adrien Champion
 -/
 
 namespace Int
+
 @[simp]
 protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by
   omega
 
 protected theorem natCast_ne_zero {n : Nat} : (n : Int) ≠ 0 ↔ n ≠ 0 := by
   exact not_congr Int.natCast_eq_zero
+
+protected theorem cast_pos {x : Nat} : x ≠ 0 → (0 : Int) < x := by
+  intro h
+  have h' := Nat.zero_lt_of_ne_zero h
+  exact Int.ofNat_pos.mpr h'
 
 protected theorem gcd_def (i j : Int) : i.gcd j = i.natAbs.gcd j.natAbs :=
   rfl
@@ -153,11 +159,36 @@ theorem mul_nonneg_iff_of_pos_right (c_pos : 0 < c) : 0 ≤ b * c ↔ 0 ≤ b :=
     apply Decidable.byContradiction
     intro h_b
     let h_b := Int.not_le.mp h_b
+
     apply Int.not_le.mpr (Int.mul_neg_of_neg_of_pos h_b c_pos)
+
     assumption
   ,
   by
     intro b_nonneg
     apply Int.mul_nonneg b_nonneg (Int.le_of_lt c_pos)
+⟩
+
+example (a b : Int) : ¬ a ≤ b → b < a := by exact fun a_1 => Int.lt_of_not_ge a_1
+
+
+theorem mul_pos_iff_of_pos_right (c_pos : 0 < c) : 0 < b * c ↔ 0 < b := ⟨
+  by
+    intro bc_nonneg
+    apply Decidable.byContradiction
+    intro h_b'
+    have h_b := Int.not_le.mp h_b'
+    have := Int.not_lt.mp h_b'
+    cases Int.le_iff_lt_or_eq.mp this with
+    | inl n =>
+        have := Int.not_le.mpr (Int.mul_neg_of_neg_of_pos n c_pos)
+        have := Int.lt_of_not_ge this
+        have := Int.lt_trans bc_nonneg this
+        simp at this
+    | inr n => rw [n] at bc_nonneg; simp at bc_nonneg
+  ,
+  by
+    intro b_pos
+    apply Int.mul_pos b_pos c_pos
 ⟩
 end Int
