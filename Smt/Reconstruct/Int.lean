@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Reconstruct
 import Smt.Reconstruct.Builtin.Lemmas
+import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Int.Lemmas
 import Smt.Reconstruct.Int.Polynorm
 import Smt.Reconstruct.Int.Rewrites
