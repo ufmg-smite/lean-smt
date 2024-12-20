@@ -12,8 +12,11 @@ namespace BitVec
 def bb (x : BitVec w) : BitVec w :=
   (iunfoldr (fun i _ => ((), x.getLsbD i)) ()).snd
 
-def self_eq_bb (x : BitVec w) : x = x.bb :=
-  sorry
+theorem self_eq_bb (x : BitVec w) : x = x.bb := by
+  unfold bb
+  rw [iunfoldr_replace_snd (λ _ => ()) (init:=rfl)]
+  intro i
+  rfl
 
 -- def beq (x : BitVec w) (y : BitVec w) : Bool :=
 --   go w
