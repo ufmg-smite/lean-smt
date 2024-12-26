@@ -207,13 +207,6 @@ protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
 protected theorem mul_ne_zero_iff : a * b ≠ 0 ↔ a ≠ 0 ∧ b ≠ 0 := by
   simp only [not_congr (@Rat.mul_eq_zero_iff a b), not_or, ne_eq]
 
-protected theorem mul_assoc (a b c : Rat) : a + b + c = a + (b + c) :=
-  numDenCasesOn' a fun n₁ d₁ _h₁ =>
-  numDenCasesOn' b fun n₂ d₂ _h₂ =>
-  numDenCasesOn' c fun n₃ d₃ _h₃ => by
-    simp only [Rat.divInt_ofNat]
-    exact Rat.add_assoc _ _ _
-
 end mul_basics
 
 section num_related
@@ -461,6 +454,11 @@ theorem divInt_pos_iff_of_pos_right {a b : Int} (hb : 0 < b) : 0 < a /. b ↔ 0 
   rw [ ← Rat.num_pos, <- Int.mul_pos_iff_of_pos_right hb, <- hab,
        Int.mul_pos_iff_of_pos_right (mod_cast Nat.pos_of_ne_zero hd)]
 
+theorem divInt_neg_iff_of_neg_right {a b : Int} (hb : 0 < b) : 0 > a /. b ↔ 0 > a := by
+  have f : ¬ (0 ≤ a /. b) ↔ ¬ (0 ≤ a) := not_congr (divInt_nonneg_iff_of_pos_right hb)
+  rw [Int.not_le, Rat.not_le] at f
+  exact f
+
 protected theorem divInt_le_divInt
   {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
 : a /. b ≤ c /. d ↔ a * d ≤ c * b := by
@@ -475,6 +473,10 @@ protected theorem divInt_le_divInt
 
 end divInt
 
-
+theorem mul_assoc (a b c : Rat) : a * b * c = a * (b * c) :=
+  numDenCasesOn' a fun n₁ d₁ h₁ =>
+    numDenCasesOn' b fun n₂ d₂ h₂ =>
+      numDenCasesOn' c fun n₃ d₃ h₃ => by
+        simp [h₁, h₂, h₃, Int.mul_comm, Nat.mul_assoc, Int.mul_left_comm, mkRat_mul_mkRat]
 
 end Rat
