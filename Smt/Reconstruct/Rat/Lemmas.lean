@@ -645,65 +645,211 @@ theorem gt_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0)
   have h' := neg_eq h
   exact lt_of_sub_eq_neg hc₁ hc₂ h'
 
-instance foobar : IntCast (R := Rat) := by infer_instance
+theorem Rat.cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
+  intro h
+  simp [Rat.instLT, Rat.ofInt] at h
+  simp [Rat.blt] at h
+  cases h with
+  | inl h =>
+    let ⟨h1, h2⟩ := h
+    exact Int.lt_of_lt_of_le h1 h2
+  | inr h =>
+    cases Classical.em (a = 0) with
+    | inl ha => simp [ha] at h; exact lt_of_eq_of_lt ha h
+    | inr ha =>
+      simp [ha] at h
+      exact h.2
 
-#print foobar
+theorem Rat.cast_lt2 {a b : Int} : a < b → Rat.ofInt a < Rat.ofInt b := by
+  intro h
+  simp [Rat.instLT, Rat.ofInt]
+  simp [Rat.blt]
+  cases Classical.em (a = 0) with
+  | inl ha => simp [ha]; rw [ha] at h; exact h
+  | inr ha =>
+      simp [ha]
+      right
+      constructor
+      · apply Classical.or_iff_not_imp_left.mpr
+        intro h2
+        have := Classical.not_not.mp h2
+        intro abs
+        have := Int.lt_trans this h
+        have := Int.lt_of_lt_of_le this abs
+        simp at this
+      · exact h
+
+theorem Rat.cast_lt {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
+  ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
+
+theorem Rat.cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
+  intro h
+  simp [Rat.instLE, Rat.ofInt] at h
+  simp [Rat.blt] at h
+  cases Classical.em (b = 0) with
+  | inl hb =>
+    simp [hb] at h
+    rw [hb]
+    exact Int.not_lt.mp h
+  | inr hb =>
+    simp [hb] at h
+    let ⟨h1, h2⟩ := h
+    rw [Int.not_lt, Int.not_le, Int.not_lt] at h2
+    rw [Int.not_le] at h1
+    cases Classical.em (a ≤ b) with
+    | inl hab => exact hab
+    | inr hab =>
+      have : ¬ a ≤ b → ¬ (b ≤ 0 ∨ 0 < a) := fun a_1 a => hab (h2 a)
+      have := this hab
+      rw [not_or] at this
+      let ⟨h3, h4⟩ := this
+      rw [Int.not_le] at h3
+      rw [Int.not_lt] at h4
+      have := Int.lt_of_le_of_lt h4 h3
+      exact Int.le_of_lt this
+
+theorem Rat.cast_le2 {a b : Int} : a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
+  intro h
+  simp [Rat.instLE, Rat.ofInt]
+  simp [Rat.blt]
+  cases Classical.em (b = 0) with
+  | inl hb =>
+    simp [hb]
+    rw [Int.not_lt]
+    rw [hb] at h
+    exact h
+  | inr hb =>
+    simp [hb]
+    constructor
+    · intro b_neg
+      intro a_nonneg
+      have := Int.lt_of_lt_of_le b_neg a_nonneg
+      exact Lean.Omega.Int.le_lt_asymm h this
+    · intro hh
+      rw [Int.not_lt]
+      exact h
+
+theorem Rat.cast_le {a b : Int} : a ≤ b ↔ Rat.ofInt a ≤ Rat.ofInt b :=
+  ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
+
+theorem Rat.cast_ge {a b : Int} : a ≥ b ↔ Rat.ofInt a ≥ Rat.ofInt b :=
+  ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
+
+theorem Rat.cast_gt {a b : Int} : a > b ↔ Rat.ofInt a > Rat.ofInt b :=
+  ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
+
+theorem Rat.cast_eq {a b : Int} : a = b ↔ Rat.ofInt a = Rat.ofInt b := by
+  constructor
+  · intro h; rw [h]
+  · intro h; exact Rat.intCast_inj.mp h
 
 theorem lt_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
-  -- have := lt_of_sub_eq_pos hc₁ hc₂ h
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := lt_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_lt]
+  exact this
 
 theorem lt_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := lt_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_lt]
+  exact this
 
 theorem le_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := le_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_le]
+  exact this
 
 theorem le_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := le_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_le]
+  exact this
 
 theorem eq_of_sub_eq_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := eq_of_sub_eq hc₁ hc₂ h
+  rw [Rat.cast_eq]
+  exact this
 
 theorem ge_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := ge_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_ge]
+  exact this
 
 theorem ge_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := ge_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_ge]
+  exact this
 
 theorem gt_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := gt_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_gt]
+  exact this
 
 theorem gt_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := gt_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_gt]
+  exact this
 
-theorem lt_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) :=
-  --have := lt_of_sub_eq_pos hc₁ hc₂ h
-  sorry
+theorem lt_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
+  rw [Rat.intCast_sub] at h
+  have := lt_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_lt]
+  exact this
 
 theorem lt_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := lt_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_lt]
+  exact this
 
 theorem le_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := le_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_le]
+  exact this
 
 theorem le_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := le_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_le]
+  exact this
 
 theorem eq_of_sub_eq_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := eq_of_sub_eq hc₁ hc₂ h
+  rw [Rat.cast_eq]
+  exact this
 
 theorem ge_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := ge_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_ge]
+  exact this
 
 theorem ge_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := ge_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_ge]
+  exact this
 
 theorem gt_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := gt_of_sub_eq_pos hc₁ hc₂ h
+  rw [Rat.cast_gt]
+  exact this
 
 theorem gt_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
-  sorry
+  rw [Rat.intCast_sub] at h
+  have := gt_of_sub_eq_neg hc₁ hc₂ h
+  rw [Rat.cast_gt]
+  exact this
 
 theorem mul_sign₆ : a > 0 → b > 0 → a * b > 0 :=
   Rat.numDenCasesOn' a fun a_num a_den a_den_nz ha =>
