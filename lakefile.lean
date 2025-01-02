@@ -6,19 +6,12 @@ require auto from
   git "https://github.com/leanprover-community/lean-auto.git" @ "fa3040aa203ea9d88ae958fab0fca8284c3640de"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "8ca855f444a3a9c71bba1ddd539fcd0d44dc8529"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "9ec3715"
 
 require mathlib from
   git "https://github.com/leanprover-community/mathlib4.git" @ "v4.14.0"
 
-def libcpp : String :=
-  if System.Platform.isWindows then "libstdc++-6.dll"
-  else if System.Platform.isOSX then "libc++.dylib"
-  else "libstdc++.so.6"
-
-package smt where
-  moreLeanArgs := #[s!"--load-dynlib={libcpp}"]
-  moreGlobalServerArgs := #[s!"--load-dynlib={libcpp}"]
+package smt
 
 @[default_target]
 lean_lib Smt
@@ -77,7 +70,7 @@ where
     let some cvc5 ← findModule? ``cvc5 | return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={cvc5.dynlibFile}"] ++ #[test.toString]
+      args := #[s!"--load-dynlib={cvc5.dynlibFile}", test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -120,7 +113,7 @@ where
     let some cvc5 ← findModule? ``cvc5 | return 2
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={cvc5.dynlibFile}"] ++ #[test.toString]
+      args := #[s!"--load-dynlib={cvc5.dynlibFile}", test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout
@@ -140,8 +133,8 @@ script profile args do
   let some cvc5 ← findModule? ``cvc5 | return 2
   let child ← IO.Process.spawn {
     cmd := (← getLean).toString
-    args := #[s!"--load-dynlib={libcpp}", s!"--load-dynlib={cvc5.dynlibFile}",
-              "-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}", file.toString]
+    args := #[s!"--load-dynlib={cvc5.dynlibFile}", "-Dtrace.profiler=true",
+              s!"-Dtrace.profiler.output={log}", file.toString]
     env := ← getAugmentedEnv
   }
   child.wait

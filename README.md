@@ -19,15 +19,6 @@ To use `lean-smt` in your project, add the following line to your list of
 dependencies in `lakefile.lean`:
 ```lean
 require smt from git "https://github.com/ufmg-smite/lean-smt.git" @ "main"
-
-def libcpp : String :=
-  if System.Platform.isWindows then "libstdc++-6.dll"
-  else if System.Platform.isOSX then "libc++.dylib"
-  else "libstdc++.so.6"
-
-package foo where
-  moreLeanArgs := #[s!"--load-dynlib={libcpp}"]
-  moreGlobalServerArgs := #[s!"--load-dynlib={libcpp}"]
 ```
 `lean-smt` comes with one main tactic, `smt`, that translates the current goal
 into an SMT query, sends the query to cvc5, and (if the solver returns `unsat`)
