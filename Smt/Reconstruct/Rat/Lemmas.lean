@@ -861,6 +861,11 @@ theorem mul_neg_lt : (c < 0 ∧ a < b) → c * a > c * b :=
         rw [Int.mul_comm, Int.mul_comm a_den b_num]
         exact h3
 
+theorem mul_neg_gt (h : c < 0 ∧ a > b) : c * a < c * b := mul_neg_lt h
+
+theorem mul_neg_eq (h : c < 0 ∧ a = b) : c * a = c * b := by
+  rw [h.2]
+
 theorem Int.mul_le_mul_of_neg_left {a b c : Int} (h : b ≤ a) (hc : c < 0) : c * a ≤ c * b :=
   match Int.le_iff_eq_or_lt.mp h with
   | Or.inl heq => by rw [heq]; exact Int.le_refl (c * a)
@@ -871,52 +876,10 @@ theorem Int.mul_le_mul_of_pos_left {a b c : Int} (h : a ≤ b) (hc : 0 < c) : c 
   | Or.inl heq => by rw [heq]; exact Int.le_refl (c * b)
   | Or.inr hlt => by have := Int.mul_lt_mul_of_pos_left hlt hc; exact Int.le_of_lt this
 
-theorem mul_neg_gt (h : c < 0 ∧ a > b) : c * a < c * b :=
-  mul_neg_lt h
-
-theorem mul_neg_eq (h : c < 0 ∧ a = b) : c * a = c * b := by
-  rw [h.2]
-
 theorem Rat.neg_mul (a b : Rat) : -a * b = - (a * b) := by
   rw [Rat.mul_comm]
   rw [Rat.mul_neg]
   rw [Rat.mul_comm]
-
-theorem Rat.mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
-  Rat.numDenCasesOn' a fun a_num a_den a_den_nz =>
-    Rat.numDenCasesOn' b fun b_num b_den b_den_nz =>
-      Rat.numDenCasesOn' c fun c_num c_den c_den_nz => by
-        have a_den_nz' : (a_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr a_den_nz
-        have b_den_nz' : (b_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr b_den_nz
-        have c_den_nz' : (c_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr c_den_nz
-        rw [Rat.divInt_mul_divInt a_num b_num a_den_nz' b_den_nz']
-        rw [Rat.divInt_mul_divInt a_num c_num a_den_nz' c_den_nz']
-        have ab_den_nz : (a_den * b_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' b_den_nz'
-        have bc_den_nz : (b_den * c_den : Int) ≠ 0 := Int.mul_ne_zero b_den_nz' c_den_nz'
-        have ac_den_nz : (a_den * c_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' c_den_nz'
-        have abc_den_nz : (a_den * (b_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' bc_den_nz
-        have abac_den_nz : (a_den * b_den * (a_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero ab_den_nz ac_den_nz
-        rw [Rat.divInt_add_divInt (a_num * b_num) (a_num * c_num) ab_den_nz ac_den_nz]
-        rw [Rat.divInt_add_divInt b_num c_num b_den_nz' c_den_nz']
-        rw [Rat.divInt_mul_divInt a_num (b_num * c_den + c_num * b_den) a_den_nz' bc_den_nz]
-        rw [Rat.divInt_eq_iff abc_den_nz abac_den_nz]
-        rw [Int.mul_assoc]
-        rw [Int.mul_comm _ (a_den * (b_den * c_den))]
-        rw [Int.mul_assoc a_num b_num]
-        rw [Int.mul_assoc a_num c_num]
-        rw [<- Int.mul_add a_num]
-        rw [Int.mul_comm b_num (a_den * c_den)]
-        rw [Int.mul_assoc a_den c_den b_num]
-        rw [Int.mul_comm c_num (a_den * b_den)]
-        rw [Int.mul_assoc a_den b_den c_num]
-        rw [<- Int.mul_add a_den]
-        simp [Int.mul_assoc, Int.mul_comm]
-        rw [<- Int.mul_assoc a_den (b_num * c_den + c_num * b_den)]
-        rw [Int.mul_comm a_den (b_num * c_den + c_num * b_den)]
-        simp [Int.mul_assoc]
-        rw [<- Int.mul_assoc b_den a_den c_den]
-        rw [Int.mul_comm b_den a_den]
-        rw [Int.mul_assoc a_den b_den c_den]
 
 theorem Int.ge_of_mul_le_mul_left_neg {a b c : Int} (w : a * b ≤ a * c) (h : a < 0) : c ≤ b := by
   have w := Int.sub_nonneg_of_le w
@@ -957,6 +920,11 @@ theorem Rat.mul_le_mul_of_neg_left (a b c : Rat) : c < 0 -> (a ≤ b <-> c * a �
         constructor
         · intro h2; rw [Int.mul_comm b_den a_num, Int.mul_comm a_den b_num]; exact Int.mul_le_mul_of_pos_left h2 this
         · intro h2; rw [Int.mul_comm a_num b_den, Int.mul_comm b_num a_den]; exact Int.le_of_mul_le_mul_left h2 this
+
+theorem mul_neg_le (h : c < 0 ∧ a ≤ b) : c * a ≥ c * b := (Rat.mul_le_mul_of_neg_left a b c h.1).mp h.2
+
+theorem mul_neg_ge (h : c < 0 ∧ a ≥ b) : c * a ≤ c * b :=
+  mul_neg_le h
 
 theorem mul_tangent_mp_lower (h : x * y ≤ b * x + a * y - a * b)
   : x ≤ a ∧ y ≥ b ∨ x ≥ a ∧ y ≤ b := by

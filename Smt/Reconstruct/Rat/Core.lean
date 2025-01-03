@@ -559,4 +559,40 @@ theorem le_floor {z : Int} : ∀ {r : Rat}, z ≤ Rat.floor r ↔ (z : Rat) ≤ 
 
 def ceil' (r : Rat) := -((-r).floor)
 
+theorem mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
+  Rat.numDenCasesOn' a fun a_num a_den a_den_nz =>
+    Rat.numDenCasesOn' b fun b_num b_den b_den_nz =>
+      Rat.numDenCasesOn' c fun c_num c_den c_den_nz => by
+        have a_den_nz' : (a_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr a_den_nz
+        have b_den_nz' : (b_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr b_den_nz
+        have c_den_nz' : (c_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr c_den_nz
+        rw [Rat.divInt_mul_divInt a_num b_num a_den_nz' b_den_nz']
+        rw [Rat.divInt_mul_divInt a_num c_num a_den_nz' c_den_nz']
+        have ab_den_nz : (a_den * b_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' b_den_nz'
+        have bc_den_nz : (b_den * c_den : Int) ≠ 0 := Int.mul_ne_zero b_den_nz' c_den_nz'
+        have ac_den_nz : (a_den * c_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' c_den_nz'
+        have abc_den_nz : (a_den * (b_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' bc_den_nz
+        have abac_den_nz : (a_den * b_den * (a_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero ab_den_nz ac_den_nz
+        rw [Rat.divInt_add_divInt (a_num * b_num) (a_num * c_num) ab_den_nz ac_den_nz]
+        rw [Rat.divInt_add_divInt b_num c_num b_den_nz' c_den_nz']
+        rw [Rat.divInt_mul_divInt a_num (b_num * c_den + c_num * b_den) a_den_nz' bc_den_nz]
+        rw [Rat.divInt_eq_iff abc_den_nz abac_den_nz]
+        rw [Int.mul_assoc]
+        rw [Int.mul_comm _ (a_den * (b_den * c_den))]
+        rw [Int.mul_assoc a_num b_num]
+        rw [Int.mul_assoc a_num c_num]
+        rw [<- Int.mul_add a_num]
+        rw [Int.mul_comm b_num (a_den * c_den)]
+        rw [Int.mul_assoc a_den c_den b_num]
+        rw [Int.mul_comm c_num (a_den * b_den)]
+        rw [Int.mul_assoc a_den b_den c_num]
+        rw [<- Int.mul_add a_den]
+        simp [Int.mul_assoc, Int.mul_comm]
+        rw [<- Int.mul_assoc a_den (b_num * c_den + c_num * b_den)]
+        rw [Int.mul_comm a_den (b_num * c_den + c_num * b_den)]
+        simp [Int.mul_assoc]
+        rw [<- Int.mul_assoc b_den a_den c_den]
+        rw [Int.mul_comm b_den a_den]
+        rw [Int.mul_assoc a_den b_den c_den]
+
 end Rat
