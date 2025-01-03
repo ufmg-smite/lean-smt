@@ -12,6 +12,8 @@ import Smt.Reconstruct.Int.Core
 
 namespace Rat
 
+protected def abs (x : Rat) := if x < 0 then -x else x
+
 protected def pow (m : Rat) : Nat → Rat
   | 0 => 1
   | n + 1 => Rat.pow m n * m
