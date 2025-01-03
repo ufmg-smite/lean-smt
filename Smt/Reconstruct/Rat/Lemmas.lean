@@ -554,7 +554,7 @@ theorem le_mul_of_lt_of_le (a b : Rat) : a < 0 → b ≤ 0 → 0 ≤ a * b := by
   | inl heq => rw [heq, Rat.mul_zero]; exact rfl
   | inr hlt => have := mul_sign₁ h1 hlt; exact le_of_lt this
 
-theorem foo (a b : Rat) : a < 0 → 0 ≤ a * b → b ≤ 0 := by
+theorem nonpos_of_mul_nonneg (a b : Rat) : a < 0 → 0 ≤ a * b → b ≤ 0 := by
   intros h1 h2
   apply Classical.byContradiction
   intro h3
@@ -563,7 +563,7 @@ theorem foo (a b : Rat) : a < 0 → 0 ≤ a * b → b ≤ 0 := by
   have := Rat.lt_of_lt_of_le this h2
   exact Rat.lt_irrefl _ this
 
-theorem bar (a b : Rat) : a < 0 → 0 < a * b → b < 0 := by
+theorem neg_of_mul_pos (a b : Rat) : a < 0 → 0 < a * b → b < 0 := by
   intros h1 h2
   apply Classical.byContradiction
   intro h3
@@ -587,7 +587,7 @@ theorem lt_of_sub_eq_neg' {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0
   have := (Rat.lt_iff_sub_pos' a₂ a₁).mp h2
   have : 0 < c₁ * (a₁ - a₂) := mul_sign₁ hc₁ this
   rw [h] at this
-  have := bar c₂ (b₁ - b₂) hc₂ this
+  have := neg_of_mul_pos c₂ (b₁ - b₂) hc₂ this
   exact (lt_iff_sub_pos' b₂ b₁).mpr this
 
 theorem lt_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
@@ -607,7 +607,7 @@ theorem le_of_sub_eq_neg' {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0
   have := (Rat.le_iff_sub_nonneg' a₂ a₁).mp h2
   have : 0 ≤ c₁ * (a₁ - a₂) := le_mul_of_lt_of_le c₁ (a₁ - a₂) hc₁ this
   rw [h] at this
-  have := foo c₂ (b₁ - b₂) hc₂ this
+  have := nonpos_of_mul_nonneg c₂ (b₁ - b₂) hc₂ this
   exact (Rat.le_iff_sub_nonneg' b₂ b₁).mpr this
 
 theorem le_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
