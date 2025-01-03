@@ -12,7 +12,7 @@ import Smt.Reconstruct.Int.Core
 
 namespace Rat
 
-variable (x y a b q : Rat)
+variable (x y a b c q : Rat)
 
 protected def abs (x : Rat) := if x < 0 then -x else x
 
@@ -556,13 +556,13 @@ theorem mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
         have a_den_nz' : (a_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr a_den_nz
         have b_den_nz' : (b_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr b_den_nz
         have c_den_nz' : (c_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr c_den_nz
-        rw [Rat.divInt_mul_divInt a_num b_num a_den_nz' b_den_nz']
-        rw [Rat.divInt_mul_divInt a_num c_num a_den_nz' c_den_nz']
         have ab_den_nz : (a_den * b_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' b_den_nz'
         have bc_den_nz : (b_den * c_den : Int) ≠ 0 := Int.mul_ne_zero b_den_nz' c_den_nz'
         have ac_den_nz : (a_den * c_den : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' c_den_nz'
         have abc_den_nz : (a_den * (b_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero a_den_nz' bc_den_nz
         have abac_den_nz : (a_den * b_den * (a_den * c_den) : Int) ≠ 0 := Int.mul_ne_zero ab_den_nz ac_den_nz
+        rw [Rat.divInt_mul_divInt a_num b_num a_den_nz' b_den_nz']
+        rw [Rat.divInt_mul_divInt a_num c_num a_den_nz' c_den_nz']
         rw [Rat.divInt_add_divInt (a_num * b_num) (a_num * c_num) ab_den_nz ac_den_nz]
         rw [Rat.divInt_add_divInt b_num c_num b_den_nz' c_den_nz']
         rw [Rat.divInt_mul_divInt a_num (b_num * c_den + c_num * b_den) a_den_nz' bc_den_nz]

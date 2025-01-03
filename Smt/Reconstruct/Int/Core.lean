@@ -14,7 +14,7 @@ protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by
 protected theorem natCast_ne_zero {n : Nat} : (n : Int) ≠ 0 ↔ n ≠ 0 := by
   exact not_congr Int.natCast_eq_zero
 
-protected theorem cast_pos {x : Nat} : x ≠ 0 → (0 : Int) < x := by
+protected theorem cast_pos' {x : Nat} : x ≠ 0 → (0 : Int) < x := by
   intro h
   have h' := Nat.zero_lt_of_ne_zero h
   exact Int.ofNat_pos.mpr h'
