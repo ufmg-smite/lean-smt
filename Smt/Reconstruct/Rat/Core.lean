@@ -12,10 +12,6 @@ import Smt.Reconstruct.Int.Core
 
 namespace Rat
 
-section basics
-
-protected def abs (x : Rat) := if x < 0 then -x else x
-
 protected def pow (m : Rat) : Nat → Rat
   | 0 => 1
   | n + 1 => Rat.pow m n * m
@@ -102,10 +98,6 @@ theorem eq_iff_mul_eq_mul {p q : Rat} : p = q ↔ p.num * q.den = q.num * p.den 
     · rw [← Int.natCast_zero, Ne, Int.ofNat_inj]
       apply den_nz
 
-end basics
-
-section le_lt_basics
-
 protected theorem not_le {q' : Rat} : ¬q ≤ q' ↔ q' < q := by
   exact (Bool.not_eq_false _).to_iff
 
@@ -152,10 +144,6 @@ protected theorem lt_asymm {x y : Rat} : x < y → ¬ y < x := by
         rw [eq] at h
         contradiction
 
-end le_lt_basics
-
-section add_basics
-
 variable (a b c : Rat)
 
 protected theorem add_comm : a + b = b + a := by
@@ -181,10 +169,6 @@ protected theorem add_assoc : a + b + c = a + (b + c) :=
     congr 2
     ac_rfl
 
-end add_basics
-
-section mul_basics
-
 variable {a b : Rat}
 
 protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
@@ -206,10 +190,6 @@ protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
 
 protected theorem mul_ne_zero_iff : a * b ≠ 0 ↔ a ≠ 0 ∧ b ≠ 0 := by
   simp only [not_congr (@Rat.mul_eq_zero_iff a b), not_or, ne_eq]
-
-end mul_basics
-
-section num_related
 
 variable {q : Rat}
 
@@ -281,10 +261,6 @@ theorem num_neg : q.num < 0 ↔ q < 0 := by
 theorem num_neg_eq_neg_num (q : Rat) : (-q).num = -q.num :=
   rfl
 
-end num_related
-
-section le_lt_extra
-
 variable {x y : Rat}
 
 protected theorem le_refl : x ≤ x := by
@@ -313,10 +289,6 @@ protected theorem ne_of_lt : x < y → x ≠ y := by
   intro h_lt h_eq
   exact Rat.lt_irrefl (h_eq ▸ h_lt)
 
-end le_lt_extra
-
-section nonneg
-
 variable (x : Rat)
 
 protected theorem nonneg_total : 0 ≤ x ∨ 0 ≤ -x := by
@@ -329,10 +301,6 @@ variable {x}
 protected theorem nonneg_antisymm : 0 ≤ x → 0 ≤ -x → x = 0 := by
   rw [← Rat.num_eq_zero, ← Rat.num_nonneg, ← Rat.num_nonneg, Rat.num_neg_eq_neg_num]
   omega
-
-end nonneg
-
-section neg_sub
 
 variable {x y : Rat}
 
@@ -435,10 +403,6 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
 protected theorem sub_nonneg {a b : Rat} : 0 ≤ a - b ↔ b ≤ a := by
   rw [Rat.le_iff_sub_nonneg b a]
 
-end neg_sub
-
-section divInt
-
 @[simp]
 theorem divInt_nonneg_iff_of_pos_right {a b : Int} (hb : 0 < b) : 0 ≤ a /. b ↔ 0 ≤ a := by
   cases hab : a /. b with | mk' n d hd hnd =>
@@ -471,12 +435,128 @@ protected theorem divInt_le_divInt
   · apply Int.lt_iff_le_and_ne.mp d0 |>.2 |>.symm
   · apply Int.lt_iff_le_and_ne.mp b0 |>.2 |>.symm
 
-end divInt
-
 theorem mul_assoc (a b c : Rat) : a * b * c = a * (b * c) :=
   numDenCasesOn' a fun n₁ d₁ h₁ =>
     numDenCasesOn' b fun n₂ d₂ h₂ =>
       numDenCasesOn' c fun n₃ d₃ h₃ => by
         simp [h₁, h₂, h₃, Int.mul_comm, Nat.mul_assoc, Int.mul_left_comm, mkRat_mul_mkRat]
+
+theorem cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
+  intro h
+  simp [Rat.instLT, Rat.ofInt] at h
+  simp [Rat.blt] at h
+  cases h with
+  | inl h =>
+    let ⟨h1, h2⟩ := h
+    exact Int.lt_of_lt_of_le h1 h2
+  | inr h =>
+    cases Classical.em (a = 0) with
+    | inl ha => simp [ha] at h; exact lt_of_eq_of_lt ha h
+    | inr ha =>
+      simp [ha] at h
+      exact h.2
+
+theorem cast_lt2 {a b : Int} : a < b → Rat.ofInt a < Rat.ofInt b := by
+  intro h
+  simp [Rat.instLT, Rat.ofInt]
+  simp [Rat.blt]
+  cases Classical.em (a = 0) with
+  | inl ha => simp [ha]; rw [ha] at h; exact h
+  | inr ha =>
+      simp [ha]
+      right
+      constructor
+      · apply Classical.or_iff_not_imp_left.mpr
+        intro h2
+        have := Classical.not_not.mp h2
+        intro abs
+        have := Int.lt_trans this h
+        have := Int.lt_of_lt_of_le this abs
+        simp at this
+      · exact h
+
+theorem cast_lt {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
+  ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
+
+theorem cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
+  intro h
+  simp [Rat.instLE, Rat.ofInt] at h
+  simp [Rat.blt] at h
+  cases Classical.em (b = 0) with
+  | inl hb =>
+    simp [hb] at h
+    rw [hb]
+    exact Int.not_lt.mp h
+  | inr hb =>
+    simp [hb] at h
+    let ⟨h1, h2⟩ := h
+    rw [Int.not_lt, Int.not_le, Int.not_lt] at h2
+    rw [Int.not_le] at h1
+    cases Classical.em (a ≤ b) with
+    | inl hab => exact hab
+    | inr hab =>
+      have : ¬ a ≤ b → ¬ (b ≤ 0 ∨ 0 < a) := fun a_1 a => hab (h2 a)
+      have := this hab
+      rw [not_or] at this
+      let ⟨h3, h4⟩ := this
+      rw [Int.not_le] at h3
+      rw [Int.not_lt] at h4
+      have := Int.lt_of_le_of_lt h4 h3
+      exact Int.le_of_lt this
+
+theorem cast_le2 {a b : Int} : a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
+  intro h
+  simp [Rat.instLE, Rat.ofInt]
+  simp [Rat.blt]
+  cases Classical.em (b = 0) with
+  | inl hb =>
+    simp [hb]
+    rw [Int.not_lt]
+    rw [hb] at h
+    exact h
+  | inr hb =>
+    simp [hb]
+    constructor
+    · intro b_neg
+      intro a_nonneg
+      have := Int.lt_of_lt_of_le b_neg a_nonneg
+      exact Lean.Omega.Int.le_lt_asymm h this
+    · intro hh
+      rw [Int.not_lt]
+      exact h
+
+theorem cast_le {a b : Int} : a ≤ b ↔ Rat.ofInt a ≤ Rat.ofInt b :=
+  ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
+
+theorem cast_ge {a b : Int} : a ≥ b ↔ Rat.ofInt a ≥ Rat.ofInt b :=
+  ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
+
+theorem cast_gt {a b : Int} : a > b ↔ Rat.ofInt a > Rat.ofInt b :=
+  ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
+
+theorem cast_eq {a b : Int} : a = b ↔ Rat.ofInt a = Rat.ofInt b := by
+  constructor
+  · intro h; rw [h]
+  · intro h; exact Rat.intCast_inj.mp h
+
+theorem floor_def' (a : Rat) : a.floor = a.num / a.den := by
+  rw [Rat.floor]
+  split
+  · next h => simp [h]
+  · next => rfl
+
+theorem intCast_eq_divInt (z : Int) : (z : Rat) = z /. 1 := mk'_eq_divInt
+
+theorem le_floor {z : Int} : ∀ {r : Rat}, z ≤ Rat.floor r ↔ (z : Rat) ≤ r
+  | ⟨n, d, h, c⟩ => by
+    simp only [Rat.floor_def']
+    rw [mk'_eq_divInt]
+    have h' := Int.ofNat_lt.2 (Nat.pos_of_ne_zero h)
+    conv =>
+      rhs
+      rw [Rat.intCast_eq_divInt, Rat.divInt_le_divInt Int.zero_lt_one h', Int.mul_one]
+    exact Int.le_ediv_iff_mul_le h'
+
+def ceil' (r : Rat) := -((-r).floor)
 
 end Rat
