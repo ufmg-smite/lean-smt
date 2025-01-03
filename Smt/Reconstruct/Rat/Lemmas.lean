@@ -125,7 +125,6 @@ protected theorem le_def : x ≤ y ↔ x.num * y.den ≤ y.num * x.den := by
   conv => rhs ; simp only [num_divInt_den]
   exact Rat.divInt_le_divInt (mod_cast x.den_pos) (mod_cast y.den_pos)
 
-
 theorem le_total : x ≤ y ∨ y ≤ x := by
   simp [Rat.le_def]
   omega
@@ -266,16 +265,11 @@ private theorem Rat.mul_eq_zero_left {x y : Rat} : x ≠ 0 → x * y = 0 → y =
        have nz_dxdy : (dx * dy) ≠ 0 := Nat.mul_ne_zero nz_dx nz_dy
        exact (Rat.mkRat_eq_zero nz_dxdy).mp h2
 
-private def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁ ∧ p₂) → p₃ := by
-  intros h₁ h₂
-  have ⟨ht₁, ht₂⟩ := h₂
-  exact h₁ ht₁ ht₂
-
 namespace Smt.Reconstruct.Rat
 
 variable {a b c d : Rat}
 
-theorem add_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a + b :=
+theorem add_nonneg : 0 ≤ a → 0 ≤ b → 0 ≤ a + b :=
   Rat.numDenCasesOn' a fun n₁ d₁ h₁ ↦ Rat.numDenCasesOn' b fun n₂ d₂ h₂ ↦ by
     have d₁0 : 0 < (d₁ : Int) := mod_cast Nat.pos_of_ne_zero h₁
     have d₂0 : 0 < (d₂ : Int) := mod_cast Nat.pos_of_ne_zero h₂
@@ -291,7 +285,7 @@ theorem add_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a + b :=
       · exact (Rat.divInt_nonneg_iff_of_pos_right d₂0).mp n₂0
       · exact Int.ofNat_zero_le d₁
 
-theorem le_trans {a b c : Rat} (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c := by
+theorem le_trans (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c := by
   rw [Rat.le_iff_sub_nonneg] at hab hbc
   have := Rat.add_nonneg hab hbc
   rw [Rat.add_comm] at this
@@ -304,18 +298,18 @@ theorem le_trans {a b c : Rat} (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c := by
   rw [<- Rat.sub_eq_add_neg] at this
   exact (Rat.le_iff_sub_nonneg a c).mpr this
 
-theorem lt_of_le_not_le {a b : Rat} (hab : a ≤ b) (hba : ¬ b ≤ a) : a < b := Rat.lt_iff_le_not_le.mpr ⟨hab, hba⟩
+theorem lt_of_le_not_le (hab : a ≤ b) (hba : ¬ b ≤ a) : a < b := Rat.lt_iff_le_not_le.mpr ⟨hab, hba⟩
 
-theorem le_of_lt {a b : Rat} (hab : a < b) : a ≤ b := (Rat.lt_iff_le_not_le.1 hab).1
+theorem le_of_lt (hab : a < b) : a ≤ b := (Rat.lt_iff_le_not_le.1 hab).1
 
-theorem not_le_of_lt {a b : Rat} (hab : a < b) : ¬ b ≤ a := (Rat.lt_iff_le_not_le.1 hab).2
+theorem not_le_of_lt (hab : a < b) : ¬ b ≤ a := (Rat.lt_iff_le_not_le.1 hab).2
 
-theorem lt_of_lt_of_le {a b : Rat} (hab : a < b) (hbc : b ≤ c) : a < c :=
+theorem lt_of_lt_of_le (hab : a < b) (hbc : b ≤ c) : a < c :=
   lt_of_le_not_le (le_trans (le_of_lt hab) hbc) fun hca ↦ not_le_of_lt hab (le_trans hbc hca)
 
-theorem lt_trans {a b c : Rat} (hab : a < b) (hbc : b < c) : a < c := lt_of_lt_of_le hab (le_of_lt hbc)
+theorem lt_trans (hab : a < b) (hbc : b < c) : a < c := lt_of_lt_of_le hab (le_of_lt hbc)
 
-theorem lt_of_le_of_lt {a b c : Rat} (hab : a ≤ b) (hbc : b < c) : a < c :=
+theorem lt_of_le_of_lt (hab : a ≤ b) (hbc : b < c) : a < c :=
   lt_of_le_not_le (le_trans hab (le_of_lt hbc)) fun hca ↦ not_le_of_lt hbc (le_trans hca hab)
 
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
@@ -423,7 +417,7 @@ theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.floor + 1 := by
     | inl ieqc => exact Int.le_of_eq (id (Eq.symm ieqc))
     | inr igtc => exact Int.le_of_lt igtc
 
-theorem floor_neg {a : Rat} : Rat.floor (-a) = -Rat.ceil' a := by
+theorem floor_neg : Rat.floor (-a) = -Rat.ceil' a := by
   simp [Rat.ceil']
 
 theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c.ceil' - 1 := by
@@ -491,12 +485,7 @@ theorem eq_eq_sub_eq_zero : (a = b) = (a - b = 0) := by
   · intro h; rw [h]; simp
   · intro h
     have h' := congrArg (fun z => z + b) h
-    simp at h'
-    rw [Rat.zero_add] at h'
-    rw [Rat.sub_eq_add_neg] at h'
-    rw [Rat.add_assoc] at h'
-    rw [Rat.neg_self_add] at h'
-    rw [Rat.add_zero] at h'
+    simp [Rat.zero_add, Rat.sub_eq_add_neg, Rat.add_assoc, Rat.neg_self_add, Rat.add_zero] at h'
     exact h'
 
 theorem ge_eq_sub_ge_zero : (a ≥ b) = (a - b ≥ 0) := by
@@ -669,114 +658,95 @@ theorem gt_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0)
   have h' := neg_eq h
   exact lt_of_sub_eq_neg hc₁ hc₂ h'
 
-
 theorem lt_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   rw [Rat.intCast_sub] at h
-  have := lt_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_lt]
-  exact this
+  exact lt_of_sub_eq_pos hc₁ hc₂ h
 
 theorem lt_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   rw [Rat.intCast_sub] at h
-  have := lt_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_lt]
-  exact this
+  exact lt_of_sub_eq_neg hc₁ hc₂ h
 
 theorem le_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := le_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_le]
-  exact this
+  exact le_of_sub_eq_pos hc₁ hc₂ h
 
 theorem le_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := le_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_le]
-  exact this
+  exact le_of_sub_eq_neg hc₁ hc₂ h
 
 theorem eq_of_sub_eq_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
   rw [Rat.intCast_sub] at h
-  have := eq_of_sub_eq hc₁ hc₂ h
   rw [Rat.cast_eq]
-  exact this
+  exact eq_of_sub_eq hc₁ hc₂ h
 
 theorem ge_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := ge_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_ge]
-  exact this
+  exact ge_of_sub_eq_pos hc₁ hc₂ h
 
 theorem ge_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := ge_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_ge]
-  exact this
+  exact ge_of_sub_eq_neg hc₁ hc₂ h
 
 theorem gt_of_sub_eq_pos_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   rw [Rat.intCast_sub] at h
-  have := gt_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_gt]
-  exact this
+  exact gt_of_sub_eq_pos hc₁ hc₂ h
 
 theorem gt_of_sub_eq_neg_int_left {a₁ a₂ : Int} {b₁ b₂ c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * ↑(a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   rw [Rat.intCast_sub] at h
-  have := gt_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_gt]
-  exact this
+  exact gt_of_sub_eq_neg hc₁ hc₂ h
 
 theorem lt_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   rw [Rat.intCast_sub] at h
-  have := lt_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_lt]
-  exact this
+  exact lt_of_sub_eq_pos hc₁ hc₂ h
 
 theorem lt_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   rw [Rat.intCast_sub] at h
-  have := lt_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_lt]
-  exact this
+  exact lt_of_sub_eq_neg hc₁ hc₂ h
 
 theorem le_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := le_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_le]
-  exact this
+  exact le_of_sub_eq_pos hc₁ hc₂ h
 
 theorem le_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := le_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_le]
-  exact this
+  exact le_of_sub_eq_neg hc₁ hc₂ h
 
 theorem eq_of_sub_eq_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
   rw [Rat.intCast_sub] at h
-  have := eq_of_sub_eq hc₁ hc₂ h
   rw [Rat.cast_eq]
-  exact this
+  exact eq_of_sub_eq hc₁ hc₂ h
 
 theorem ge_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := ge_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_ge]
-  exact this
+  exact ge_of_sub_eq_pos hc₁ hc₂ h
 
 theorem ge_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   rw [Rat.intCast_sub] at h
-  have := ge_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_ge]
-  exact this
+  exact ge_of_sub_eq_neg hc₁ hc₂ h
 
 theorem gt_of_sub_eq_pos_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   rw [Rat.intCast_sub] at h
-  have := gt_of_sub_eq_pos hc₁ hc₂ h
   rw [Rat.cast_gt]
-  exact this
+  exact gt_of_sub_eq_pos hc₁ hc₂ h
 
 theorem gt_of_sub_eq_neg_int_right {a₁ a₂ : Rat} {b₁ b₂ : Int} {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * ↑(b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   rw [Rat.intCast_sub] at h
-  have := gt_of_sub_eq_neg hc₁ hc₂ h
   rw [Rat.cast_gt]
-  exact this
+  exact gt_of_sub_eq_neg hc₁ hc₂ h
 
 theorem mul_sign₆ : a > 0 → b > 0 → a * b > 0 :=
   Rat.numDenCasesOn' a fun a_num a_den a_den_nz ha =>
@@ -827,14 +797,11 @@ theorem mul_pos_le (h : c > 0 ∧ a ≤ b) : c * a ≤ c * b := by
   have ⟨h1, h2⟩ := h
   exact (Rat.mul_le_mul_left h1).mpr h2
 
-theorem mul_pos_gt (h : c > 0 ∧ a > b) : c * a > c * b :=
-  mul_pos_lt h
+theorem mul_pos_gt (h : c > 0 ∧ a > b) : c * a > c * b := mul_pos_lt h
 
-theorem mul_pos_ge (h : c > 0 ∧ a ≥ b) : c * a ≥ c * b :=
-  mul_pos_le h
+theorem mul_pos_ge (h : c > 0 ∧ a ≥ b) : c * a ≥ c * b := mul_pos_le h
 
-theorem mul_pos_eq (h : c > 0 ∧ a = b) : c * a = c * b := by
-  rw [h.2]
+theorem mul_pos_eq (h : c > 0 ∧ a = b) : c * a = c * b := by rw [h.2]
 
 theorem mul_neg_lt : (c < 0 ∧ a < b) → c * a > c * b :=
   Rat.numDenCasesOn' a fun a_num a_den a_den_nz =>
@@ -863,8 +830,7 @@ theorem mul_neg_lt : (c < 0 ∧ a < b) → c * a > c * b :=
 
 theorem mul_neg_gt (h : c < 0 ∧ a > b) : c * a < c * b := mul_neg_lt h
 
-theorem mul_neg_eq (h : c < 0 ∧ a = b) : c * a = c * b := by
-  rw [h.2]
+theorem mul_neg_eq (h : c < 0 ∧ a = b) : c * a = c * b := by rw [h.2]
 
 theorem Int.mul_le_mul_of_neg_left {a b c : Int} (h : b ≤ a) (hc : c < 0) : c * a ≤ c * b :=
   match Int.le_iff_eq_or_lt.mp h with
@@ -905,11 +871,11 @@ theorem Rat.mul_le_mul_of_neg_left (a b c : Rat) : c < 0 -> (a ≤ b <-> c * a �
         have a_den_nz' : (a_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr a_den_nz
         have b_den_nz' : (b_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr b_den_nz
         have c_den_nz' : (c_den : Int) ≠ 0 := Int.ofNat_ne_zero.mpr c_den_nz
+        have ca_den_pos : (0 : Int) < c_den * a_den := Int.mul_pos this a_den_pos
+        have cb_den_pos : (0 : Int) < c_den * b_den := Int.mul_pos this b_den_pos
         rw [Rat.divInt_le_divInt a_den_pos b_den_pos]
         rw [Rat.divInt_mul_divInt _ _ c_den_nz' a_den_nz']
         rw [Rat.divInt_mul_divInt _ _ c_den_nz' b_den_nz']
-        have ca_den_pos : (0 : Int) < c_den * a_den := Int.mul_pos this a_den_pos
-        have cb_den_pos : (0 : Int) < c_den * b_den := Int.mul_pos this b_den_pos
         show a_num * ↑b_den ≤ b_num * ↑a_den ↔ Rat.divInt _ _ ≤ Rat.divInt _ _
         rw [Rat.divInt_le_divInt cb_den_pos ca_den_pos]
         rw [Int.mul_assoc, Int.mul_assoc]
