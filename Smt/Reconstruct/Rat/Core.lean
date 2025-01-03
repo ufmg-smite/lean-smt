@@ -12,11 +12,15 @@ import Smt.Reconstruct.Int.Core
 
 namespace Rat
 
+variable (x y a b q : Rat)
+
 protected def abs (x : Rat) := if x < 0 then -x else x
 
 protected def pow (m : Rat) : Nat → Rat
   | 0 => 1
   | n + 1 => Rat.pow m n * m
+
+def ceil' (r : Rat) := -((-r).floor)
 
 instance : NatPow Rat where
   pow := Rat.pow
@@ -146,8 +150,6 @@ protected theorem lt_asymm {x y : Rat} : x < y → ¬ y < x := by
         rw [eq] at h
         contradiction
 
-variable (a b c : Rat)
-
 protected theorem add_comm : a + b = b + a := by
   simp [add_def, Int.add_comm, Int.mul_comm, Nat.mul_comm]
 
@@ -171,8 +173,6 @@ protected theorem add_assoc : a + b + c = a + (b + c) :=
     congr 2
     ac_rfl
 
-variable {a b : Rat}
-
 protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
   constructor
   · simp only [Rat.mul_def, Rat.normalize_eq_zero]
@@ -191,9 +191,7 @@ protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
     | .inr h => simp only [h, Rat.mul_zero]
 
 protected theorem mul_ne_zero_iff : a * b ≠ 0 ↔ a ≠ 0 ∧ b ≠ 0 := by
-  simp only [not_congr (@Rat.mul_eq_zero_iff a b), not_or, ne_eq]
-
-variable {q : Rat}
+  simp only [not_congr (Rat.mul_eq_zero_iff a b), not_or, ne_eq]
 
 @[simp]
 theorem neg_neg : - -q = q := by
@@ -208,7 +206,7 @@ theorem num_eq_zero : q.num = 0 ↔ q = 0 := by
     exact mk'_zero _ _ _
   · exact congr_arg num
 
-theorem num_ne_zero : q.num ≠ 0 ↔ q ≠ 0 := not_congr num_eq_zero
+theorem num_ne_zero : q.num ≠ 0 ↔ q ≠ 0 := not_congr (num_eq_zero q)
 
 @[simp]
 theorem num_nonneg : 0 ≤ q.num ↔ 0 ≤ q := by
@@ -245,25 +243,23 @@ theorem pos_iff_neg_nonpos : 0 < q ↔ -q < 0 := by
   conv => rhs ; simp [Rat.lt_iff_blt] ; unfold Rat.blt ; simp
   constructor <;> intro h
   · apply Or.inl
-    exact num_pos.mp h
+    exact (num_pos q).mp h
   · let h : 0 < q := by
       cases h
       case inl h => exact h
       case inr h => exact h.2.2
-    apply num_pos.mpr h
+    apply (num_pos q).mpr h
 
 @[simp]
 theorem num_neg : q.num < 0 ↔ q < 0 := by
   let tmp := @num_pos (-q)
   simp [Rat.neg_num q, Int.lt_neg_of_lt_neg] at tmp
   rw [tmp]
-  apply Rat.neg_neg ▸ Rat.pos_iff_neg_nonpos (q := -q)
+  apply Rat.neg_neg q ▸ Rat.pos_iff_neg_nonpos (q := -q)
 
 @[simp]
 theorem num_neg_eq_neg_num (q : Rat) : (-q).num = -q.num :=
   rfl
-
-variable {x y : Rat}
 
 protected theorem le_refl : x ≤ x := by
   simp [Rat.le_iff_blt, Rat.blt]
@@ -283,28 +279,22 @@ protected theorem le_of_lt : x < y → x ≤ y := by
   intro h_lt
   apply Decidable.byContradiction
   intro h
-  let _ := Rat.not_le.mp h
+  let _ := (Rat.not_le x).mp h
   let _ := Rat.lt_asymm h_lt
   contradiction
 
 protected theorem ne_of_lt : x < y → x ≠ y := by
   intro h_lt h_eq
-  exact Rat.lt_irrefl (h_eq ▸ h_lt)
-
-variable (x : Rat)
+  exact Rat.lt_irrefl x (h_eq ▸ h_lt)
 
 protected theorem nonneg_total : 0 ≤ x ∨ 0 ≤ -x := by
   rw [← num_nonneg (q := -x), ← num_nonneg (q := x)]
   rw [Rat.neg_num, Int.neg_nonneg]
   exact Int.le_total _ _
 
-variable {x}
-
 protected theorem nonneg_antisymm : 0 ≤ x → 0 ≤ -x → x = 0 := by
   rw [← Rat.num_eq_zero, ← Rat.num_nonneg, ← Rat.num_nonneg, Rat.num_neg_eq_neg_num]
   omega
-
-variable {x y : Rat}
 
 protected theorem neg_sub : -(x - y) = y - x := by
   cases x with | mk' nx dx _ _ =>
@@ -330,7 +320,7 @@ protected theorem sub_self : x - x = 0 :=
     simp
 
 protected theorem add_neg_self : x + -x = 0 :=
-  Rat.sub_eq_add_neg x x ▸ Rat.sub_self
+  Rat.sub_eq_add_neg x x ▸ Rat.sub_self x
 
 protected theorem eq_neg_of_add_eq_zero_left : x + y = 0 → x = - y :=
   numDenCasesOn'' x fun nx dx h_dx h_dx_red =>
@@ -558,8 +548,6 @@ theorem le_floor {z : Int} : ∀ {r : Rat}, z ≤ Rat.floor r ↔ (z : Rat) ≤ 
       rhs
       rw [Rat.intCast_eq_divInt, Rat.divInt_le_divInt Int.zero_lt_one h', Int.mul_one]
     exact Int.le_ediv_iff_mul_le h'
-
-def ceil' (r : Rat) := -((-r).floor)
 
 theorem mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
   Rat.numDenCasesOn' a fun a_num a_den a_den_nz =>
