@@ -28,7 +28,7 @@ def elimIff (mv : MVarId) (hs : List Expr) : MetaM (List Expr × MVarId) := mv.w
   let simpTheorems ← #[``eq_self, ``iff_eq_eq].foldlM (·.addConst ·) ({} : Meta.SimpTheorems)
   let simpTheorems := #[simpTheorems]
   let congrTheorems ← Meta.getSimpCongrTheorems
-  let ctx := { simpTheorems, congrTheorems }
+  let ctx ← Meta.Simp.mkContext {} simpTheorems congrTheorems
   let (hs, mv) ← elimIffLocalDecls mv hs ctx
   let mv ← elimIffTarget mv ctx
   return (hs, mv)

@@ -104,9 +104,8 @@ to let-lift `let-opaque` bindings. This can produce linearly-sized terms in cert
 
 Constants with names in `opaqueConsts` are also not unfolded. -/
 def smtOpaqueReduce (e : Expr) (opaqueConsts : Std.HashSet Name := {}) : MetaM Expr :=
-  withTheReader Meta.Context (fun ctx => { ctx with
-    canUnfold? := some (opaquePred opaqueConsts)
-  }) do Smt.reduce (skipTypes := false) e |>.run {
+  Meta.withCanUnfoldPred (opaquePred opaqueConsts) <|
+  Smt.reduce (skipTypes := false) e |>.run {
     letPushElim := true
   }
 

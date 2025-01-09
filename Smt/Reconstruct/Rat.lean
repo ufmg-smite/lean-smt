@@ -15,8 +15,7 @@ import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Rat
 
-open Lean hiding Rat
-open Qq
+open Lean Qq
 
 @[smt_sort_reconstruct] def reconstructRatSort : SortReconstructor := fun s => do match s.getKind with
   | .REAL_SORT => return q(Rat)
@@ -27,7 +26,7 @@ open Qq
     | .DIV_BY_ZERO => return q(fun (x : Rat) => x / 0)
     | _ => return none
   | .CONST_RATIONAL =>
-    let c : Lean.Rat := t.getRationalValue!
+    let c : Std.Internal.Rat := t.getRationalValue!
     let num : Q(Rat) := mkRatLit c.num.natAbs
     if c.den == 1 then
       if c.num ≥ 0 then
@@ -311,7 +310,7 @@ where
       return ha
 
 def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  let lcx : Lean.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue!
+  let lcx : Std.Internal.Rat := pf.getChildren[0]!.getResult[0]![0]!.getRationalValue!
   let cx : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
   let cy : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[1]![0]!
   let x₁ : Q(Rat) ← reconstructTerm pf.getResult[0]![0]!
