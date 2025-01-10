@@ -1,4 +1,0 @@
-Test/Auto.lean:38:2: error: Auto.LamReif.reifTermCheckType :: LamTerm ((!9 (!13 (!1 !2)) !3) = (!0 (!1 !2) !3)) is not type correct
-Test/Auto.lean:41:2: error: Auto.LamReif.reifTermCheckType :: LamTerm ((!6 (!11 (!1 (!2 !3))) !3) = (!0 (!1 (!2 !3)) !3)) is not type correct
-Test/Auto.lean:44:2: error: Auto.LamReif.reifTermCheckType :: LamTerm ((!6 (!10 (!1 (!2 !3))) !3) = (!0 (!1 (!2 !3)) !3)) is not type correct
-Test/Auto.lean:48:2: error: Auto.LamReif.reifTermCheckType :: LamTerm ((!6 (!10 !1) (!2 (!3 !1))) = (!0 !1 (!2 (!3 !1)))) is not type correct

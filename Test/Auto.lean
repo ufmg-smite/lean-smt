@@ -31,6 +31,8 @@ theorem unique_identity (e : G) : (∀ z, e * z = z) → e = 1 := by
   -- auto d[List.get?]
 
 set_option auto.mono.mode "fol"
+set_option auto.mono.ciInstDefEq.mode "reducible"
+set_option auto.mono.termLikeDefEq.mode "reducible"
 
 variable [Nonempty α] [Nonempty β] {f : α → β} {s : Set α} {v u : Set β}
 
