@@ -11,9 +11,6 @@ import Smt.Reconstruct.Rat.Core
 import Lean
 import Qq
 
-@[simp] theorem Rat.zero_add (a : Rat) : 0 + a = a := by
-  simp [add_def, normalize_eq_mkRat, Int.add_comm, Nat.add_comm, mkRat_self]
-
 namespace Smt.Reconstruct.Rat.PolyNorm
 
 abbrev Var := Nat
@@ -81,10 +78,10 @@ theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
 
 section
 
-variable {op : α → α → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+variable {op : α → α → α}
 
 -- Can be generalized to `List.foldl_assoc`.
-theorem foldl_assoc {g : β → α} (z1 z2 : α) :
+theorem foldl_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c)) (z1 z2 : α):
   List.foldl (fun z a => op z (g a)) (op z1 z2) l =
   op z1 (List.foldl (fun z a => op z (g a)) z2 l) := by
   induction l generalizing z1 z2 with
@@ -92,7 +89,7 @@ theorem foldl_assoc {g : β → α} (z1 z2 : α) :
   | cons y ys ih =>
     simp only [List.foldl_cons, ih, assoc]
 
-theorem foldr_assoc {g : β → α} (z1 z2 : α) :
+theorem foldr_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c)) (z1 z2 : α):
   List.foldr (fun z a => op a (g z)) (op z1 z2) l =
   op z1 (List.foldr (fun z a => op a (g z)) z2 l) := by
   induction l generalizing z1 z2 with
@@ -126,8 +123,8 @@ theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.de
   | cons y ys ih =>
     simp [foldl_mul_insert, ←foldl_assoc Rat.mul_assoc, ih]
 
-theorem denote_divConst {m : Monomial} : (m.divConst c).denote ctx = m.denote ctx / c :=
-  sorry
+theorem denote_divConst {m : Monomial} : (m.divConst c).denote ctx = m.denote ctx / c := by
+  simp only [denote, divConst, Rat.mul_div_right_comm]
 
 end Monomial
 
@@ -259,7 +256,14 @@ theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.
 
 
 theorem denote_divConst {p : Polynomial} : (p.divConst c).denote ctx = p.denote ctx / c := by
-  sorry
+  simp only [denote, divConst]
+  induction p with
+  | nil => simp [Rat.zero_div]
+  | cons x ys ih =>
+    simp only [List.map_cons, List.foldr_cons, List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc]
+    sorry
+    --rw [← ih, foldl_add_insert]
+
 
 end Polynomial
 

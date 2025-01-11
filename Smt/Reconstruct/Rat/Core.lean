@@ -11,6 +11,11 @@ namespace Rat
 
 def abs (x : Rat) := if x < 0 then -x else x
 
+
+@[simp]
+protected theorem zero_add (a : Rat) : 0 + a = a := by
+  simp [add_def, normalize_eq_mkRat, Int.add_comm, Nat.add_comm, mkRat_self]
+
 @[simp]
 protected theorem add_zero : ∀ a : Rat, a + 0 = a := by
   sorry
@@ -39,4 +44,9 @@ protected theorem neg_add (a b : Rat) : -(a + b) = -a + -b := by
 protected theorem neg_mul_eq_neg_mul (a b : Rat) : -(a * b) = -a * b := by
   sorry
 
+protected theorem mul_div_right_comm (a b c : Rat) : a * b / c = a / c * b := by
+  sorry
+
+protected theorem zero_div (a : Rat) : 0 / a = 0 := by
+  simp [div_def]
 end Rat
