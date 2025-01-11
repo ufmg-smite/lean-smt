@@ -260,9 +260,8 @@ theorem denote_divConst {p : Polynomial} : (p.divConst c).denote ctx = p.denote 
   induction p with
   | nil => simp [Rat.zero_div]
   | cons x ys ih =>
-    simp only [List.map_cons, List.foldr_cons, List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc]
-    sorry
-    --rw [← ih, foldl_add_insert]
+    simp only [List.map_cons, List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc]
+    rw [Monomial.denote_divConst, ih, Rat.add_div]
 
 
 end Polynomial

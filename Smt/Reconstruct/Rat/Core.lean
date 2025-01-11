@@ -49,4 +49,7 @@ protected theorem mul_div_right_comm (a b c : Rat) : a * b / c = a / c * b := by
 
 protected theorem zero_div (a : Rat) : 0 / a = 0 := by
   simp [div_def]
+
+protected theorem add_div (a b c : Rat) : (a + b) / c = a / c + b / c := by
+  simp [div_def, Rat.add_mul]
 end Rat
