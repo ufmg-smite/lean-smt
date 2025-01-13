@@ -6,6 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Batteries.Data.Rat
+import Smt.Reconstruct.Rat.Core
 
 namespace Smt.Reconstruct.Rat.Rewrite
 
@@ -15,8 +16,8 @@ open Function
 
 variable {t ts x xs : Rat}
 
-theorem plus_zero : ts + 0 + ss = ts + ss :=
-  sorry
+theorem plus_zero : ts + 0 + ss = ts + ss := by
+  simp [Rat.add_zero]
 
 theorem mul_one : ts * 1 * ss = ts * ss :=
   (_root_.Rat.mul_one ts).symm ▸ rfl
