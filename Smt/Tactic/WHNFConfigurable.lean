@@ -223,7 +223,7 @@ private def reduceRec (recVal : RecursorVal) (recLvls : List Level) (recArgs : A
         trace[Smt.reduce.rec] "failed."
         failK ()
 
-    let major ← whnf <| recArgs.get ⟨majorIdx, h⟩
+    let major ← whnf <| recArgs[majorIdx]'h
     if (← read).letPushElim then
       letTelescopeAbstracting major fun _ major abs => do
         let e' ← cont major
@@ -244,7 +244,7 @@ private def reduceQuotRec (recVal  : QuotVal) (recArgs : Array Expr)
     : ReductionM α :=
   let process (majorPos argPos : Nat) : ReductionM α :=
     if h : majorPos < recArgs.size then do
-      let major := recArgs.get ⟨majorPos, h⟩
+      let major := recArgs[majorPos]'h
       let major ← whnf major
       match major with
       | Expr.app (Expr.app (Expr.app (Expr.const majorFn _) _) _) majorArg => do
@@ -273,7 +273,7 @@ mutual
     else do
       let majorIdx := recVal.getMajorIdx
       if h : majorIdx < recArgs.size then do
-        let major := recArgs.get ⟨majorIdx, h⟩
+        let major := recArgs[majorIdx]'h
         let major ← whnf major
         getStuckMVar? major
       else
@@ -282,7 +282,7 @@ mutual
   private partial def isQuotRecStuck? (recVal : QuotVal) (recArgs : Array Expr) : ReductionM (Option MVarId) :=
     let process? (majorPos : Nat) : ReductionM (Option MVarId) :=
       if h : majorPos < recArgs.size then do
-        let major := recArgs.get ⟨majorPos, h⟩
+        let major := recArgs[majorPos]'h
         let major ← whnf major
         getStuckMVar? major
       else
@@ -440,9 +440,9 @@ private def whnfMatcher (e : Expr) : ReductionM Expr := do
   let mut transparency ← getTransparency
   if transparency == TransparencyMode.reducible then
     transparency := TransparencyMode.instances
-  withTransparency transparency <|
-    withTheReader Meta.Context (fun ctx => { ctx with canUnfold? := canUnfoldAtMatcher ctx.canUnfold? }) do
-      whnf e
+  withTransparency transparency do
+    let ctx ← readThe Meta.Context
+    withCanUnfoldPred (canUnfoldAtMatcher ctx.canUnfold?) (whnf e)
 
 def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
   trace[Smt.reduce.matcher] "{e}"
@@ -702,7 +702,7 @@ where
 
 def shouldUnfold (ci : ConstantInfo) : ReductionM Bool := do
   let some canUnfold := (← readThe Meta.Context).canUnfold? | return true
-  let cfg := (← readThe Meta.Context).config
+  let cfg ← getConfig (← readThe Meta.Context)
   canUnfold cfg ci
 
 mutual
@@ -930,17 +930,18 @@ def reduceNat? (e : Expr) : ReductionM (Option Expr) :=
 @[inline] private def cached? (useCache : Bool) (e : Expr) : MetaM (Option Expr) := do
   if useCache then
     match (← getConfig).transparency with
-    | TransparencyMode.default => return (← get).cache.whnfDefault.find? e
-    | TransparencyMode.all     => return (← get).cache.whnfAll.find? e
+    | TransparencyMode.default => return (← get).cache.whnf.find? (← mkExprConfigCacheKey e)
+    | TransparencyMode.all     => return (← get).cache.whnf.find? (← mkExprConfigCacheKey e)
     | _                        => unreachable!
   else
     return none
 
 private def cache (useCache : Bool) (e r : Expr) : MetaM Expr := do
   if useCache then
+    let ecck ← mkExprConfigCacheKey e
     match (← getConfig).transparency with
-    | TransparencyMode.default => modify fun s => { s with cache.whnfDefault := s.cache.whnfDefault.insert e r }
-    | TransparencyMode.all     => modify fun s => { s with cache.whnfAll     := s.cache.whnfAll.insert e r }
+    | TransparencyMode.default => modify fun s => { s with cache.whnf := s.cache.whnf.insert ecck r }
+    | TransparencyMode.all     => modify fun s => { s with cache.whnf := s.cache.whnf.insert ecck r }
     | _                        => unreachable!
   return r
 

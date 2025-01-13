@@ -82,7 +82,7 @@ def smt (mv : MVarId) (hs : List Expr) (timeout : Option Nat := none) : MetaM (L
 namespace Tactic
 
 syntax smtHints := ("[" term,* "]")?
-syntax smtTimeout := ("(timeout := " num ")")?
+syntax smtTimeout := ("(" "timeout" " := " num ")")?
 
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to

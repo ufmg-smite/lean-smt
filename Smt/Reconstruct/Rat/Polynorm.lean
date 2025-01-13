@@ -321,8 +321,7 @@ theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr} (h : e₁.toPolynomial
 
 end PolyNorm.Expr
 
-open Lean hiding Rat
-open Qq
+open Lean Qq
 
 abbrev PolyM := StateT (Array Q(Rat)) MetaM
 

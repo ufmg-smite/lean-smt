@@ -290,8 +290,7 @@ theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : RealExpr} (h : e₁.toPolyno
 
 end PolyNorm.RealExpr
 
-open Lean hiding Rat
-open Qq
+open Lean Qq
 
 abbrev PolyM := StateT (Array Q(Int) × Array Q(Real)) MetaM
 
@@ -397,7 +396,7 @@ def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
 
 open Mathlib.Meta.NormNum in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
-  if let some (_, mv) ← normNumAt mv {} #[] true false then
+  if let some (_, mv) ← normNumAt mv (← Meta.Simp.mkContext) #[] true false then
     throwError "[norm_num]: could not prove {← mv.getType}"
 
 namespace Tactic

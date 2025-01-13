@@ -262,7 +262,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDIte]
       let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
       let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
-      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      let ctx ← Meta.Simp.mkContext {} #[simpTheorems]
+      let (some mv, _) ← Meta.simpTarget mv ctx simpProcs | throwError "simp failed"
       mv.refl
       addThm q($x = $x') q(Eq.trans (BitVec.self_eq_bb $x) $h)
     | .EQUAL =>
@@ -278,8 +279,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let ps := [``Nat.reduceAdd, ``Nat.reduceSub, ``Nat.reduceEqDiff, ``reduceIte]
       let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
       let simpTheorems ← ts.foldrM (fun n a => a.addConst n) simpTheorems
+      let ctx ← Meta.Simp.mkContext {} #[simpTheorems]
       let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
-      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      let (some mv, _) ← Meta.simpTarget mv ctx simpProcs | throwError "simp failed"
       mv.refl
       addThm q(($x = $y) = $p) q(Eq.trans (BitVec.eq_eq_beq $x $y) (Bool.eq_of_decide_eq $h))
     | .BITVECTOR_ADD =>
@@ -294,8 +296,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let ps := [``Nat.reduceAdd, ``Nat.reduceLT, ``reduceDIte, ``reduceIte]
       let simpTheorems ← ds.foldrM (fun n a => a.addDeclToUnfold n) {}
       let simpTheorems ← ts.foldrM (fun n a => a.addConst n) simpTheorems
+      let ctx ← Meta.Simp.mkContext {} #[simpTheorems]
       let simpProcs ← ps.foldrM (fun n a => a.add n false) {}
-      let (some mv, _) ← Meta.simpTarget mv { simpTheorems := #[simpTheorems] } simpProcs | throwError "simp failed"
+      let (some mv, _) ← Meta.simpTarget mv ctx simpProcs | throwError "simp failed"
       mv.refl
       addThm q($x + $y = $z) q(Eq.trans (BitVec.add_eq_adc' $x $y) $h)
     | _ => return none
