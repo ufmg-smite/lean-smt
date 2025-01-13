@@ -596,8 +596,11 @@ protected theorem neg_add (a b : Rat) : -(a + b) = -a + -b := by
   rw [←Rat.sub_eq_add_neg, ←Rat.neg_neg b, ←Rat.sub_eq_add_neg, Rat.neg_sub]
   simp [Rat.sub_eq_add_neg, Rat.add_comm, Rat.neg_neg]
 
-theorem neg_eq_neg_one_mul (a : Rat) : -a = -1 * a := by
-  sorry
+theorem neg_eq_neg_one_mul (a : Rat) : -a = -1 * a :=
+  numDenCasesOn a fun n d h h1 => by
+    simp [Rat.neg_mkRat, Rat.mul_def, Rat.normalize_eq_mkRat]
+    simp [← Rat.divInt_ofNat]
+    rw [divInt_num' (Nat.pos_iff_ne_zero.mp h) h1, divInt_den' (Nat.pos_iff_ne_zero.mp h) h1]
 
 protected theorem neg_mul_eq_neg_mul (a b : Rat) : -(a * b) = -a * b := by
   rw [neg_eq_neg_one_mul, neg_eq_neg_one_mul a, Rat.mul_assoc]
