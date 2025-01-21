@@ -62,7 +62,7 @@ def denote (ctx : Context) (m : Monomial) : Real :=
   m.coeff * m.vars.foldl (fun acc v => acc * ctx v) 1
 
 theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
-  simp only [neg, denote, neg_mul_eq_neg_mul, cast_neg]
+  simp only [neg, denote, neg_mul_eq_neg_mul, Rat.cast_neg]
 
 section
 
@@ -76,6 +76,11 @@ theorem foldl_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op
   | nil => rfl
   | cons y ys ih =>
     simp only [List.foldl_cons, ih, assoc]
+
+-- theorem foldl_assoc' {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+--                          (z1 z2 : α):
+--   List.foldl (fun z a => op z (g a)) (op z1 z2) l =
+--   op z1 (List.foldl (fun z a => op z (g a)) z2 l) := by
 
 theorem foldr_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c)) (z1 z2 : α):
   List.foldr (fun z a => op a (g z)) (op z1 z2) l =
@@ -101,18 +106,18 @@ theorem foldl_mul_insert {ctx : Context} :
 
 theorem denote_add {m n : Monomial} (h : m.vars = n.vars) :
   (m.add n h).denote ctx = m.denote ctx + n.denote ctx := by
-  simp only [add, denote, add_mul, h]
+  simp only [add, denote, h, Rat.cast_add, add_mul]
 
 theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.denote ctx * m₂.denote ctx := by
-  simp only [denote, mul, mul_assoc]; congr 1
-  rw [← mul_assoc, mul_comm _ m₂.coeff, mul_assoc]; congr 1
+  simp only [denote, mul, mul_assoc, Rat.cast_mul]; congr 1
+  rw [← mul_assoc, mul_comm _ (m₂.coeff : Real), mul_assoc]; congr 1
   induction m₁.vars with
   | nil => simp [mul_assoc]
   | cons y ys ih =>
     simp [foldl_mul_insert, ←foldl_assoc mul_assoc, ih]
 
 theorem denote_divConst {m : Monomial} : (m.divConst c).denote ctx = m.denote ctx / c := by
-  simp only [denote, divConst, mul_div_right_comm]
+  simp only [denote, divConst, mul_div_right_comm, Rat.cast_div]
 
 end Monomial
 
@@ -163,28 +168,31 @@ theorem foldl_add_insert (ctx : Context) :
   | nil => simp [add.insert, zero_add, add_zero]
   | cons n p ih =>
     simp only [add.insert]
-    split <;> rename_i hlt <;> simp only [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
+    split <;> rename_i hlt <;> simp only [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, zero_add]
     · split <;> rename_i heq
       · split <;> rename_i hneq
-        · rw [←add_assoc, add_comm, ←Monomial.denote_add heq]
+        · rw [←add_zero (Monomial.denote ctx n), Monomial.foldl_assoc add_assoc, ←add_assoc, ←Monomial.denote_add heq]
           simp [Monomial.denote, hneq, add_zero]
         · simp [add_comm 0, Monomial.foldl_assoc add_assoc, Monomial.denote_add, heq, add_assoc]
-      · simp only [List.foldl_cons, add_comm 0, ih, Monomial.foldl_assoc add_assoc]
+      · rw [←zero_add (Monomial.denote ctx n), List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, Monomial.foldl_assoc add_assoc, ih]
         rw [←add_assoc, add_comm (Monomial.denote ctx n), add_assoc]
+
+#check sub_eq_add_neg
 
 theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx := by
   simp only [denote, neg]
   induction p with
   | nil => simp
   | cons m p ih =>
-    simp only [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, neg_add, ←ih, List.map, Monomial.denote_neg]
+    rw [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, neg_add, ←ih, List.map]
+    rw [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, Monomial.denote_neg]
 
 theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
   simp only [denote, add]
   induction p with
   | nil => simp [add.insert, zero_add]
   | cons x ys ih =>
-    simp only [List.foldr_cons, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, add_assoc]
+    rw [List.foldr_cons, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc, add_assoc]
     rw [← ih, foldl_add_insert]
 
 theorem denote_sub {p q : Polynomial} : (p.sub q).denote ctx = p.denote ctx - q.denote ctx := by
@@ -195,11 +203,13 @@ theorem denote_mulMonomial {p : Polynomial} : (p.mulMonomial m).denote ctx = m.d
   induction p with
   | nil => simp
   | cons n p ih =>
-    simp only [List.foldl_cons, List.foldr_cons, add_comm 0, Monomial.foldl_assoc add_assoc, mul_add, ←ih]
+    rw [List.foldl_cons, List.foldr_cons, add_comm 0, Monomial.foldl_assoc add_assoc, mul_add, ←ih]
     simp [foldl_add_insert, Monomial.denote_mul]
 
 theorem denote_cons {p : List Monomial} {ctx : Context} : denote ctx (m :: p) = m.denote ctx + denote ctx p := by
-  simp only [denote, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
+  rw [denote, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
+  simp [denote, Monomial.foldl_assoc add_assoc]
+
 
 theorem denote_nil_add : denote ctx (p.add []) = denote ctx p := by
   induction p with
@@ -239,7 +249,8 @@ theorem denote_divConst {p : Polynomial} : (p.divConst c).denote ctx = p.denote 
   induction p with
   | nil => simp [zero_div]
   | cons x ys ih =>
-    simp only [List.map_cons, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
+    rw [List.map_cons, List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
+    rw [List.foldl_cons, add_comm 0, Monomial.foldl_assoc add_assoc]
     rw [Monomial.denote_divConst, ih, add_div]
 
 end Polynomial
@@ -323,20 +334,20 @@ theorem eval_eq_denote {e : RealValExpr} : e.eval = e.denote := by
   | val v =>
     simp only [eval, denote]
     split <;> rename_i hv
-    · simp only [cast_zero, hv]
+    · simp only [Rat.cast_zero, hv]
     · split <;> rename_i hv
-      · simp only [cast_one, hv]
+      · simp only [Rat.cast_one, hv]
       · simp only [hv]
   | neg a ih =>
-    simp only [eval, denote, cast_neg, ih]
+    simp only [eval, denote, Rat.cast_neg, ih]
   | add a b ih₁ ih₂ =>
-    simp only [eval, denote, cast_add, ih₁, ih₂]
+    simp only [eval, denote, Rat.cast_add, ih₁, ih₂]
   | sub a b ih₁ ih₂ =>
-    simp only [eval, denote, cast_sub, ih₁, ih₂]
+    simp only [eval, denote, Rat.cast_sub, ih₁, ih₂]
   | mul a b ih₁ ih₂ =>
-    simp only [eval, denote, cast_mul, ih₁, ih₂]
+    simp only [eval, denote, Rat.cast_mul, ih₁, ih₂]
   | div a c ih₁ ih₂ =>
-    simp only [eval, denote, cast_div, ih₁, ih₂]
+    simp only [eval, denote, Rat.cast_div, ih₁, ih₂]
 
 end RealValExpr
 
@@ -378,9 +389,9 @@ theorem denote_toPolynomial {e : RealExpr} : e.denote ictx rctx = e.toPolynomial
   | val v =>
     simp only [denote, toPolynomial, Polynomial.denote, Monomial.denote]
     split <;> rename_i hv
-    · simp [cast_zero, hv]
+    · simp [Rat.cast_zero, hv]
     · split <;> rename_i hv
-      · simp [cast_one, hv]
+      · simp [Rat.cast_one, hv]
       · simp [hv]
   | var v =>
     simp [denote, toPolynomial, Polynomial.denote, Monomial.denote]
