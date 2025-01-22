@@ -585,7 +585,6 @@ theorem mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
         rw [Int.mul_comm b_den a_den]
         rw [Int.mul_assoc a_den b_den c_den]
 
-
 @[simp]
 protected theorem neg_zero : -(0:Rat) = 0 := rfl
 
