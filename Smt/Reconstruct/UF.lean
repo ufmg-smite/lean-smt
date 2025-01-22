@@ -32,6 +32,13 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     for i in [1:t.getNumChildren] do
       curr := .app curr (← reconstructTerm t[i]!)
     return curr
+  | .SKOLEM =>
+    match t.getSkolemId! with
+    | .GROUND_TERM =>
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort t.getSort
+      let hα : Q(Nonempty $α) ← Meta.synthInstance q(Nonempty $α)
+      return q(Classical.choice $hα)
+    | _ => return none
   | _ => return none
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do

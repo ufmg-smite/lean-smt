@@ -115,8 +115,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_de_morgan) args)
   | .BOOL_OR_AND_DISTRIB =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_and_distrib) args)
+    let y₁ : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let y₂ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm (← reconstructTerm pf.getResult) q(@Prop.bool_or_and_distrib $y₁ $y₂ $ys $zs)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -210,6 +213,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm q((¬ite $c $p $q) = ite $c (¬$p) (¬$q)) q(@Prop.bool_not_ite_elim $c $p $q $h)
   | _ => return none
 where
+  reconstructTerms {u} {α : Q(Type $u)} (ts : Array cvc5.Term) : ReconstructM Q(List $α) :=
+    let f := fun t ys => do
+      let a : Q($α) ← reconstructTerm t
+      return q($a :: $ys)
+    ts.foldrM f q([])
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
     let mut args' := #[]
     for arg in args do
@@ -256,8 +264,8 @@ def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps
   let qs : Q(List Prop) ← c₂.foldrM f q([])
   let hps : Q(orN $ps) ← pure hps
   let hqs : Q(orN $qs) ← pure hqs
-  let (i?, j?) := if pol.getBooleanValue! then (c₁.getIdx? l, c₂.getIdx? l.not!) else (c₁.getIdx? l.not!, c₂.getIdx? l)
-  if let (some i, some j) := (i?, j?) then
+  let (i?, j?) := if pol.getBooleanValue! then (c₁.indexOf? l, c₂.indexOf? l.not!) else (c₁.indexOf? l.not!, c₂.indexOf? l)
+  if let (some ⟨i, _⟩, some ⟨j, _⟩) := (i?, j?) then
     let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hj : Q($j < «$qs».length) := .app q(@of_decide_eq_true ($j < «$qs».length) _) q(Eq.refl true)
     let hij : Q($ps[$i] = ¬$qs[$j]) :=

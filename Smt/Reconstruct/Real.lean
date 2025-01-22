@@ -249,13 +249,13 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let h : Q($l = $r) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Real.sum_ub₉ $hs $h))
     else
-      throwError "[sum_ub]: invalid kinds: {ks}, {p.getResult.getKind}"
+      throwError "[sum_ub]: invalid kinds: {ks}, {k}"
   let k := pf.getChildren[0]!.getResult.getKind
   let ls : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
   let rs : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
   let hs ← reconstructProof pf.getChildren[0]!
-  let (_, ls, rs, hs) ← pf.getChildren[1:].foldlM f (k, ls, rs, hs)
-  addThm q($ls < $rs) hs
+  let (ks, ls, rs, hs) ← pf.getChildren[1:].foldlM f (k, ls, rs, hs)
+  addThm (if ks == .LT then q($ls < $rs) else q($ls ≤ $rs)) hs
 
 def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let ts := pf.getResult[0]!.getChildren

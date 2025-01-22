@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Util
+import Smt.Reconstruct.Prop.Core
 
 namespace Smt.Reconstruct.Builtin
 

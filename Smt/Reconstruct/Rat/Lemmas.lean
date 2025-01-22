@@ -315,48 +315,47 @@ theorem lt_of_le_of_lt (hab : a ≤ b) (hbc : b < c) : a < c :=
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
   have h' : c + a < c + b := Rat.add_lt_add_left.mpr h₁
   have h'' : b + c < b + d := Rat.add_lt_add_left.mpr h₂
-  rw [Rat.add_comm, Rat.add_comm c b] at h'
+  rewrite [Rat.add_comm, Rat.add_comm c b] at h'
   exact lt_trans h' h''
 
 theorem sum_ub₂ (h₁ : a < b) (h₂ : c ≤ d) : a + c < b + d := by
   have h' : c + a < c + b := Rat.add_lt_add_left.mpr h₁
   have h'' : b + c ≤ b + d := Rat.add_le_add_left.mpr h₂
-  rw [Rat.add_comm, Rat.add_comm c b] at h'
+  rewrite [Rat.add_comm, Rat.add_comm c b] at h'
   exact lt_of_lt_of_le h' h''
 
 theorem sum_ub₃ (h₁ : a < b) (h₂ : c = d) : a + c < b + d := by
-  rw [h₂]
+  rewrite [h₂]
   have : d + a < d + b := Rat.add_lt_add_left.mpr h₁
-  rw [Rat.add_comm, Rat.add_comm d b] at this
+  rewrite [Rat.add_comm, Rat.add_comm d b] at this
   exact this
 
 theorem sum_ub₄ (h₁ : a ≤ b) (h₂ : c < d) : a + c < b + d := by
   have h' : c + a ≤ c + b := Rat.add_le_add_left.mpr h₁
   have h'' : b + c < b + d := Rat.add_lt_add_left.mpr h₂
-  rw [Rat.add_comm, Rat.add_comm c b] at h'
+  rewrite [Rat.add_comm, Rat.add_comm c b] at h'
   exact lt_of_le_of_lt h' h''
 
 theorem sum_ub₅ (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   have h' : c + a ≤ c + b := Rat.add_le_add_left.mpr h₁
   have h'' : b + c ≤ b + d := Rat.add_le_add_left.mpr h₂
-  rw [Rat.add_comm, Rat.add_comm c b] at h'
+  rewrite [Rat.add_comm, Rat.add_comm c b] at h'
   exact le_trans h' h''
 
 theorem sum_ub₆ (h₁ : a ≤ b) (h₂ : c = d) : a + c ≤ b + d := by
-  rw [h₂, Rat.add_comm, Rat.add_comm b d]
+  rewrite [h₂, Rat.add_comm, Rat.add_comm b d]
   exact Rat.add_le_add_left.mpr h₁
 
 theorem sum_ub₇ (h₁ : a = b) (h₂ : c < d) : a + c < b + d := by
-  rw [h₁, Rat.add_comm b c, Rat.add_comm b d]
+  rewrite [h₁, Rat.add_comm b c, Rat.add_comm b d]
   exact sum_ub₃ h₂ rfl
 
 theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
-  rw [h₁]
+  rewrite [h₁]
   exact Rat.add_le_add_left.mpr h₂
 
-theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c ≤ b + d := by
+theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
-  exact Rat.le_refl _
 
 theorem neg_lt_neg  : a < b → -a > -b :=
   Rat.numDenCasesOn' a fun na da da_nz =>

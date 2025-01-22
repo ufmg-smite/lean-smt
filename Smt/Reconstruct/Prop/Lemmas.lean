@@ -182,65 +182,65 @@ theorem notNotElim : ∀ {p : Prop}, ¬ ¬ p → p :=
 
 theorem notNotIntro : ∀ {p : Prop}, p → ¬ ¬ p := λ p np => np p
 
-theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notList l) → andN l := by
+theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notN l) → andN l := by
   intros l h
   exact match l with
   | []   => True.intro
   | [t]  => by
     simp only [andN]
-    simp only [notList, orN, map] at h
+    simp only [notN, orN, map] at h
     cases Classical.em t with
     | inl tt  => exact tt
     | inr ntt => exact False.elim (h ntt)
   | h₁::h₂::t => by
-    simp only [orN, notList, map] at h
+    simp only [orN, notN, map] at h
     have ⟨ t₁, t₂ ⟩ := deMorganSmall h
     have ih := @deMorgan (h₂::t) t₂
     simp [andN]
     have t₁' := notNotElim t₁
     exact ⟨ t₁', ih ⟩
 
-theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notList l) := by
+theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notN l) := by
   intros l h
   exact match l with
   | [] => by
-    simp [orN, notList]
+    simp [orN, notN]
   | [t] => by
-    simp only [orN, notList]
+    simp only [orN, notN]
     simp [andN] at h
     exact notNotIntro h
   | h₁::h₂::t => by
-    simp only [orN, notList, map]
+    simp only [orN, notN, map]
     simp [andN] at h
     apply deMorganSmall₂
     have nnh₁ := notNotIntro (And.left h)
     have ih := @deMorgan₂ (h₂::t) (And.right h)
     exact ⟨nnh₁, ih⟩
 
-theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notList l) := by
+theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notN l) := by
   intros l h
   exact match l with
   | [] => True.intro
   | [t] => by
-    simp only [andN, notList, map]
+    simp only [andN, notN, map]
     simp only [orN, Not] at h
     exact h
   | h₁::h₂::t => by
     simp only [orN, Not] at h
     have ⟨t₁, t₂⟩ := deMorganSmall h
     simp only [orN, Not] at t₂
-    simp [andN, notList, map]
+    simp [andN, notN, map]
     have ih := @deMorgan₃ (h₂::t) t₂
     exact ⟨t₁, ih⟩
 
-theorem cnfAndNeg' : ∀ (l : List Prop), andN l ∨ orN (notList l) :=
+theorem cnfAndNeg' : ∀ (l : List Prop), andN l ∨ orN (notN l) :=
   by intro l
      apply orComm
      apply orImplies
      intro h
      exact deMorgan h
 
-theorem cnfAndNeg : orN (andN l :: notList l) := by
+theorem cnfAndNeg : orN (andN l :: notN l) := by
   cases l with
   | nil => trivial
   | cons l ls =>
@@ -544,12 +544,12 @@ syntax (name := notOrElim) "notOrElim" term "," term : tactic
 
 end Tactic
 
-theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notList l) := by
+theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notN l) := by
   intros l h
   match l with
   | []         => exact False.elim (h True.intro)
   | [_]        => exact h
-  | p₁::p₂::ps => simp [orN, notList, map]
+  | p₁::p₂::ps => simp [orN, notN, map]
                   match deMorganSmall₃ h with
                   | Or.inl hnp₁ => exact Or.inl hnp₁
                   | Or.inr hnAndTail =>
@@ -694,16 +694,17 @@ theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : 
     not_false_eq_true] at *
     apply orN_append_left H2
 
-theorem implies_of_not_and : ¬(andN' ps ¬q) → impliesN ps q := by
+theorem implies_of_not_and : ¬(andN (ps ++ [¬q])) → impliesN ps q := by
   induction ps with
   | nil => exact notNotElim
   | cons p ps ih =>
-    simp only [andN', impliesN]
+    simp only [andN, impliesN]
     intro hnpps hp
-    have hnpnps := deMorganSmall₃ hnpps
-    match hnpnps with
-    | .inl hnp => contradiction
-    | .inr hnps => exact ih hnps
+    cases ps
+    <;> have hnpnps := deMorganSmall₃ hnpps
+    <;> match hnpnps with
+        | .inl hnp => contradiction
+        | .inr hnps => exact ih hnps
 
 syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules

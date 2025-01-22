@@ -66,9 +66,8 @@ theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   rewrite [h₁]
   exact Int.add_le_add_left h₂ b
 
-theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c ≤ b + d := by
-  rewrite [h₁, h₂]
-  exact Int.le_refl (b + d)
+theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
+  rw [h₁, h₂]
 
 theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c - 1 :=
   Int.le_sub_one_of_lt h

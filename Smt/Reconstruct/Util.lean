@@ -11,26 +11,6 @@ namespace Smt.Reconstruct
 
 open Lean Expr Elab.Tactic Meta
 
-def andN : List Prop → Prop
-| [] => True
-| h :: [] => h
-| h :: t  => h ∧ andN t
-
-def orN : List Prop → Prop
-| [] => False
-| h :: [] => h
-| h₁ :: h₂ :: t  => h₁ ∨ orN (h₂ :: t)
-
-def andN' (ps : List Prop) (q : Prop) : Prop := match ps with
-| [] => q
-| p :: ps => p ∧ andN' ps q
-
-def impliesN (ps : List Prop) (q : Prop) : Prop := match ps with
-  | [] => q
-  | p :: ps => p → impliesN ps q
-
-def notList : List Prop → List Prop := List.map Not
-
 def notExpr : Expr → Expr
 | app (const ``Not ..) e => e
 | e => mkApp (mkConst ``Not) e
