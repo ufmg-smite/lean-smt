@@ -31,7 +31,7 @@ theorem div_total_zero : x / 0 = 0 :=
 
 -- Eliminations
 
-theorem elim_gt : (t > s) = ¬(t ≤ s) := by
+theorem elim_gt : (t > s) = ¬(t ≤ s) := sorry
 
 theorem elim_lt : (t < s) = ¬(t ≥ s) :=
   sorry
