@@ -64,8 +64,10 @@ theorem bool_implies_de_morgan : (¬(x → y)) = (x ∧ ¬y) :=
 theorem bool_and_de_morgan : (¬(x ∧ y ∧ zs)) = (¬x ∨ ¬(y ∧ zs)) :=
   propext Classical.not_and_iff_or_not_not
 
-theorem bool_or_and_distrib : (y₁ ∧ y₂ ∧ ys ∨ zs) = ((y₁ ∨ zs) ∧ (y₂ ∧ ys ∨ zs)) :=
-  propext and_or_right ▸ rfl
+theorem bool_or_and_distrib : orN (andN (y₁ :: y₂ :: ys) :: zs) = andN [orN (y₁ :: zs), orN (andN (y₂ :: ys) :: zs)] :=
+  match zs with
+  | []     => rfl
+  | _ :: _ => propext and_or_right
 
 theorem bool_xor_refl : XOr x x = False :=
   propext ⟨(·.elim absurd (flip absurd)), False.elim⟩

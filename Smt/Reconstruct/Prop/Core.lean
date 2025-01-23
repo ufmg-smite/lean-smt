@@ -32,6 +32,22 @@ namespace XOr
 
 end XOr
 
+def andN : List Prop → Prop
+  | [] => True
+  | h :: [] => h
+  | h :: t  => h ∧ andN t
+
+def orN : List Prop → Prop
+  | [] => False
+  | h :: [] => h
+  | h₁ :: h₂ :: t  => h₁ ∨ orN (h₂ :: t)
+
+def impliesN (ps : List Prop) (q : Prop) : Prop := match ps with
+  | [] => q
+  | p :: ps => p → impliesN ps q
+
+def notN : List Prop → List Prop := List.map Not
+
 namespace Smt.Reconstruct.Prop
 
 theorem and_assoc_eq : ((p ∧ q) ∧ r) = (p ∧ (q ∧ r)) := by
