@@ -6,6 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Batteries.Data.Rat
+import Smt.Reconstruct.Rat.Core
 
 namespace Smt.Reconstruct.Rat.Rewrite
 
@@ -15,8 +16,8 @@ open Function
 
 variable {t ts x xs : Rat}
 
-theorem plus_zero : ts + 0 + ss = ts + ss :=
-  sorry
+theorem plus_zero : ts + 0 + ss = ts + ss := by simp
+
 
 theorem mul_one : ts * 1 * ss = ts * ss :=
   (_root_.Rat.mul_one ts).symm ▸ rfl
@@ -30,8 +31,8 @@ theorem div_total_zero : x / 0 = 0 :=
 
 -- Eliminations
 
-theorem elim_gt : (t > s) = ¬(t ≤ s) :=
-  sorry
+theorem elim_gt : (t > s) = ¬(t ≤ s) := by
+
 theorem elim_lt : (t < s) = ¬(t ≥ s) :=
   sorry
 theorem elim_leq : (t ≤ s) = (s ≥ t) :=
@@ -55,14 +56,14 @@ theorem refl_gt : (t > t) = False :=
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) :=
   sorry
 
-theorem plus_flatten : xs + (w + ys) + zs = xs + w + ys + zs :=
-  sorry
+theorem plus_flatten : xs + (w + ys) + zs = xs + w + ys + zs := by
+  simp [Rat.add_assoc]
 
-theorem mult_flatten : xs * (w * ys) * zs = xs * w * ys * zs :=
-  sorry
+theorem mult_flatten : xs * (w * ys) * zs = xs * w * ys * zs := by
+  simp [Rat.mul_assoc]
 
-theorem mult_dist : x * (y + z + ws) = x * y + x * (z + ws) :=
-  sorry
+theorem mult_dist : x * (y + z + ws) = x * y + x * (z + ws) := by
+  simp [Rat.mul_add, Rat.add_assoc]
 
 theorem abs_elim : (if x < 0 then -x else x) = if x < 0 then -x else x :=
   rfl
