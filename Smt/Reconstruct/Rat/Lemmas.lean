@@ -38,7 +38,6 @@ theorem Rat.le_antisymm {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := b
   have := Rat.nonneg_antisymm _ hba hab
   have := congrArg (fun x => x + b) this
   simp at this
-  rw [Rat.zero_add] at this
   rw [Rat.add_assoc, Rat.neg_self_add] at this
   rw [Rat.add_zero] at this
   exact this
@@ -89,10 +88,6 @@ theorem neg_self_add (c : Rat) : -c + c = 0 := by
   simp [Rat.add_def]
   exact Int.add_left_neg _
 
-theorem neg_add (a b : Rat) : -(a + b) = -a - b := by
-  rw [Rat.add_def, Rat.sub_def, Rat.neg_normalize, Int.neg_add, Int.sub_eq_add_neg]
-  simp
-
 theorem add_sub_add_left_eq_sub (a b c : Rat) : c + a - (c + b) = a - b := by
   rw [ Rat.sub_eq_add_neg,
        Rat.add_assoc c a (-(c + b)),
@@ -104,7 +99,6 @@ theorem add_sub_add_left_eq_sub (a b c : Rat) : c + a - (c + b) = a - b := by
        Rat.add_neg_self,
        Rat.zero_add,
        Rat.add_comm,
-       Rat.sub_eq_add_neg
     ]
 
 theorem add_le_add_left {a b c : Rat} : c + a ≤ c + b ↔ a ≤ b := by

@@ -153,11 +153,13 @@ protected theorem lt_asymm {x y : Rat} : x < y → ¬ y < x := by
 protected theorem add_comm : a + b = b + a := by
   simp [add_def, Int.add_comm, Int.mul_comm, Nat.mul_comm]
 
+@[simp]
 protected theorem add_zero : ∀ a : Rat, a + 0 = a
 | ⟨num, den, _h, _h'⟩ => by
   simp [Rat.add_def]
   simp only [Rat.normalize_eq_mkRat, Rat.mk_eq_normalize]
 
+@[simp]
 protected theorem zero_add : 0 + a = a :=
   Rat.add_comm a 0 ▸ Rat.add_zero a
 
@@ -584,5 +586,33 @@ theorem mul_add (a b c : Rat) : a * (b + c) = a * b + a * c :=
         rw [<- Int.mul_assoc b_den a_den c_den]
         rw [Int.mul_comm b_den a_den]
         rw [Int.mul_assoc a_den b_den c_den]
+
+@[simp]
+protected theorem neg_zero : -(0:Rat) = 0 := rfl
+
+protected theorem add_mul (a b c : Rat) : (a + b) * c = a * c + b * c := by
+  simp [Rat.mul_comm, Rat.mul_add]
+
+protected theorem neg_add (a b : Rat) : -(a + b) = -a + -b := by
+  rw [←Rat.sub_eq_add_neg, ←Rat.neg_neg b, ←Rat.sub_eq_add_neg, Rat.neg_sub]
+  simp [Rat.sub_eq_add_neg, Rat.add_comm, Rat.neg_neg]
+
+theorem neg_eq_neg_one_mul (a : Rat) : -a = -1 * a :=
+  numDenCasesOn a fun n d h h1 => by
+    simp [Rat.neg_mkRat, Rat.mul_def, Rat.normalize_eq_mkRat]
+    simp [← Rat.divInt_ofNat]
+    rw [divInt_num' (Nat.pos_iff_ne_zero.mp h) h1, divInt_den' (Nat.pos_iff_ne_zero.mp h) h1]
+
+protected theorem neg_mul_eq_neg_mul (a b : Rat) : -(a * b) = -a * b := by
+  rw [neg_eq_neg_one_mul, neg_eq_neg_one_mul a, Rat.mul_assoc]
+
+protected theorem mul_div_right_comm (a b c : Rat) : a * b / c = a / c * b := by
+  rw [div_def, div_def, Rat.mul_assoc, Rat.mul_comm b c.inv, Rat.mul_assoc]
+
+protected theorem zero_div (a : Rat) : 0 / a = 0 := by
+  simp [div_def]
+
+protected theorem add_div (a b c : Rat) : (a + b) / c = a / c + b / c := by
+  simp [div_def, Rat.add_mul]
 
 end Rat
