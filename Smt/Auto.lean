@@ -9,7 +9,7 @@ import Auto.Tactic
 import Smt.Tactic.Smt
 
 open Lean in
-def smtSolverFunc (ls : Array Auto.Lemma) (is : Array Auto.Lemma) : MetaM Expr := do
+def Smt.smtSolverFunc (ls : Array Auto.Lemma) (is : Array Auto.Lemma) : MetaM Expr := do
   let fi l := do
     let userName ← mkFreshUserName `inst
     let type ← Meta.mkAppM ``Inhabited #[l.type]
@@ -27,10 +27,9 @@ def smtSolverFunc (ls : Array Auto.Lemma) (is : Array Auto.Lemma) : MetaM Expr :
   let (fvs, mv) ← mv.assertHypotheses ls
   mv.withContext do
     let hs := fvs.map (.fvar ·)
-    _ ← Smt.smt mv hs.toList
+    let «timeout» := (← getOptions).get? ``auto.smt.timeout
+    _ ← smt mv hs.toList «timeout»
     -- Note: auto should allow solvers to export new goals to users
     -- for mv in mvs do
     --   logInfo m!"new : {mv}"
     instantiateMVars h
-
-attribute [rebind Auto.Native.solverFunc] smtSolverFunc

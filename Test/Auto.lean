@@ -6,6 +6,8 @@ import Smt.Auto
 
 set_option auto.native true
 
+attribute [rebind Auto.Native.solverFunc] Smt.smtSolverFunc
+
 example (x : α) : List.head? [x] = .some x := by
   have h₂ : ∀ (x : α) (ys : _), List.head? (x :: ys) = .some x := fun _ _ => rfl
   auto
