@@ -13,3 +13,7 @@ import Smt.Reconstruct.Arith.TransFns.ArithTransExpPositivity
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpSuperLin
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpZero
 import Smt.Reconstruct.Arith.TransFns.ArithTransPi
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineBounds
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineSymmetry
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineTangentPi
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineTangentZero

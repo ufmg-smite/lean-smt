@@ -19,7 +19,7 @@ import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Arith
 
-open Lean hiding Rat
+open Lean
 open Elab Tactic Meta
 
 open Real

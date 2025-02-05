@@ -22,7 +22,7 @@ theorem sin_neg' : ∀ (t : ℝ), sin t = - sin (-t) := by
   rw [sin_neg t]
   simp
 
-theorem arithTransSineBounds : ∀ (t : ℝ),
+theorem arithTransSinTangentZero : ∀ (t : ℝ),
     (t > 0 → sin t < t) ∧ (t < 0 → sin t > t) := by
   intro t
   apply And.intro
