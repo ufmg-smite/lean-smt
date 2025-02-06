@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas
 
 /-
 Implementation of:
-https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_EXP_SUPER_LINE
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule14ARITH_TRANS_PIE
 -/
 
 import Lean
