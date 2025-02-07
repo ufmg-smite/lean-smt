@@ -22,11 +22,7 @@ def norm' (x : Real) : Prop := ((-Real.pi) ≤ x) ∧ (x ≤ Real.pi)
 def P (x : Real) (s : Int) (y : Real) : Prop :=
   (norm' y) ∧ (sin y = sin x) ∧ (if -Real.pi ≤ x ∧ x ≤ Real.pi then x = y else x = y + 2 * Real.pi * s)
 
-def P3 (x : Real) (s : Int) : Prop := ∃ y , P x s y
-
-def P2 (x : Real) : Prop := ∃ s , P3 x s
-
-def P1 : Prop := ∀ x , P2 x
+def P2 (x : Real) (s : Int) : Prop := ∃ y , P x s y
 
 theorem tau (x : Real) : x - Real.pi + 2 * Real.pi = x + Real.pi := by linarith
 
@@ -40,15 +36,15 @@ theorem floor_div_add_one (a b : Real) : b ≠ 0 → Int.floor (a / b) + 1 = Int
   rw [<- div_add_one h]
   exact Eq.symm (Int.floor_add_one (a / b))
 
-theorem ArithTransSineShift₀ : ∀ (x : Real) , ∃ (s : Int) (y : Real) , P x s y := fun x =>
+theorem ArithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
   if h : (-Real.pi ≤ x ∧ x ≤ Real.pi) then by
     use 0, x
-    simp [P]
+    simp only [P, Int.cast_zero, mul_zero, add_zero, ite_self, and_self, and_true]
     exact h
   else if h2 : (Real.pi < x) then by
     let s := Int.ceil ((x - Real.pi) / (2 * Real.pi))
     use s, x - 2 * Real.pi * s
-    simp only [P, s]
+    simp only [s]
     constructor
     · simp only [norm', neg_le_sub_iff_le_add, tsub_le_iff_right]
       constructor
@@ -72,7 +68,7 @@ theorem ArithTransSineShift₀ : ∀ (x : Real) , ∃ (s : Int) (y : Real) , P x
     have h3 : x < -Real.pi := by aesop
     let s := Int.floor ((x + Real.pi) / (2 * Real.pi))
     use s, x - 2 * Real.pi * s
-    simp only [P, s]
+    simp only [s]
     constructor
     · simp only [norm', neg_le_sub_iff_le_add, tsub_le_iff_right]
       constructor
@@ -92,8 +88,10 @@ theorem ArithTransSineShift₀ : ∀ (x : Real) , ∃ (s : Int) (y : Real) , P x
 
 open Classical
 
-variable (x : Real)
-
-#check epsilon_spec (epsilon_spec (ArithTransSineShift₀ x))
+example : ∀ (x : Real) ,
+    let s := epsilon (P2 x)
+    let y := epsilon (P x s)
+    P x s y :=
+  fun x => epsilon_spec (epsilon_spec (ArithTransSineShift₀ x))
 
 end Smt.Reconstruct.Arith
