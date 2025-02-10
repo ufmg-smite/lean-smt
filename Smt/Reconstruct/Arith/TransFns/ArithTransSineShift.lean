@@ -36,7 +36,7 @@ theorem floor_div_add_one (a b : Real) : b ≠ 0 → Int.floor (a / b) + 1 = Int
   rw [<- div_add_one h]
   exact Eq.symm (Int.floor_add_one (a / b))
 
-theorem ArithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
+theorem arithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
   if h : (-Real.pi ≤ x ∧ x ≤ Real.pi) then by
     use 0, x
     simp only [P, Int.cast_zero, mul_zero, add_zero, ite_self, and_self, and_true]
@@ -88,10 +88,10 @@ theorem ArithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
 
 open Classical
 
-example : ∀ (x : Real) ,
+theorem arithTransSineShift₁ : ∀ (x : Real) ,
     let s := epsilon (P2 x)
     let y := epsilon (P x s)
     P x s y :=
-  fun x => epsilon_spec (epsilon_spec (ArithTransSineShift₀ x))
+  fun x => epsilon_spec (epsilon_spec (arithTransSineShift₀ x))
 
 end Smt.Reconstruct.Arith
