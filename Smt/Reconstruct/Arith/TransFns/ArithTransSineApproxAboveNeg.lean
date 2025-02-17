@@ -16,32 +16,13 @@ open Set Real
 
 namespace Smt.Reconstruct.Arith
 
-theorem iteratedDeriv_sin_cos (n : Nat) :
-  (iteratedDeriv n sin =
-    if n % 4 = 0 then sin else
-    if n % 4 = 1 then cos else
-    if n % 4 = 2 then -sin else
-    -cos) ∧
-    (iteratedDeriv n cos =
-    if n % 4 = 0 then cos else
-    if n % 4 = 1 then -sin else
-    if n % 4 = 2 then -cos else
-    sin) := by
-  induction' n with n ih
-  · simp [iteratedDeriv]
-  · simp [ih.1, ih.2, iteratedDeriv_succ']
-    have :=  Nat.mod_lt n (show 4 > 0 by decide)
-    interval_cases hn : n % 4
-    <;> simp [hn, Nat.add_mod]
-    <;> ext
-    <;> simp [iteratedDeriv_neg, ih]
-
 theorem sineApproxAboveNeg (d k : Nat) (hd : d = 4*k + 3) (hx : x < 0) (hx2 : -π ≤ x):
   let p : ℕ → ℝ → ℝ := fun d => taylorWithinEval Real.sin d Set.univ 0
   sin x ≤ p d x := by
   intro p
   have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange₁ (n := d) hx contDiff_sin
   rw [taylorWithinEval_eq _ (right_mem_Icc.mpr (le_of_lt hx)) (uniqueDiffOn_Icc hx) (contDiff_sin)] at H
+
   rw [←sub_nonpos, H]
   rw [iteratedDerivWithin_eq_iteratedDeriv contDiff_sin (uniqueDiffOn_Icc hx) _ (Ioo_subset_Icc_self hx')]
   have : (d+1)%4 = 0 := by simp [hd, Nat.add_mod]

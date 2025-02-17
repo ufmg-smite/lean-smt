@@ -22,3 +22,30 @@ theorem strictConvexOn_sin_Icc : StrictConvexOn ℝ (Icc (- π) 0) sin := by
   exact Real.sin_neg_of_neg_of_neg_pi_lt hx₂ hx₁
 
 theorem convexOn_sin_Icc : ConvexOn ℝ (Icc (- π) 0) sin := StrictConvexOn.convexOn strictConvexOn_sin_Icc
+
+theorem iteratedDeriv_sin_cos (n : Nat) :
+  (iteratedDeriv n sin =
+    if n % 4 = 0 then sin else
+    if n % 4 = 1 then cos else
+    if n % 4 = 2 then -sin else
+    -cos) ∧
+    (iteratedDeriv n cos =
+    if n % 4 = 0 then cos else
+    if n % 4 = 1 then -sin else
+    if n % 4 = 2 then -cos else
+    sin) := by
+  induction' n with n ih
+  · simp [iteratedDeriv]
+  · simp [ih.1, ih.2, iteratedDeriv_succ']
+    have :=  Nat.mod_lt n (show 4 > 0 by decide)
+    interval_cases hn : n % 4
+    <;> simp [hn, Nat.add_mod]
+    <;> ext
+    <;> simp [iteratedDeriv_neg, ih]
+
+theorem DifferentiableOn_iteratedDerivWithin {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) (hx : a < b) :
+    DifferentiableOn ℝ (iteratedDerivWithin d f (Icc a b)) (Ioo a b) := by
+    apply DifferentiableOn.mono _ Set.Ioo_subset_Icc_self
+    apply ContDiffOn.differentiableOn_iteratedDerivWithin (n := d + 1) _ (by norm_cast; simp) (uniqueDiffOn_Icc hx)
+    apply ContDiff.contDiffOn (by apply ContDiff.of_le hf (by norm_cast; simp))
+
