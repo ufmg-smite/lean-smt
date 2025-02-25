@@ -10,14 +10,14 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule32ARITH_TRANS_EXP_APPROX_ABOVE_POSE
 -/
 
-import Mathlib
-/- import Mathlib.Analysis.SpecialFunctions.Pow.Real -/
+import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Data.Real.StarOrdered
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAboveNeg
+/- import Mathlib.Analysis.SpecialFunctions.Pow.Real -/
 
 namespace Smt.Reconstruct.Arith
 
 open Set Real Nat
-
 
 -- theorem pow_lt_factorial {x : ℝ} (hx : 0 < x) :
 --   x^ (4*(ceil x)^2) < Nat.factorial (4*(ceil x)^2) := by
@@ -33,10 +33,6 @@ open Set Real Nat
 --   rw [← Real.rpow_nat_cast _ (2 * ⌈x⌉₊ ^ 2)]; push_cast; simp only [rpow_two]
 --   apply Real.rpow_lt_rpow (by simp) (by norm_cast; simp [h3]) (by norm_cast; simp [h3])
 
-
-
--- #check Nat.mod_two_ne_zero
-
 -- theorem le_div_mul (n : Nat) : n - 1 ≤ 2*(n/2) := by
 --   by_cases h : n%2 = 0
 --   · rw [mul_comm, Nat.div_mul_cancel (Nat.dvd_of_mod_eq_zero h)]
@@ -44,7 +40,6 @@ open Set Real Nat
 --   · rw [Nat.mod_two_ne_zero] at h
 --     rw [Nat.two_mul_odd_div_two h]
 
--- #check rpow_le_rpow
 -- theorem pow_lt_factorial'' {x d : ℝ} (d : Nat) (hx : 0 < x) (hd : 2*x^2 < d) :
 --   x^d < Nat.factorial d := by
 --   have h := factorial_mul_pow_sub_le_factorial (Nat.mul_le_mul_right (d/2) (show 1 ≤ 2 by simp))
@@ -94,8 +89,6 @@ theorem expApproxAbovePos {x : Real} (hx : 0 < x) (h1 : x^(d+1) < Nat.factorial 
   apply mul_le_mul_of_nonneg_right _ (div_nonneg (by simp [le_of_lt hx2]) (by simp))
   apply le_of_lt (exp_lt_exp.mpr (mem_Ioo.mp hx').2)
 
-
-
 theorem arithTransExpApproxAbovePos (l u t : ℝ) (ht : l ≤ t ∧ t ≤ u)
                                     (hl : 0 < l) (hd : u^(d+1) < Nat.factorial (d+1)):
   let r : ℕ → ℝ → ℝ := fun d => (fun t => (1-t^(d+1)/(d+1)!))
@@ -104,3 +97,4 @@ theorem arithTransExpApproxAbovePos (l u t : ℝ) (ht : l ≤ t ∧ t ≤ u)
   intro r _
   have h1 := expApproxAbovePos (lt_of_lt_of_le hl (le_trans ht.1 ht.2)) hd
   apply le_convex_of_le ht (h1 l (le_trans ht.1 ht.2) hl) (h1 u (by simp) (by linarith)) convexOn_exp (Set.mem_univ _) (Set.mem_univ _)
+
