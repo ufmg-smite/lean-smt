@@ -4,13 +4,12 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan, Tomaz Gomes
 -/
-
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
 
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAbovePos
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAboveNeg
 import Smt.Reconstruct.Arith.TransFns.Utils
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
 
 open Set Real
 

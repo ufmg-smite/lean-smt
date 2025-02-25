@@ -4,11 +4,9 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Mascarenhas
 -/
-
 import Mathlib
 
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAboveNeg
-import Smt.Reconstruct.Arith.TransFns.ArithTransApproxAboveBelow
 import Smt.Reconstruct.Arith.TransFns.Utils
 
 namespace Smt.Reconstruct.Arith
