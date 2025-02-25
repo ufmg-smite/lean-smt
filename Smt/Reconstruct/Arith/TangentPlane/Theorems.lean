@@ -75,10 +75,6 @@ theorem arithMulTangentMprLower :
   match h with
   | Or.inl (And.intro h₁ h₂) => by nlinarith
   | Or.inr (And.intro h₁ h₂) => by nlinarith
-    /- have h₁' : (x - a ≥ 0) := by linarith -/
-    /- have h₂' : (y - b ≤ 0) := by linarith -/
-    /- have prod_nonpos := mul_nonpos_of_nonneg_of_nonpos h₁' h₂' -/
-    /- linarith -/
 
 theorem arithMulTangentLower :
     x * y ≤ b * x + a * y - a * b ↔

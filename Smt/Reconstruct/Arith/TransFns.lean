@@ -8,6 +8,7 @@ Authors: Tomaz Gomes Mascarenhas
 -- implementation of rules about transcendental functions from cvc5
 
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAboveNeg
+import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAbovePos
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxBelow
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpNeg
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpPositivity
@@ -15,6 +16,8 @@ import Smt.Reconstruct.Arith.TransFns.ArithTransExpSuperLin
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpZero
 import Smt.Reconstruct.Arith.TransFns.ArithTransPi
 import Smt.Reconstruct.Arith.TransFns.ArithTransSineApproxAboveNeg
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineApproxAbovePos
+import Smt.Reconstruct.Arith.TransFns.ArithTransSineApproxBelowNeg
 import Smt.Reconstruct.Arith.TransFns.ArithTransSineApproxBelowPos
 import Smt.Reconstruct.Arith.TransFns.ArithTransSineBounds
 import Smt.Reconstruct.Arith.TransFns.ArithTransSineShift
