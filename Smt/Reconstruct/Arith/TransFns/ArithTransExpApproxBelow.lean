@@ -5,6 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan
 -/
 
+/-
+Implementation of:
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule28ARITH_TRANS_EXP_APPROX_BELOWE
+-/
+
 import Smt.Reconstruct.Arith.TransFns.Utils
 
 namespace Smt.Reconstruct.Arith

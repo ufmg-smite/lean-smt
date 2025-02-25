@@ -4,10 +4,16 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Mascarenhas
 -/
-import Mathlib
+
+/-
+Implementation of:
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule33ARITH_TRANS_SINE_APPROX_BELOW_POSE
+-/
+
+import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Data.Real.StarOrdered
 
 import Smt.Reconstruct.Arith.TransFns.ArithTransExpApproxAboveNeg
-import Smt.Reconstruct.Arith.TransFns.Utils
 
 namespace Smt.Reconstruct.Arith
 

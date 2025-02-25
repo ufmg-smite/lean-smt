@@ -10,14 +10,14 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule22ARITH_TRANS_SINE_SHIFTE
 -/
 
-import Mathlib
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Data.Real.StarOrdered
 
 namespace Smt.Reconstruct.Arith
 
 open Real
 
 def norm' (x : Real) : Prop := ((-Real.pi) ≤ x) ∧ (x ≤ Real.pi)
-
 
 def P (x : Real) (s : Int) (y : Real) : Prop :=
   (norm' y) ∧ (sin y = sin x) ∧ (if -Real.pi ≤ x ∧ x ≤ Real.pi then x = y else x = y + 2 * Real.pi * s)

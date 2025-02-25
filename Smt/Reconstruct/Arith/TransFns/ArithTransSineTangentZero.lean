@@ -10,8 +10,8 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule29ARITH_TRANS_SINE_TANGENT_ZEROE
 -/
 
-import Mathlib.Data.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+import Mathlib.Data.Complex.Exponential
 
 namespace Smt.Reconstruct.Arith
 
