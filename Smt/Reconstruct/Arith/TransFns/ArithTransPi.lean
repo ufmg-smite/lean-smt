@@ -2,12 +2,12 @@
 Copyright (c) 2021-2023 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Tomaz Gomes Mascarenhas
+Authors: Tomaz Mascarenhas
 -/
 
 /-
 Implementation of:
-https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_EXP_SUPER_LINE
+https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule14ARITH_TRANS_PIE
 -/
 
 import Lean
@@ -19,20 +19,20 @@ import Smt.Reconstruct.Util
 
 namespace Smt.Reconstruct.Arith
 
-open Lean hiding Rat
+open Lean
 open Elab Tactic Meta
 
 open Real
 
-def expr_3141592 : Expr :=
+def expr_pi_upper : Expr :=
   mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
     (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
-    (.lit (.natVal 3141592)) (mkConst ``Bool.true) (.lit (.natVal 6))
+    (.lit (.natVal 314159265358979323847)) (mkConst ``Bool.true) (.lit (.natVal 20))
 
-def expr_3141593 : Expr :=
+def expr_pi_lower : Expr :=
   mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
     (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
-    (.lit (.natVal 3141593)) (mkConst ``Bool.true) (.lit (.natVal 6))
+    (.lit (.natVal 314159265358979323846)) (mkConst ``Bool.true) (.lit (.natVal 20))
 
 def ratCast_lt_mpr {x y : ℚ} : x < y → (x : ℝ) < (y : ℝ) := ratCast_lt.mpr
 
@@ -53,24 +53,24 @@ def ratOfFloatOrNat : Expr → MetaM Expr := fun e =>
 
 def arithTransPiMetaLt : Expr → MetaM Expr :=
   fun e => do
-    let goal ← mkAppOptM ``LT.lt #[mkConst ``Rat, none, e, expr_3141592]
+    let goal ← mkAppOptM ``LT.lt #[mkConst ``Rat, none, e, expr_pi_lower]
     let mvarTmp ← Expr.mvarId! <$> mkFreshExprMVar goal
     let _ ← Mathlib.Meta.NormNum.normNumAt mvarTmp (← Simp.Context.mkDefault) #[]
     let some val ← getExprMVarAssignment? mvarTmp | throwError "unreachable"
     let val' ← mkAppM ``ratCast_lt_mpr #[val]
     let answer ← mkAppOptM ``lt_trans
-      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_gt_3141592]
+      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_gt_d20]
     return answer
 
 def arithTransPiMetaGt : Expr → MetaM Expr :=
   fun e => do
-    let goal ← mkAppOptM ``GT.gt #[mkConst ``Rat, none, e, expr_3141593]
+    let goal ← mkAppOptM ``GT.gt #[mkConst ``Rat, none, e, expr_pi_upper]
     let mvarTmp ← Expr.mvarId! <$> mkFreshExprMVar goal
     let _ ← Mathlib.Meta.NormNum.normNumAt mvarTmp (← Simp.Context.mkDefault) #[]
     let some val ← getExprMVarAssignment? mvarTmp | throwError "unreachable"
     let val' ← mkAppM ``ratCast_lt_mpr #[val]
     let answer ← mkAppOptM ``gt_trans
-      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_lt_3141593]
+      #[mkConst ``Real, none, none, none, none, val', mkConst ``pi_lt_d20]
     return answer
 
 def arithTransPiMeta (mvar : MVarId) :
@@ -98,7 +98,7 @@ syntax (name := arithTransPi) "arithTransPi" term "," term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
 
-example : 3.1 < Real.pi ∧ Real.pi < 4 := by
-  arithTransPi 3.1 , 4
+example : 3.1415926535 < Real.pi ∧ Real.pi < 3.1415926536 := by
+  arithTransPi 3.1415926535 , 3.1415926536
 
 end Smt.Reconstruct.Arith

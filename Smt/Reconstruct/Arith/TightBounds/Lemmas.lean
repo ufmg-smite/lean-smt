@@ -27,7 +27,7 @@ theorem intTightLb' : ∀ {i : Int} {c : α}, i > c → i ≥ ⌊c⌋ + 1 := by
   intros i c h
   cases lt_trichotomy i (⌊c⌋ + 1) with
   | inl iltc =>
-    have ilec := (Int.lt_iff_add_one_le i (⌊c⌋ + 1)).mp iltc
+    have ilec := (@Int.lt_iff_add_one_le i (⌊c⌋ + 1)).mp iltc
     simp at ilec
     have c_le_floor := Int.floor_le c
     have cast_ilec := le_trans (castLE' ilec) c_le_floor
