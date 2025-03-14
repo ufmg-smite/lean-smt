@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Mathlib.Tactic.Ring.RingNF
 import Mathlib.Data.Real.Basic
 
 namespace Smt.Arith
@@ -36,7 +37,11 @@ theorem le_of_sub_eq [LinearOrderedRing α] {c₁ c₂ a₁ a₂ b₁ b₂ : α}
 
 theorem eq_of_sub_eq [LinearOrderedRing α] {c₁ c₂ a₁ a₂ b₁ b₂ : α} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
   have {c x y : α} (hc : c > 0) : (c * (x - y) = 0) = (x - y = 0) := by
-    rw (config := { occs := .pos [1] }) [← mul_zero c, mul_right_inj' (ne_of_gt hc)]
+    rw (config := { occs := .pos [1] }) [← mul_zero c] --, mul_right_inj' (ne_of_gt hc)]
+    simp only [mul_zero, mul_eq_zero, eq_iff_iff, or_iff_right_iff_imp]
+    intro abs
+    rw [abs] at hc
+    simp only [gt_iff_lt, lt_self_iff_false] at hc
   rw [@eq_eq_sub_eq_zero _ _ a₁, @eq_eq_sub_eq_zero _ _ b₁, ← this hc₁, ← this hc₂, h]
 
 theorem ge_of_sub_eq [LinearOrderedRing α] {c₁ c₂ a₁ a₂ b₁ b₂ : α} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
@@ -63,7 +68,6 @@ def arithPolyNormCore (mv : MVarId) : MetaM (Option MVarId) := mv.withContext do
   else
     Meta.applySimpResultToTarget mv tgt r
 
-
 def traceArithPolyNorm (r : Except Exception Unit) : MetaM MessageData :=
   return match r with
   | .ok _ => m!"{checkEmoji}"
@@ -82,7 +86,7 @@ def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
 
 open Mathlib.Meta.NormNum in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
-  if let some (_, mv) ← normNumAt mv {} #[] true false then
+  if let some (_, mv) ← normNumAt mv default #[] true false then
     throwError "[norm_num]: could not prove {← mv.getType}"
 
 open Qq in

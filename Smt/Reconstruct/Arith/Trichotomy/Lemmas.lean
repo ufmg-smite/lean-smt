@@ -5,10 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Mathlib.Init.Order.Defs
+import Aesop
+import Mathlib.Order.Defs.LinearOrder
 
 import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Prop.PermutateOr
 
 namespace Smt.Reconstruct.Arith
 
@@ -33,25 +33,25 @@ theorem trichotomy₂ : ¬ a = b → ¬ a < b → a > b := by
 theorem trichotomy₃ : ¬ a < b → ¬ a > b → a = b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr': a < b ∨ b < a ∨ a = b  := by permutateOr tr, [0, 2, 1]
+  have tr': a < b ∨ b < a ∨ a = b := by aesop
   exact (orImplies₃ ((orImplies₃ tr') h₁)) h₂
 
 theorem trichotomy₄ : ¬ a > b → ¬ a < b → a = b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr': a < b ∨ b < a ∨ a = b  := by permutateOr tr, [0, 2, 1]
+  have tr': a < b ∨ b < a ∨ a = b := by aesop
   exact (orImplies₃ ((orImplies₃ tr') h₂)) h₁
 
 theorem trichotomy₅ : ¬ a = b → ¬ a > b → a < b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr': a = b ∨ b < a ∨ a < b  := by permutateOr tr, [1, 2, 0]
+  have tr': a = b ∨ b < a ∨ a < b  := by aesop
   exact (orImplies₃ ((orImplies₃ tr') h₁)) h₂
 
 theorem trichotomy₆ : ¬ a > b → ¬ a = b → a < b := by
   intros h₁ h₂
   have tr := lt_trichotomy a b
-  have tr' : a = b ∨ b < a ∨ a < b := by permutateOr tr, [1, 2, 0]
+  have tr' : a = b ∨ b < a ∨ a < b := by aesop
   exact (orImplies₃ ((orImplies₃ tr') h₂)) h₁
 
 theorem not_gt_of_le : a ≤ b → ¬ a > b :=

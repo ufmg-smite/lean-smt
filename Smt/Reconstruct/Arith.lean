@@ -36,20 +36,20 @@ def getTypeAndInst' (s : cvc5.Sort) : Σ (α : Q(Type)) (_ : Q(LinearOrderedRing
   | true  => ⟨q(Int), q(Int.instLinearOrderedCommRing.toLinearOrderedRing), q(instFloorRingInt)⟩
 
 @[smt_term_reconstruct] def reconstructArith : TermReconstructor := fun t => do match t.getKind with
-  | .SKOLEM => match t.getSkolemId with
+  | .SKOLEM => match t.getSkolemId! with
     | .DIV_BY_ZERO => return q(fun (x : Real) => x / 0)
     | .INT_DIV_BY_ZERO => return q(fun (x : Int) => x / 0)
     | .MOD_BY_ZERO => return q(fun (x : Int) => x % 0)
     | _ => return none
   | .CONST_INTEGER =>
-    let x : Int := t.getIntegerValue
+    let x : Int := t.getIntegerValue!
     let x' : Q(Nat) := mkRawNatLit x.natAbs
     if x ≥ 0 then
       return q(OfNat.ofNat $x' : Int)
     else
       return q(-(OfNat.ofNat $x' : Int))
   | .CONST_RATIONAL =>
-    let x := t.getRationalValue
+    let x := t.getRationalValue!
     let num : Q(Real) := mkRealLit x.num.natAbs
     if x.den == 1 then
       if x.num ≥ 0 then
@@ -140,32 +140,32 @@ where
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule with
-  | .ARITH_DIV_BY_CONST_ELIM =>
-    let t : Q(Real) ← reconstructTerm pf.getResult[0]![0]!
-    let r := pf.getResult[0]![1]!.getRationalValue
-    if r.den == 1 then
-      let c : Q(Real) := reconstructArith.mkRealLit r.num.natAbs
-      if r.num ≥ 0 then
-        if r.num == 1 then
-          addThm q($t / 1 = $t * 1) q(@Arith.arith_div_by_const_elim_1_pos $t)
-        else
-          addThm q($t / $c = $t * (1 / $c)) q(@Arith.arith_div_by_const_elim_num_pos $t $c)
-      else
-        if r.num == -1 then
-          addThm q($t / -1 = $t * -1) q(@Arith.arith_div_by_const_elim_1_neg $t)
-        else
-          addThm q($t / -$c = $t * (-1 / $c)) q(@Arith.arith_div_by_const_elim_num_neg $t $c)
-    else
-      let c₁ : Q(Real) := reconstructArith.mkRealLit r.num.natAbs
-      let c₂ : Q(Real) := reconstructArith.mkRealLit r.den
-      if r.num ≥ 0 then
-        addThm q($t / ($c₁ / $c₂) = $t * ($c₂ / $c₁)) q(@Arith.arith_div_by_const_elim_real_pos $t $c₁ $c₂)
-      else
-        addThm q($t / (-$c₁ / $c₂) = $t * (-$c₂ / $c₁)) q(@Arith.arith_div_by_const_elim_real_neg $t $c₁ $c₂)
-  | .ARITH_PLUS_ZERO =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_zero $α $h) args)
+  /- | .ARITH_DIV_BY_CONST_ELIM => -/
+  /-   let t : Q(Real) ← reconstructTerm pf.getResult[0]![0]! -/
+  /-   let r := pf.getResult[0]![1]!.getRationalValue -/
+  /-   if r.den == 1 then -/
+  /-     let c : Q(Real) := reconstructArith.mkRealLit r.num.natAbs -/
+  /-     if r.num ≥ 0 then -/
+  /-       if r.num == 1 then -/
+  /-         addThm q($t / 1 = $t * 1) q(@Arith.arith_div_by_const_elim_1_pos $t) -/
+  /-       else -/
+  /-         addThm q($t / $c = $t * (1 / $c)) q(@Arith.arith_div_by_const_elim_num_pos $t $c) -/
+  /-     else -/
+  /-       if r.num == -1 then -/
+  /-         addThm q($t / -1 = $t * -1) q(@Arith.arith_div_by_const_elim_1_neg $t) -/
+  /-       else -/
+  /-         addThm q($t / -$c = $t * (-1 / $c)) q(@Arith.arith_div_by_const_elim_num_neg $t $c) -/
+  /-   else -/
+  /-     let c₁ : Q(Real) := reconstructArith.mkRealLit r.num.natAbs -/
+  /-     let c₂ : Q(Real) := reconstructArith.mkRealLit r.den -/
+  /-     if r.num ≥ 0 then -/
+  /-       addThm q($t / ($c₁ / $c₂) = $t * ($c₂ / $c₁)) q(@Arith.arith_div_by_const_elim_real_pos $t $c₁ $c₂) -/
+  /-     else -/
+  /-       addThm q($t / (-$c₁ / $c₂) = $t * (-$c₂ / $c₁)) q(@Arith.arith_div_by_const_elim_real_neg $t $c₁ $c₂) -/
+  /- | .ARITH_PLUS_ZERO => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_zero $α $h) args) -/
   | .ARITH_MUL_ONE =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
@@ -174,11 +174,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args)
-  | .ARITH_DIV_TOTAL =>
-    let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
-    let s : Q(Real) ← reconstructTerm pf.getArguments[2]!
-    let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]!
-    addThm q($t / $s = $t / $s) q(@Arith.arith_div_total $t $s $h)
+  /- | .ARITH_DIV_TOTAL => -/
+  /-   let t : Q(Real) ← reconstructTerm pf.getArguments[1]! -/
+  /-   let s : Q(Real) ← reconstructTerm pf.getArguments[2]! -/
+  /-   let h : Q($s ≠ 0) ← reconstructProof pf.getChildren[0]! -/
+  /-   addThm q($t / $s = $t / $s) q(@Arith.arith_div_total $t $s $h) -/
   | .ARITH_INT_DIV_TOTAL =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
@@ -201,19 +201,19 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_INT_MOD_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q($t % 0 = $t) q(@Arith.arith_int_mod_total_zero $t)
-  | .ARITH_NEG_NEG_ONE =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-1 * (-1 * $t) = $t) q(@Arith.arith_neg_neg_one $α $h $t)
-  | .ARITH_ELIM_UMINUS =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
-    addThm q(-$t = -1 * $t) q(@Arith.arith_elim_uminus $α $h $t)
-  | .ARITH_ELIM_MINUS =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
-    let s : Q($α) ← reconstructTerm pf.getArguments[2]!
-    addThm q($t - $s = $t + -1 * $s) q(@Arith.arith_elim_minus $α $h $t $s)
+  /- | .ARITH_NEG_NEG_ONE => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let t : Q($α) ← reconstructTerm pf.getArguments[1]! -/
+    /- addThm q(-1 * (-1 * $t) = $t) q(@Arith.arith_neg_neg_one $α $h $t) -/
+  /- | .ARITH_ELIM_UMINUS => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let t : Q($α) ← reconstructTerm pf.getArguments[1]! -/
+  /-   addThm q(-$t = -1 * $t) q(@Arith.arith_elim_uminus $α $h $t) -/
+  /- | .ARITH_ELIM_MINUS => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let t : Q($α) ← reconstructTerm pf.getArguments[1]! -/
+  /-   let s : Q($α) ← reconstructTerm pf.getArguments[2]! -/
+  /-   addThm q($t - $s = $t + -1 * $s) q(@Arith.arith_elim_minus $α $h $t $s) -/
   | .ARITH_ELIM_GT =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
@@ -237,11 +237,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q((¬($t ≥ $s)) = ($s ≥ $t + 1)) q(@Arith.arith_geq_tighten $t $s)
-  | .ARITH_GEQ_NORM1 =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let t : Q($α) ← reconstructTerm pf.getArguments[1]!
-    let s : Q($α) ← reconstructTerm pf.getArguments[2]!
-    addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Arith.arith_geq_norm1 $α $h $t $s)
+  /- | .ARITH_GEQ_NORM1 => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let t : Q($α) ← reconstructTerm pf.getArguments[1]! -/
+  /-   let s : Q($α) ← reconstructTerm pf.getArguments[2]! -/
+  /-   addThm q(($t ≥ $s) = ($t - $s ≥ 0)) q(@Arith.arith_geq_norm1 $α $h $t $s) -/
   | .ARITH_GEQ_NORM2 =>
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[1]!
@@ -275,18 +275,18 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_dist $α $h) args)
-  | .ARITH_PLUS_CANCEL1 =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel1 $α $h) args)
-  | .ARITH_PLUS_CANCEL2 =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel2 $α $h) args)
-  | .ARITH_ABS_ELIM =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let x : Q($α) ← reconstructTerm pf.getArguments[1]!
-    addThm q(|$x| = if $x < 0 then -$x else $x) q(@Arith.arith_abs_elim $α $h $x)
+  /- | .ARITH_PLUS_CANCEL1 => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel1 $α $h) args) -/
+  /- | .ARITH_PLUS_CANCEL2 => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_cancel2 $α $h) args) -/
+  /- | .ARITH_ABS_ELIM => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let x : Q($α) ← reconstructTerm pf.getArguments[1]! -/
+  /-   addThm q(|$x| = if $x < 0 then -$x else $x) q(@Arith.arith_abs_elim $α $h $x) -/
   | _ => return none
 where
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
@@ -392,7 +392,7 @@ where
       | _   => return none
   | .ARITH_MULT_SIGN =>
     let args := pf.getArguments
-    let m := args.back
+    let m := args.back!
     let pol (k : cvc5.Kind) : Fin 3 := match k with
       | .LT    => 0
       | .EQUAL => 1
@@ -451,7 +451,7 @@ where
     let y : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let a : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let b : Q(Real) ← reconstructTerm pf.getArguments[3]!
-    if pf.getArguments[4]!.getIntegerValue == -1 then
+    if pf.getArguments[4]!.getIntegerValue! == -1 then
       addThm q(($x * $y ≤ $b * $x + $a * $y - $a * $b) = ($x ≤ $a ∧ $y ≥ $b ∨ $x ≥ $a ∧ $y ≤ $b)) q(Arith.arithMulTangentLowerEq $x $y $a $b)
     else
       addThm q(($x * $y ≥ $b * $x + $a * $y - $a * $b) = ($x ≤ $a ∧ $y ≤ $b ∨ $x ≥ $a ∧ $y ≥ $b)) q(Arith.arithMulTangentUpperEq $x $y $a $b)

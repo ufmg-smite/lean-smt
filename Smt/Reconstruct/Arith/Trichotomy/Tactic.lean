@@ -9,8 +9,8 @@ import Lean
 
 -- we must import those to have visible instances of LinearOrder of
 -- Nat, Int and Real
-import Mathlib.Init.Data.Nat.Lemmas
-import Mathlib.Init.Data.Int.Order
+import Mathlib.Data.Nat.Order.Lemmas
+import Mathlib.Data.Int.Order.Lemmas
 import Mathlib.Data.Real.Basic
 
 import Smt.Reconstruct.Arith.Trichotomy.Lemmas
