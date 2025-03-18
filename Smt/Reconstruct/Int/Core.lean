@@ -2,10 +2,41 @@
 Copyright (c) 2021-2023 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Adrien Champion
+Authors: Abdalrhman Mohamed, Adrien Champion
 -/
 
 namespace Int
+
+protected def abs (x : Int) : Int :=
+  if x < 0 then -x else x
+
+def addN : List Int → Int
+  | []      => 0
+  | [x]     => x
+  | x :: xs => x + addN xs
+
+@[simp] theorem addN_append : addN (xs ++ ys) = addN xs + addN ys := by
+  match xs, ys with
+  | [], _
+  | [x], []
+  | [x], y :: ys       => simp [addN]
+  | x₁ :: x₂ :: xs, ys =>
+    rw [List.cons_append, addN, addN, addN_append, Int.add_assoc]
+    all_goals (intro h; nomatch h)
+
+def mulN : List Int → Int
+  | []      => 1
+  | [x]     => x
+  | x :: xs => x * mulN xs
+
+@[simp] theorem mulN_append : mulN (xs ++ ys) = mulN xs * mulN ys := by
+  match xs, ys with
+  | [], _
+  | [x], []
+  | [x], y :: ys       => simp [mulN]
+  | x₁ :: x₂ :: xs, ys =>
+    rw [List.cons_append, mulN, mulN, mulN_append, Int.mul_assoc]
+    all_goals (intro h; nomatch h)
 
 @[simp]
 protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by

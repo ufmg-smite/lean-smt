@@ -16,22 +16,24 @@ section le_lt_defs
 
 variable {x y : Rat}
 
-theorem Rat.le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
+theorem le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
   simpa only [← Rat.le_iff_sub_nonneg, Rat.neg_sub] using Rat.nonneg_total (b - a)
 
-theorem Rat.lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
+theorem le_of_not_le {a b : Rat} : ¬ a ≤ b → b ≤ a := (Rat.le_total a b).resolve_left
+
+theorem lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
   rw [← Rat.not_le]
   refine Iff.symm ((and_iff_right_of_imp (a := a ≤ b) (b := ¬ b ≤ a)) ?_)
   intro h
-  cases Rat.le_total a b with
+  cases le_total a b with
   | inl hl => exact hl
   | inr hr => exact False.elim (h hr)
 
-theorem Rat.neg_self_add (c : Rat) : -c + c = 0 := by
+theorem neg_self_add (c : Rat) : -c + c = 0 := by
   simp [Rat.add_def]
   exact Int.add_left_neg _
 
-theorem Rat.le_antisymm {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := by
+theorem le_antisymm {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := by
   rw [Rat.le_iff_sub_nonneg] at hab hba
   rw [Rat.sub_eq_add_neg] at hba
   rw [← Rat.neg_sub, Rat.sub_eq_add_neg] at hab
@@ -84,10 +86,6 @@ protected theorem divInt_lt_divInt
 
 variable {x y : Rat}
 
-theorem neg_self_add (c : Rat) : -c + c = 0 := by
-  simp [Rat.add_def]
-  exact Int.add_left_neg _
-
 theorem add_sub_add_left_eq_sub (a b c : Rat) : c + a - (c + b) = a - b := by
   rw [ Rat.sub_eq_add_neg,
        Rat.add_assoc c a (-(c + b)),
@@ -107,29 +105,10 @@ theorem add_le_add_left {a b c : Rat} : c + a ≤ c + b ↔ a ≤ b := by
 theorem add_lt_add_left {a b c : Rat} : c + a < c + b ↔ a < b := by
   rw [Rat.lt_iff_sub_pos, Rat.add_sub_add_left_eq_sub, ← Rat.lt_iff_sub_pos]
 
-protected theorem le_antisymm (hxy : x ≤ y) (hyx : y ≤ x) : x = y := by
-    rw [Rat.le_iff_sub_nonneg] at hxy hyx
-    rw [Rat.sub_eq_add_neg] at hyx
-    rw [← Rat.neg_sub, Rat.sub_eq_add_neg] at hxy
-    have := Rat.eq_neg_of_add_eq_zero_left _ _ (Rat.nonneg_antisymm _ hyx hxy)
-    rwa [Rat.neg_neg] at this
-
 protected theorem le_def : x ≤ y ↔ x.num * y.den ≤ y.num * x.den := by
   rw [← num_divInt_den y, ← num_divInt_den x]
   conv => rhs ; simp only [num_divInt_den]
   exact Rat.divInt_le_divInt (mod_cast x.den_pos) (mod_cast y.den_pos)
-
-theorem le_total : x ≤ y ∨ y ≤ x := by
-  simp [Rat.le_def]
-  omega
-
-theorem lt_iff_le_not_le {a b : Rat} : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
-  rw [← Rat.not_le]
-  refine Iff.symm ((and_iff_right_of_imp (a := a ≤ b) (b := ¬ b ≤ a)) ?_)
-  intro h
-  cases Rat.le_total a b with
-  | inl hl => exact hl
-  | inr hr => exact False.elim (h hr)
 
 protected theorem lt_iff_le_and_ne : x < y ↔ x ≤ y ∧ x ≠ y := ⟨
   fun h => ⟨Rat.le_of_lt _ _ h, Rat.ne_of_lt _ _ h⟩,
@@ -152,6 +131,11 @@ protected theorem lt_def : x < y ↔ x.num * y.den < y.num * x.den := by
   exact Decidable.not_iff_not.mpr Rat.eq_iff_mul_eq_mul
 
 end le_lt_defs
+
+theorem floor_le_self (r : Rat) : r.floor ≤ r := Rat.le_floor.mp (Int.le_refl r.floor)
+
+theorem self_le_floor_add_one (r : Rat) : r < ↑(r.floor + 1) := by
+  sorry
 
 end Rat
 
@@ -292,11 +276,11 @@ theorem le_trans (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c := by
   rw [<- Rat.sub_eq_add_neg] at this
   exact (Rat.le_iff_sub_nonneg a c).mpr this
 
-theorem lt_of_le_not_le (hab : a ≤ b) (hba : ¬ b ≤ a) : a < b := Rat.lt_iff_le_not_le.mpr ⟨hab, hba⟩
+theorem lt_of_le_not_le (hab : a ≤ b) (hba : ¬ b ≤ a) : a < b := (Rat.lt_iff_le_not_le _ _).mpr ⟨hab, hba⟩
 
-theorem le_of_lt (hab : a < b) : a ≤ b := (Rat.lt_iff_le_not_le.1 hab).1
+theorem le_of_lt (hab : a < b) : a ≤ b := ((Rat.lt_iff_le_not_le _ _).1 hab).1
 
-theorem not_le_of_lt (hab : a < b) : ¬ b ≤ a := (Rat.lt_iff_le_not_le.1 hab).2
+theorem not_le_of_lt (hab : a < b) : ¬ b ≤ a := ((Rat.lt_iff_le_not_le _ _).1 hab).2
 
 theorem lt_of_lt_of_le (hab : a < b) (hbc : b ≤ c) : a < c :=
   lt_of_le_not_le (le_trans (le_of_lt hab) hbc) fun hca ↦ not_le_of_lt hab (le_trans hbc hca)
@@ -393,14 +377,12 @@ theorem neg_le_neg : a ≤ b → -a ≥ -b :=
       rw [Int.add_comm, <- Int.sub_eq_add_neg]
       exact h'
 
-theorem Int.floor_le (r : Rat) : r.floor ≤ r := Rat.le_floor.mp (Int.le_refl r.floor)
-
 theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.floor + 1 := by
   cases Int.lt_trichotomy i (c.floor + 1) with
   | inl iltc =>
     have ilec := (Int.lt_iff_add_one_le).mp iltc
     have h2 : i ≤ c.floor := by exact (Int.add_le_add_iff_right 1).mp iltc
-    have c_le_floor := Int.floor_le c
+    have c_le_floor := Rat.floor_le_self c
     have : i ≤ c := Rat.le_trans (Rat.cast_le.mp h2) c_le_floor
     have abs := Rat.lt_of_le_of_lt this h
     apply False.elim
@@ -424,7 +406,7 @@ theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c.ceil' - 1 := by
   exact pf
 
 theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
-  refine (Rat.not_le _).mp ?_
+  refine Rat.not_le.mp ?_
   intro abs
   have h := Rat.le_antisymm h₁ abs
   exact h₂ h
@@ -549,7 +531,7 @@ theorem neg_of_mul_pos (a b : Rat) : a < 0 → 0 < a * b → b < 0 := by
   intros h1 h2
   apply Classical.byContradiction
   intro h3
-  have : 0 ≤ b := (Rat.not_lt _).mp h3
+  have : 0 ≤ b := Rat.not_lt.mp h3
   cases (Rat.le_iff_eq_or_lt 0 b).mp this with
   | inl heq => rw [<-heq, Rat.mul_zero] at h2; exact Rat.lt_irrefl _ h2
   | inr hlt => have := mul_sign₃ h1 hlt; have := Rat.lt_trans h2 this; exact Rat.lt_irrefl _ this

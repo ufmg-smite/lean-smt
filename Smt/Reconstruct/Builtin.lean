@@ -9,6 +9,7 @@ import Smt.Reconstruct
 import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Builtin.Rewrites
+import Smt.Reconstruct.Builtin.Tactic
 
 namespace Smt.Reconstruct.Builtin
 
@@ -175,6 +176,11 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
   | .ACI_NORM =>
     addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
+  | .ABSORB =>
+    let e ← reconstructTerm pf.getResult[0]!
+    let z ← reconstructTerm pf.getResult[1]!
+    let op := e.appFn!.appFn!
+    addTac (← reconstructTerm pf.getResult) (absorb · z op)
   | .ENCODE_EQ_INTRO =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let x : Q($α) ← reconstructTerm pf.getResult[0]!
