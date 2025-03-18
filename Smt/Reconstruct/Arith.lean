@@ -9,9 +9,9 @@ import Smt.Reconstruct
 import Smt.Reconstruct.Arith.ArithMulSign
 import Smt.Reconstruct.Arith.ArithPolyNorm
 import Smt.Reconstruct.Arith.MulPosNeg
+import Smt.Reconstruct.Arith.MultAbsComparison
 import Smt.Reconstruct.Arith.Rewrites
 import Smt.Reconstruct.Arith.SumBounds
-import Smt.Reconstruct.Arith.Rewrites
 import Smt.Reconstruct.Arith.TangentPlane
 import Smt.Reconstruct.Arith.TightBounds
 import Smt.Reconstruct.Arith.Trichotomy
