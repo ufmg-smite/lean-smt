@@ -13,7 +13,7 @@ Support for additional theories is in progress.
 
 ## Requirements
 `lean-smt` depends on [`lean-cvc5`](https://github.com/abdoo8080/lean-cvc5),
-which currently only supports Linux (x86_64) and macOS (AArch64 and x86_64).
+which currently only supports Linux and macOS.
 
 ## Setup
 To use `lean-smt` in your project, add the following lines to your list of
