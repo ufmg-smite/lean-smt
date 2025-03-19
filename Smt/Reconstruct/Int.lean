@@ -99,14 +99,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let c : Q(Nat) ← reconstructTerm pf.getResult[0]![1]!
     let y : Q(Int) ← reconstructTerm pf.getResult[1]!
     addThm q($x ^ $c = $y) q(Eq.refl ($x ^ $c))
-  | .ARITH_MUL_ONE =>
-    if !pf.getArguments[1]![0]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mul_one) args)
-  | .ARITH_MUL_ZERO =>
-    if !pf.getArguments[1]![0]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mul_zero) args)
   | .ARITH_INT_DIV_TOTAL =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
@@ -118,6 +110,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_INT_DIV_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q($t / 0 = 0) q(@Rewrite.div_total_zero $t)
+  | .ARITH_INT_DIV_TOTAL_NEG =>
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q($t / $s = -($t / -$s)) q(@Rewrite.div_total_neg $t $s)
   | .ARITH_INT_MOD_TOTAL =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
@@ -129,6 +125,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .ARITH_INT_MOD_TOTAL_ZERO =>
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     addThm q($t % 0 = $t) q(@Rewrite.mod_total_zero $t)
+  | .ARITH_INT_MOD_TOTAL_NEG =>
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q($t % $s = $t % -$s) q(@Rewrite.mod_total_neg $t $s)
   | .ARITH_ELIM_GT =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
@@ -191,19 +191,95 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm q(($t = $s) = ($t ≥ $s ∧ $t ≤ $s)) q(@Rewrite.eq_elim $t $s)
   | .ARITH_PLUS_FLATTEN =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HAdd.hAdd Int Int Int _) q(0 : Int) q(@Rewrite.plus_flatten) args)
+    let xs : Q(List Int) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Int) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Int) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(Int.addN ($xs ++ ([Int.addN ($w :: $ys)] ++ $zs)) = Int.addN ($xs ++ ($w :: $ys ++ $zs))) q(@Rewrite.plus_flatten $xs $w $ys $zs)
   | .ARITH_MULT_FLATTEN =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_flatten) args)
-  | .ARITH_MULT_DIST =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@HMul.hMul Int Int Int _) q(1 : Int) q(@Rewrite.mult_dist) args)
+    let xs : Q(List Int) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Int) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Int) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(Int.mulN ($xs ++ ([Int.mulN ($w :: $ys)] ++ $zs)) = Int.mulN ($xs ++ ($w :: $ys ++ $zs))) q(@Rewrite.mult_flatten $xs $w $ys $zs)
   | .ARITH_ABS_ELIM_INT =>
+    let x : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    addThm q(«$x».abs = ite ($x < 0) (-$x) $x) q(@Rewrite.abs_elim $x)
+  | .ARITH_MOD_OVER_MOD =>
+    let c : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let ts : Q(List Int) ← reconstructTerms pf.getArguments[2]!.getChildren
+    let r : Q(Int) ← reconstructTerm pf.getArguments[3]!
+    let ss : Q(List Int) ← reconstructTerms pf.getArguments[4]!.getChildren
+    let h : Q($c ≠ 0) ← reconstructProof pf.getChildren[0]!
+    addThm q(Int.addN ($ts ++ ([$r % $c] ++ $ss)) % $c = Int.addN ($ts ++ ([$r] ++ $ss)) % $c) q(@Rewrite.mod_over_mod $c $ts $r $ss $h)
+  | .ARITH_DIVISIBLE_ELIM =>
+    let n : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let h : Q($n ≠ 0) ← reconstructProof pf.getChildren[0]!
+    addThm q(($n ∣ $t) = ($t % $n = 0)) q(@Rewrite.divisible_elim $n $t $h)
+  | .ARITH_ABS_EQ =>
+    if !pf.getArguments[1]!.getSort.isInteger then return none
+    let x : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let y : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((«$x».abs = «$y».abs) = ($x = $y ∨ $x = -$y)) q(@Rewrite.abs_eq $x $y)
+  | .ARITH_ABS_INT_GT =>
+    let x : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let y : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((«$x».abs > «$y».abs) = ite ($x ≥ 0) (ite ($y ≥ 0) ($x > $y) ($x > -$y)) (ite ($y ≥ 0) (-$x > $y) (-$x > -$y)))
+           q(@Rewrite.abs_gt $x $y)
+  | .ARITH_GEQ_ITE_LIFT =>
+    if !pf.getArguments[2]!.getSort.isInteger then return none
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
+    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
+    addThm q((ite $c $t $s ≥ $r) = ite $c ($t ≥ $r) ($s ≥ $r)) q(@Rewrite.geq_ite_lift $c $hc $t $s $r)
+  | .ARITH_GT_ITE_LIFT =>
+    if !pf.getArguments[2]!.getSort.isInteger then return none
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
+    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
+    addThm q((ite $c $t $s > $r) = ite $c ($t > $r) ($s > $r)) q(@Rewrite.gt_ite_lift $c $hc $t $s $r)
+  | .ARITH_LEQ_ITE_LIFT =>
+    if !pf.getArguments[2]!.getSort.isInteger then return none
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
+    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
+    addThm q((ite $c $t $s ≤ $r) = ite $c ($t ≤ $r) ($s ≤ $r)) q(@Rewrite.leq_ite_lift $c $hc $t $s $r)
+  | .ARITH_LT_ITE_LIFT =>
+    if !pf.getArguments[2]!.getSort.isInteger then return none
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
+    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
+    addThm q((ite $c $t $s < $r) = ite $c ($t < $r) ($s < $r)) q(@Rewrite.lt_ite_lift $c $hc $t $s $r)
+  | .ARITH_MIN_LT1 =>
+    if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
-    addThm q(ite ($t < 0) (-$t) $t = ite ($t < 0) (-$t) $t) q(@Rewrite.abs_elim $t)
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((ite ($t < $s) $t $s ≤ $t) = True) q(@Rewrite.min_lt1 $t $s)
+  | .ARITH_MIN_LT2 =>
+    if !pf.getArguments[1]!.getSort.isInteger then return none
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((ite ($t < $s) $t $s ≤ $s) = True) q(@Rewrite.min_lt2 $t $s)
+  | .ARITH_MAX_GEQ1 =>
+    if !pf.getArguments[1]!.getSort.isInteger then return none
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((ite ($t ≥ $s) $t $s ≥ $t) = True) q(@Rewrite.max_geq1 $t $s)
+  | .ARITH_MAX_GEQ2 =>
+    if !pf.getArguments[1]!.getSort.isInteger then return none
+    let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
+    let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
+    addThm q((ite ($t ≥ $s) $t $s ≥ $s) = True) q(@Rewrite.max_geq2 $t $s)
   | _ => return none
 where
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
@@ -275,7 +351,7 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let mut hs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
   let mut map : Std.HashMap cvc5.Term Nat := {}
   for h : i in [0:ts.size] do
-    let t := ts[i]'(h.right)
+    let t := ts[i]
     let p : Q(Prop) ← reconstructTerm t
     hs := hs.push (Name.num `a i, fun _ => return p)
     map := map.insert (if t.getKind == .NOT then t[0]![0]! else t[0]!) i

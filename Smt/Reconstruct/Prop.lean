@@ -213,11 +213,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm q((¬ite $c $p $q) = ite $c (¬$p) (¬$q)) q(@Prop.bool_not_ite_elim $c $p $q $h)
   | _ => return none
 where
-  reconstructTerms {u} {α : Q(Type $u)} (ts : Array cvc5.Term) : ReconstructM Q(List $α) :=
-    let f := fun t ys => do
-      let a : Q($α) ← reconstructTerm t
-      return q($a :: $ys)
-    ts.foldrM f q([])
   reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
     let mut args' := #[]
     for arg in args do

@@ -20,10 +20,10 @@ protected def pow (m : Rat) : Nat → Rat
   | 0 => 1
   | n + 1 => Rat.pow m n * m
 
-def ceil' (r : Rat) := -((-r).floor)
-
 instance : NatPow Rat where
   pow := Rat.pow
+
+def ceil' (r : Rat) := -((-r).floor)
 
 theorem num_divInt_den (q : Rat) : q.num /. q.den = q :=
   divInt_self _
@@ -104,10 +104,10 @@ theorem eq_iff_mul_eq_mul {p q : Rat} : p = q ↔ p.num * q.den = q.num * p.den 
     · rw [← Int.natCast_zero, Ne, Int.ofNat_inj]
       apply den_nz
 
-protected theorem not_le {q' : Rat} : ¬q ≤ q' ↔ q' < q := by
+protected theorem not_le {q q' : Rat} : ¬q ≤ q' ↔ q' < q := by
   exact (Bool.not_eq_false _).to_iff
 
-protected theorem not_lt {q' : Rat} : ¬q < q' ↔ q' ≤ q := by
+protected theorem not_lt {q q' : Rat} : ¬q < q' ↔ q' ≤ q := by
   rw [not_congr (Rat.not_le (q := q') (q' := q)) |>.symm]
   simp only [Decidable.not_not]
 
@@ -263,6 +263,7 @@ theorem num_neg : q.num < 0 ↔ q < 0 := by
 theorem num_neg_eq_neg_num (q : Rat) : (-q).num = -q.num :=
   rfl
 
+@[simp]
 protected theorem le_refl : x ≤ x := by
   simp [Rat.le_iff_blt, Rat.blt]
   if h : x = 0 then
@@ -281,7 +282,7 @@ protected theorem le_of_lt : x < y → x ≤ y := by
   intro h_lt
   apply Decidable.byContradiction
   intro h
-  let _ := (Rat.not_le x).mp h
+  let _ := Rat.not_le.mp h
   let _ := Rat.lt_asymm h_lt
   contradiction
 
@@ -614,5 +615,33 @@ protected theorem zero_div (a : Rat) : 0 / a = 0 := by
 
 protected theorem add_div (a b c : Rat) : (a + b) / c = a / c + b / c := by
   simp [div_def, Rat.add_mul]
+
+def addN : List Rat → Rat
+  | []      => 0
+  | [x]     => x
+  | x :: xs => x + addN xs
+
+@[simp] theorem addN_append : addN (xs ++ ys) = addN xs + addN ys := by
+  match xs, ys with
+  | [], _
+  | [x], []
+  | [x], y :: ys       => simp [addN]
+  | x₁ :: x₂ :: xs, ys =>
+    rw [List.cons_append, addN, addN, addN_append, Rat.add_assoc]
+    all_goals (intro h; nomatch h)
+
+def mulN : List Rat → Rat
+  | []      => 1
+  | [x]     => x
+  | x :: xs => x * mulN xs
+
+@[simp] theorem mulN_append : mulN (xs ++ ys) = mulN xs * mulN ys := by
+  match xs, ys with
+  | [], _
+  | [x], []
+  | [x], y :: ys       => simp [mulN]
+  | x₁ :: x₂ :: xs, ys =>
+    rw [List.cons_append, mulN, mulN, mulN_append, Rat.mul_assoc]
+    all_goals (intro h; nomatch h)
 
 end Rat

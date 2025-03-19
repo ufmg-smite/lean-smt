@@ -244,7 +244,6 @@ theorem cnfAndNeg : orN (andN l :: notN l) := by
   cases l with
   | nil => trivial
   | cons l ls =>
-    simp only [orN]
     apply cnfAndNeg'
 
 theorem cnfAndPos : ∀ (l : List Prop) (i : Nat), ¬ (andN l) ∨ List.getD l i True :=

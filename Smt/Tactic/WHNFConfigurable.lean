@@ -339,11 +339,11 @@ end
     match decl with
     | LocalDecl.cdecl .. => return e
     | LocalDecl.ldecl (value := v) (nonDep := nonDep) .. =>
-      let cfg ← getConfig
+      let ctx ← (read : MetaM Meta.Context)
       if nonDep then
         return e
       else
-        if cfg.trackZetaDelta then
+        if ctx.trackZetaDelta then
           modify fun s => { s with zetaDeltaFVarIds := s.zetaDeltaFVarIds.insert fvarId }
         whnfEasyCases v k
   | Expr.mvar mvarId   =>

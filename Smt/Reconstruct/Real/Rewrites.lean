@@ -5,7 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Mathlib.Data.Real.Basic
+import Smt.Reconstruct.Real.Core
+import Mathlib.Data.Real.Archimedean
 
 namespace Smt.Reconstruct.Real.Rewrite
 
@@ -13,15 +14,7 @@ open Function
 
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/arith/rewrites
 
-variable {t ts x xs : Real}
-
-theorem plus_zero : ts + 0 + ss = ts + ss :=
-  (add_zero ts).symm ▸ rfl
-
-theorem mul_one : ts * 1 * ss = ts * ss :=
-  (_root_.mul_one ts).symm ▸ rfl
-theorem mul_zero : ts * 0 * ss = 0 :=
-  (MulZeroClass.mul_zero ts).symm ▸ (zero_mul ss).symm ▸ rfl
+variable {t s x : Real}
 
 theorem div_total : s ≠ 0 → t / s = t / s :=
   const _ rfl
@@ -55,16 +48,86 @@ theorem refl_gt : (t > t) = False :=
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) :=
   propext (Iff.symm antisymm_iff)
 
-theorem plus_flatten : xs + (w + ys) + zs = xs + w + ys + zs :=
-  add_assoc xs w ys ▸ rfl
-
-theorem mult_flatten : xs * (w * ys) * zs = xs * w * ys * zs :=
-  mul_assoc xs w ys ▸ rfl
-
-theorem mult_dist : x * (y + z + ws) = x * y + x * (z + ws) :=
-  add_assoc y z ws ▸ mul_add x y (z + ws) ▸ rfl
-
-theorem abs_elim : (if x < 0 then -x else x) = if x < 0 then -x else x :=
+theorem plus_flatten : Real.addN (xs ++ ([Real.addN (w :: ys)] ++ zs)) = Real.addN (xs ++ (w :: ys ++ zs)) := by
+  simp only [Real.addN_append]
   rfl
+
+theorem mult_flatten : Real.mulN (xs ++ ([Real.mulN (w :: ys)] ++ zs)) = Real.mulN (xs ++ (w :: ys ++ zs)) := by
+  simp only [Real.mulN_append]
+  rfl
+
+theorem abs_elim : |x| = if x < 0 then -x else x := by
+  cases abs_cases x <;> rename_i h <;> split <;> linarith
+
+theorem eq_conflict {t : Int} {c : Real} (hcc : ↑⌊c⌋ ≠ c) : (t = c) = False := by
+  simp only [eq_iff_iff, iff_false]
+  intro htc
+  have hcc : ⌊c⌋ < c := (le_iff_eq_or_lt.mp (Int.floor_le c)).resolve_left hcc
+  cases Int.lt_trichotomy t ⌊c⌋ <;> rename_i htcf
+  · have hntc : ↑t ≠ c := (lt_iff_le_and_ne.mp (lt_trans (Int.cast_lt.mpr htcf) hcc)).right
+    contradiction
+  · cases htcf <;> rename_i htcf
+    · simp_all
+    · have h : c < t := by
+        apply @lt_of_lt_of_le _ _ _
+        · apply ((Int.floor_eq_iff (z := ⌊c⌋) (a := c)).mp rfl).right
+        · rewrite [← Int.cast_one, ← Int.cast_add, Int.cast_le]
+          exact htcf
+      simp_all [lt_irrefl]
+
+theorem geq_tighten {t : Int} {c : Real} {cc : Int} (h : ↑⌊c⌋ ≠ c ∧ cc = ⌊c⌋ + 1) : (t ≥ c) = (t ≥ cc) := by
+  simp only [h.right, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
+  have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict h.left
+  apply Iff.intro <;> intro hct <;> rename_i hct
+  · have h := hct.resolve_left h.symm
+    omega
+  · omega
+
+-- Absolute value comparisons
+
+theorem abs_eq : (|x| = |y|) = (x = y ∨ x = -y) := propext abs_eq_abs
+
+theorem abs_gt : (|x| > |y|) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)) (ite (y ≥ 0) (-x > y) (-x > -y)) := by
+  split <;> rename_i hx <;> split <;> rename_i hy
+  · rw [abs_eq_self.mpr hx, abs_eq_self.mpr hy]
+  · rw [abs_eq_self.mpr hx, abs_eq_neg_self.mpr (le_of_not_le hy)]
+  · rw [abs_eq_neg_self.mpr (le_of_not_le hx), abs_eq_self.mpr hy]
+  · rw [abs_eq_neg_self.mpr (le_of_not_le hx), abs_eq_neg_self.mpr (le_of_not_le hy)]
+
+-- ITE lifting
+
+theorem geq_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s ≥ r) = ite c (t ≥ r) (s ≥ r) := by
+  cases h <;> simp_all
+
+theorem gt_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s > r) = ite c (t > r) (s > r) := by
+  cases h <;> simp_all
+
+theorem leq_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s ≤ r) = ite c (t ≤ r) (s ≤ r) := by
+  cases h <;> simp_all
+
+theorem lt_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s < r) = ite c (t < r) (s < r) := by
+  cases h <;> simp_all
+
+-- min/max rules
+
+theorem min_lt1 : (ite (t < s) t s ≤ t) = True := by
+  cases h : decide (t < s) <;>
+  simp_all only [decide_eq_false_iff_not, ite_false, not_false_eq_true, not_lt.mp,
+                 decide_eq_true_eq, ite_true, le_refl]
+
+theorem min_lt2 : (ite (t < s) t s ≤ s) = True := by
+  cases h : decide (t < s) <;>
+  simp_all only [decide_eq_false_iff_not, ite_false, le_refl,
+                 decide_eq_true_eq, ite_true, le_of_lt]
+
+theorem max_geq1 : (ite (t ≥ s) t s ≥ t) = True := by
+  cases h : decide (t ≥ s) <;>
+  simp_all only [ge_iff_le, decide_eq_false_iff_not, ite_false, not_false_eq_true, le_of_not_le,
+                 decide_eq_true_eq, ite_true, le_refl]
+
+theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by
+  cases h : decide (t ≥ s) <;>
+  simp_all only [ge_iff_le, decide_eq_false_iff_not, ite_false, le_refl,
+                 decide_eq_true_eq, ite_true]
 
 end Smt.Reconstruct.Real.Rewrite

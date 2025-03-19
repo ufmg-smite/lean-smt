@@ -2,9 +2,9 @@
 [smt] 
     query:
     (set-logic ALL)
-    (declare-sort value 0)
     (declare-sort round 0)
     (declare-sort node 0)
+    (declare-sort value 0)
     (declare-fun upd_rel (node round round value) Bool)
     (declare-fun rel (node round round value) Bool)
     (assert (forall ((x node)) (forall ((x_1 round)) (forall ((x_2 round)) (forall ((x_3 value)) (= (upd_rel x x_1 x_2 x_3) (rel x x_1 x_2 x_3)))))))
