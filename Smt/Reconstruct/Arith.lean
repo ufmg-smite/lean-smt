@@ -166,14 +166,14 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort -/
   /-   let args ← reconstructArgs pf.getArguments[1:] -/
   /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@add_assoc $α _) q(@add_zero $α _) q(@Arith.arith_plus_zero $α $h) args) -/
-  | .ARITH_MUL_ONE =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_one $α $h) args)
-  | .ARITH_MUL_ZERO =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args)
+  /- | .ARITH_MUL_ONE => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_one $α $h) args) -/
+  /- | .ARITH_MUL_ZERO => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]![0]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mul_zero $α $h) args) -/
   /- | .ARITH_DIV_TOTAL => -/
   /-   let t : Q(Real) ← reconstructTerm pf.getArguments[1]! -/
   /-   let s : Q(Real) ← reconstructTerm pf.getArguments[2]! -/
@@ -271,10 +271,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort
     let args ← reconstructArgs pf.getArguments[1:]
     addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_flatten $α $h) args)
-  | .ARITH_MULT_DIST =>
-    let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_dist $α $h) args)
+  /- | .ARITH_MULT_DIST => -/
+  /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[1]!.getSort -/
+  /-   let args ← reconstructArgs pf.getArguments[1:] -/
+  /-   addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(@mul_assoc $α _) q(@mul_one $α _) q(@Arith.arith_mult_dist $α $h) args) -/
   /- | .ARITH_PLUS_CANCEL1 => -/
   /-   let ⟨α, h⟩ := getTypeAndInst pf.getArguments[2]!.getSort -/
   /-   let args ← reconstructArgs pf.getArguments[1:] -/
