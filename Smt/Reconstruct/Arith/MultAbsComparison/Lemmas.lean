@@ -37,12 +37,12 @@ theorem mul_eq_lt (a b c d : α) : 0 ≤ a → 0 ≤ c → d ≠ 0 → a * c = b
     rw [h1] at this
     exact (lt_self_iff_false (b * d)).mp this
 
-theorem mult_abs_1 : ∀ (x1 x2 y1 y2 : α), abs x1 ≤ abs x2 → abs y1 ≤ abs y2 → abs (x1 * y1) ≤ abs (x2 * y2) := by
-  intro x1 x2 y1 y2 h1 h2
+theorem mult_abs_0 : ∀ {x1 x2 y1 y2 : α}, abs x1 > abs x2 → abs y1 > abs y2 → abs (x1 * y1) > abs (x2 * y2) := by
+  intros x1 x2 y1 y2 h1 h2
   rw [abs_mul x1 y1, abs_mul x2 y2]
-  exact mul_le_mul h1 h2 (abs_nonneg y1) (abs_nonneg x2)
+  exact mul_lt_mul_of_nonneg h1 h2 (abs_nonneg x2) (abs_nonneg y2)
 
-theorem mult_abs_2 : ∀ (x1 x2 y1 y2 : α), abs x1 < abs x2 → abs y1 ≤ abs y2 → y2 ≠ 0 → abs (x1 * y1) < abs (x2 * y2) := by
+theorem mult_abs_1 : ∀ (x1 x2 y1 y2 : α), abs x1 < abs x2 → abs y1 ≤ abs y2 → y2 ≠ 0 → abs (x1 * y1) < abs (x2 * y2) := by
   intros x1 x2 y1 y2 h1 h2 h3
   rw [abs_mul x1 y1, abs_mul x2 y2]
   have := mul_le_mul (le_of_lt h1) h2 (abs_nonneg y1) (abs_nonneg x2)
@@ -52,16 +52,16 @@ theorem mult_abs_2 : ∀ (x1 x2 y1 y2 : α), abs x1 < abs x2 → abs y1 ≤ abs 
     have := mul_eq_lt |x1| |x2| |y1| |y2| (abs_nonneg x1) (abs_nonneg y1) (abs_ne_zero.mpr h3) heq h1
     exact lt_imp_lt_of_le_imp_le (fun _ => h2) this
 
-theorem mult_abs_3 : ∀ (x1 x2 y1 y2 : α), abs x1 ≤ abs x2 → abs y1 < abs y2 → x2 ≠ 0 → abs (x1 * y1) < abs (x2 * y2) := by
-  intros x1 x2 y1 y2 h1 h2 h3
-  rw [abs_mul x1 y1, abs_mul x2 y2]
-  have := mul_le_mul h1 (le_of_lt h2) (abs_nonneg y1) (abs_nonneg x2)
-  cases Decidable.eq_or_lt_of_le this with
-  | inr hlt => exact hlt
-  | inl heq =>
-    rw [mul_comm |x1| |y1|] at *
-    rw [mul_comm |x2| |y2|] at *
-    have := mul_eq_lt |y1| |y2| |x1| |x2| (abs_nonneg y1) (abs_nonneg x1) (abs_ne_zero.mpr h3) heq h2
-    exact lt_imp_lt_of_le_imp_le (fun _ => h1) this
+theorem mult_abs_2 : ∀ {x1 x2 y1 y2 : α}, abs x1 > abs x2 → (abs y1 = abs y2 ∧ abs y1 ≠ 0) → abs (x1 * y1) > abs (x2 * y2) := by
+  rintro x1 x2 y1 y2 h1 ⟨h2, h3⟩
+  have h1 : abs x2 < abs x1 := h1
+  apply mult_abs_1
+  · exact h1
+  · exact le_of_eq (id (Eq.symm h2))
+  · exact abs_ne_zero.mp h3
+
+theorem mult_abs_eq : ∀ {x1 x2 y1 y2 : α}, abs x1 = abs x2 → abs y1 = abs y2 → abs (x1 * y1) = abs (x2 * y2) := by
+  intros x1 x2 y1 y2 h1 h2
+  rw [abs_mul x1 y1, abs_mul x2 y2, h1, h2]
 
 end Smt.Reconstruct.Arith
