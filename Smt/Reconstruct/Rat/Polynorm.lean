@@ -91,7 +91,7 @@ def denote (ctx : Context) (m : Monomial) : Rat :=
   m.coeff * m.vars.foldl (fun acc v => acc * ctx v) 1
 
 theorem denote_neg {m : Monomial} : m.neg.denote ctx = -m.denote ctx := by
-  simp only [neg, denote, Rat.neg_mul_eq_neg_mul]
+  simp only [neg, denote, Rat.neg_mul]
 
 section
 

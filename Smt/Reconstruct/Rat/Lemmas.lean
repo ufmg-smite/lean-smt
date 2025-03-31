@@ -16,9 +16,6 @@ section le_lt_defs
 
 variable {x y : Rat}
 
-theorem le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
-  simpa only [← Rat.le_iff_sub_nonneg, Rat.neg_sub] using Rat.nonneg_total (b - a)
-
 theorem le_of_not_le {a b : Rat} : ¬ a ≤ b → b ≤ a := (Rat.le_total a b).resolve_left
 
 theorem lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
@@ -245,7 +242,7 @@ private theorem Rat.mul_eq_zero_left {x y : Rat} : x ≠ 0 → x * y = 0 → y =
 
 namespace Smt.Reconstruct.Rat
 
-variable {a b c d : Rat}
+variable {a b c d x₁ x₂ y₁ y₂ : Rat}
 
 theorem add_nonneg : 0 ≤ a → 0 ≤ b → 0 ≤ a + b :=
   Rat.numDenCasesOn' a fun n₁ d₁ h₁ ↦ Rat.numDenCasesOn' b fun n₂ d₂ h₂ ↦ by
@@ -334,6 +331,17 @@ theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
 
 theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
+
+theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by
+  rw [Rat.abs_mul x₁ x₂, Rat.abs_mul y₁ y₂, h₁, h₂]
+
+theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+  rw [Rat.abs_mul, Rat.abs_mul]
+  sorry
+
+theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+  rw [Rat.abs_mul, Rat.abs_mul]
+  sorry
 
 theorem neg_lt_neg  : a < b → -a > -b :=
   Rat.numDenCasesOn' a fun na da da_nz =>
