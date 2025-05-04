@@ -59,7 +59,7 @@ open Lean Qq
   | .ABS =>
     if t.getSort.isInteger then return none
     let x : Q(Rat) ← reconstructTerm t[0]!
-    return q(if $x < 0 then -$x else $x)
+    return q(«$x».abs)
   | .LEQ =>
     if t[0]!.getSort.isInteger then return none
     let x : Q(Rat) ← reconstructTerm t[0]!
@@ -316,6 +316,34 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let (ks, ls, rs, hs) ← pf.getChildren[1:].foldlM f (k, ls, rs, hs)
   addThm (if ks == .LT then q($ls < $rs) else q($ls ≤ $rs)) hs
 
+def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  let f := fun (ks, ls, rs, hs) p => do
+    let l : Q(Rat) ← reconstructTerm p.getResult[0]!
+    let r : Q(Rat) ← reconstructTerm p.getResult[1]!
+    let lsl := q($ls * $l)
+    let rsr := q($rs * $r)
+    let k := p.getResult.getKind
+    if ks == .EQUAL && k == .EQUAL then
+      let hs : Q(«$ls».abs = «$rs».abs) := hs
+      let h : Q(«$l».abs = «$r».abs) ← reconstructProof p
+      return (.EQUAL, lsl, rsr, q(Rat.mul_abs₁ $hs $h))
+    else if ks == .GT && k == .AND then
+      let hs : Q(«$ls».abs > «$rs».abs) := hs
+      let h : Q(«$l».abs = «$r».abs ∧ «$l».abs ≠ 0) ← reconstructProof p
+      return (.GT, lsl, rsr, q(Rat.mul_abs₂ $hs $h))
+    else if ks == .GT && k == .GT then
+      let hs : Q(«$ls».abs > «$rs».abs) := hs
+      let h : Q(«$l».abs > «$r».abs) ← reconstructProof p
+      return (.GT, lsl, rsr, q(Rat.mul_abs₃ $hs $h))
+    else
+      throwError "[mul_abs]: invalid kinds: {ks}, {k}"
+  let k := pf.getChildren[0]!.getResult.getKind
+  let ls : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
+  let rs : Q(Rat) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
+  let hs ← reconstructProof pf.getChildren[0]!
+  let (ks, ls, rs, hs) ← pf.getChildren[1:].foldlM f (k, ls, rs, hs)
+  addThm (if ks == .EQUAL then q($ls = $rs) else q($ls > $rs)) hs
+
 def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let ts := pf.getResult[0]!.getChildren
   let mut hs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
@@ -431,6 +459,9 @@ where
   | .ARITH_SUM_UB =>
     if pf.getResult[0]!.getSort.isInteger then return none
     reconstructSumUB pf
+  | .ARITH_MULT_ABS_COMPARISON =>
+    if pf.getResult[0]!.getSort.isInteger then return none
+    reconstructMulAbsComparison pf
   | .INT_TIGHT_UB =>
     if pf.getChildren[0]!.getResult[1]!.getSort.isInteger then return none
     let i : Q(Int) ← reconstructTerm pf.getChildren[0]!.getResult[0]!

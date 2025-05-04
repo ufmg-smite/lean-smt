@@ -5,6 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct.Int.Core
+
 private theorem Int.mul_lt_mul_left {c x y : Int} (hc : c > 0) : (c * x < c * y) = (x < y) := by
   apply propext
   constructor
@@ -28,7 +30,7 @@ private def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁
 
 namespace Smt.Reconstruct.Int
 
-variable {a b c d : Int}
+variable {a b c d x₁ x₂ y₁ y₂ : Int}
 
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
   have r₁ : a + c < a + d := Int.add_lt_add_left h₂ a
@@ -68,6 +70,22 @@ theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
 
 theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
+
+theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by
+  rw [Int.abs_mul x₁ x₂, Int.abs_mul y₁ y₂, h₁, h₂]
+
+theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+  rw [Int.abs_mul, Int.abs_mul]
+  apply Int.mul_lt_mul h₁ (Int.le_of_eq h₂.left.symm) _ (Int.abs_nonneg x₁)
+  rewrite [← h₂.left]
+  exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂) h₂.right.symm
+
+theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+  rw [Int.abs_mul, Int.abs_mul]
+  apply Int.mul_lt_mul' (Int.le_of_lt h₁) h₂ (Int.abs_nonneg y₂)
+  cases Int.le_iff_eq_or_lt.mp (Int.abs_nonneg y₁) <;> rename_i h
+  · rewrite [h]; exact h₁
+  · exact Int.lt_trans h h₁
 
 theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c - 1 :=
   Int.le_sub_one_of_lt h

@@ -604,8 +604,11 @@ theorem neg_eq_neg_one_mul (a : Rat) : -a = -1 * a :=
     simp [← Rat.divInt_ofNat]
     rw [divInt_num' (Nat.pos_iff_ne_zero.mp h) h1, divInt_den' (Nat.pos_iff_ne_zero.mp h) h1]
 
-protected theorem neg_mul_eq_neg_mul (a b : Rat) : -(a * b) = -a * b := by
+protected theorem neg_mul (a b : Rat) : -(a * b) = -a * b := by
   rw [neg_eq_neg_one_mul, neg_eq_neg_one_mul a, Rat.mul_assoc]
+
+protected theorem mul_neg (a b : Rat) : a * -b = -(a * b) := by
+  rw [neg_eq_neg_one_mul (a * b), neg_eq_neg_one_mul b, ← Rat.mul_assoc, Rat.mul_comm a, Rat.mul_assoc]
 
 protected theorem mul_div_right_comm (a b c : Rat) : a * b / c = a / c * b := by
   rw [div_def, div_def, Rat.mul_assoc, Rat.mul_comm b c.inv, Rat.mul_assoc]
@@ -615,6 +618,30 @@ protected theorem zero_div (a : Rat) : 0 / a = 0 := by
 
 protected theorem add_div (a b c : Rat) : (a + b) / c = a / c + b / c := by
   simp [div_def, Rat.add_mul]
+
+theorem le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
+  simpa only [← Rat.le_iff_sub_nonneg, Rat.neg_sub] using Rat.nonneg_total (b - a)
+
+theorem mul_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a * b := by
+  sorry
+
+theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
+  sorry
+
+theorem abs_nonneg (x : Rat) : 0 ≤ x.abs := by
+  sorry
+
+theorem abs_of_nonpos (h : a ≤ 0) : a.abs = -a := by
+  sorry
+
+theorem abs_of_nonneg {a : Rat} (h : 0 ≤ a) : a.abs = a := by
+  sorry
+
+theorem abs_mul (a b : Rat) : (a * b).abs = a.abs * b.abs := by
+  rw [Rat.abs_eq (Rat.mul_nonneg (Rat.abs_nonneg a) (Rat.abs_nonneg b))]
+  rcases Rat.le_total a 0 with ha | ha <;> rcases Rat.le_total b 0 with hb | hb <;>
+    simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, eq_self_iff_true, Rat.neg_mul,
+      Rat.mul_neg, Rat.neg_neg, *]
 
 def addN : List Rat → Rat
   | []      => 0

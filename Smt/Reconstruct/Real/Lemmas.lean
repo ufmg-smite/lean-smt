@@ -14,7 +14,7 @@ private def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁
 
 namespace Smt.Reconstruct.Real
 
-variable {a b c d : Real}
+variable {a b c d x₁ x₂ y₁ y₂ : Real}
 
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
   have r₁ : a + c < a + d := add_lt_add_left h₂ a
@@ -54,6 +54,22 @@ theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
 
 theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
+
+theorem mul_abs₁ (h₁ : |x₁| = |y₁|) (h₂ : |x₂| = |y₂|) : |x₁ * x₂| = |y₁ * y₂| := by
+  rw [abs_mul x₁ x₂, abs_mul y₁ y₂, h₁, h₂]
+
+theorem mul_abs₂ (h₁ : |x₁| > |y₁|) (h₂ : |x₂| = |y₂| ∧ |x₂| ≠ 0) : |x₁ * x₂| > |y₁ * y₂| := by
+  rw [abs_mul, abs_mul]
+  apply mul_lt_mul h₁ (le_of_eq h₂.left.symm) _ (abs_nonneg x₁)
+  rewrite [← h₂.left]
+  exact lt_of_le_of_ne (abs_nonneg x₂) h₂.right.symm
+
+theorem mul_abs₃ (h₁ : |x₁| > |y₁|) (h₂ : |x₂| > |y₂|) : |x₁ * x₂| > |y₁ * y₂| := by
+  rw [abs_mul, abs_mul]
+  apply mul_lt_mul' (le_of_lt h₁) h₂ (abs_nonneg y₂)
+  cases Decidable.eq_or_lt_of_le (abs_nonneg y₁) <;> rename_i h
+  · rewrite [h]; exact h₁
+  · exact lt_trans h h₁
 
 theorem int_tight_ub {i : Int} (h : i < c) : i ≤ ⌈c⌉ - 1 :=
   Int.le_of_lt_add_one (Int.sub_add_cancel _ _ ▸ Int.lt_ceil.mpr h)

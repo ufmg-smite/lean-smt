@@ -31,6 +31,7 @@ open Translator Term
   | ~q(0)       => return (literalT "0.0")
   | ~q(1)       => return (literalT "1.0")
   | ~q(-$x)     => return appT (symbolT "-") (← applyTranslators! x)
+  | ~q(|$x|)     => return appT (symbolT "abs") (← applyTranslators! x)
   | ~q($x + $y) => return mkApp2 (symbolT "+") (← applyTranslators! x) (← applyTranslators! y)
   | ~q($x - $y) => return mkApp2 (symbolT "-") (← applyTranslators! x) (← applyTranslators! y)
   | ~q($x * $y) => return mkApp2 (symbolT "*") (← applyTranslators! x) (← applyTranslators! y)
