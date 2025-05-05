@@ -178,6 +178,16 @@ private theorem Rat.mul_le_mul_left {c x y : Rat} (hc : c > 0) : (c * x ≤ c * 
               Int.mul_assoc]
           exact Int.mul_le_mul_of_nonneg_left h (Int.ofNat_zero_le c.den)
 
+private theorem Rat.mul_le_mul_left' {c x y : Rat} (hc : c ≥ 0) : x ≤ y → (c * x ≤ c * y) := by
+  intro h
+  have : 0 = c ∨ 0 < c := (le_iff_eq_or_lt 0 c).mp hc
+  cases this
+  next heq =>
+    rw [<- heq]
+    simp
+  next hlt =>
+    exact (Rat.mul_le_mul_left hlt).mpr h
+
 private theorem Rat.mul_lt_mul_left {c x y : Rat} : 0 < c → ((c * x < c * y) ↔ (x < y)) :=
   numDenCasesOn' x fun n₁ d₁ h₁ =>
     numDenCasesOn' y fun n₂ d₂ h₂ => by
@@ -332,16 +342,137 @@ theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
 theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
 
+theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
+  refine Rat.not_le.mp ?_
+  intro abs
+  have h := Rat.le_antisymm h₁ abs
+  exact h₂ h
+
+theorem trichotomy₂ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b :=
+  Rat.le_antisymm h₁ h₂
+
+theorem trichotomy₃ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
+  exact trichotomy₁ h₂ h₁
+
+theorem trichotomy₄ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
+  exact trichotomy₃ (Ne.symm h₁) h₂
+
+theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
+  exact Rat.le_antisymm h₂ h₁
+
+theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
+  exact trichotomy₃ (Ne.symm h₂) h₁
+
+theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
+  unfold Rat.abs
+  cases Classical.em (a < 0)
+  next hl =>
+    simp [hl]
+    constructor
+    · intro h
+      right
+      have := congrArg (fun x => -x) h
+      simp at this
+      exact this
+    · intro h
+      cases h
+      next h1 =>
+        rw [h1] at hl
+        apply False.elim
+        have := lt_of_le_of_lt hb hl
+        exact (Bool.eq_not_self (Rat.blt 0 0)).mp this
+      next h2 =>
+        have := congrArg (fun x => -x) h2
+        simp at this
+        exact this
+  next hr =>
+    simp [hr]
+    intro h
+    have := Rat.not_lt.mp hr
+    rw [h] at this
+    have : 0 = b := Eq.symm (Rat.nonneg_antisymm b hb this)
+    rw [<- this] at h
+    simp at h
+    exact trans h this
+
+theorem neg_of_pos {a : Rat} : 0 < a → -a < 0 := by
+  intro h
+  rw [<- Rat.neg_self_add a]
+  have : -a = -a + 0 := by simp
+  conv =>
+    lhs
+    rw [this]
+    skip
+  exact sum_ub₇ rfl h
+
+theorem pos_of_neg {a : Rat} : a < 0 → 0 < -a := by
+  intro h
+  rw [<- Rat.neg_self_add a]
+  have : -a = -a + 0 := by simp
+  conv =>
+    rhs
+    rw [this]
+    skip
+  exact sum_ub₇ rfl h
+
+theorem abs_nonneg (x : Rat) : 0 ≤ x.abs := by
+  unfold Rat.abs
+  split
+  next hx =>
+    have := pos_of_neg hx
+    exact le_of_lt this
+  next hx =>
+    exact Rat.not_lt.mp hx
+
+theorem abs_of_nonpos (h : a ≤ 0) : a.abs = -a := by
+  unfold Rat.abs
+  split
+  next => rfl
+  next hx =>
+    have := Rat.not_lt.mp hx
+    have : a = 0 := trichotomy₅ this h
+    rw [this]
+    simp
+
+theorem abs_of_nonneg {a : Rat} (h : 0 ≤ a) : a.abs = a := by
+  unfold Rat.abs
+  split
+  next hx =>
+    have : a ≤ 0 := le_of_lt hx
+    have : a = 0 := trichotomy₅ h this
+    rw [this]
+    simp
+  next => rfl
+
+theorem abs_mul (a b : Rat) : (a * b).abs = a.abs * b.abs := by
+  rw [Rat.abs_eq (Rat.mul_nonneg (Rat.abs_nonneg a) (Rat.abs_nonneg b))]
+  rcases Rat.le_total a 0 with ha | ha <;> rcases Rat.le_total b 0 with hb | hb <;>
+    simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, eq_self_iff_true, Rat.neg_mul,
+      Rat.mul_neg, Rat.neg_neg, *]
+
 theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by
   rw [Rat.abs_mul x₁ x₂, Rat.abs_mul y₁ y₂, h₁, h₂]
 
 theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+  obtain ⟨hxy, hx⟩ := h₂
   rw [Rat.abs_mul, Rat.abs_mul]
-  sorry
+  rw [<- hxy]
+  rw [Rat.mul_comm, Rat.mul_comm (y₁.abs)]
+  refine (Rat.mul_lt_mul_left ?_).mpr h₁
+  · have : 0 ≤ x₂.abs := abs_nonneg x₂
+    exact trichotomy₃ (Ne.symm hx) this
 
 theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
   rw [Rat.abs_mul, Rat.abs_mul]
-  sorry
+  show y₁.abs * y₂.abs < x₁.abs * x₂.abs
+  have : 0 < x₁.abs := lt_of_le_of_lt (abs_nonneg y₁) h₁
+  have lt : x₁.abs * y₂.abs < x₁.abs * x₂.abs := (Rat.mul_lt_mul_left this).mpr h₂
+  have le : y₁.abs * y₂.abs ≤ x₁.abs * y₂.abs := by
+    rw [Rat.mul_comm, Rat.mul_comm x₁.abs]
+    have : 0 ≤ y₂.abs := abs_nonneg y₂
+    apply Rat.mul_le_mul_left' this
+    exact le_of_lt h₁
+  exact lt_of_le_of_lt le lt
 
 theorem neg_lt_neg  : a < b → -a > -b :=
   Rat.numDenCasesOn' a fun na da da_nz =>
@@ -412,27 +543,6 @@ theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c.ceil' - 1 := by
   rw [Int.add_comm] at pf
   rw [Int.sub_eq_add_neg]
   exact pf
-
-theorem trichotomy₁ (h₁ : a ≤ b) (h₂ : a ≠ b) : a < b := by
-  refine Rat.not_le.mp ?_
-  intro abs
-  have h := Rat.le_antisymm h₁ abs
-  exact h₂ h
-
-theorem trichotomy₂ (h₁ : a ≤ b) (h₂ : a ≥ b) : a = b :=
-  Rat.le_antisymm h₁ h₂
-
-theorem trichotomy₃ (h₁ : a ≠ b) (h₂ : a ≤ b) : a < b := by
-  exact trichotomy₁ h₂ h₁
-
-theorem trichotomy₄ (h₁ : a ≠ b) (h₂ : a ≥ b) : a > b := by
-  exact trichotomy₃ (id (Ne.symm h₁)) h₂
-
-theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
-  exact Rat.le_antisymm h₂ h₁
-
-theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
-  exact trichotomy₃ (id (Ne.symm h₂)) h₁
 
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by
   apply propext
