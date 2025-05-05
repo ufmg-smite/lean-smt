@@ -55,18 +55,18 @@ theorem iteratedDerivWithin_eq_iteratedDeriv {f : Real → Real} (hf : ContDiff 
   induction' d with d hd
   · simp
   · intro x hx
-    rw [iteratedDerivWithin_succ (UniqueDiffOn.uniqueDiffWithinAt hs hx), iteratedDeriv_succ, derivWithin, deriv]
+    rw [iteratedDerivWithin_succ, iteratedDeriv_succ, derivWithin, deriv]
     rw [fderivWithin_congr hd (hd x hx)]
     rw [fderivWithin_eq_fderiv (UniqueDiffOn.uniqueDiffWithinAt hs hx)]
     apply Differentiable.differentiableAt (ContDiff.differentiable_iteratedDeriv d hf (Batteries.compareOfLessAndEq_eq_lt.mp rfl))
 
 
-theorem iteratedDerivWithin_congr {𝕜 : Type u} [NontriviallyNormedField 𝕜] {F : Type v} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {f : 𝕜 → F} {f₁ : 𝕜 → F} {x : 𝕜} {s : Set 𝕜} (hs : Set.EqOn f₁ f s) (hxs : UniqueDiffOn 𝕜 s) (hx2 : x ∈ s) : iteratedDerivWithin n f₁ s x = iteratedDerivWithin n f s x := by
+theorem iteratedDerivWithin_congr {𝕜 : Type u} [NontriviallyNormedField 𝕜] {F : Type v} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {f : 𝕜 → F} {f₁ : 𝕜 → F} {x : 𝕜} {s : Set 𝕜} (hs : Set.EqOn f₁ f s) (_ : UniqueDiffOn 𝕜 s) (hx2 : x ∈ s) : iteratedDerivWithin n f₁ s x = iteratedDerivWithin n f s x := by
   revert x
   induction' n with n hn
   <;> intro x hx2
   · have hx : f₁ x = f x := hs hx2; simp [hx]
-  · simp only [iteratedDerivWithin_succ (UniqueDiffOn.uniqueDiffWithinAt hxs hx2)]
+  · simp only [iteratedDerivWithin_succ]
     simp only [Set.EqOn] at hs
     rw [derivWithin_congr (by simp [Set.EqOn]; intro y hy; exact hn hy) (hn hx2)]
 
