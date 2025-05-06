@@ -622,26 +622,26 @@ protected theorem add_div (a b c : Rat) : (a + b) / c = a / c + b / c := by
 theorem le_total (a b : Rat) : a ≤ b ∨ b ≤ a := by
   simpa only [← Rat.le_iff_sub_nonneg, Rat.neg_sub] using Rat.nonneg_total (b - a)
 
-theorem mul_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a * b := by
-  sorry
+theorem divInt_nonneg {a b : Int} (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ a /. b := by
+  have : 0 = b ∨ 0 < b := Int.le_iff_eq_or_lt.mp hb
+  obtain rfl | hb := this
+  · simp
+  rwa [divInt_nonneg_iff_of_pos_right hb]
 
-theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
-  sorry
-
-theorem abs_nonneg (x : Rat) : 0 ≤ x.abs := by
-  sorry
-
-theorem abs_of_nonpos (h : a ≤ 0) : a.abs = -a := by
-  sorry
-
-theorem abs_of_nonneg {a : Rat} (h : 0 ≤ a) : a.abs = a := by
-  sorry
-
-theorem abs_mul (a b : Rat) : (a * b).abs = a.abs * b.abs := by
-  rw [Rat.abs_eq (Rat.mul_nonneg (Rat.abs_nonneg a) (Rat.abs_nonneg b))]
-  rcases Rat.le_total a 0 with ha | ha <;> rcases Rat.le_total b 0 with hb | hb <;>
-    simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, eq_self_iff_true, Rat.neg_mul,
-      Rat.mul_neg, Rat.neg_neg, *]
+theorem mul_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a * b :=
+  numDenCasesOn' a fun n₁ d₁ h₁ =>
+    numDenCasesOn' b fun n₂ d₂ h₂ => by
+      have d₁0 : 0 < (d₁ : Int) := mod_cast Nat.pos_of_ne_zero h₁
+      have d₂0 : 0 < (d₂ : Int) := mod_cast Nat.pos_of_ne_zero h₂
+      simp only [d₁0, d₂0, Int.mul_pos, divInt_nonneg_iff_of_pos_right,
+        divInt_mul_divInt _ _ (Ne.symm (Int.ne_of_lt d₁0)) (Ne.symm (Int.ne_of_lt d₁0))]
+      intro h1 h2
+      have h1' : 0 ≤ Rat.divInt n₁ d₁ := divInt_nonneg h1 (Int.ofNat_zero_le d₁)
+      have h2' : 0 ≤ Rat.divInt n₂ d₂ := divInt_nonneg h2 (Int.ofNat_zero_le d₂)
+      rw [divInt_mul_divInt n₁ n₂ (Int.ofNat_ne_zero.mpr h₁) ((Int.ofNat_ne_zero.mpr h₂))]
+      apply divInt_nonneg
+      · exact Int.mul_nonneg h1 h2
+      · exact Lean.Omega.Int.ofNat_mul_nonneg
 
 def addN : List Rat → Rat
   | []      => 0
