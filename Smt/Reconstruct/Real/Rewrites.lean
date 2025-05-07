@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Real.Core
 import Mathlib.Data.Real.Archimedean
 
@@ -16,14 +17,12 @@ open Function
 
 variable {t s x : Real}
 
-theorem div_total : s ≠ 0 → t / s = t / s :=
-  const _ rfl
 theorem div_total_zero : x / 0 = 0 :=
   div_zero x
 
 -- Eliminations
 
-theorem elim_gt : (t > s) = ¬(t ≤ s) :=
+theorem elim_gt : (t > s) = ¬(s ≥ t) :=
   propext not_le.symm
 theorem elim_lt : (t < s) = ¬(t ≥ s) :=
   propext not_le.symm
@@ -33,36 +32,16 @@ theorem elim_leq : (t ≤ s) = (s ≥ t) :=
 theorem geq_norm1 : (t ≥ s) = (t - s ≥ 0) :=
   propext ⟨sub_nonneg_of_le, le_of_sub_nonneg⟩
 
-theorem geq_norm2 : (t ≥ s) = (-t ≤ -s) :=
-  propext (Iff.symm neg_le_neg_iff)
-
-theorem refl_leq : (t ≤ t) = True :=
-  propext ⟨const _ trivial, const _ (le_refl t)⟩
-theorem refl_lt : (t < t) = False :=
-  propext ⟨(lt_irrefl t), False.elim⟩
-theorem refl_geq : (t ≥ t) = True :=
-  propext ⟨const _ trivial, const _ (le_refl t)⟩
-theorem refl_gt : (t > t) = False :=
-  propext ⟨(lt_irrefl t), False.elim⟩
-
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) :=
   propext (Iff.symm antisymm_iff)
 
-theorem plus_flatten : Real.addN (xs ++ ([Real.addN (w :: ys)] ++ zs)) = Real.addN (xs ++ (w :: ys ++ zs)) := by
-  simp only [Real.addN_append]
-  rfl
+theorem plus_flatten : Real.addN (xs ++ Real.addN (w₁ :: w₂ :: ys) :: zs) = Real.addN (xs ++ w₁ :: w₂ :: (ys ++ zs)) := by
+  simp only [Real.addN_append, Real.addN_cons_append, add_assoc]
 
-theorem mult_flatten : Real.mulN (xs ++ ([Real.mulN (w :: ys)] ++ zs)) = Real.mulN (xs ++ (w :: ys ++ zs)) := by
-  simp only [Real.mulN_append]
-  rfl
-
-theorem abs_elim : |x| = if x < 0 then -x else x := by
-  cases abs_cases x <;> rename_i h <;> split <;> linarith
-
-theorem eq_conflict {t : Int} {c : Real} (hcc : ↑⌊c⌋ ≠ c) : (t = c) = False := by
+theorem eq_conflict {t : Int} {c : Real} (hcc : (↑⌊c⌋ = c) = False) : (t = c) = False := by
   simp only [eq_iff_iff, iff_false]
   intro htc
-  have hcc : ⌊c⌋ < c := (le_iff_eq_or_lt.mp (Int.floor_le c)).resolve_left hcc
+  have hcc : ⌊c⌋ < c := (le_iff_eq_or_lt.mp (Int.floor_le c)).resolve_left hcc.mp
   cases Int.lt_trichotomy t ⌊c⌋ <;> rename_i htcf
   · have hntc : ↑t ≠ c := (lt_iff_le_and_ne.mp (lt_trans (Int.cast_lt.mpr htcf) hcc)).right
     contradiction
@@ -75,8 +54,8 @@ theorem eq_conflict {t : Int} {c : Real} (hcc : ↑⌊c⌋ ≠ c) : (t = c) = Fa
           exact htcf
       simp_all [lt_irrefl]
 
-theorem geq_tighten {t : Int} {c : Real} {cc : Int} (h : ↑⌊c⌋ ≠ c ∧ cc = ⌊c⌋ + 1) : (t ≥ c) = (t ≥ cc) := by
-  simp only [h.right, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
+theorem geq_tighten {t : Int} {c : Real} {cc : Int} (h : (↑⌊c⌋ = c) = False ∧ cc = Int.addN [⌊c⌋, 1]) : (t ≥ c) = (t ≥ cc) := by
+  simp only [h.right, Int.addN, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
   have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict h.left
   apply Iff.intro <;> intro hct <;> rename_i hct
   · have h := hct.resolve_left h.symm

@@ -58,19 +58,4 @@ def parseOuter : TSyntax ``outer → TacticM (Array (Array Expr))
   let mv : MVarId ← getMainGoal
   smtRw mv op id rr xs
 
-example : (x1 ∧ x2 ∧ x3 ∧ (b ∧ y1 ∧ y2 ∧ True) ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw And True bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
-
-example : (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ b ∧ z1 ∧ z2 ∧ True) = (x1 ∧ x2 ∧ x3 ∧ b ∧ y1 ∧ y2 ∧ z1 ∧ z2 ∧ True) := by
-  smt_rw And True bool_and_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
-
-example : (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ b ∨ z1 ∨ z2 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ y2 ∨ z1 ∨ z2 ∨ False) := by
-  smt_rw Or False bool_or_flatten [[x1, x2, x3], [b], [y1, y2], [z1, z2]]
-
-example : (x1 ∨ x2 ∨ x3 ∨ (b ∨  y1 ∨ False) ∨ z1 ∨ False) = (x1 ∨ x2 ∨ x3 ∨ b ∨ y1 ∨ z1 ∨ False) := by
-  smt_rw Or False bool_or_flatten [[x1, x2, x3], [b], [y1], [z1]]
-
-example : (p ∨ ¬p) = True := by
-  smt_rw Or False bool_or_taut [[], [p], [], []]
-
 end Smt.Reconstruct.Tactic

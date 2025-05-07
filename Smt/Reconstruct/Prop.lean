@@ -10,7 +10,6 @@ import Smt.Reconstruct.Builtin.AC
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct.Prop.Lemmas
 import Smt.Reconstruct.Prop.Rewrites
-import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Prop
 
@@ -43,7 +42,7 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match pf.getRewriteRule with
+  match pf.getRewriteRule! with
   | .BOOL_DOUBLE_NOT_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q((¬¬$p) = $p) q(@Prop.bool_double_not_elim $p)
@@ -79,47 +78,79 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .BOOL_IMPL_ELIM =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    addThm q(($p → $q) = (¬$p ∨ $q)) q(@Prop.bool_impl_elim $p $q)
-  | .BOOL_OR_TRUE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_true) args)
+    addThm q(($p → $q) = orN [¬$p, $q]) q(@Prop.bool_impl_elim $p $q)
+  | .BOOL_DUAL_IMPL_EQ =>
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    addThm q(andN [$p → $q, $q → $p] = ($p = $q)) q(@Prop.bool_dual_impl_eq $p $q)
   | .BOOL_OR_FLATTEN =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_flatten) args)
-  | .BOOL_AND_FALSE =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_false) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let b₁ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let b₂ : Q(Prop) ← reconstructTerm pf.getArguments[3]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[5]!.getChildren
+    addThm q(orN ($xs ++ orN ($b₁ :: $b₂ :: $ys) :: $zs) = orN ($xs ++ $b₁ :: $b₂ :: ($ys ++ $zs)))
+           q(@Prop.bool_or_flatten $xs $b₁ $b₂ $ys $zs)
   | .BOOL_AND_FLATTEN =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_flatten) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let b₁ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let b₂ : Q(Prop) ← reconstructTerm pf.getArguments[3]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[5]!.getChildren
+    addThm q(andN ($xs ++ andN ($b₁ :: $b₂ :: $ys) :: $zs) = andN ($xs ++ $b₁ :: $b₂ :: ($ys ++ $zs)))
+           q(@Prop.bool_and_flatten $xs $b₁ $b₂ $ys $zs)
   | .BOOL_AND_CONF =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_conf) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(andN ($xs ++ $w :: ($ys ++ (¬$w) :: $zs)) = False) q(@Prop.bool_and_conf $xs $w $ys $zs)
   | .BOOL_AND_CONF2 =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_conf2) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(andN ($xs ++ (¬$w) :: ($ys ++ $w :: $zs)) = False) q(@Prop.bool_and_conf2 $xs $w $ys $zs)
   | .BOOL_OR_TAUT =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_taut) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(orN ($xs ++ $w :: ($ys ++ (¬$w) :: $zs)) = True) q(@Prop.bool_or_taut $xs $w $ys $zs)
   | .BOOL_OR_TAUT2 =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_taut2) args)
+    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
+    let w : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
+    addThm q(orN ($xs ++ (¬$w) :: ($ys ++ $w :: $zs)) = True) q(@Prop.bool_or_taut2 $xs $w $ys $zs)
   | .BOOL_OR_DE_MORGAN =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(Or) q(False) q(@Prop.bool_or_de_morgan) args)
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    addThm q((¬orN ($p :: $q :: $zs)) = andN [¬$p, ¬orN ($q :: $zs)]) q(@Prop.bool_or_de_morgan $p $q $zs)
   | .BOOL_IMPLIES_DE_MORGAN =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    addThm q((¬($p → $q)) = ($p ∧ ¬$q)) q(@Prop.bool_implies_de_morgan $p $q)
+    addThm q((¬($p → $q)) = andN [$p, ¬$q]) q(@Prop.bool_implies_de_morgan $p $q)
   | .BOOL_AND_DE_MORGAN =>
-    let args ← reconstructArgs pf.getArguments[1:]
-    addTac (← reconstructTerm pf.getResult) (Tactic.smtRw · q(And) q(True) q(@Prop.bool_and_de_morgan) args)
+    let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    addThm q((¬andN ($p :: $q :: $zs)) = orN [¬$p, ¬andN ($q :: $zs)]) q(@Prop.bool_and_de_morgan $p $q $zs)
   | .BOOL_OR_AND_DISTRIB =>
     let y₁ : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let y₂ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
-    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
-    addThm (← reconstructTerm pf.getResult) q(@Prop.bool_or_and_distrib $y₁ $y₂ $ys $zs)
+    let z₁ : Q(Prop) ← reconstructTerm pf.getArguments[4]!
+    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[5]!.getChildren
+    addThm (← reconstructTerm pf.getResult) q(@Prop.bool_or_and_distrib $y₁ $y₂ $ys $z₁ $zs)
+  | .BOOL_IMPLIES_OR_DISTRIB =>
+    let y₁ : Q(Prop) ← reconstructTerm pf.getArguments[1]!
+    let y₂ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
+    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[3]!.getChildren
+    let z : Q(Prop) ← reconstructTerm pf.getArguments[4]!
+    addThm q((orN ($y₁ :: $y₂ :: $ys) → $z) = andN [$y₁ → $z, orN ($y₂ :: $ys) → $z])
+           q(@Prop.bool_implies_or_distrib $y₁ $y₂ $ys $z)
   | .BOOL_XOR_REFL =>
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     addThm q(XOr $p $p = False) q(@Prop.bool_xor_refl $p)
@@ -163,22 +194,22 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    addThm q(ite $c True $p = ($c ∨ $p)) q(@Prop.ite_then_true $c $p $h)
+    addThm q(ite $c True $p = orN [$c, $p]) q(@Prop.ite_then_true $c $p $h)
   | .ITE_ELSE_FALSE =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    addThm q(ite $c $p False = ($c ∧ $p)) q(@Prop.ite_else_false $c $p $h)
+    addThm q(ite $c $p False = andN [$c, $p]) q(@Prop.ite_else_false $c $p $h)
   | .ITE_THEN_FALSE =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    addThm q(ite $c False $p = (¬$c ∧ $p)) q(@Prop.ite_then_false $c $p $h)
+    addThm q(ite $c False $p = andN [¬$c, $p]) q(@Prop.ite_then_false $c $p $h)
   | .ITE_ELSE_TRUE =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    addThm q(ite $c $p True = (¬$c ∨ $p)) q(@Prop.ite_else_true $c $p $h)
+    addThm q(ite $c $p True = orN [¬$c, $p]) q(@Prop.ite_else_true $c $p $h)
   | .ITE_THEN_LOOKAHEAD_SELF =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
@@ -204,7 +235,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[3]!
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    addThm q(ite $c $p $q = ((¬$c ∨ $p) ∧ ($c ∨ $q))) q(@Prop.ite_expand $c $p $q $h)
+    addThm q(ite $c $p $q = andN [orN [¬$c, $p], orN [$c, $q]]) q(@Prop.ite_expand $c $p $q $h)
   | .BOOL_NOT_ITE_ELIM =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let p : Q(Prop) ← reconstructTerm pf.getArguments[2]!
@@ -212,18 +243,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
     addThm q((¬ite $c $p $q) = ite $c (¬$p) (¬$q)) q(@Prop.bool_not_ite_elim $c $p $q $h)
   | _ => return none
-where
-  reconstructArgs (args : Array cvc5.Term) : ReconstructM (Array (Array Expr)) := do
-    let mut args' := #[]
-    for arg in args do
-      let mut arg' := #[]
-      if arg.getKind == .SEXPR then
-        for subarg in arg do
-          arg' := arg'.push (← reconstructTerm subarg)
-      else
-        arg' := arg'.push (← reconstructTerm arg)
-      args' := args'.push arg'
-    return args'
 
 def nary (k : cvc5.Kind) (c : cvc5.Term) : Array cvc5.Term := Id.run do
   if c.getKind != k then

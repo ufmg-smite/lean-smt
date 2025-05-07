@@ -117,6 +117,9 @@ theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
   have tr := Int.lt_trichotomy a b
   exact Or.resolve_left (Or.resolve_left tr (Int.not_lt.mpr h₁)) h₂
 
+theorem abs_elim : x.abs = if x < 0 then -x else x :=
+  rfl
+
 theorem lt_eq_sub_lt_zero : (a < b) = (a - b < 0) := by
   apply propext
   constructor
