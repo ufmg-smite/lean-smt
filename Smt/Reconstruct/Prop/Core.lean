@@ -33,14 +33,38 @@ namespace XOr
 end XOr
 
 def andN : List Prop → Prop
-  | [] => True
-  | h :: [] => h
-  | h :: t  => h ∧ andN t
+  | []      => True
+  | p :: [] => p
+  | p :: ps => p ∧ andN ps
+
+@[simp] theorem andN_append : andN (ps ++ qs) = (andN ps ∧ andN qs) := by
+  match ps, qs with
+  | [], _
+  | [p], []
+  | [p], q :: qs       => simp [andN]
+  | p₁ :: p₂ :: ps, qs =>
+    rw [List.cons_append, andN, andN, andN_append, and_assoc]
+    all_goals (intro h; nomatch h)
+
+@[simp] theorem andN_cons_append : andN (p :: ps) = (p ∧ andN ps) := by
+  cases ps <;> simp only [andN, and_true]
 
 def orN : List Prop → Prop
-  | [] => False
-  | h :: [] => h
-  | h₁ :: h₂ :: t  => h₁ ∨ orN (h₂ :: t)
+  | []      => False
+  | p :: [] => p
+  | p :: qs => p ∨ orN qs
+
+@[simp] theorem orN_append : orN (ps ++ qs) = (orN ps ∨ orN qs) := by
+  match ps, qs with
+  | [], _
+  | [p], []
+  | [p], q :: qs       => simp [orN]
+  | p₁ :: p₂ :: ps, qs =>
+    rw [List.cons_append, orN, orN, orN_append, or_assoc]
+    all_goals (intro h; nomatch h)
+
+@[simp] theorem orN_cons_append : orN (p :: ps) = (p ∨ orN ps) := by
+  cases ps <;> simp only [orN, or_false]
 
 def impliesN (ps : List Prop) (q : Prop) : Prop := match ps with
   | [] => q

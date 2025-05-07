@@ -198,7 +198,7 @@ theorem deMorgan : ∀ {l : List Prop}, ¬ orN (notN l) → andN l := by
     have ih := @deMorgan (h₂::t) t₂
     simp [andN]
     have t₁' := notNotElim t₁
-    exact ⟨ t₁', ih ⟩
+    exact ⟨ t₁', andN_cons_append ▸ ih ⟩
 
 theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notN l) := by
   intros l h
@@ -214,7 +214,7 @@ theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notN l) := by
     simp [andN] at h
     apply deMorganSmall₂
     have nnh₁ := notNotIntro (And.left h)
-    have ih := @deMorgan₂ (h₂::t) (And.right h)
+    have ih := @deMorgan₂ (h₂::t) (And.right (andN_cons_append ▸ h))
     exact ⟨nnh₁, ih⟩
 
 theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notN l) := by
@@ -231,7 +231,7 @@ theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notN l) := by
     simp only [orN, Not] at t₂
     simp [andN, notN, map]
     have ih := @deMorgan₃ (h₂::t) t₂
-    exact ⟨t₁, ih⟩
+    exact ⟨t₁, andN_cons_append ▸ ih⟩
 
 theorem cnfAndNeg' : ∀ (l : List Prop), andN l ∨ orN (notN l) :=
   by intro l
@@ -553,7 +553,7 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notN l) := by
                   | Or.inl hnp₁ => exact Or.inl hnp₁
                   | Or.inr hnAndTail =>
                     have IH := notAnd (p₂::ps) hnAndTail
-                    exact Or.inr IH
+                    exact Or.inr (orN_cons_append ▸ IH)
 
 syntax "flipNotAnd " term ("[" term,* "]")? : term
 macro_rules

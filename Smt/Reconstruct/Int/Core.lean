@@ -46,6 +46,9 @@ def addN : List Int → Int
     rw [List.cons_append, addN, addN, addN_append, Int.add_assoc]
     all_goals (intro h; nomatch h)
 
+@[simp] theorem addN_cons_append : addN (x :: xs) = x + addN xs := by
+  cases xs <;> simp only [addN, Int.add_zero]
+
 def mulN : List Int → Int
   | []      => 1
   | [x]     => x
@@ -59,6 +62,9 @@ def mulN : List Int → Int
   | x₁ :: x₂ :: xs, ys =>
     rw [List.cons_append, mulN, mulN, mulN_append, Int.mul_assoc]
     all_goals (intro h; nomatch h)
+
+@[simp] theorem mulN_cons_append : mulN (x :: xs) = x * mulN xs := by
+  cases xs <;> simp only [mulN, Int.mul_one]
 
 @[simp]
 protected theorem natCast_eq_zero {n : Nat} : (n : Int) = 0 ↔ n = 0 := by

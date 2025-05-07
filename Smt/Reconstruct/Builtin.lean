@@ -81,7 +81,7 @@ where
     else Name.num `x t.getId
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match pf.getRewriteRule with
+  match pf.getRewriteRule! with
   | .DISTINCT_ELIM =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let t  : Q($α) ← reconstructTerm pf.getResult[0]!

@@ -363,6 +363,9 @@ theorem trichotomy₅ (h₁ : a ≥ b) (h₂ : a ≤ b) : a = b := by
 theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
   exact trichotomy₃ (Ne.symm h₂) h₁
 
+theorem abs_elim {x : Rat} : x.abs = if x < 0 then -x else x :=
+  rfl
+
 theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
   unfold Rat.abs
   cases Classical.em (a < 0)
