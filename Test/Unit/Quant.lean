@@ -9,6 +9,9 @@ example {p q : U → U → Prop} : (∀ x y, p x y ∧ q x y) = ((∀ x y, p x y
 example {p : U → Prop} {q : Prop} : (∀ x, p x ∨ q) = ((∀ x, p x) ∨ q) := by
   smt
 
+example {p q : U → Prop} : (∀ x, (∀ y, p y) ∨ q x) = ((∀ y, p y) ∨ (∀ x, q x)) := by
+  smt
+
 example {p : Prop} {q : U → Prop} : (∀ x, p ∨ q x) = (p ∨ (∀ x, q x)) := by
   smt
 

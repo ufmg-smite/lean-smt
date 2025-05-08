@@ -54,11 +54,11 @@ theorem eq_conflict {t : Int} {c : Rat} (hcc : (↑c.floor = c) = False) : (t = 
         · exact Rat.cast_le2 htcf
       simp_all [Rat.lt_irrefl]
 
-theorem geq_tighten {t : Int} {c : Rat} {cc : Int} (h : (↑c.floor = c) = False ∧ cc = Int.addN [c.floor, 1]) : (t ≥ c) = (t ≥ cc) := by
+theorem geq_tighten {t : Int} {c : Rat} {cc : Int} (hc : (↑c.floor = c) = False) (hcc : cc = Int.addN [c.floor, 1]) : (t ≥ c) = (t ≥ cc) := by
   have Int.floor_lt {z : Int} {a : Rat} : a.floor < z ↔ a < ↑z := sorry
-  simp only [h.right, Int.addN, ge_iff_le, eq_iff_iff, Rat.le_iff_eq_or_lt, ← Int.floor_lt]
-  have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict h.left
-  apply Iff.intro <;> intro hct <;> rename_i hct
+  simp only [hcc, Int.addN, ge_iff_le, eq_iff_iff, Rat.le_iff_eq_or_lt, ← Int.floor_lt]
+  have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict hc
+  apply Iff.intro <;> intro hct
   · have h := hct.resolve_left h.symm
     omega
   · omega

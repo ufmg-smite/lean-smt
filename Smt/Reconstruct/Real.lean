@@ -159,8 +159,9 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let c : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let cc : Q(Int) ← reconstructTerm pf.getArguments[3]!
-    let h : Q((↑⌊$c⌋ = $c) = False ∧ $cc = Int.addN [⌊$c⌋, 1]) ← reconstructProof pf.getChildren[0]!
-    addThm q(($t ≥ $c) = ($t ≥ $cc)) q(@Rewrite.geq_tighten $t $c $cc $h)
+    let hc : Q((↑⌊$c⌋ = $c) = False) ← reconstructProof pf.getChildren[0]!
+    let hcc : Q($cc = Int.addN [⌊$c⌋, 1]) ← reconstructProof pf.getChildren[1]!
+    addThm q(($t ≥ $c) = ($t ≥ $cc)) q(@Rewrite.geq_tighten $t $c $cc $hc $hcc)
   | .ARITH_ABS_EQ =>
     if pf.getArguments[1]!.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm pf.getArguments[1]!
