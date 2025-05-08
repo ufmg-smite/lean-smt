@@ -54,10 +54,10 @@ theorem eq_conflict {t : Int} {c : Real} (hcc : (↑⌊c⌋ = c) = False) : (t =
           exact htcf
       simp_all [lt_irrefl]
 
-theorem geq_tighten {t : Int} {c : Real} {cc : Int} (h : (↑⌊c⌋ = c) = False ∧ cc = Int.addN [⌊c⌋, 1]) : (t ≥ c) = (t ≥ cc) := by
-  simp only [h.right, Int.addN, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
-  have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict h.left
-  apply Iff.intro <;> intro hct <;> rename_i hct
+theorem geq_tighten {t : Int} {c : Real} {cc : Int} (hc : (↑⌊c⌋ = c) = False) (hcc : cc = Int.addN [⌊c⌋, 1]) : (t ≥ c) = (t ≥ cc) := by
+  simp only [hcc, Int.addN, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
+  have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict hc
+  apply Iff.intro <;> intro hct
   · have h := hct.resolve_left h.symm
     omega
   · omega

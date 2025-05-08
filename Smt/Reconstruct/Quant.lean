@@ -173,8 +173,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let (_, _, _, _, h) ← Meta.withLocalDeclsD xs fun xs => withNewTermCache do
       let mut xss := #[]
       let mut ci := 0
-      for xsF in pf.getResult[1]! do
-        if xsF.getKind == .FORALL then
+      for i in [0:pf.getResult[1]!.getNumChildren] do
+        let F := pf.getResult[0]![1]![i]!
+        let xsF := pf.getResult[1]![i]!
+        if xsF.getKind == .FORALL && xsF != F then
           xss := xss.push xs[ci:ci + xsF[0]!.getNumChildren]
           ci := ci + xsF[0]!.getNumChildren
         else
