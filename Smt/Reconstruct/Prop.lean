@@ -278,7 +278,7 @@ def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps
   let qs : Q(List Prop) ← c₂.foldrM f q([])
   let hps : Q(orN $ps) ← pure hps
   let hqs : Q(orN $qs) ← pure hqs
-  let (i?, j?) := if pol.getBooleanValue! then (c₁.indexOf? l, c₂.indexOf? l.not!) else (c₁.indexOf? l.not!, c₂.indexOf? l)
+  let (i?, j?) := if pol.getBooleanValue! then (c₁.finIdxOf? l, c₂.finIdxOf? l.not!) else (c₁.finIdxOf? l.not!, c₂.finIdxOf? l)
   if let (some ⟨i, _⟩, some ⟨j, _⟩) := (i?, j?) then
     let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hj : Q($j < «$qs».length) := .app q(@of_decide_eq_true ($j < «$qs».length) _) q(Eq.refl true)
