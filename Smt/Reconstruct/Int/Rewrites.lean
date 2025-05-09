@@ -95,15 +95,15 @@ theorem lt_ite_lift [h : Decidable c] {t s r : Int} : (ite c t s < r) = ite c (t
 -- min/max rules
 
 theorem min_lt1 : (ite (t < s) t s ≤ t) = True := by
-  cases h : decide (t < s) <;> simp_all [Int.not_lt.mp]
+  cases h : decide (t < s) <;> simp_all [Int.not_lt.mpr]
 
 theorem min_lt2 : (ite (t < s) t s ≤ s) = True := by
-  cases h : decide (t < s) <;> simp_all [Int.le_of_lt]
+  cases h : decide (t < s) <;> simp_all [Int.not_lt.mpr, Int.le_of_lt]
 
 theorem max_geq1 : (ite (t ≥ s) t s ≥ t) = True := by
-  cases h : decide (t ≥ s) <;> simp_all [Int.le_of_not_le]
+  cases h : decide (t ≥ s) <;> simp_all [Int.not_le_of_gt, Int.le_of_lt]
 
 theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by
-  cases h : decide (t ≥ s) <;> simp_all
+  cases h : decide (t ≥ s) <;> simp_all [Int.not_le_of_gt]
 
 end Smt.Reconstruct.Int.Rewrite

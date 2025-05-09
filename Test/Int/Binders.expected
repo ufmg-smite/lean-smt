@@ -19,7 +19,7 @@ Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
 goal: partCurryAdd' a b = partCurryAdd' b a
 
 query:
-(define-fun |partCurryAdd'| ((a Int) (a._@.Init.Prelude._hyg.2566 Int)) Int (+ a a._@.Init.Prelude._hyg.2566))
+(define-fun |partCurryAdd'| ((a Int) (a._@.Init.Prelude._hyg.2610 Int)) Int (+ a a._@.Init.Prelude._hyg.2610))
 (declare-const a Int)
 (declare-const b Int)
 (assert (distinct (+ a b) (+ b a)))

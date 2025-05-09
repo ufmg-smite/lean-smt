@@ -474,7 +474,7 @@ def notOrElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
       let type ← inferType val
       let orChain := notExpr type
       let props ← collectPropsInOrChain orChain
-      let prop := props.get! i
+      let prop := props[i]!
       withLocalDeclD (← mkFreshId) prop $ fun bv => do
         let pf: Expr ←
           match (← getLength orChain) == i + 1 with
@@ -493,7 +493,7 @@ where
     match i with
     | 0     => pure val
     | i + 1 => do
-      let currProp := props.get! j
+      let currProp := props[j]!
       mkAppOptM ``Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
 def traceNotOrElim (r : Except Exception Unit) : MetaM MessageData :=
@@ -506,7 +506,7 @@ def notOrElim (mv : MVarId) (val : Expr) (i : Nat) : MetaM Unit := withTraceNode
       let type ← inferType val
       let orChain := notExpr type
       let props ← collectPropsInOrChain orChain
-      let prop := props.get! i
+      let prop := props[i]!
       withLocalDeclD (← mkFreshId) prop $ fun bv => do
         let pf: Expr ←
           match (← getLength orChain) == i + 1 with
@@ -523,7 +523,7 @@ where
     match i with
     | 0     => pure val
     | i + 1 => do
-      let currProp := props.get! j
+      let currProp := props[j]!
       mkAppOptM ``Or.inr #[currProp, none, ← getProof i (j + 1) props val]
 
 namespace Tactic

@@ -158,7 +158,7 @@ theorem natCast_pos {n : Nat} : (0 : Int) < n ↔ 0 < n := by omega
 theorem natCast_nonneg {n : Nat} : (0 : Int) ≤ n := by omega
 
 theorem div_nonneg_iff_of_pos' {a b : Int} (h : 0 < b) : 0 ≤ a / b ↔ 0 ≤ a := by
-  let tmp := @Int.div_nonneg_iff_of_pos a b h
+  let tmp := @Int.ediv_nonneg_iff_of_pos a b h
   simp [GE.ge] at tmp
   exact tmp
 
@@ -195,8 +195,8 @@ protected theorem ge_of_eq (hab : a = b) : b ≤ a := Int.le_of_eq hab.symm
 protected theorem le_antisymm_iff {a b : Int} : a = b ↔ a ≤ b ∧ b ≤ a :=
   ⟨fun h ↦ ⟨Int.le_of_eq h, Int.ge_of_eq h⟩, fun h ↦ Int.le_antisymm h.1 h.2⟩
 protected theorem le_iff_eq_or_lt {a b : Int} : a ≤ b ↔ a = b ∨ a < b := by
-  rw [Int.le_antisymm_iff, Int.lt_iff_le_not_le, ← and_or_left]
-  simp [Decidable.em]
+  rewrite [Int.le_antisymm_iff, Int.lt_iff_le_not_le, ← and_or_left]
+  simp [Int.le_or_lt]
 protected theorem le_iff_lt_or_eq : a ≤ b ↔ a < b ∨ a = b := by rw [Int.le_iff_eq_or_lt, or_comm]
 
 protected theorem div_gcd_nonneg_iff_of_pos
@@ -206,7 +206,7 @@ protected theorem div_gcd_nonneg_iff_of_pos
     apply Int.natCast_pos.mpr
     simp [Int.gcd]
     apply Nat.gcd_pos_of_pos_right _ b_pos
-  exact Int.div_nonneg_iff_of_pos nz_den
+  exact Int.ediv_nonneg_iff_of_pos nz_den
 
 protected theorem div_gcd_nonneg_iff_of_nz {b : Nat} (nz_b : b ≠ 0) : 0 ≤ a / (a.gcd b) ↔ 0 ≤ a :=
   Nat.pos_of_ne_zero nz_b |> Int.div_gcd_nonneg_iff_of_pos

@@ -118,37 +118,33 @@ protected theorem le_iff_blt {x y : Rat} : x ≤ y ↔ ¬ y.blt x := by
   simp [LE.le]
 
 protected theorem lt_asymm {x y : Rat} : x < y → ¬ y < x := by
-  simp [Rat.lt_iff_blt]
-  simp [Rat.blt]
+  simp [Rat.lt_iff_blt, Rat.blt]
   intro h
   cases h with
   | inl h =>
-    simp [Int.not_lt_of_lt_rev h.1, Int.not_le.mpr h.1, Int.le_of_lt h.1]
-    intro nz_ynum ynum_neg _
-    apply ynum_neg
-    apply Int.lt_of_le_of_ne h.2
-    intro h
-    apply nz_ynum
-    rw [h]
+    simp only [h, implies_true, Int.not_lt_of_lt_rev h.1, or_false, if_false_left, not_and,
+      Int.not_lt, true_and]
+    intro nz_ynum ynum_neg
+    have z_ynum : y.num = 0 := Int.le_antisymm ynum_neg h.right
+    contradiction
   | inr h =>
     split at h
     case isTrue xnum_0 =>
-      simp [Int.not_lt_of_lt_rev h, xnum_0, h]
+      simp only [Int.not_lt_of_lt_rev h, xnum_0, Int.lt_irrefl, imp_self, or_false, Int.zero_mul,
+        if_false_left, not_and, Int.not_lt, true_and]
+      intro nz_ynum ynum_neg
+      have z_ynum : y.num = 0 := Int.le_antisymm ynum_neg (Int.le_of_lt h)
+      contradiction
     case inr xnum_ne_0 =>
       let ⟨h, h'⟩ := h
-      simp [Int.not_lt_of_lt_rev h']
+      simp only [Int.not_lt_of_lt_rev h', and_false, if_false_right, not_and, Int.not_lt]
       cases h
       case inl h =>
-        simp [h]
-        intro _ xnum_pos
-        apply h
-        apply Int.lt_of_le_of_ne xnum_pos
-        intro eq ; apply xnum_ne_0 ; rw [eq]
+        simp only [h, implies_true, and_true]
+        intro _
+        apply Int.lt_of_le_of_ne h xnum_ne_0
       case inr h =>
-        simp [Int.not_le.mp h |> Int.not_lt_of_lt_rev]
-        intro eq
-        rw [eq] at h
-        contradiction
+        constructor <;> intros <;> simp_all [Int.lt_asymm]
 
 protected theorem add_comm : a + b = b + a := by
   simp [add_def, Int.add_comm, Int.mul_comm, Nat.mul_comm]
@@ -217,8 +213,8 @@ theorem num_nonneg : 0 ≤ q.num ↔ 0 ≤ q := by
 
 theorem nonneg_iff_sub_nonpos : 0 ≤ q ↔ -q ≤ 0 := by
   rw [← num_nonneg]
-  conv => rhs ; simp [LE.le, Rat.blt]
-  omega
+  conv => rhs; simp [LE.le, Rat.blt]
+  rfl
 
 theorem nonneg_sub_iff_nonpos : 0 ≤ -q ↔ q ≤ 0 := by
   simp [nonneg_iff_sub_nonpos, Rat.neg_neg]
@@ -347,7 +343,7 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
         decide_eq_false_iff_not, Rat.not_lt, ite_eq_left_iff,
         not_and, Rat.not_le, ← Rat.num_nonneg ]
     if h : ny < 0 ∧ 0 ≤ nx then
-      simp [h]
+      simp only [h, and_self, ↓reduceIte, Bool.true_eq_false, num_nonneg, false_iff]
       simp only [Rat.sub_def, Rat.not_le, normalize_eq, Rat.neg]
       simp [← Rat.num_neg]
       apply Int.ediv_neg'
@@ -366,20 +362,18 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
       split
       case isTrue nb_0 =>
         simp [nb_0, Rat.sub_eq_add_neg, Rat.zero_add, Rat.nonneg_sub_iff_nonpos, ← Rat.num_nonpos]
-        exact Int.not_lt
       case isFalse nb_nz =>
         simp only [Rat.sub_def, normalize_eq, ← Rat.num_nonneg]
         if ny_pos : 0 < ny then
-          simp [ny_pos]
+          simp only [ny_pos, forall_const]
           if h_na : 0 < nx then
-            simp [Int.not_le.mpr h_na]
-            rw [Int.not_lt]
+            simp_all only [not_and, Int.not_le, forall_const]
             rw [← Int.sub_nonneg]
             apply Iff.symm
             apply Int.div_gcd_nonneg_iff_of_nz dy_dx_nz
           else
             let na_nonpos := Int.not_lt.mp h_na
-            simp [na_nonpos]
+            simp_all only [not_and, Int.not_le, false_implies, true_iff, ge_iff_le]
             apply Int.div_gcd_nonneg_iff_of_nz dy_dx_nz |>.mpr
             · apply Int.sub_nonneg_of_le
               apply Int.le_trans (b := 0)
@@ -453,21 +447,15 @@ theorem cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
 
 theorem cast_lt2 {a b : Int} : a < b → Rat.ofInt a < Rat.ofInt b := by
   intro h
-  simp [Rat.instLT, Rat.ofInt]
+  simp only [instLT, ofInt, mk_den_one]
   simp [Rat.blt]
   cases Classical.em (a = 0) with
   | inl ha => simp [ha]; rw [ha] at h; exact h
   | inr ha =>
-      simp [ha]
+      simp only [ha, ↓reduceIte]
       right
       constructor
-      · apply Classical.or_iff_not_imp_left.mpr
-        intro h2
-        have := Classical.not_not.mp h2
-        intro abs
-        have := Int.lt_trans this h
-        have := Int.lt_of_lt_of_le this abs
-        simp at this
+      · omega
       · exact h
 
 theorem cast_lt {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
@@ -475,18 +463,16 @@ theorem cast_lt {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
 
 theorem cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
   intro h
-  simp [Rat.instLE, Rat.ofInt] at h
+  simp only [instLE, ofInt, mk_den_one] at h
   simp [Rat.blt] at h
   cases Classical.em (b = 0) with
   | inl hb =>
     simp [hb] at h
     rw [hb]
-    exact Int.not_lt.mp h
+    exact h
   | inr hb =>
     simp [hb] at h
     let ⟨h1, h2⟩ := h
-    rw [Int.not_lt, Int.not_le, Int.not_lt] at h2
-    rw [Int.not_le] at h1
     cases Classical.em (a ≤ b) with
     | inl hab => exact hab
     | inr hab =>
@@ -506,19 +492,11 @@ theorem cast_le2 {a b : Int} : a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
   cases Classical.em (b = 0) with
   | inl hb =>
     simp [hb]
-    rw [Int.not_lt]
     rw [hb] at h
     exact h
   | inr hb =>
     simp [hb]
-    constructor
-    · intro b_neg
-      intro a_nonneg
-      have := Int.lt_of_lt_of_le b_neg a_nonneg
-      exact Lean.Omega.Int.le_lt_asymm h this
-    · intro hh
-      rw [Int.not_lt]
-      exact h
+    constructor <;> omega
 
 theorem cast_le {a b : Int} : a ≤ b ↔ Rat.ofInt a ≤ Rat.ofInt b :=
   ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
