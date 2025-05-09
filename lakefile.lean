@@ -3,13 +3,13 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/leanprover-community/lean-auto.git" @ "ea25e0ddb39572206106741c0983c095af93e6a8"
+  git "https://github.com/leanprover-community/lean-auto.git" @ "653a6252ad11f5dadd214bf2514413067d027c98"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "1c64fef"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "bf3efb1"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.17.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.18.0"
 
 package smt
 
@@ -67,10 +67,14 @@ Run tests.
 where
   runTest (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
     IO.println s!"Start : {test}"
-    let some cvc5 ← findModule? ``cvc5 | return 2
+    let some cvc5 ← findPackage? ``cvc5 | return 2
+    let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
+    let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
+    let some mods := names.mapM cvc5.findModule? | return 3
+    let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={cvc5.dynlibFile}", test.toString]
+      args := #[ffi] ++ dynlibs ++ #[test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -80,7 +84,7 @@ where
       IO.println s!"Stderr:\n{out.stderr}"
       IO.println s!"Stdout:\n{out.stdout}"
       IO.println s!"Expect:\n{expected}"
-      return 3
+      return 4
     IO.println s!"Passed: {test}"
     return 0
 
@@ -110,10 +114,14 @@ where
   updateTest (test : FilePath) : ScriptM UInt32 := do
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
-    let some cvc5 ← findModule? ``cvc5 | return 2
+    let some cvc5 ← findPackage? ``cvc5 | return 2
+    let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
+    let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
+    let some mods := names.mapM cvc5.findModule? | return 3
+    let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[s!"--load-dynlib={cvc5.dynlibFile}", test.toString]
+      args := #[ffi] ++ dynlibs ++ #[test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout
@@ -130,11 +138,14 @@ Use Firefox Profiler UI to view profiling information.
 script profile args do
   let file : FilePath := args[0]!
   let log : FilePath := args[1]!
-  let some cvc5 ← findModule? ``cvc5 | return 2
+  let some cvc5 ← findPackage? ``cvc5 | return 2
+  let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
+  let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
+  let some mods := names.mapM cvc5.findModule? | return 3
+  let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
   let child ← IO.Process.spawn {
     cmd := (← getLean).toString
-    args := #[s!"--load-dynlib={cvc5.dynlibFile}", "-Dtrace.profiler=true",
-              s!"-Dtrace.profiler.output={log}", file.toString]
+    args := #[ffi] ++ dynlibs ++ #["-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}", file.toString]
     env := ← getAugmentedEnv
   }
   child.wait

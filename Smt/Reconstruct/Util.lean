@@ -73,7 +73,7 @@ def collectPropsInAndChain' : Nat → Expr → MetaM (List Expr)
 def pull! [Inhabited α] (i j : Nat) (xs : List α) : List α :=
   List.flatten
     [ xs.take i
-    , [xs.get! j]
+    , [xs[j]!]
     , List.drop i (xs.eraseIdx j)
     ]
 
@@ -83,7 +83,7 @@ def subList (i j : Nat) (xs : List α) : List α :=
   List.take (j + 1 - i) (xs.drop i)
 
 def permutateList [Inhabited α] : List α → List Nat → List α :=
-  λ xs => List.foldr (λ i => (· :: ·) (List.get! xs i)) []
+  λ xs => List.foldr (λ i => (· :: ·) (xs[i]!)) []
 
 def findIndex? [BEq α] : List α → α → Option Nat
 | [], _ => none
@@ -125,7 +125,7 @@ def getNatLit? : Expr → Option Nat
 | _ => none
 
 def getIthExpr? : Nat → Expr → MetaM (Option Expr) :=
-  λ i e => do pure $ List.get? (← collectPropsInOrChain e) i
+  λ i e => do pure $ (← collectPropsInOrChain e)[i]?
 
 def stxToNat (h : Term) : TacticM Nat := do
   let expr ← elabTerm h.raw none
