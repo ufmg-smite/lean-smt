@@ -3,13 +3,13 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/leanprover-community/lean-auto.git" @ "653a6252ad11f5dadd214bf2514413067d027c98"
+  git "https://github.com/abdoo8080/lean-auto.git" @ "abf807a571362ac90e8083e72dd8dc4211d5c969"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "bf3efb1"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "6303bf3"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.18.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.19.0"
 
 package smt
 
@@ -68,13 +68,12 @@ where
   runTest (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
     IO.println s!"Start : {test}"
     let some cvc5 ← findPackage? ``cvc5 | return 2
-    let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
-    let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
-    let some mods := names.mapM cvc5.findModule? | return 3
-    let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
+    let libffi := s!"--load-dynlib={cvc5.staticLibDir / nameToSharedLib "ffi"}"
+    let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
+    let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[ffi] ++ dynlibs ++ #[test.toString]
+      args := #[libffi, libcvc5, test.toString]
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
@@ -115,13 +114,12 @@ where
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
     let some cvc5 ← findPackage? ``cvc5 | return 2
-    let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
-    let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
-    let some mods := names.mapM cvc5.findModule? | return 3
-    let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
+    let libffi := s!"--load-dynlib={cvc5.staticLibDir / nameToSharedLib "ffi"}"
+    let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
+    let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
     let out ← IO.Process.output {
       cmd := (← getLean).toString
-      args := #[ffi] ++ dynlibs ++ #[test.toString]
+      args := #[libffi, libcvc5, test.toString]
       env := ← getAugmentedEnv
     }
     IO.FS.writeFile expected out.stdout
@@ -139,13 +137,12 @@ script profile args do
   let file : FilePath := args[0]!
   let log : FilePath := args[1]!
   let some cvc5 ← findPackage? ``cvc5 | return 2
-  let ffi := s!"--load-dynlib={cvc5.nativeLibDir / nameToSharedLib "ffi"}"
-  let names := [`cvc5.Init, `cvc5.Kind, `cvc5.ProofRule, `cvc5.SkolemId, `cvc5.Solver, `cvc5]
-  let some mods := names.mapM cvc5.findModule? | return 3
-  let dynlibs := mods.map (s!"--plugin={·.dynlibFile}")
+  let libffi := s!"--load-dynlib={cvc5.staticLibDir / nameToSharedLib "ffi"}"
+  let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
+  let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
   let child ← IO.Process.spawn {
     cmd := (← getLean).toString
-    args := #[ffi] ++ dynlibs ++ #["-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}", file.toString]
+    args := #[libffi, libcvc5, "-Dtrace.profiler=true", s!"-Dtrace.profiler.output={log}", file.toString]
     env := ← getAugmentedEnv
   }
   child.wait

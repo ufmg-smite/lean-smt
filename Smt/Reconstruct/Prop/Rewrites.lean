@@ -68,7 +68,7 @@ theorem bool_or_de_morgan : (¬orN (x :: y :: zs)) = andN [¬x, ¬orN (y :: zs)]
 theorem bool_implies_de_morgan : (¬(x → y)) = andN [x, ¬y] :=
   propext Classical.not_imp_iff_and_not
 theorem bool_and_de_morgan : (¬andN (x :: y :: zs)) = orN [¬x, ¬andN (y :: zs)] :=
-  propext Classical.not_and_iff_or_not_not
+  propext Classical.not_and_iff_not_or_not
 
 theorem bool_or_and_distrib :
   orN (andN (y₁ :: y₂ :: ys) :: z₁ :: zs) = andN [orN (y₁ :: z₁ :: zs), orN (andN (y₂ :: ys) :: z₁ :: zs)] :=

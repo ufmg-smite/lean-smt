@@ -15,26 +15,32 @@ class Absorb (mul : α → α → α) where
   mul_zero : ∀ (a : α), mul a zero = zero
 
 instance : Absorb And where
+  zero := False
   zero_mul := false_and
   mul_zero := and_false
 
 instance : Absorb Or where
+  zero := True
   zero_mul := true_or
   mul_zero := or_true
 
 instance : @Absorb Int (· * ·) where
+  zero := 0
   zero_mul := Int.zero_mul
   mul_zero := Int.mul_zero
 
 instance : @Absorb (BitVec w) (· &&& ·) where
+  zero := 0#w
   zero_mul := @BitVec.zero_and w
   mul_zero := @BitVec.and_zero w
 
 instance : @Absorb (BitVec w) (· ||| ·) where
+  zero := BitVec.allOnes w
   zero_mul := @BitVec.allOnes_or w
   mul_zero := @BitVec.or_allOnes w
 
 instance : @Absorb (BitVec w) (· * ·) where
+  zero := 0#w
   zero_mul := @BitVec.zero_mul w
   mul_zero := @BitVec.mul_zero w
 
