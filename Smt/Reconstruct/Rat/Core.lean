@@ -298,8 +298,8 @@ protected theorem nonneg_antisymm : 0 ≤ x → 0 ≤ -x → x = 0 := by
 protected theorem neg_sub : -(x - y) = y - x := by
   cases x with | mk' nx dx _ _ =>
   cases y with | mk' ny dy _ _ =>
-  simp [Rat.sub_eq_add_neg, Neg.neg]
-  simp [Rat.neg, Rat.divInt_ofNat, Rat.add_def, Rat.normalize_eq]
+  simp only [Neg.neg, Rat.sub_eq_add_neg]
+  simp only [Rat.neg, Int.neg_mul, add_def, normalize_eq, mk'.injEq]
   rw [Nat.mul_comm dx dy]
   constructor
   · rw [← Int.neg_ediv_of_dvd]
@@ -346,7 +346,7 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
       simp only [h, and_self, ↓reduceIte, Bool.true_eq_false, num_nonneg, false_iff]
       simp only [Rat.sub_def, Rat.not_le, normalize_eq, Rat.neg]
       simp [← Rat.num_neg]
-      apply Int.ediv_neg'
+      apply Int.ediv_neg_of_neg_of_pos
       · apply Int.sub_neg_of_lt
         apply Int.lt_of_lt_of_le (b := 0)
         · apply Int.mul_neg_of_neg_of_pos h.1
@@ -418,7 +418,7 @@ protected theorem divInt_le_divInt
   rw [Rat.le_iff_sub_nonneg, ← Int.sub_nonneg]
   simp [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
   rw [Rat.divInt_add_divInt]
-  simp [Rat.divInt_nonneg_iff_of_pos_right (Int.mul_pos d0 b0)]
+  simp only [Rat.divInt_nonneg_iff_of_pos_right (Int.mul_pos d0 b0), Int.neg_mul]
   rw [← Int.sub_nonneg (a := c * b)]
   rw [← Int.sub_eq_add_neg]
   · apply Int.lt_iff_le_and_ne.mp d0 |>.2 |>.symm

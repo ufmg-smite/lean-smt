@@ -173,10 +173,6 @@ theorem neg_nonneg : 0 ≤ -a ↔ a ≤ 0 := ⟨Int.nonpos_of_neg_nonneg, Int.ne
 @[simp] protected
 theorem neg_neg_iff_pos : -a < 0 ↔ 0 < a := ⟨Int.pos_of_neg_neg, Int.neg_neg_of_pos⟩
 
-@[simp] protected
-theorem neg_nonpos_iff_nonneg : -a ≤ 0 ↔ 0 ≤ a :=
-  ⟨Int.nonneg_of_neg_nonpos, Int.neg_nonpos_of_nonneg⟩
-
 @[simp]
 protected theorem sub_pos : 0 < a - b ↔ b < a := ⟨Int.lt_of_sub_pos, Int.sub_pos_of_lt⟩
 

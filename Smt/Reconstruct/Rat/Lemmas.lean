@@ -27,8 +27,7 @@ theorem lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
   | inr hr => exact False.elim (h hr)
 
 theorem neg_self_add (c : Rat) : -c + c = 0 := by
-  simp [Rat.add_def]
-  exact Int.add_left_neg _
+  simp only [add_def, neg_num, Int.neg_mul, neg_den, Int.add_left_neg, normalize_zero]
 
 theorem le_antisymm {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := by
   rw [Rat.le_iff_sub_nonneg] at hab hba
@@ -73,9 +72,9 @@ protected theorem divInt_lt_divInt
   {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
 : a /. b < c /. d ↔ a * d < c * b := by
   rw [Rat.lt_iff_sub_pos, ← Int.sub_pos]
-  simp [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
+  simp only [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
   rw [Rat.divInt_add_divInt]
-  simp [Rat.divInt_pos_iff_of_pos_right (Int.mul_pos d0 b0)]
+  simp only [Int.neg_mul, Rat.divInt_pos_iff_of_pos_right (Int.mul_pos d0 b0), Int.sub_pos]
   rw [← Int.sub_pos (a := c * b)]
   rw [← Int.sub_eq_add_neg]
   · exact Ne.symm (Int.ne_of_lt d0)
@@ -494,7 +493,7 @@ theorem neg_lt_neg  : a < b → -a > -b :=
       rw [Rat.divInt_pos_iff_of_pos_right this]
       have : ((0 : Int) < db * da) := Int.mul_pos bar' foo'
       rw [Rat.divInt_pos_iff_of_pos_right this] at h'
-      simp
+      simp only [Int.neg_mul, Int.sub_neg, gt_iff_lt]
       rw [Int.add_comm, <- Int.sub_eq_add_neg]
       exact h'
 
@@ -515,7 +514,7 @@ theorem neg_le_neg : a ≤ b → -a ≥ -b :=
       rw [Rat.divInt_nonneg_iff_of_pos_right this]
       have : ((0 : Int) < db * da) := Int.mul_pos bar' foo'
       rw [Rat.divInt_nonneg_iff_of_pos_right this] at h'
-      simp
+      simp only [Int.neg_mul, Int.sub_neg, ge_iff_le]
       rw [Int.add_comm, <- Int.sub_eq_add_neg]
       exact h'
 
@@ -946,7 +945,7 @@ theorem Rat.neg_mul (a b : Rat) : -a * b = - (a * b) := by
 theorem Int.ge_of_mul_le_mul_left_neg {a b c : Int} (w : a * b ≤ a * c) (h : a < 0) : c ≤ b := by
   have w := Int.sub_nonneg_of_le w
   rw [← Int.mul_sub] at w
-  have w := Int.ediv_nonpos w (Int.le_of_lt h)
+  have w := Int.ediv_nonpos_of_nonneg_of_nonpos w (Int.le_of_lt h)
   rw [Int.mul_ediv_cancel_left _ (Int.ne_of_lt h)] at w
   exact Int.le_of_sub_nonpos w
 
@@ -1005,7 +1004,7 @@ theorem mul_tangent_mp_lower (h : x * y ≤ b * x + a * y - a * b)
   rw [Rat.add_comm] at h
   rw [<- Rat.sub_eq_add_neg] at h
   intro h2
-  have h2 := Classical.not_and_iff_or_not_not.mp h2
+  have h2 := Classical.not_and_iff_not_or_not.mp h2
   rw [Rat.not_le, Rat.not_le] at h2
   cases h2 with
   | inl h2 =>
@@ -1087,7 +1086,7 @@ theorem mul_tangent_mp_upper (h : x * y ≥ b * x + a * y - a * b)
   rw [<- Rat.sub_eq_add_neg] at h
   rw [Rat.mul_comm, Rat.mul_comm x _] at h
   intro h2
-  have h2 := Classical.not_and_iff_or_not_not.mp h2
+  have h2 := Classical.not_and_iff_not_or_not.mp h2
   rw [Rat.not_le, Rat.not_le] at h2
   cases h2 with
   | inl h2 =>

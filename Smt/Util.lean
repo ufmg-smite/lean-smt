@@ -55,7 +55,7 @@ def countConst (e : Expr) (c : Name) : Nat :=
 
 /-- Set of constants defined by SMT-LIB. -/
 def smtConsts : Std.HashSet String :=
-  List.foldr (fun c s => s.insert c) Std.HashSet.empty
+  Std.HashSet.ofList
   [
     "=",
     "distinct",
