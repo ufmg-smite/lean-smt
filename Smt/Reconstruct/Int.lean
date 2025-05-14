@@ -336,7 +336,7 @@ def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) :
   addThm (if ks == .EQUAL then q($ls = $rs) else q($ls > $rs)) hs
 
 def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  let ts := pf.getResult[0]!.getChildren
+  let ts := if pf.getResult[0]!.getKind == .AND then pf.getResult[0]!.getChildren else #[pf.getResult[0]!]
   let mut hs : Array (Name × (Array Expr → ReconstructM Expr)) := #[]
   let mut map : Std.HashMap cvc5.Term Nat := {}
   for h : i in [0:ts.size] do
