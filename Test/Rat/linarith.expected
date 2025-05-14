@@ -1,8 +1,8 @@
-Test/Rat/linarith.lean:74:9: warning: unused variable `a`
+Test/Rat/linarith.lean:106:9: warning: unused variable `a`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:74:13: warning: unused variable `c`
+Test/Rat/linarith.lean:106:13: warning: unused variable `c`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:84:9: warning: unused variable `a`
+Test/Rat/linarith.lean:116:9: warning: unused variable `a`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:84:13: warning: unused variable `c`
+Test/Rat/linarith.lean:116:13: warning: unused variable `c`
 note: this linter can be disabled with `set_option linter.unusedVariables false`

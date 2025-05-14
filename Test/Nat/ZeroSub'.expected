@@ -1,6 +1,6 @@
 Test/Nat/ZeroSub'.lean:6:12: error: tactic 'assumption' failed
 case zero
-_uniq✝⁷⁶⁸⁻⁰ : ¬0 ≠ 0
+_uniq✝²⁸³⁻⁰ : ¬¬(if 0 ≤ 0 then 0 - 0 else 0) = 0
 ⊢ ¬andN ([] ++ [¬0 - 0 = 0])
 Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch
   HAdd.hAdd x

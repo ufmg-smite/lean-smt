@@ -10,7 +10,7 @@ query:
 (declare-const b Int)
 (assert (= (dvd a b) true))
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd x z) true) (= (dvd x (+ y z)) true)))))))
-(assert (distinct (dvd a (+ (+ b c) d)) true))
+(assert (not (= (dvd a (+ (+ b c) d)) true)))
 (check-sat)
 Test/Int/DvdTimeout.lean:12:25: error: unsolved goals
 a b c d : Int

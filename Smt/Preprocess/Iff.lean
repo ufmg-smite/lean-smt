@@ -24,7 +24,14 @@ def replaceIff (e : Expr) : MetaM Expr :=
       none
   Meta.mkAppM ``Eq #[e, e.replace f]
 
+def containsIff (e : Expr) : Bool :=
+  (Expr.const ``Iff []).occurs e
+
 def elimIff (mv : MVarId) (hs : List Expr) : MetaM (List Expr × MVarId) := mv.withContext do
+  let t ← instantiateMVars (← mv.getType)
+  let ts ← hs.mapM (Meta.inferType · >>= instantiateMVars)
+  if !(containsIff t || ts.any containsIff) then
+    return (hs, mv)
   let simpTheorems ← #[``eq_self, ``iff_eq_eq].foldlM (·.addConst ·) ({} : Meta.SimpTheorems)
   let simpTheorems := #[simpTheorems]
   let congrTheorems ← Meta.getSimpCongrTheorems

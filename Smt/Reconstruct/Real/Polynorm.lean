@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed, Harun Khan
 
 import Mathlib.Data.Rat.Cast.CharZero
 import Mathlib.Data.Real.Basic
+import Smt.Recognizers
 
 namespace Smt.Reconstruct.Real.PolyNorm
 
@@ -408,15 +409,6 @@ open Lean Qq
 
 abbrev PolyM := StateT (Array Q(Int) × Array Q(Real)) MetaM
 
-def getRealIndex (e : Q(Real)) : PolyM Nat := do
-  let ⟨is, rs⟩ ← get
-  if let some i := rs.findIdx? (· == e) then
-    return i
-  else
-    let size := rs.size
-    set (is, rs.push e)
-    return size
-
 def getIntIndex (e : Q(Int)) : PolyM Nat := do
   let ⟨is, rs⟩ ← get
   if let some i := is.findIdx? (· == e) then
@@ -426,65 +418,90 @@ def getIntIndex (e : Q(Int)) : PolyM Nat := do
     set (is.push e, rs)
     return size
 
-partial def toRealValExpr (e : Q(Real)) : PolyM Q(PolyNorm.RealValExpr) := do
-  match e with
-  | ~q(@OfNat.ofNat _ _ (@instOfNatAtLeastTwo _ _ _ instNatAtLeastTwo)) =>
-    let some n := (e.getArg! 1).rawNatLit? | throwError "[poly_norm] expected a raw natural number, got {e}"
-    pure q(.val (@OfNat.ofNat Rat $n _))
-  | ~q(0)       => pure q(.val 0)
-  | ~q(1)       => pure q(.val 1)
-  | ~q(-$x) => pure q(.neg $(← toRealValExpr x))
-  | ~q($x + $y) => pure q(.add $(← toRealValExpr x) $(← toRealValExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toRealValExpr x) $(← toRealValExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toRealValExpr x) $(← toRealValExpr y))
-  | ~q($x / $y) => pure q(.div $(← toRealValExpr x) $(← toRealValExpr y))
-  | e => throwError "[poly_norm] expected a rational number, got {e}"
+def getRealIndex (e : Q(Real)) : PolyM Nat := do
+  let ⟨is, rs⟩ ← get
+  if let some i := rs.findIdx? (· == e) then
+    return i
+  else
+    let size := rs.size
+    set (is, rs.push e)
+    return size
 
-partial def toQPolyNormIntExpr (e : Q(Int)) : PolyM Q(PolyNorm.IntExpr) := do
-  match e with
-  | ~q(OfNat.ofNat $n) => pure q(.val (@OfNat.ofNat Int $n _))
-  | ~q(-$x) => pure q(.neg $(← toQPolyNormIntExpr x))
-  | ~q($x + $y) => pure q(.add $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | e => let v : Nat ← getIntIndex e; pure q(.var $v)
+partial def reifyRealVal (e : Q(Real)) : PolyM Q(PolyNorm.RealValExpr) := do
+  if let some n := e.natLitOf? q(Real) then
+    return q(.val (OfNat.ofNat $n))
+  else if let some e := e.negOf? q(Real) then
+    return q(.neg $(← reifyRealVal e))
+  else if let some (x, y) := e.hAddOf? q(Real) q(Real) then
+    return q(.add $(← reifyRealVal x) $(← reifyRealVal y))
+  else if let some (x, y) := e.hSubOf? q(Real) q(Real) then
+    return q(.sub $(← reifyRealVal x) $(← reifyRealVal y))
+  else if let some (x, y) := e.hMulOf? q(Real) q(Real) then
+    return q(.mul $(← reifyRealVal x) $(← reifyRealVal y))
+  else if let some (x, y) := e.hDivOf? q(Real) q(Real) then
+    return q(.div $(← reifyRealVal x) $(← reifyRealVal y))
+  else
+    throwError "[poly_norm] expected a rational number, got {e}"
 
-partial def toQPolyNormRealExpr (e : Q(Real)) : PolyM Q(PolyNorm.RealExpr) := do
-  match e with
-  | ~q(@OfNat.ofNat _ _ (@instOfNatAtLeastTwo _ _ _ instNatAtLeastTwo)) =>
-    let some n := (e.getArg! 1).rawNatLit? | throwError "[poly_norm] expected a raw natural number, got {e}"
-    pure q(.val (@OfNat.ofNat Rat $n _))
-  | ~q(0)       => pure q(.val 0)
-  | ~q(1)       => pure q(.val 1)
-  | ~q(-$x) => pure q(.neg $(← toQPolyNormRealExpr x))
-  | ~q($x + $y) => pure q(.add $(← toQPolyNormRealExpr x) $(← toQPolyNormRealExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toQPolyNormRealExpr x) $(← toQPolyNormRealExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toQPolyNormRealExpr x) $(← toQPolyNormRealExpr y))
-  | ~q($x / $y) => pure q(.divConst $(← toQPolyNormRealExpr x) $(← toRealValExpr y))
-  | ~q(($x : Int)) => pure q(.cast $(← toQPolyNormIntExpr x))
-  | e => let v : Nat ← getRealIndex e; pure q(.var $v)
+partial def reifyInt (e : Q(Int)) : PolyM Q(PolyNorm.IntExpr) := do
+  if let some e := e.natLitOf? q(Int) then
+    return q(.val (OfNat.ofNat $e))
+  else if let some e := e.negOf? q(Int) then
+    return q(.neg $(← reifyInt e))
+  else if let some (x, y) := e.hAddOf? q(Int) q(Int) then
+    return q(.add $(← reifyInt x) $(← reifyInt y))
+  else if let some (x, y) := e.hSubOf? q(Int) q(Int) then
+    return q(.sub $(← reifyInt x) $(← reifyInt y))
+  else if let some (x, y) := e.hMulOf? q(Int) q(Int) then
+    return q(.mul $(← reifyInt x) $(← reifyInt y))
+  else
+    let v : Nat ← getIntIndex e
+    return q(.var $v)
+
+partial def reifyReal (e : Q(Real)) : PolyM Q(PolyNorm.RealExpr) := do
+  if let some e := e.natLitOf? q(Real) then
+    return q(.val (OfNat.ofNat $e))
+  else if let some e := e.negOf? q(Real) then
+    return q(.neg $(← reifyReal e))
+  else if let some (x, y) := e.hAddOf? q(Real) q(Real) then
+    return q(.add $(← reifyReal x) $(← reifyReal y))
+  else if let some (x, y) := e.hSubOf? q(Real) q(Real) then
+    return q(.sub $(← reifyReal x) $(← reifyReal y))
+  else if let some (x, y) := e.hMulOf? q(Real) q(Real) then
+    return q(.mul $(← reifyReal x) $(← reifyReal y))
+  else if let some (x, y) := e.hDivOf? q(Real) q(Real) then
+    return q(.divConst $(← reifyReal x) $(← reifyRealVal y))
+  else if let some e := e.intCastOf? q(Real) then
+    return q(.cast $(← reifyInt e))
+  else
+    let v : Nat ← getRealIndex e
+    return q(.var $v)
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, (is, rs)) ← (toQPolyNormRealExpr l).run (#[], #[])
-  let (r, (is, rs)) ← (toQPolyNormRealExpr r).run (is, rs)
-  let is : Q(Array Int) ← pure (is.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let rs : Q(Array Real) ← pure (rs.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let ictx : Q(PolyNorm.IntContext) := q((«$is».getD · 0))
-  let rctx : Q(PolyNorm.RealContext) := q((«$rs».getD · 0))
+  let (l, (is, rs)) ← (reifyReal l).run (#[], #[])
+  let (r, (is, rs)) ← (reifyReal r).run (is, rs)
+  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let rctx : Q(PolyNorm.RealContext) := if h : 0 < rs.size
+    then let rs : Q(RArray Real) := (RArray.ofArray rs h).toExpr q(Real) id; q(«$rs».get)
+    else q(fun _ => 0)
   let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)
   mv.assign q(@PolyNorm.RealExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 
 def nativePolyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, (is, rs)) ← (toQPolyNormRealExpr l).run (#[], #[])
-  let (r, (is, rs)) ← (toQPolyNormRealExpr r).run (is, rs)
-  let is : Q(Array Int) ← pure (is.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let rs : Q(Array Real) ← pure (rs.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let ictx : Q(PolyNorm.IntContext) := q((«$is».getD · 0))
-  let rctx : Q(PolyNorm.RealContext) := q((«$rs».getD · 0))
+  let (l, (is, rs)) ← (reifyReal l).run (#[], #[])
+  let (r, (is, rs)) ← (reifyReal r).run (is, rs)
+  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let rctx : Q(PolyNorm.RealContext) := if h : 0 < rs.size
+    then let rs : Q(RArray Real) := (RArray.ofArray rs h).toExpr q(Real) id; q(«$rs».get)
+    else q(fun _ => 0)
   let h ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
   mv.assign q(@PolyNorm.RealExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 where
@@ -494,7 +511,9 @@ where
     let b : Q(Bool) := .const auxDeclName []
     return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
   mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxName baseName 1
+    let auxName ← match (← getEnv).asyncPrefix? with
+      | none          => Lean.mkAuxName baseName 1
+      | some declName => Lean.mkAuxName (declName ++ baseName) 1
     let decl := Declaration.defnDecl {
       name := auxName, levelParams := [], type, value
       hints := .abbrev

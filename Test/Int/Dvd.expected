@@ -8,7 +8,7 @@ query:
 (assert (= (dvd b c) true))
 (declare-const a Int)
 (assert (= (dvd a b) true))
-(assert (distinct (dvd a c) true))
+(assert (not (= (dvd a c) true)))
 (check-sat)
 goal: dvd c e = true
 
@@ -20,7 +20,7 @@ query:
 (assert (= (dvd d e) true))
 (declare-const c Int)
 (assert (= (dvd c d) true))
-(assert (distinct (dvd c e) true))
+(assert (not (= (dvd c e) true)))
 (check-sat)
 goal: dvd a e = true
 
@@ -32,5 +32,5 @@ query:
 (assert (= (dvd c e) true))
 (declare-const a Int)
 (assert (= (dvd a c) true))
-(assert (distinct (dvd a e) true))
+(assert (not (= (dvd a e) true)))
 (check-sat)

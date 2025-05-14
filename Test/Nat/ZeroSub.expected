@@ -4,5 +4,5 @@ query:
 (define-sort Nat () Int)
 (declare-const x Nat)
 (assert (>= x 0))
-(assert (distinct (ite (<= x 0) (- 0 x) 0) 0))
+(assert (not (= (ite (<= x 0) (- 0 x) 0) 0)))
 (check-sat)
