@@ -1,10 +1,1 @@
-goal: "a".contains 'a' = true
-
-query:
-(declare-sort Char 0)
-(declare-fun String.contains (String Char) Bool)
-(define-sort Nat () Int)
-(declare-fun Char.ofNat (Nat) Char)
-(assert (distinct (String.contains "a" (Char.ofNat (+ 96 1))) true))
-(check-sat)
-Test/String/Contains.lean:3:8: warning: declaration uses 'sorry'
+Test/String/Contains.lean:4:2: error: cannot translate 97

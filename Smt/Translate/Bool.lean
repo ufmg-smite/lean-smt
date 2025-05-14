@@ -5,32 +5,44 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Qq
-
+import Smt.Recognizers
 import Smt.Translate
 
 namespace Smt.Translate.Bool
 
-open Qq
 open Translator Term
 
-@[smt_translate] def translateType : Translator := fun (e : Q(Type)) => match e with
-  | ~q(Bool) => return symbolT "Bool"
-  | _        => return none
+private def mkBool : Lean.Expr :=
+  .const ``Bool []
 
-@[smt_translate] def translateBool : Translator := fun (e : Q(Bool)) => match e with
-  | ~q(true)              => return symbolT "true"
-  | ~q(false)             => return symbolT "false"
-  | ~q(!$x)               => return appT (symbolT "not") (← applyTranslators! x)
-  | ~q(($x : Bool) == $y) => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(($x : Bool) != $y) => return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x && $y)          => return mkApp2 (symbolT "and") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x || $y)          => return mkApp2 (symbolT "or") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x ^^ $y)         => return mkApp2 (symbolT "xor") (← applyTranslators! x) (← applyTranslators! y)
-  | _                     => return none
+@[smt_translate] def translateType : Translator := fun e => match e with
+  | .const ``Bool _ => return symbolT "Bool"
+  | _               => return none
 
-@[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
-  | ~q(($n : Bool) = $m) => return mkApp2 (symbolT "=") (← applyTranslators! n) (← applyTranslators! m)
-  | _                    => return none
+@[smt_translate] def translateBool : Translator := fun e => do
+  if let .const ``true _ := e then
+    return symbolT "true"
+  else if let .const ``false _ := e then
+    return symbolT "false"
+  else if let .some b := e.app1? ``not then
+    return appT (symbolT "not") (← applyTranslators! b)
+  else if let some (a, b) := e.app2? ``and then
+    return mkApp2 (symbolT "and") (← applyTranslators! a) (← applyTranslators! b)
+  else if let some (a, b) := e.app2? ``or then
+    return mkApp2 (symbolT "or") (← applyTranslators! a) (← applyTranslators! b)
+  else if let some (a, b) := e.app2? ``xor then
+    return mkApp2 (symbolT "xor") (← applyTranslators! a) (← applyTranslators! b)
+  else if let some (_, x, y) := e.beq? then
+    return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
+  else if let some (_, x, y) := e.bne? then
+    return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
+  else
+    return none
+
+@[smt_translate] def translateProp : Translator := fun e => do
+  if let some (.const ``Bool _, a, b) := e.eq? then
+    return mkApp2 (symbolT "=") (← applyTranslators! a) (← applyTranslators! b)
+  else
+    return none
 
 end Smt.Translate.Bool

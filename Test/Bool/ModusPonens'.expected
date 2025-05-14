@@ -5,5 +5,5 @@ query:
 (declare-const q Bool)
 (assert (=> (= p true) (= q true)))
 (assert (= p true))
-(assert (distinct q true))
+(assert (not (= q true)))
 (check-sat)

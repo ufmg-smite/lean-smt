@@ -5,30 +5,42 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Qq
-
+import Smt.Recognizers
 import Smt.Translate
 
 namespace Smt.Translate.Prop
 
 open Lean Expr
-open Qq
 open Translator Term
 
-@[smt_translate] def translateType : Translator := fun (e : Q(Type)) => match e with
-  | ~q(Prop) => return symbolT "Bool"
-  | _        => return none
+private def mkProp : Lean.Expr :=
+  .sort 0
 
-@[smt_translate] def translateProp : Translator := fun (e : Q(Prop)) => match e with
-  | ~q(True)                  => return symbolT "true"
-  | ~q(False)                 => return symbolT "false"
-  | ~q($x = $y)               => return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q($x ≠ $y)               => return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
-  | ~q(¬$p)                   => return appT (symbolT "not") (← applyTranslators! p)
-  | ~q($p ∧ $q)               => return mkApp2 (symbolT "and") (← applyTranslators! p) (← applyTranslators! q)
-  | ~q($p ∨ $q)               => return mkApp2 (symbolT "or") (← applyTranslators! p) (← applyTranslators! q)
-  | ~q(∀ _ : ($p : Prop), $q) => return mkApp2 (symbolT "=>") (← applyTranslators! p) (← applyTranslators! q)
-  | _                         => return none
+@[smt_translate] def translateType : Translator := fun e => match e with
+  | .sort 0        => return symbolT "Bool"
+  | _              => return none
+
+@[smt_translate] def translateProp : Translator := fun e => do
+  if let .const ``True _ := e then
+    return symbolT "true"
+  else if let .const ``False _ := e then
+    return symbolT "false"
+  else if let some p := e.not? then
+    return appT (symbolT "not") (← applyTranslators! p)
+  else if let some (p, q) := e.and? then
+    return mkApp2 (symbolT "and") (← applyTranslators! p) (← applyTranslators! q)
+  else if let some (p, q) := e.or? then
+    return mkApp2 (symbolT "or") (← applyTranslators! p) (← applyTranslators! q)
+  else if let some (_, x, y) := e.eq? then
+    return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
+  else if let some (_, x, y) := e.ne? then
+    return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
+  -- Implication is more expensive than other connectives, because it is
+  -- represented as a (non-)dependent arrow in Lean. So we keep it last.
+  else if let some (p, q) ← e.imp? then
+    return mkApp2 (symbolT "=>") (← applyTranslators! p) (← applyTranslators! q)
+  else
+    return none
 
 @[smt_translate] def translateExists : Translator
   | e@(app (app (const `Exists _) _) f) => do

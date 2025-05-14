@@ -3,7 +3,7 @@ goal: x ^^^ y = y ^^^ x
 query:
 (declare-const y (_ BitVec 2))
 (declare-const x (_ BitVec 2))
-(assert (distinct (bvxor x y) (bvxor y x)))
+(assert (not (= (bvxor x y) (bvxor y x))))
 (check-sat)
 Test/BitVec/XorComm.lean:3:8: warning: declaration uses 'sorry'
 goal: x ^^^ y = y ^^^ x
@@ -11,6 +11,6 @@ goal: x ^^^ y = y ^^^ x
 query:
 (declare-const y (_ BitVec 8))
 (declare-const x (_ BitVec 8))
-(assert (distinct (bvxor x y) (bvxor y x)))
+(assert (not (= (bvxor x y) (bvxor y x))))
 (check-sat)
 Test/BitVec/XorComm.lean:7:8: warning: declaration uses 'sorry'

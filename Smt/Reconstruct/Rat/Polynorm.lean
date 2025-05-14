@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed, Harun Khan
 
 import Batteries.Data.Rat
 import Smt.Reconstruct.Rat.Core
+import Smt.Recognizers
 import Lean
 import Qq
 
@@ -393,15 +394,6 @@ open Qq
 
 abbrev PolyM := StateT (Array Q(Int) × Array Q(Rat)) MetaM
 
-def getRatIndex (e : Q(Rat)) : PolyM Nat := do
-  let ⟨is, rs⟩ ← get
-  if let some i := rs.findIdx? (· == e) then
-    return i
-  else
-    let size := rs.size
-    set (is, rs.push e)
-    return size
-
 def getIntIndex (e : Q(Int)) : PolyM Nat := do
   let ⟨is, rs⟩ ← get
   if let some i := is.findIdx? (· == e) then
@@ -411,57 +403,90 @@ def getIntIndex (e : Q(Int)) : PolyM Nat := do
     set (is.push e, rs)
     return size
 
-partial def toRatConst (e : Q(Rat)) : PolyM Rat := do
-  match e with
-  | ~q(OfNat.ofNat $n) => pure n.rawNatLit?.get!
-  | ~q(-$x) => pure (-(← toRatConst x))
-  | ~q($x + $y) => pure ((← toRatConst x) + (← toRatConst y))
-  | ~q($x - $y) => pure ((← toRatConst x) - (← toRatConst y))
-  | ~q($x * $y) => pure ((← toRatConst x) * (← toRatConst y))
-  | ~q($x / $y) => pure ((← toRatConst x) / (← toRatConst y))
-  | e => throwError "[poly_norm] expected a rational number, got {e}"
+def getRatIndex (e : Q(Rat)) : PolyM Nat := do
+  let ⟨is, rs⟩ ← get
+  if let some i := rs.findIdx? (· == e) then
+    return i
+  else
+    let size := rs.size
+    set (is, rs.push e)
+    return size
 
-partial def toQPolyNormIntExpr (e : Q(Int)) : PolyM Q(PolyNorm.IntExpr) := do
-  match e with
-  | ~q(OfNat.ofNat $n) => pure q(.val (@OfNat.ofNat Int $n _))
-  | ~q(-$x) => pure q(.neg $(← toQPolyNormIntExpr x))
-  | ~q($x + $y) => pure q(.add $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toQPolyNormIntExpr x) $(← toQPolyNormIntExpr y))
-  | e => let v : Nat ← getIntIndex e; pure q(.var $v)
+partial def reifyRatVal (e : Q(Rat)) : PolyM Rat := do
+  if let some n := e.natLitOf? q(Rat) then
+    return n
+  else if let some e := e.negOf? q(Rat) then
+    return -(← reifyRatVal e)
+  else if let some (x, y) := e.hAddOf? q(Rat) q(Rat) then
+    return (← reifyRatVal x) + (← reifyRatVal y)
+  else if let some (x, y) := e.hSubOf? q(Rat) q(Rat) then
+    return (← reifyRatVal x) - (← reifyRatVal y)
+  else if let some (x, y) := e.hMulOf? q(Rat) q(Rat) then
+    return (← reifyRatVal x) * (← reifyRatVal y)
+  else if let some (x, y) := e.hDivOf? q(Rat) q(Rat) then
+    return (← reifyRatVal x) / (← reifyRatVal y)
+  else
+    throwError "[poly_norm] expected a rational number, got {e}"
 
-partial def toQPolyNormRatExpr (e : Q(Rat)) : PolyM Q(PolyNorm.RatExpr) := do
-  match e with
-  | ~q(OfNat.ofNat $n) => pure q(.val (@OfNat.ofNat Rat $n _))
-  | ~q(-$x) => pure q(.neg $(← toQPolyNormRatExpr x))
-  | ~q($x + $y) => pure q(.add $(← toQPolyNormRatExpr x) $(← toQPolyNormRatExpr y))
-  | ~q($x - $y) => pure q(.sub $(← toQPolyNormRatExpr x) $(← toQPolyNormRatExpr y))
-  | ~q($x * $y) => pure q(.mul $(← toQPolyNormRatExpr x) $(← toQPolyNormRatExpr y))
-  | ~q($x / $y) => pure q(.divConst $(← toQPolyNormRatExpr x) $(PolyNorm.Monomial.toExpr.toExprCoeff (← toRatConst y)))
-  | ~q(($x : Int)) => pure q(.cast $(← toQPolyNormIntExpr x))
-  | e => let v : Nat ← getRatIndex e; pure q(.var $v)
+partial def reifyInt (e : Q(Int)) : PolyM Q(PolyNorm.IntExpr) := do
+  if let some n := e.natLitOf? q(Int) then
+    return q(.val (OfNat.ofNat $n))
+  else if let some e := e.negOf? q(Int) then
+    return q(.neg $(← reifyInt e))
+  else if let some (x, y) := e.hAddOf? q(Int) q(Int) then
+    return q(.add $(← reifyInt x) $(← reifyInt y))
+  else if let some (x, y) := e.hSubOf? q(Int) q(Int) then
+    return q(.sub $(← reifyInt x) $(← reifyInt y))
+  else if let some (x, y) := e.hMulOf? q(Int) q(Int) then
+    return q(.mul $(← reifyInt x) $(← reifyInt y))
+  else
+    let v : Nat ← getIntIndex e
+    return q(.var $v)
+
+partial def reifyRat (e : Q(Rat)) : PolyM Q(PolyNorm.RatExpr) := do
+  if let some n := e.natLitOf? q(Rat) then
+    return q(.val (OfNat.ofNat $n))
+  else if let some e := e.negOf? q(Rat) then
+    return q(.neg $(← reifyRat e))
+  else if let some (x, y) := e.hAddOf? q(Rat) q(Rat) then
+    return q(.add $(← reifyRat x) $(← reifyRat y))
+  else if let some (x, y) := e.hSubOf? q(Rat) q(Rat) then
+    return q(.sub $(← reifyRat x) $(← reifyRat y))
+  else if let some (x, y) := e.hMulOf? q(Rat) q(Rat) then
+    return q(.mul $(← reifyRat x) $(← reifyRat y))
+  else if let some (x, y) := e.hDivOf? q(Rat) q(Rat) then
+    return q(.divConst $(← reifyRat x) $(PolyNorm.Monomial.toExpr.toExprCoeff (← reifyRatVal y)))
+  else if let some e := e.intCastOf? q(Rat) then
+    return q(.cast $(← reifyInt e))
+  else
+    let v : Nat ← getRatIndex e
+    return q(.var $v)
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, (is, rs)) ← (toQPolyNormRatExpr l).run (#[], #[])
-  let (r, (is, rs)) ← (toQPolyNormRatExpr r).run (is, rs)
-  let is : Q(Array Int) ← pure (is.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let rs : Q(Array Rat) ← pure (rs.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let ictx : Q(PolyNorm.IntContext) := q((«$is».getD · 0))
-  let rctx : Q(PolyNorm.RatContext) := q((«$rs».getD · 0))
+  let (l, (is, rs)) ← (reifyRat l).run (#[], #[])
+  let (r, (is, rs)) ← (reifyRat r).run (is, rs)
+  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let rctx : Q(PolyNorm.RatContext) := if h : 0 < rs.size
+    then let rs : Q(RArray Rat) := (RArray.ofArray rs h).toExpr q(Rat) id; q(«$rs».get)
+    else q(fun _ => 0)
   let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)
   mv.assign q(@PolyNorm.RatExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 
 def nativePolyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, l, r) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, (is, rs)) ← (toQPolyNormRatExpr l).run (#[], #[])
-  let (r, (is, rs)) ← (toQPolyNormRatExpr r).run (is, rs)
-  let is : Q(Array Int) ← pure (is.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let rs : Q(Array Rat) ← pure (rs.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let ictx : Q(PolyNorm.IntContext) := q((«$is».getD · 0))
-  let rctx : Q(PolyNorm.RatContext) := q((«$rs».getD · 0))
+  let (l, (is, rs)) ← (reifyRat l).run (#[], #[])
+  let (r, (is, rs)) ← (reifyRat r).run (is, rs)
+  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let rctx : Q(PolyNorm.RatContext) := if h : 0 < rs.size
+    then let rs : Q(RArray Rat) := (RArray.ofArray rs h).toExpr q(Rat) id; q(«$rs».get)
+    else q(fun _ => 0)
   let h ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
   mv.assign q(@PolyNorm.RatExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 where
@@ -471,7 +496,9 @@ where
     let b : Q(Bool) := .const auxDeclName []
     return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
   mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxName baseName 1
+    let auxName ← match (← getEnv).asyncPrefix? with
+      | none          => Lean.mkAuxName baseName 1
+      | some declName => Lean.mkAuxName (declName ++ baseName) 1
     let decl := Declaration.defnDecl {
       name := auxName, levelParams := [], type, value
       hints := .abbrev

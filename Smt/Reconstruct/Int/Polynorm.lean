@@ -8,6 +8,8 @@ Authors: Abdalrhman Mohamed, Harun Khan
 import Lean
 import Qq
 
+import Smt.Recognizers
+
 private theorem Int.neg_congr {x y : Int} (h : x = y) : -x = -y := by
   simp [h]
 
@@ -303,60 +305,42 @@ end PolyNorm.Expr
 
 open Lean Qq
 
-partial def genCtx (e : Q(Int)) : StateT (Array Q(Int) × Std.HashSet Q(Int)) MetaM Unit := do
-  if !(← get).snd.contains e then
-    go
-    modify fun (es, cache) => (es, cache.insert e)
-where
-  go : StateT (Array Q(Int) × Std.HashSet Q(Int)) MetaM Unit := do
-  match e with
-  | ~q(OfNat.ofNat $x) => pure ()
-  | ~q(-$x)            => genCtx x
-  | ~q($x + $y)        => genCtx x >>= fun _ => genCtx y
-  | ~q($x - $y)        => genCtx x >>= fun _ => genCtx y
-  | ~q($x * $y)        => genCtx x >>= fun _ => genCtx y
-  | _                  => if !(← get).fst.contains e then modify fun (es, cache) => (es.push e, cache)
+abbrev PolyM := StateT (Array Q(Int)) MetaM
 
-partial def toQPolyNormExpr (ctx : Q(PolyNorm.Context)) (es : Array Q(Int)) (e : Q(Int)) (cache : Std.HashMap Expr (Expr × Expr)) :
-  MetaM (Std.HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do
-  match cache.get? e with
-  | some (e, h) => return ⟨cache, e, h⟩
-  | none   =>
-    let ⟨cache, o, h⟩ ← go
-    return ⟨cache.insert e (o, h), o, h⟩
-where
-  go : MetaM (Std.HashMap Expr (Expr × Expr) × (o : Q(PolyNorm.Expr)) × Q(«$o».denote $ctx = $e)) := do match e with
-    | ~q(OfNat.ofNat $x) =>
-      pure ⟨cache, q(.val (@OfNat.ofNat Int $x _)), q(rfl)⟩
-    | ~q(-$x) =>
-      let ⟨cache, o, h⟩ ← toQPolyNormExpr ctx es x cache
-      pure ⟨cache, q(.neg $o), q(Int.neg_congr $h)⟩
-    | ~q($x + $y) =>
-      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
-      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
-      pure ⟨cache, q(.add $ox $oy), q(Int.add_congr $hx $hy)⟩
-    | ~q($x - $y) =>
-      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
-      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
-      pure ⟨cache, q(.sub $ox $oy), q(Int.sub_congr $hx $hy)⟩
-    | ~q($x * $y) =>
-      let ⟨cache, ox, hx⟩ ← toQPolyNormExpr ctx es x cache
-      let ⟨cache, oy, hy⟩ ← toQPolyNormExpr ctx es y cache
-      pure ⟨cache, q(.mul $ox $oy), q(Int.mul_congr $hx $hy)⟩
-    | _ =>
-      let some v := (es.findIdx? (· == e)) | throwError "variable not found"
-      pure ⟨cache, q(.var $v), .app q(@Eq.refl Int) e⟩
+def getIndex (e : Q(Int)) : PolyM Nat := do
+  let is ← get
+  if let some i := is.findIdx? (· == e) then
+    return i
+  else
+    let size := is.size
+    set (is.push e)
+    return size
+
+partial def reify (e : Q(Int)) : PolyM Q(PolyNorm.Expr) := do
+  if let some n := e.natLitOf? q(Int) then
+    return q(.val (OfNat.ofNat $n))
+  else if let some e := e.negOf? q(Int) then
+    return q(.neg $(← reify e))
+  else if let some (x, y) := e.hAddOf? q(Int) q(Int) then
+    return q(.add $(← reify x) $(← reify y))
+  else if let some (x, y) := e.hSubOf? q(Int) q(Int) then
+    return q(.sub $(← reify x) $(← reify y))
+  else if let some (x, y) := e.hMulOf? q(Int) q(Int) then
+    return q(.mul $(← reify x) $(← reify y))
+  else
+    let v : Nat ← getIndex e
+    return q(.var $v)
 
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (_, (es, _)) ← (genCtx l >>= fun _ => genCtx r).run (#[], {})
-  let is : Q(Array Int) ← pure (es.foldl (fun acc e => q(«$acc».push $e)) q(#[]))
-  let ctx : Q(PolyNorm.Context) ← pure q((«$is».getD · 0))
-  let ⟨cache, el, _⟩ ← toQPolyNormExpr ctx es l {}
-  let ⟨_, er, _⟩ ← toQPolyNormExpr ctx es r cache
-  let hp : Q(«$el».toPolynomial = «$er».toPolynomial) := (.app q(@Eq.refl PolyNorm.Polynomial) q(«$el».toPolynomial))
-  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $el $er $hp)
+  let (l, is) ← (reify l).run #[]
+  let (r, is) ← (reify r).run is
+  let ctx : Q(PolyNorm.Context) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let hp : Q(«$l».toPolynomial = «$r».toPolynomial) := (.app q(@Eq.refl PolyNorm.Polynomial) q(«$l».toPolynomial))
+  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $l $r $hp)
   mv.assign he
 where
   logPolynomial (e : Q(PolyNorm.Expr)) (es : Array Q(Int)) := do
@@ -367,13 +351,13 @@ where
 def nativePolyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (_, (es, _)) ← (genCtx l >>= fun _ => genCtx r).run (#[], {})
-  let is : Q(List Int) ← pure (es.foldr (fun e acc => q($e :: $acc)) q([]))
-  let ctx : Q(PolyNorm.Context) ← pure q((«$is».getD · 0))
-  let ⟨cache, el, _⟩ ← toQPolyNormExpr ctx es l {}
-  let ⟨_, er, _⟩ ← toQPolyNormExpr ctx es r cache
-  let hp ← nativeDecide q(«$el».toPolynomial = «$er».toPolynomial)
-  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $el $er $hp)
+  let (l, is) ← (reify l).run #[]
+  let (r, is) ← (reify r).run is
+  let ctx : Q(PolyNorm.Context) := if h : 0 < is.size
+    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
+    else q(fun _ => 0)
+  let hp ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
+  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $l $r $hp)
   mv.assign he
 where
   logPolynomial (e : Q(PolyNorm.Expr)) (es : Array Q(Int)) := do
@@ -386,7 +370,9 @@ where
     let b : Q(Bool) := .const auxDeclName []
     return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
   mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxName baseName 1
+    let auxName ← match (← getEnv).asyncPrefix? with
+      | none          => Lean.mkAuxName baseName 1
+      | some declName => Lean.mkAuxName (declName ++ baseName) 1
     let decl := Declaration.defnDecl {
       name := auxName, levelParams := [], type, value
       hints := .abbrev

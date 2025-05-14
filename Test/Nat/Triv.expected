@@ -1,5 +1,5 @@
 goal: Nat.zero + Nat.zero.succ = Nat.zero.succ
 
 query:
-(assert (distinct (+ 0 1) (+ 0 1)))
+(assert (not (= (+ 0 (+ 0 1)) (+ 0 1))))
 (check-sat)
