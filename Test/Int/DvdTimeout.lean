@@ -1,8 +1,7 @@
 import Smt
 
-opaque dvd : Int → Int → Bool
+opaque dvd : Int → Int → Prop
 
--- https://github.com/cvc5/cvc5/issues/8848
 example
     (a b c d : Int)
     (dvdax : ∀ x y z, dvd x y → dvd x z → dvd x (y + z))
@@ -10,4 +9,4 @@ example
     (h2 : dvd a c)
     (h3 : dvd a d)
   : dvd a (b + c + d) := by
-    smt_show [dvdax, h1, h2, h3] (timeout := 1)
+    smt [dvdax, h1, h2, h3]

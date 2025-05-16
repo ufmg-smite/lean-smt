@@ -489,7 +489,8 @@ where
     if !pf.getResult[0]!.getSort.isInteger then return none
     let a : Q(Int) ← reconstructTerm pf.getResult[0]!
     let b : Q(Int) ← reconstructTerm pf.getResult[1]!
-    addTac q($a = $b) Int.polyNorm
+    let tac := if ← useNative then Int.nativePolyNorm else Int.polyNorm
+    addTac q($a = $b) tac
   | .ARITH_POLY_NORM_REL =>
     if !pf.getChildren[0]!.getResult[0]![0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf

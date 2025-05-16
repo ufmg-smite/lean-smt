@@ -1,6 +1,7 @@
 goal: x ++ y = zeroExtend 4 x <<< 2#2 ||| zeroExtend 4 y
 
 query:
+(set-logic ALL)
 (declare-const y (_ BitVec 2))
 (declare-const x (_ BitVec 2))
 (assert (not (= (concat x y) (bvor (bvshl ((_ zero_extend 2) x) #b10) ((_ zero_extend 2) y)))))
@@ -9,6 +10,7 @@ Test/BitVec/Shift.lean:5:8: warning: declaration uses 'sorry'
 goal: x ++ y = zeroExtend 6 x <<< 3#2 ||| zeroExtend 6 y
 
 query:
+(set-logic ALL)
 (declare-const x (_ BitVec 3))
 (declare-const y (_ BitVec 3))
 (assert (not (= (concat x y) (bvor (bvshl ((_ zero_extend 3) x) #b11) ((_ zero_extend 3) y)))))

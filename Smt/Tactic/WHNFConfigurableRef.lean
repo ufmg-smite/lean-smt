@@ -10,7 +10,7 @@ namespace Smt
 open Lean Meta
 
 /-- Controls which rules are applied during WHNF and reduction. -/
-structure Config where
+structure Reduction.Config where
   /-- When `zeta` is off, we add `let x : t := v; b` to the set of WHNFs.
 
   This requires an extra congruence rule in full reduction:
@@ -31,9 +31,9 @@ structure Config where
   where `ELIM` is either a function application or a projection. -/
   letPushElim : Bool := false
 
-abbrev ReductionM := ReaderT Config MetaM
+abbrev ReductionM := ReaderT Reduction.Config MetaM
 
-initialize whnfRef : IO.Ref (Expr → ReductionM Expr) ← 
+initialize whnfRef : IO.Ref (Expr → ReductionM Expr) ←
   IO.mkRef fun e => return e
 
 def whnf (e : Expr) : ReductionM Expr := do

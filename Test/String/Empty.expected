@@ -1,5 +1,6 @@
 goal: "" = ""
 
 query:
+(set-logic ALL)
 (assert (not (= "" "")))
 (check-sat)

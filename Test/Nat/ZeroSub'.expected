@@ -1,12 +1,1 @@
-Test/Nat/ZeroSub'.lean:6:12: error: tactic 'assumption' failed
-case zero
-_uniq✝²⁸³⁻⁰ : ¬¬(if 0 ≤ 0 then 0 - 0 else 0) = 0
-⊢ ¬andN ([] ++ [¬0 - 0 = 0])
-Test/Nat/ZeroSub'.lean:7:17: error: application type mismatch
-  HAdd.hAdd x
-argument
-  x
-has type
-  Nat : Type
-but is expected to have type
-  Int : Type
+Test/Nat/ZeroSub'.lean:3:0: warning: declaration uses 'sorry'

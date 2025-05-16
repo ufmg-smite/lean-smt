@@ -26,9 +26,8 @@ private def mkNat : Lean.Expr :=
   else if let some (m, n) := e.hAddOf? mkNat mkNat then
     return mkApp2 (symbolT "+") (← applyTranslators! m) (← applyTranslators! n)
   else if let some (m, n) := e.hSubOf? mkNat mkNat then
-    return mkApp3 (symbolT "ite") (mkApp2 (symbolT "<=") (← applyTranslators! n) (← applyTranslators! m))
-                                  (mkApp2 (symbolT "-") (← applyTranslators! m) (← applyTranslators! n))
-                                  (literalT "0")
+    modify fun st => { st with depConstants := st.depConstants.insert ``Nat.sub }
+    return mkApp2 (symbolT "Nat.sub") (← applyTranslators! m) (← applyTranslators! n)
   else if let some (m, n) := e.hMulOf? mkNat mkNat then
     return mkApp2 (symbolT "*") (← applyTranslators! m) (← applyTranslators! n)
   else if let some (m, n) := e.hDivOf? mkNat mkNat then

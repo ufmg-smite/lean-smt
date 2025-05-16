@@ -20,6 +20,38 @@ open Lean hiding Command
 open Elab Tactic Qq
 open Smt Translate Query Reconstruct Util
 
+/-- Configuration options for the SMT tactic. -/
+structure Config where
+  /-- The timeout for the SMT solver in seconds. -/
+  timeout : Option Nat := .none
+  /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
+      reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
+  native : Bool := false
+  /-- Whether to preprocess the query before sending it to the SMT solver. -/
+  preprocess : Bool := true
+  /-- Whether to trust the result of the SMT solver. Closes the current goal with a `sorry` if the
+      SMT solver returns `unsat`. **Warning**: use with caution, as this may lead to unsoundness.
+      Additionally adds the translation from Lean to SMT to the trusted code base, which is not
+      always sound. -/
+  trust : Bool := false
+  /-- Just show the SMT query without invoking a solver. Useful for debugging. -/
+  showQuery : Bool := false
+deriving Inhabited, Repr
+
+/-- Return all propositions in the local context. -/
+def getPropHyps : MetaM (Array FVarId) := do
+  let mut result := #[]
+  for localDecl in (← getLCtx) do
+    unless localDecl.isImplementationDetail do
+      if ← pure !(isNonEmpty localDecl.type) <&&> Meta.isProp localDecl.type then
+        result := result.push localDecl.fvarId
+  return result
+where
+  isNonEmpty (e : Expr) : Bool :=
+  match_expr e with
+  | Nonempty _ => true
+  | _ => false
+
 def genUniqueFVarNames : MetaM (Std.HashMap FVarId String × Std.HashMap String FVarId) := do
   let lCtx ← getLCtx
   let st : NameSanitizerState := { options := {}}
@@ -48,47 +80,61 @@ where
         let ⟨fv, mv⟩ ← mv.intro1
         go mv hs (.fvar fv :: fvs) k
 
-def smt (mv : MVarId) (hs : List Expr) (timeout : Option Nat := none) : MetaM (List MVarId) := mv.withContext do
+def smt (cfg : Config) (mv : MVarId) (hs : List Expr) : MetaM (List MVarId) := mv.withContext do
+  -- 0. Create a duplicate goal to preserve the original goal.
+  let mv₁ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 1. Process the hints passed to the tactic.
-  withProcessedHints mv hs fun mv hs => mv.withContext do
-  let (hs, mv) ← Preprocess.elimIff mv hs
-  mv.withContext do
-  let goalType : Q(Prop) ← mv.getType
-  -- 2. Generate the SMT query.
+  withProcessedHints mv₁ hs fun mv₂ hs => mv₂.withContext do
+  -- 2. Preprocess the hypotheses and goal.
+  let (hs, mv₂) ← if cfg.preprocess then Preprocess.elimIff mv₂ hs else pure (hs, mv₂)
+  mv₂.withContext do
+  let goalType : Q(Prop) ← mv₂.getType
+  -- 3. Generate the SMT query.
   let (fvNames₁, fvNames₂) ← genUniqueFVarNames
-  let cmds ← prepareSmtQuery hs (← mv.getType) fvNames₁
+  let cmds ← prepareSmtQuery hs (← mv₂.getType) fvNames₁
   let cmds := .setLogic "ALL" :: cmds
-  trace[smt] "goal: {goalType}"
-  trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
-  -- 3. Run the solver.
-  let res ← solve (Command.cmdsAsQuery cmds) timeout
-  -- 4. Print the result.
+  if cfg.showQuery then
+    logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
+    -- Return original goal.
+    return [mv]
+  else
+    trace[smt] "goal: {goalType}"
+    trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
+  -- 4. Run the solver.
+  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout
   -- trace[smt] "\nresult: {res}"
   match res with
   | .error e =>
-    -- 4a. Print error reason.
+    -- 5a. Print error reason.
     trace[smt] "\nerror reason:\n{repr e}\n"
     throwError "unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`"
   | .ok pf =>
-    -- 4b. Reconstruct proof.
-    let (p, hp, mvs) ← reconstructProof pf fvNames₂
-    let mv ← mv.assert (← mkFreshId) p hp
-    let ⟨_, mv⟩ ← mv.intro1
-    let ts ← hs.mapM Meta.inferType
-    let mut gs ← mv.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ts q(Prop), goalType])
-    mv.withContext (gs.forM (·.assumption))
+    if cfg.trust then
+      -- 5b. Trust the result by admitting original goal.
+      mv.admit true
+      return []
+    -- 5c. Reconstruct proof.
+    let ctx := { userNames := fvNames₂, native := cfg.native }
+    let (_, ps, p, hp, mvs) ← reconstructProof pf ctx
+    let mv₂ ← mv₂.assert (← mkFreshId) p hp
+    let ⟨_, mv₂⟩ ← mv₂.intro1
+    let mut gs ← mv₂.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
+    mv₂.withContext (gs.forM (·.assumption))
+    mv.assign (.mvar mv₁)
     return mvs
 
 namespace Tactic
 
-syntax smtHints := ("[" term,* "]")?
-syntax smtTimeout := ("(" "timeout" " := " num ")")?
+syntax smtStar := "*"
 
+syntax smtHints := (" [" withoutPosition((smtStar <|> term),*,?) "]")?
+
+open Lean.Parser.Tactic in
 /-- `smt` converts the current goal into an SMT query and checks if it is
 satisfiable. By default, `smt` generates the minimum valid SMT query needed to
 assert the current goal. However, that is not always enough:
 ```lean
-def modus_ponens (p q : Prop) (hp : p) (hpq : p → q) : q := by
+theorem modus_ponens (p q : Prop) (hp : p) (hpq : p → q) : q := by
   smt
 ```
 For the theorem above, `smt` generates the query below:
@@ -100,7 +146,7 @@ For the theorem above, `smt` generates the query below:
 which is missing the hypotheses `hp` and `hpq` required to prove the theorem. To
 pass hypotheses to the solver, use `smt [h₁, h₂, ..., hₙ]` syntax:
 ```lean
-def modus_ponens (p q : Prop) (hp : p) (hpq : p → q) : q := by
+example (p q : Prop) (hp : p) (hpq : p → q) : q := by
   smt [hp, hpq]
 ```
 The tactic then generates the query below:
@@ -112,36 +158,46 @@ The tactic then generates the query below:
 (assert (=> p q))
 (check-sat)
 ```
+The tactic also supports the `*` wildcard hint, which means "all hypotheses".
+So, the following also works:
+```lean
+example (p q : Prop) (hp : p) (hpq : p → q) : q := by
+  smt [*]
+```
+The tactic can be configured with additional options. For example, to set a
+timeout of 1 second for the SMT solver, use:
+```lean
+example (p q : Prop) (hp : p) (hpq : p → q) : q := by
+  smt (timeout := .some 1) [*]
+```
+Please take a look at the `Smt.Config` structure for more options.
 -/
-syntax (name := smt) "smt" smtHints smtTimeout : tactic
+syntax (name := smt) "smt " optConfig smtHints : tactic
 
-/-- Like `smt`, but just shows the query without invoking a solver. -/
-syntax (name := smtShow) "smt_show" smtHints : tactic
+open Lean.Parser.Tactic in
+/-- `smt_show` is short-hand for `smt +showQuery`. -/
+macro "smt_show " c:optConfig h:smtHints : tactic => do
+  let `(optConfig| $cs*) := c | Macro.throwUnsupported
+  match h with
+  | `(smtHints| )        => `(tactic| (smt +showQuery $cs*))
+  | `(smtHints| [$hs,*]) => `(tactic| (smt +showQuery $cs* [$hs,*]))
+  | _                    => Macro.throwUnsupported
 
-def parseHints : TSyntax `smtHints → TacticM (List Expr)
-  | `(smtHints| [ $[$hs],* ]) => hs.toList.mapM (fun h => elabTerm h.raw none)
+declare_config_elab elabConfig Smt.Config
+
+def elabHints : TSyntax `smtHints → TacticM (List Expr)
+  | `(smtHints| [ $[$hs],* ]) => withMainContext do
+    hs.foldrM (init := []) fun h acc => do
+      if h.getKind == ``Smt.Tactic.smtStar then
+        let fvs := (← Smt.getPropHyps).toList.map Expr.fvar
+        return fvs ++ acc
+      let h ← elabTerm h none
+      return h :: acc
   | `(smtHints| ) => return []
   | _ => throwUnsupportedSyntax
 
-def parseTimeout : TSyntax `smtTimeout → TacticM (Option Nat)
-  | `(smtTimeout| (timeout := $n)) => return some n.getNat
-  | `(smtTimeout| ) => return some 5
-  | _ => throwUnsupportedSyntax
-
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
-  let mvs ← Smt.smt (← Tactic.getMainGoal) (← parseHints ⟨stx[1]⟩) (← parseTimeout ⟨stx[2]⟩)
+  let mvs ← Smt.smt (← elabConfig stx[1]) (← Tactic.getMainGoal) (← elabHints ⟨stx[2]⟩)
   Tactic.replaceMainGoal mvs
-
-@[tactic smtShow] def evalSmtShow : Tactic := fun stx => withMainContext do
-  let g ← Meta.mkFreshExprMVar (← getMainTarget)
-  let mv := g.mvarId!
-  let hs ← parseHints ⟨stx[1]⟩
-  withProcessedHints mv hs fun mv hs => mv.withContext do
-  let (hs, mv) ← Preprocess.elimIff mv hs
-  mv.withContext do
-  let goalType ← mv.getType
-  let cmds ← prepareSmtQuery hs (← mv.getType) (← genUniqueFVarNames).fst
-  let cmds := cmds ++ [.checkSat]
-  logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery cmds}"
 
 end Smt.Tactic

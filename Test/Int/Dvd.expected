@@ -1,6 +1,7 @@
 goal: dvd a c = true
 
 query:
+(set-logic ALL)
 (declare-fun dvd (Int Int) Bool)
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
 (declare-const c Int)
@@ -13,6 +14,7 @@ query:
 goal: dvd c e = true
 
 query:
+(set-logic ALL)
 (declare-fun dvd (Int Int) Bool)
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
 (declare-const d Int)
@@ -25,6 +27,7 @@ query:
 goal: dvd a e = true
 
 query:
+(set-logic ALL)
 (declare-fun dvd (Int Int) Bool)
 (assert (forall ((x Int)) (forall ((y Int)) (forall ((z Int)) (=> (= (dvd x y) true) (=> (= (dvd y z) true) (= (dvd x z) true)))))))
 (declare-const c Int)

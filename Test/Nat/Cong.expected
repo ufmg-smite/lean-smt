@@ -1,12 +1,13 @@
 goal: x = y → f x = f y
 
 query:
+(set-logic ALL)
 (define-sort Nat () Int)
 (declare-const y Nat)
 (assert (>= y 0))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-fun f (Nat) Nat)
-(assert (forall ((_uniq.28 Nat)) (=> (>= _uniq.28 0) (>= (f _uniq.28) 0))))
+(assert (forall ((_uniq.33 Nat)) (=> (>= _uniq.33 0) (>= (f _uniq.33) 0))))
 (assert (not (=> (= x y) (= (f x) (f y)))))
 (check-sat)

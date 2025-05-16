@@ -60,16 +60,16 @@ private def mkRat : Lean.Expr :=
 
 end Smt.Translate.Rat
 
-example : ((1 : Rat) < 2) := by
+example : (1 : Rat) < 2 := by
   smt
 
-example {x : Rat} : (x = 1) → (x < 2) := by
+example {x : Rat} : x = 1 → x < 2 := by
   smt
 
-example {x: Rat} : (x * x ≥ 0) := by
+example {x : Rat} : x * x ≥ 0 := by
   smt
 
-example {x y: Rat} : (x = y) → (x * y ≥ 0) := by
+example {x y : Rat} : x = y → x * y ≥ 0 := by
   smt
 
 example {x₁ x₂ y₁ y₂ : Rat} (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by

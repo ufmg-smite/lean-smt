@@ -1,12 +1,14 @@
 goal: ∀ (x : Nat), x ≠ 0
 
 query:
+(set-logic ALL)
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
 (check-sat)
 Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'
 goal: ∀ (x : Nat), x + 1 ≠ 0
 
 query:
+(set-logic ALL)
 (assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))
 (check-sat)
 Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'

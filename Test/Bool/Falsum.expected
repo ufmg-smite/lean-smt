@@ -1,5 +1,6 @@
 goal: (!false) = true
 
 query:
+(set-logic ALL)
 (assert (not (= (not false) true)))
 (check-sat)

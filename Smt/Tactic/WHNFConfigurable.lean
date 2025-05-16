@@ -556,7 +556,7 @@ where
       | Expr.const ..  => pure e
       | Expr.letE _ _ v b _ => do
         -- NOTE(WN): Should core Lean do a `zetaNonDep` check here?
-        if (← readThe Smt.Config).zeta then go <| b.instantiate1 v
+        if (← readThe Smt.Reduction.Config).zeta then go <| b.instantiate1 v
         else return e
       | Expr.app f ..       =>
         let f := f.getAppFn

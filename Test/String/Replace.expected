@@ -1,6 +1,7 @@
 goal: "a".replace "a" "b" = "b"
 
 query:
+(set-logic ALL)
 (assert (not (= (str.replace_all "a" "a" "b") "b")))
 (check-sat)
 Test/String/Replace.lean:3:8: warning: declaration uses 'sorry'
