@@ -1,6 +1,7 @@
 goal: x ^^^ y = y ^^^ x
 
 query:
+(set-logic ALL)
 (declare-const y (_ BitVec 2))
 (declare-const x (_ BitVec 2))
 (assert (not (= (bvxor x y) (bvxor y x))))
@@ -9,6 +10,7 @@ Test/BitVec/XorComm.lean:3:8: warning: declaration uses 'sorry'
 goal: x ^^^ y = y ^^^ x
 
 query:
+(set-logic ALL)
 (declare-const y (_ BitVec 8))
 (declare-const x (_ BitVec 8))
 (assert (not (= (bvxor x y) (bvxor y x))))

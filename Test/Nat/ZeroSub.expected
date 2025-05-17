@@ -1,8 +1,10 @@
 goal: 0 - x = 0
 
 query:
+(set-logic ALL)
 (define-sort Nat () Int)
 (declare-const x Nat)
 (assert (>= x 0))
-(assert (not (= (ite (<= x 0) (- 0 x) 0) 0)))
+(define-fun Nat.sub ((x Nat) (y Nat)) Nat (ite (< x y) 0 (- x y)))
+(assert (not (= (Nat.sub 0 x) 0)))
 (check-sat)

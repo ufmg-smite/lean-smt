@@ -1,6 +1,7 @@
 goal: p = true → p = true
 
 query:
+(set-logic ALL)
 (declare-const p Bool)
 (assert (not (=> (= p true) (= p true))))
 (check-sat)

@@ -1,5 +1,6 @@
 goal: "a" ++ "b" = "ab"
 
 query:
+(set-logic ALL)
 (assert (not (= (str.++ "a" "b") "ab")))
 (check-sat)

@@ -1,6 +1,7 @@
 goal: (f p q == f q p) = true
 
 query:
+(set-logic ALL)
 (declare-fun f (Bool Bool) Bool)
 (declare-const q Bool)
 (declare-const p Bool)

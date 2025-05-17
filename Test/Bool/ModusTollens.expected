@@ -1,6 +1,7 @@
 goal: (!q) = true → (p = true → q = true) → (!p) = true
 
 query:
+(set-logic ALL)
 (declare-const p Bool)
 (declare-const q Bool)
 (assert (not (=> (= (not q) true) (=> (=> (= p true) (= q true)) (= (not p) true)))))

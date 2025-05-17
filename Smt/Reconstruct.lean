@@ -16,7 +16,11 @@ open Lean
 open Attribute
 
 structure Reconstruct.Context where
+  /-- The user names of the variables in the local context. -/
   userNames : Std.HashMap String FVarId := {}
+  /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
+      reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
+  native : Bool := false
 
 structure Reconstruct.State where
   termCache : Std.HashMap cvc5.Term Expr := {}
@@ -34,6 +38,9 @@ abbrev TermReconstructor := cvc5.Term → ReconstructM (Option Expr)
 abbrev ProofReconstructor := cvc5.Proof → ReconstructM (Option Expr)
 
 namespace Reconstruct
+
+def useNative : ReconstructM Bool :=
+  read >>= pure ∘ (·.native)
 
 private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (List (rcons × Name)) := do
   let env ← getEnv
@@ -189,21 +196,24 @@ where
 
 end Reconstruct
 
-def traceReconstructProof (r : Except Exception (Expr × Expr × List MVarId)) : MetaM MessageData :=
+def traceReconstructProof (r : Except Exception (List Expr × List Expr × Expr × Expr × List MVarId)) : MetaM MessageData :=
   return match r with
   | .ok _ => m!"{checkEmoji}"
   | _     => m!"{bombEmoji}"
 
 open Qq in
-partial def reconstructProof (pf : cvc5.Proof) (userNames : Std.HashMap String FVarId) : MetaM (Expr × Expr × List MVarId) := do
+partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
+  MetaM (List Expr × List Expr × Expr × Expr × List MVarId) :=
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
-  let Prod.mk (p : Q(Prop)) state ← (Reconstruct.reconstructTerm (pf.getResult)).run { userNames } {}
-  let (h, ⟨_, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run { userNames } state
-  if pf.getArguments.isEmpty then
+  let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
+  let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
+  let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
+  let (h, ⟨_, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+  if dfns.isEmpty then
     let h : Q(True → $p) ← pure h
-    return (p, q($h trivial), mvs.toList)
+    return (dfns, ps, p, q($h trivial), mvs.toList)
   else
-    return (p, h, mvs.toList)
+    return (dfns, ps, p, h, mvs.toList)
 
 open cvc5 in
 def traceSolve (r : Except Exception (Except SolverError Proof)) : MetaM MessageData :=
@@ -245,7 +255,7 @@ open Lean.Elab Tactic in
     match r with
       | .error e => logInfo (repr e)
       | .ok pf =>
-        let (p, hp, mvs) ← reconstructProof pf (← getUserNames)
+        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), false⟩
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1

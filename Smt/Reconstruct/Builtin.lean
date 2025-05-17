@@ -170,17 +170,21 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getResult[0]! == pf.getResult[1]! then
       addThm q($t = $t') q(Eq.refl $t)
     else
-      let h : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
-      if h.getUsedConstants.any (isNoncomputable (← getEnv)) then
+      let hp : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
+      if hp.getUsedConstants.any (isNoncomputable (← getEnv)) then
         return none
-      addThm q($t = $t') (.app q(@of_decide_eq_true ($t = $t') $h) q(Eq.refl true))
+      if ← useNative then
+        addThm q($t = $t') (← nativeDecide q($t = $t') hp)
+      else
+        addThm q($t = $t') (← decide q($t = $t') hp)
   | .ACI_NORM =>
     addTac (← reconstructTerm pf.getResult) Meta.AC.rewriteUnnormalizedTop
   | .ABSORB =>
     let e ← reconstructTerm pf.getResult[0]!
     let z ← reconstructTerm pf.getResult[1]!
     let op := e.appFn!.appFn!
-    addTac (← reconstructTerm pf.getResult) (absorb · z op)
+    let tac := if ← useNative then nativeAbsorb else absorb
+    addTac (← reconstructTerm pf.getResult) (tac · z op)
   | .ENCODE_EQ_INTRO =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
     let x : Q($α) ← reconstructTerm pf.getResult[0]!
@@ -258,5 +262,23 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q($α) ← reconstructTerm pf.getResult[1]!
     addThm q($k = $t) q(Eq.refl $t)
   | _ => return none
+where
+  decide (p : Q(Prop)) (hp : Q(Decidable $p)) : MetaM Q($p) := do
+    return .app q(@of_decide_eq_true $p $hp) q(Eq.refl true)
+  nativeDecide (p : Q(Prop)) (hp : Q(Decidable $p)) : MetaM Q($p) := do
+    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
+    let b : Q(Bool) := .const auxDeclName []
+    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
+  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
+    let auxName ← match (← getEnv).asyncPrefix? with
+      | none          => Lean.mkAuxName baseName 1
+      | some declName => Lean.mkAuxName (declName ++ baseName) 1
+    let decl := Declaration.defnDecl {
+      name := auxName, levelParams := [], type, value
+      hints := .abbrev
+      safety := .safe
+    }
+    addAndCompile decl
+    pure auxName
 
 end Smt.Reconstruct.Builtin

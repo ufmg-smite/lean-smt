@@ -27,8 +27,8 @@ def Smt.smtSolverFunc (ls : Array Auto.Lemma) (is : Array Auto.Lemma) : MetaM Ex
   let (fvs, mv) ← mv.assertHypotheses ls
   mv.withContext do
     let hs := fvs.map (.fvar ·)
-    let «timeout» := (← getOptions).get? ``auto.smt.timeout
-    _ ← smt mv hs.toList «timeout»
+    let timeout := (← getOptions).get? ``auto.smt.timeout
+    _ ← smt { timeout } mv hs.toList
     -- Note: auto should allow solvers to export new goals to users
     -- for mv in mvs do
     --   logInfo m!"new : {mv}"

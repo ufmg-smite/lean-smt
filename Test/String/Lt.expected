@@ -1,5 +1,6 @@
 goal: "a" < "b"
 
 query:
+(set-logic ALL)
 (assert (not (str.< "a" "b")))
 (check-sat)

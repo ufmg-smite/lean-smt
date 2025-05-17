@@ -1,5 +1,6 @@
 goal: "a".length = 1
 
 query:
+(set-logic ALL)
 (assert (not (= (str.len "a") 1)))
 (check-sat)

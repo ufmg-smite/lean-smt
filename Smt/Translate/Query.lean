@@ -21,6 +21,8 @@ open Term
 -- TODO: move all `Nat` hacks in this file to `Nat.lean`; see also issue #27
 
 structure QueryBuilderM.Config where
+  /-- Expressions to process. -/
+  toProcess : List Expr := []
   /-- Expressions to define rather than just declare.
   Definition bodies are translated recursively. -/
   toDefine : List Expr := []
@@ -153,7 +155,7 @@ def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
   -- Otherwise it is a local/global declaration with name `nm`.
   let nm ← match e with
     | fvar id .. =>
-      match (← (get : TranslationM _)).uniqueFVarNames[id]? with
+      match (← getThe TranslationM.State).uniqueFVarNames[id]? with
       | some nm => pure nm
       | none    => pure (← id.getUserName).toString
     | const n .. => pure n.toString
@@ -173,7 +175,7 @@ def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do
 /-- Build a graph of SMT-LIB commands to emit with dependencies between them as edges. -/
 partial def buildDependencyGraph (g : Expr) : QueryBuilderM Unit := do
   go g
-  for h in (← read).toDefine do
+  for h in (← read).toProcess do
     go h
 where
   go (e : Expr) : QueryBuilderM Unit := do
@@ -187,13 +189,13 @@ where
     trace[smt.translate.query] "processing {e} : {et}"
 
     -- HACK: `Nat` special cases
-    if e matches const `Nat .. then
+    if e matches const ``Nat .. then
       addCommand e Command.defNat
       return
-    if e matches const `Nat.sub .. then
+    if e matches const ``Nat.sub .. then
       addCommand e Command.defNatSub
-      go (mkConst `Nat)
-      addDependency e (mkConst `Nat)
+      go (mkConst ``Nat)
+      addDependency e (mkConst ``Nat)
       return
 
     let deps ← addCommandFor e et
@@ -238,10 +240,6 @@ def addCommand (cmd : Command) (cmds : List Command) : MetaM (List Command) := d
     if sortEndsWithNat st then
       let x ← natConstAssert nm [] st
       cmds := .assert x :: cmds
-  | .defineFun nm ps cod _ _ =>
-    if sortEndsWithNat cod then
-      let tmArrow := ps.foldr (init := cod) fun (_, tp) acc => arrowT tp acc
-      cmds := .assert (← natConstAssert nm [] tmArrow) :: cmds
   | _ => pure ()
   return cmds
 
@@ -254,8 +252,20 @@ def generateQuery (goal : Expr) (hs : List Expr) (fvNames : Std.HashMap FVarId S
   withTraceNode `smt.translate.query (fun _ => pure .nil) do
     trace[smt.translate.query] "Goal: {← inferType goal}"
     trace[smt.translate.query] "Provided Hints: {hs}"
+    let dfns ← hs.filterM fun h => do
+      -- We need to define `const`s that are not theorems and `fvar`s from `let`s that are not assumptions.
+      if h.isFVar then
+        let fv := h.fvarId!
+        let decl ← fv.getDecl
+        (pure decl.isLet) <&&> notM (Meta.inferType decl.type >>= pure ∘ Expr.isProp)
+      else if h.isConst then
+        let info ← getConstInfo h.constName
+        return !info.isTheorem
+      else
+        return false
+    trace[smt.translate.query] "Definitions: {dfns}"
     let ((_, st), _) ← QueryBuilderM.buildDependencyGraph goal
-      |>.run { toDefine := hs : QueryBuilderM.Config }
+      |>.run { toProcess := hs, toDefine := dfns : QueryBuilderM.Config }
       |>.run { : QueryBuilderM.State }
       |>.run { uniqueFVarNames := fvNames : TranslationM.State }
     trace[smt.translate.query] "Dependency Graph: {st.graph}"

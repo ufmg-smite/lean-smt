@@ -1,0 +1,7 @@
+goal: q
+
+query:
+(set-logic ALL)
+(declare-const q Bool)
+(assert (not q))
+(check-sat)

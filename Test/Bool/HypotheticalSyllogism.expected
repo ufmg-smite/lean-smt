@@ -1,6 +1,7 @@
 goal: (p = true → q = true) → (q = true → r = true) → p = true → r = true
 
 query:
+(set-logic ALL)
 (declare-const r Bool)
 (declare-const q Bool)
 (declare-const p Bool)
