@@ -17,11 +17,19 @@ jobs:
           os: macos-14
         - name: macOS-x86_64
           os: macos-13
+        - name: Windows-x86_64
+          os: windows-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Build and Test Lean-SMT
+    - name: Set up Lean
       uses: leanprover/lean-action@v1
       with:
-        build-args: "Smt Smt.Auto Smt.Rat Smt.Real"
-        use-github-cache: false
+        auto-config: false
+        use-mathlib-cache: false
+    - name: Build and Test Lean-SMT
+      run: |
+        lake update
+        lake build Smt Smt.Auto Smt.Rat Smt.Real
+        lake run test
+      shell: bash

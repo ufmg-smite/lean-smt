@@ -336,9 +336,9 @@ def polyNorm (mv : MVarId) : MetaM Unit := do
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
   let (l, is) ← (reify l).run #[]
   let (r, is) ← (reify r).run is
-  let ctx : Q(PolyNorm.Context) := if h : 0 < is.size
-    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
-    else q(fun _ => 0)
+  let ctx : Q(PolyNorm.Context) ← if h : 0 < is.size
+    then do let is : Q(RArray Int) ← (RArray.ofArray is h).toExpr q(Int) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
   let hp : Q(«$l».toPolynomial = «$r».toPolynomial) := (.app q(@Eq.refl PolyNorm.Polynomial) q(«$l».toPolynomial))
   let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $l $r $hp)
   mv.assign he
@@ -353,9 +353,9 @@ def nativePolyNorm (mv : MVarId) : MetaM Unit := do
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
   let (l, is) ← (reify l).run #[]
   let (r, is) ← (reify r).run is
-  let ctx : Q(PolyNorm.Context) := if h : 0 < is.size
-    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
-    else q(fun _ => 0)
+  let ctx : Q(PolyNorm.Context) ← if h : 0 < is.size
+    then do let is : Q(RArray Int) ← (RArray.ofArray is h).toExpr q(Int) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
   let hp ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
   let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq $ctx $l $r $hp)
   mv.assign he

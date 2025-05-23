@@ -222,7 +222,7 @@ theorem nonneg_sub_iff_nonpos : 0 ≤ -q ↔ q ≤ 0 := by
 @[simp]
 theorem num_nonpos : q.num ≤ 0 ↔ q ≤ 0 := by
   conv => lhs ; rw [← Int.neg_nonneg]
-  simp [Rat.neg_num q ▸ @num_nonneg (-q)]
+  simp only [Rat.neg_num q ▸ @num_nonneg (-q)]
   conv => rhs ; rw [← nonneg_sub_iff_nonpos]
 
 theorem not_nonpos : ¬ q ≤ 0 ↔ 0 < q := by
@@ -306,8 +306,8 @@ protected theorem neg_sub : -(x - y) = y - x := by
     rw [← Int.sub_eq_add_neg, Int.neg_sub]
     rw [← Int.sub_eq_add_neg]
     rw [← Int.natAbs_neg, Int.neg_sub]
-    · conv => lhs ; arg 1 ; arg 2 ; rw [← Int.natAbs_ofNat (dy * dx)]
-      exact Int.gcd_dvd_left
+    · conv => lhs ; arg 1 ; arg 2 ; rw [← Int.natAbs_natCast (dy * dx)]
+      exact Int.natAbs_gcd_dvd' (nx * ↑dy + -(ny * ↑dx)) (↑(dy * dx) : Int).natAbs
   · rw [← Int.sub_eq_add_neg]
     rw [← Int.sub_eq_add_neg]
     rw [← Int.natAbs_neg, Int.neg_sub]
@@ -379,8 +379,8 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
               apply Int.le_trans (b := 0)
               apply Int.mul_nonpos_of_nonpos_of_nonneg
               · exact Int.not_lt.mp h_na
-              · exact Int.natCast_nonneg
-              · apply Int.mul_nonneg _ Int.natCast_nonneg
+              · exact Int.natCast_nonneg ↑dy
+              · apply Int.mul_nonneg _ (Int.natCast_nonneg ↑dx)
                 exact Int.le_of_lt ny_pos
         else
           simp [ny_pos, Int.not_lt, ← Int.sub_nonneg]

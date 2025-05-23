@@ -169,15 +169,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let s : Q(Int) ← reconstructTerm pf.getArguments[2]!
     addThm q(($t = $s) = ($t ≥ $s ∧ $t ≤ $s)) q(@Rewrite.eq_elim $t $s)
-  | .ARITH_PLUS_FLATTEN =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let xs : Q(List Int) ← reconstructTerms pf.getArguments[1]!.getChildren
-    let w₁ : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    let w₂ : Q(Int) ← reconstructTerm pf.getArguments[3]!
-    let ys : Q(List Int) ← reconstructTerms pf.getArguments[4]!.getChildren
-    let zs : Q(List Int) ← reconstructTerms pf.getArguments[5]!.getChildren
-    addThm q(Int.addN ($xs ++ Int.addN ($w₁ :: $w₂ :: $ys) :: $zs) = Int.addN ($xs ++ $w₁ :: $w₂ :: ($ys ++ $zs)))
-           q(@Rewrite.plus_flatten $xs $w₁ $w₂ $ys $zs)
   | .ARITH_MOD_OVER_MOD =>
     let c : Q(Int) ← reconstructTerm pf.getArguments[1]!
     let ts : Q(List Int) ← reconstructTerms pf.getArguments[2]!.getChildren
@@ -209,14 +200,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
     let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
     addThm q((ite $c $t $s ≥ $r) = ite $c ($t ≥ $r) ($s ≥ $r)) q(@Rewrite.geq_ite_lift $c $hc $t $s $r)
-  | .ARITH_GT_ITE_LIFT =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
-    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
-    addThm q((ite $c $t $s > $r) = ite $c ($t > $r) ($s > $r)) q(@Rewrite.gt_ite_lift $c $hc $t $s $r)
   | .ARITH_LEQ_ITE_LIFT =>
     if !pf.getArguments[2]!.getSort.isInteger then return none
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -225,14 +208,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
     let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
     addThm q((ite $c $t $s ≤ $r) = ite $c ($t ≤ $r) ($s ≤ $r)) q(@Rewrite.leq_ite_lift $c $hc $t $s $r)
-  | .ARITH_LT_ITE_LIFT =>
-    if !pf.getArguments[2]!.getSort.isInteger then return none
-    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
-    let t : Q(Int) ← reconstructTerm pf.getArguments[2]!
-    let s : Q(Int) ← reconstructTerm pf.getArguments[3]!
-    let r : Q(Int) ← reconstructTerm pf.getArguments[4]!
-    addThm q((ite $c $t $s < $r) = ite $c ($t < $r) ($s < $r)) q(@Rewrite.lt_ite_lift $c $hc $t $s $r)
   | .ARITH_MIN_LT1 =>
     if !pf.getArguments[1]!.getSort.isInteger then return none
     let t : Q(Int) ← reconstructTerm pf.getArguments[1]!

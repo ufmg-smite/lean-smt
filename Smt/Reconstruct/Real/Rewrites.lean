@@ -35,9 +35,6 @@ theorem geq_norm1 : (t ≥ s) = (t - s ≥ 0) :=
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) :=
   propext (Iff.symm antisymm_iff)
 
-theorem plus_flatten : Real.addN (xs ++ Real.addN (w₁ :: w₂ :: ys) :: zs) = Real.addN (xs ++ w₁ :: w₂ :: (ys ++ zs)) := by
-  simp only [Real.addN_append, Real.addN_cons_append, add_assoc]
-
 theorem eq_conflict {t : Int} {c : Real} (hcc : (↑⌊c⌋ = c) = False) : (t = c) = False := by
   simp only [eq_iff_iff, iff_false]
   intro htc
@@ -78,13 +75,7 @@ theorem abs_gt : (|x| > |y|) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)) (i
 theorem geq_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s ≥ r) = ite c (t ≥ r) (s ≥ r) := by
   cases h <;> simp_all
 
-theorem gt_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s > r) = ite c (t > r) (s > r) := by
-  cases h <;> simp_all
-
 theorem leq_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s ≤ r) = ite c (t ≤ r) (s ≤ r) := by
-  cases h <;> simp_all
-
-theorem lt_ite_lift [h : Decidable c] {t s r : Real} : (ite c t s < r) = ite c (t < r) (s < r) := by
   cases h <;> simp_all
 
 -- min/max rules

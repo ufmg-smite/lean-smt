@@ -36,9 +36,6 @@ theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) := by
   rw [←elim_leq, And.comm]
   exact Rat.le_antisymm_iff _ _
 
-theorem plus_flatten : Rat.addN (xs ++ Rat.addN (w₁ :: w₂ :: ys) :: zs) = Rat.addN (xs ++ w₁ :: w₂ :: (ys ++ zs)) := by
-  simp only [Rat.addN_append, Rat.addN_cons_append, Rat.add_assoc]
-
 theorem eq_conflict {t : Int} {c : Rat} (hcc : (↑c.floor = c) = False) : (t = c) = False := by
   simp only [eq_iff_iff, iff_false]
   intro htc
@@ -76,13 +73,7 @@ theorem abs_gt : (x.abs > y.abs) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)
 theorem geq_ite_lift [h : Decidable c] {t s r : Rat} : (ite c t s ≥ r) = ite c (t ≥ r) (s ≥ r) := by
   cases h <;> simp_all
 
-theorem gt_ite_lift [h : Decidable c] {t s r : Rat} : (ite c t s > r) = ite c (t > r) (s > r) := by
-  cases h <;> simp_all
-
 theorem leq_ite_lift [h : Decidable c] {t s r : Rat} : (ite c t s ≤ r) = ite c (t ≤ r) (s ≤ r) := by
-  cases h <;> simp_all
-
-theorem lt_ite_lift [h : Decidable c] {t s r : Rat} : (ite c t s < r) = ite c (t < r) (s < r) := by
   cases h <;> simp_all
 
 -- min/max rules

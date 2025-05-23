@@ -7,4 +7,4 @@ query:
 res: unsat
 
 proof:
-(assume @p1 false)
+((assume @p1 false))

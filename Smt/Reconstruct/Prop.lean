@@ -83,22 +83,6 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let p : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[2]!
     addThm q(andN [$p → $q, $q → $p] = ($p = $q)) q(@Prop.bool_dual_impl_eq $p $q)
-  | .BOOL_OR_FLATTEN =>
-    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
-    let b₁ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    let b₂ : Q(Prop) ← reconstructTerm pf.getArguments[3]!
-    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
-    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[5]!.getChildren
-    addThm q(orN ($xs ++ orN ($b₁ :: $b₂ :: $ys) :: $zs) = orN ($xs ++ $b₁ :: $b₂ :: ($ys ++ $zs)))
-           q(@Prop.bool_or_flatten $xs $b₁ $b₂ $ys $zs)
-  | .BOOL_AND_FLATTEN =>
-    let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
-    let b₁ : Q(Prop) ← reconstructTerm pf.getArguments[2]!
-    let b₂ : Q(Prop) ← reconstructTerm pf.getArguments[3]!
-    let ys : Q(List Prop) ← reconstructTerms pf.getArguments[4]!.getChildren
-    let zs : Q(List Prop) ← reconstructTerms pf.getArguments[5]!.getChildren
-    addThm q(andN ($xs ++ andN ($b₁ :: $b₂ :: $ys) :: $zs) = andN ($xs ++ $b₁ :: $b₂ :: ($ys ++ $zs)))
-           q(@Prop.bool_and_flatten $xs $b₁ $b₂ $ys $zs)
   | .BOOL_AND_CONF =>
     let xs : Q(List Prop) ← reconstructTerms pf.getArguments[1]!.getChildren
     let w : Q(Prop) ← reconstructTerm pf.getArguments[2]!

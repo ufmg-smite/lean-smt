@@ -20,7 +20,7 @@ def query : SolverM Result := do
   checkSat
 
 def main : IO Unit := do
-  let ss ← createFromKind .cvc5 s!".lake/packages/cvc5/.lake/build/cvc5-{cvc5.target}/bin/cvc5" none
+  let ss ← createFromKind .cvc5 s!".lake/packages/cvc5/cvc5-{cvc5.target}/bin/cvc5" none
   _ ← StateT.run query ss
 
 #eval main

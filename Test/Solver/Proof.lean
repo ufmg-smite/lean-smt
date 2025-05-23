@@ -20,7 +20,7 @@ def query : SolverM Sexp := do
   getProof
 
 def main : IO Unit := do
-  let ss ← createFromKind .cvc5 s!".lake/packages/cvc5/.lake/build/cvc5-{cvc5.target}/bin/cvc5" none
+  let ss ← createFromKind .cvc5 s!".lake/packages/cvc5/cvc5-{cvc5.target}/bin/cvc5" none
   let (res, ss) ← StateT.run query ss
   _ ← StateT.run exit ss
   println! "query:\n{Command.cmdsAsQuery ss.commands.reverse}\n\nres: unsat\n\nproof:\n{res}"
