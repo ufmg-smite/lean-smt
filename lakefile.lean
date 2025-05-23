@@ -79,6 +79,7 @@ where
       env := ← getAugmentedEnv
     }
     let expected ← IO.FS.readFile expected
+    let expected := expected.crlfToLf
     -- TODO: renable disjunct once cvc5 proofs become are more stable.
     if /- ¬out.stderr.isEmpty ∨ -/ out.stdout ≠ expected then
       IO.println s!"Failed: {test}"

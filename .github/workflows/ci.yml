@@ -26,6 +26,7 @@ jobs:
       uses: leanprover/lean-action@v1
       with:
         auto-config: false
+        use-mathlib-cache: false
     - name: Build and Test Lean-SMT
       run: |
         lake update
