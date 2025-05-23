@@ -22,8 +22,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Build and Test Lean-SMT
+    - name: Set up Lean
       uses: leanprover/lean-action@v1
       with:
-        build-args: "Smt Smt.Auto Smt.Rat Smt.Real"
-        use-github-cache: false
+        auto-config: false
+    - name: Build and Test Lean-SMT
+      run: |
+        lake update
+        lake build Smt Smt.Auto Smt.Rat Smt.Real
+        lake run test
