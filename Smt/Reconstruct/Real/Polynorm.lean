@@ -482,12 +482,12 @@ def polyNorm (mv : MVarId) : MetaM Unit := do
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
   let (l, (is, rs)) ← (reifyReal l).run (#[], #[])
   let (r, (is, rs)) ← (reifyReal r).run (is, rs)
-  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
-    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
-    else q(fun _ => 0)
-  let rctx : Q(PolyNorm.RealContext) := if h : 0 < rs.size
-    then let rs : Q(RArray Real) := (RArray.ofArray rs h).toExpr q(Real) id; q(«$rs».get)
-    else q(fun _ => 0)
+  let ictx : Q(PolyNorm.IntContext) ← if h : 0 < is.size
+    then do let is : Q(RArray Int) ← (RArray.ofArray is h).toExpr q(Int) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
+  let rctx : Q(PolyNorm.RealContext) ← if h : 0 < rs.size
+    then do let rs : Q(RArray Real) ← (RArray.ofArray rs h).toExpr q(Real) id; pure q(«$rs».get)
+    else pure q(fun _ => 0)
   let h : Q(«$l».toPolynomial = «$r».toPolynomial) := .app q(@Eq.refl.{1} PolyNorm.Polynomial) q(«$l».toPolynomial)
   mv.assign q(@PolyNorm.RealExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 
@@ -496,12 +496,12 @@ def nativePolyNorm (mv : MVarId) : MetaM Unit := do
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
   let (l, (is, rs)) ← (reifyReal l).run (#[], #[])
   let (r, (is, rs)) ← (reifyReal r).run (is, rs)
-  let ictx : Q(PolyNorm.IntContext) := if h : 0 < is.size
-    then let is : Q(RArray Int) := (RArray.ofArray is h).toExpr q(Int) id; q(«$is».get)
-    else q(fun _ => 0)
-  let rctx : Q(PolyNorm.RealContext) := if h : 0 < rs.size
-    then let rs : Q(RArray Real) := (RArray.ofArray rs h).toExpr q(Real) id; q(«$rs».get)
-    else q(fun _ => 0)
+  let ictx : Q(PolyNorm.IntContext) ← if h : 0 < is.size
+    then do let is : Q(RArray Int) ← (RArray.ofArray is h).toExpr q(Int) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
+  let rctx : Q(PolyNorm.RealContext) ← if h : 0 < rs.size
+    then do let rs : Q(RArray Real) ← (RArray.ofArray rs h).toExpr q(Real) id; pure q(«$rs».get)
+    else pure q(fun _ => 0)
   let h ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
   mv.assign q(@PolyNorm.RealExpr.denote_eq_from_toPolynomial_eq $ictx $rctx $l $r $h)
 where

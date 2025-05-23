@@ -61,9 +61,6 @@ theorem geq_norm1 : (t ≥ s) = (t - s ≥ 0) :=
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) :=
   propext ⟨(· ▸ And.intro (Int.le_refl t) (Int.le_refl t)), fun ⟨hst, hts⟩ => Int.le_antisymm hts hst⟩
 
-theorem plus_flatten : Int.addN (xs ++ Int.addN (w₁ :: w₂ :: ys) :: zs) = Int.addN (xs ++ w₁ :: w₂ :: (ys ++ zs)) := by
-  simp only [Int.addN_append, Int.addN_cons_append, Int.add_assoc]
-
 theorem mod_over_mod : (c = 0) = False → Int.addN (ts ++ r % c :: ss) % c = Int.addN (ts ++ r :: ss) % c := by
   simp only [Int.addN_append, Int.addN_cons_append, Int.emod_add_cancel_left, Int.emod_add_cancel_right, Int.emod_emod, implies_true]
 
@@ -83,13 +80,7 @@ theorem abs_gt : (x.abs > y.abs) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)
 theorem geq_ite_lift [h : Decidable c] {t s r : Int} : (ite c t s ≥ r) = ite c (t ≥ r) (s ≥ r) := by
   cases h <;> simp_all
 
-theorem gt_ite_lift [h : Decidable c] {t s r : Int} : (ite c t s > r) = ite c (t > r) (s > r) := by
-  cases h <;> simp_all
-
 theorem leq_ite_lift [h : Decidable c] {t s r : Int} : (ite c t s ≤ r) = ite c (t ≤ r) (s ≤ r) := by
-  cases h <;> simp_all
-
-theorem lt_ite_lift [h : Decidable c] {t s r : Int} : (ite c t s < r) = ite c (t < r) (s < r) := by
   cases h <;> simp_all
 
 -- min/max rules

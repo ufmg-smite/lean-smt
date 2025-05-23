@@ -16,12 +16,12 @@ open Lean Qq
 abbrev AbsorbM := StateT (Array Expr) MetaM
 
 def getExprIndex (e : Expr) : AbsorbM Nat := do
-  let es ← get
-  if let some i := es.findIdx? (· == e) then
+  let is ← get
+  if let some i := is.findIdx? (· == e) then
     return i
   else
-    let size := es.size
-    set (es.push e)
+    let size := is.size
+    set (is.push e)
     return size
 
 def reify (zero op e : Expr) : AbsorbM Q(Absorb.Expr) := do
@@ -41,9 +41,10 @@ def absorb (mv : MVarId) (zero op : Expr) : MetaM Unit := do
   let α : Q(Type $u) ← pure α
   let op : Q($α → $α → $α) ← pure op
   let hα : Q(Absorb $op) ← Meta.synthInstance q(Absorb $op)
-  let (l, es) ← (reify zero op l).run #[]
-  let es : Q(Array $α) ← pure (es.foldl (fun acc (e : Q($α)) => q(«$acc».push $e)) q(#[]))
-  let ctx : Q(Absorb.Context $α) := q((«$es».getD · «$hα».zero))
+  let (l, is) ← (reify zero op l).run #[]
+  let ctx : Q(Absorb.Context) ← if h : 0 < is.size
+    then do let is : Q(RArray $α) ← (RArray.ofArray is h).toExpr q($α) id; pure q(«$is».get)
+    else pure q(fun _ => «$hα».zero)
   let h : Q(«$l».containsZero) := .app q(@Eq.refl.{1} Bool) q(true)
   mv.assign q(@Absorb.Expr.eval_eq_zero_from_containsZero $α $op $l $hα $ctx $h)
 
@@ -54,9 +55,10 @@ def nativeAbsorb (mv : MVarId) (zero op : Expr) : MetaM Unit := do
   let α : Q(Type $u) ← pure α
   let op : Q($α → $α → $α) ← pure op
   let hα : Q(Absorb $op) ← Meta.synthInstance q(Absorb $op)
-  let (l, es) ← (reify zero op l).run #[]
-  let es : Q(Array $α) ← pure (es.foldl (fun acc (e : Q($α)) => q(«$acc».push $e)) q(#[]))
-  let ctx : Q(Absorb.Context $α) := q((«$es».getD · «$hα».zero))
+  let (l, is) ← (reify zero op l).run #[]
+  let ctx : Q(Absorb.Context) ← if h : 0 < is.size
+    then do let is : Q(RArray $α) ← (RArray.ofArray is h).toExpr q($α) id; pure q(«$is».get)
+    else pure q(fun _ => «$hα».zero)
   let h ← nativeDecide q(«$l».containsZero)
   mv.assign q(@Absorb.Expr.eval_eq_zero_from_containsZero $α $op $l $hα $ctx $h)
 where

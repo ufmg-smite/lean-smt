@@ -259,8 +259,7 @@ def generateQuery (goal : Expr) (hs : List Expr) (fvNames : Std.HashMap FVarId S
         let decl ← fv.getDecl
         (pure decl.isLet) <&&> notM (Meta.inferType decl.type >>= pure ∘ Expr.isProp)
       else if h.isConst then
-        let info ← getConstInfo h.constName
-        return !info.isTheorem
+        return !(Lean.wasOriginallyTheorem (← getEnv) h.constName)
       else
         return false
     trace[smt.translate.query] "Definitions: {dfns}"

@@ -17,6 +17,8 @@ jobs:
           os: macos-14
         - name: macOS-x86_64
           os: macos-13
+        - name: Windows-x86_64
+          os: windows-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v4

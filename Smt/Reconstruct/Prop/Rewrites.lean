@@ -40,12 +40,6 @@ theorem bool_impl_elim : (t → s) = orN [¬t, s] :=
 theorem bool_dual_impl_eq : andN [t → s, s → t] = (t = s) :=
   propext ⟨fun ⟨hts, hst⟩ => propext ⟨hts, hst⟩, (· ▸ ⟨id, id⟩)⟩
 
-theorem bool_or_flatten : orN (xs ++ orN (b₁ :: b₂ :: ys) :: zs) = orN (xs ++ b₁ :: b₂ :: (ys ++ zs)) := by
-  simp only [orN_append, orN_cons_append, or_assoc]
-
-theorem bool_and_flatten : andN (xs ++ andN (b₁ :: b₂ :: ys) :: zs) = andN (xs ++ b₁ :: b₂ :: (ys ++ zs)) := by
-  simp only [andN_append, andN_cons_append, and_assoc]
-
 theorem bool_and_conf : andN (xs ++ w :: (ys ++ (¬w) :: zs)) = False := by
   simp only [andN_append, andN_cons_append]
   exact propext ⟨fun ⟨_, hw, _, hnw, _⟩ => absurd hw hnw, False.elim⟩

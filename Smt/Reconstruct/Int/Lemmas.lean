@@ -7,18 +7,6 @@ Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 
 import Smt.Reconstruct.Int.Core
 
-private theorem Int.mul_lt_mul_left {c x y : Int} (hc : c > 0) : (c * x < c * y) = (x < y) := by
-  apply propext
-  constructor
-  · apply Int.lt_of_mul_lt_mul_left (h := Int.le_of_lt hc)
-  · apply Int.mul_lt_mul_of_pos_left (h₂ := hc)
-
-private theorem Int.mul_le_mul_left {c x y : Int} (hc : c > 0) : (c * x ≤ c * y) = (x ≤ y) := by
-  apply propext
-  constructor
-  · apply le_of_mul_le_mul_left (h := hc)
-  · apply Int.mul_le_mul_of_nonneg_left (h₂ := Int.le_of_lt hc)
-
 private theorem Int.mul_eq_zero_left {x y : Int} (hx : x ≠ 0) (hxy : x * y = 0) : y = 0 := by
   rewrite [Int.mul_eq_zero] at hxy
   exact hxy.resolve_left hx
@@ -75,7 +63,7 @@ theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (
   rw [Int.abs_mul x₁ x₂, Int.abs_mul y₁ y₂, h₁, h₂]
 
 theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
-  rw [Int.abs_mul, Int.abs_mul]
+  rewrite [Int.abs_mul, Int.abs_mul]
   apply Int.mul_lt_mul h₁ (Int.le_of_eq h₂.left.symm) _ (Int.abs_nonneg x₁)
   rewrite [← h₂.left]
   exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂) h₂.right.symm

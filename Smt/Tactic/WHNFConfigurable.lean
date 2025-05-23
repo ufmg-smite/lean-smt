@@ -30,12 +30,6 @@ partial def letTelescopeAbstractingAux (fvars : Array Expr) (abs : Expr → Meta
     letTelescopeAbstractingAux fvars (fun e' => abs (Expr.mdata md e')) k e
   | e => k fvars e abs
 
-@[inline] def map3MetaM [MonadControlT MetaM m] [Monad m]
-    (f : forall {α}, (β → γ → δ → MetaM α) → MetaM α)
-    {α} (k : β → γ → δ → m α)
-    : m α :=
-  controlAt MetaM fun runInBase => f fun b c d => runInBase <| k b c d
-
 /-- Like `lambdaTelescope` but just for `let` bindings, and the continuation is given an abstraction
 function which it can use to reintroduce all the surrounding `let` bindings. The `let` bindings are
 defined as `cdecl`s, i.e. their values are not exposed in the local context.
