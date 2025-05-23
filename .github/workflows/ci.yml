@@ -31,3 +31,4 @@ jobs:
         lake update
         lake build Smt Smt.Auto Smt.Rat Smt.Real
         lake run test
+      shell: bash
