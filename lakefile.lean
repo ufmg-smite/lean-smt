@@ -81,7 +81,7 @@ where
     let expected ← IO.FS.readFile expected
     let expected := expected.crlfToLf
     -- TODO: renable disjunct once cvc5 proofs become are more stable.
-    if /- ¬out.stderr.isEmpty ∨ -/ out.stdout ≠ expected then
+    if /- ¬out.stderr.isEmpty ∨ -/ out.stdout.crlfToLf ≠ expected then
       IO.println s!"Failed: {test}"
       IO.println s!"Stderr:\n{out.stderr}"
       IO.println s!"Stdout:\n{out.stdout}"
