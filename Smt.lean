@@ -16,5 +16,6 @@ import Smt.Quant
 import Smt.String
 import Smt.Tactic
 import Smt.UF
+import Smt.Auto
 
 import Smt.Translate.Solver
