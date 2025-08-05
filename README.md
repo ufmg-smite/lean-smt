@@ -61,6 +61,8 @@ import Mathlib.Algebra.Group.Defs
 import Smt
 import Smt.Auto
 
+attribute [rebind Auto.Native.solverFunc] Smt.smtSolverFunc
+
 set_option auto.native true
 
 variable [Group G]
