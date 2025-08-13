@@ -69,7 +69,7 @@ def mulN : List Int → Int
 protected theorem cast_pos' {x : Nat} : x ≠ 0 → (0 : Int) < x := by
   intro h
   have h' := Nat.zero_lt_of_ne_zero h
-  exact Int.ofNat_pos.mpr h'
+  exact Int.natCast_pos.mpr h'
 
 protected theorem gcd_def (i j : Int) : i.gcd j = i.natAbs.gcd j.natAbs :=
   rfl
