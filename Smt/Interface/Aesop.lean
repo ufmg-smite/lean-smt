@@ -58,7 +58,7 @@ def parseFoo : Syntax → TacticM (List (String × Expr))
 @[tactic foo]
 def evalFoo : Tactic := fun stx => withMainContext do
   let names : List (String × Expr) ← parseFoo stx
-  let ruleTacVal ← mkAppM `smtSingleRuleTac #[q($names), q(false)] -- unknown identifier: names
+  let ruleTacVal ← mkAppM `smtSingleRuleTac #[q($names), q(false)]
   let ruleTacType := mkConst `Aesop.SingleRuleTac
   let ruleTacDecl :=
     mkDefinitionValEx `instantiatedSmtCoreRuleTac [] ruleTacType ruleTacVal ReducibilityHints.opaque DefinitionSafety.safe [`instantiatedSmtCoreRuleTac]
