@@ -55,11 +55,11 @@ example (ε : Real) (h1 : ε > 0) : ε / 2 + ε / 3 + ε / 7 < ε := by
 `lean-smt` integrates with
 [`lean-auto`](https://github.com/leanprover-community/lean-auto) to provide
 basic hammer-like capabilities. To set the `smt` tactic as a backend for `auto`,
-import `Smt.Auto` and set `auto.native` to `true`:
+import `Smt.Interface.Auto` and set `auto.native` to `true`:
 ```lean
 import Mathlib.Algebra.Group.Defs
 import Smt
-import Smt.Auto
+import Smt.Interface.Auto
 
 attribute [rebind Auto.Native.solverFunc] Smt.smtSolverFunc
 

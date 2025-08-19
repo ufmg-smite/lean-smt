@@ -2,7 +2,7 @@ import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Function
 
 import Smt
-import Smt.Auto
+import Smt.Interface.Auto
 
 set_option auto.native true
 
