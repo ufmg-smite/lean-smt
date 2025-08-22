@@ -13,6 +13,7 @@ import Smt.Reconstruct.Prop.Lemmas
 import Smt.Translate.Query
 import Smt.Preprocess
 import Smt.Util
+import Smt.Auto
 
 namespace Smt
 
@@ -29,6 +30,8 @@ structure Config where
   native : Bool := false
   /-- Whether to preprocess the query before sending it to the SMT solver. -/
   preprocess : Bool := true
+  /-- Whether to monomorphize the Lean goal before invoking the SMT solver. -/
+  mono : Bool := false
   /-- Whether to trust the result of the SMT solver. Closes the current goal with a `sorry` if the
       SMT solver returns `unsat`. **Warning**: use with caution, as this may lead to unsoundness.
       Additionally adds the translation from Lean to SMT to the trusted code base, which is not
@@ -66,8 +69,11 @@ def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : Std.HashMap FV
   Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g =>
   Query.generateQuery g hs fvNames
 
-def withProcessedHints (mv : MVarId) (hs : List Expr) (k : MVarId → List Expr → MetaM α): MetaM α :=
-  go mv hs [] k
+def withProcessedHints (mv : MVarId) (hints : Auto.InputHints') (k : MVarId → List Expr → MetaM α) : MetaM α := do
+  let mut hs := hints.lemmas.map (·.proof)
+  if hints.lctxhyps then
+    hs := hs ++ (← getPropHyps).toList.map Expr.fvar
+  go mv hs.toList [] k
 where
   go (mv : MVarId) (hs : List Expr) (fvs : List Expr) (k : MVarId → List Expr → MetaM α): MetaM α := do
     match hs with
@@ -80,11 +86,17 @@ where
         let ⟨fv, mv⟩ ← mv.intro1
         go mv hs (.fvar fv :: fvs) k
 
-def smt (cfg : Config) (mv : MVarId) (hs : List Expr) : MetaM (List MVarId) := mv.withContext do
+def withMono (mv : MVarId) (hs : Auto.InputHints') (k : MVarId → List Expr → MetaM α) : MetaM α := do
+  let (mv, _) ← Auto.mono' `smt mv hs #[] #[]
+  let hs ← mv.withContext (return (← Smt.getPropHyps).toList.map Expr.fvar)
+  trace[smt] "goal: {mv}"
+  k mv hs
+
+def smt (cfg : Config) (mv : MVarId) (hs : Auto.InputHints') : MetaM (List MVarId) := mv.withContext do
   -- 0. Create a duplicate goal to preserve the original goal.
   let mv₁ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 1. Process the hints passed to the tactic.
-  withProcessedHints mv₁ hs fun mv₂ hs => mv₂.withContext do
+  (if cfg.mono then withMono else withProcessedHints) mv₁ hs fun mv₂ hs => mv₂.withContext do
   -- 2. Preprocess the hypotheses and goal.
   let (hs, mv₂) ← if cfg.preprocess then Preprocess.elimIff mv₂ hs else pure (hs, mv₂)
   mv₂.withContext do
@@ -185,15 +197,14 @@ macro "smt_show " c:optConfig h:smtHints : tactic => do
 
 declare_config_elab elabConfig Smt.Config
 
-def elabHints : TSyntax `smtHints → TacticM (List Expr)
+def elabHints : TSyntax `smtHints → TacticM (Auto.InputHints')
   | `(smtHints| [ $[$hs],* ]) => withMainContext do
-    hs.foldrM (init := []) fun h acc => do
+    hs.foldrM (init := ⟨#[], #[], false⟩) fun h acc => do
       if h.getKind == ``Smt.Tactic.smtStar then
-        let fvs := (← Smt.getPropHyps).toList.map Expr.fvar
-        return fvs ++ acc
-      let h ← elabTerm h none
-      return h :: acc
-  | `(smtHints| ) => return []
+        return { acc with lctxhyps := true }
+      let h ← Auto.Prep.elabLemma ⟨h⟩ (.leaf s!"❰{h}❱")
+      return { acc with lemmas := acc.lemmas.push h }
+  | `(smtHints| ) => return ⟨#[], #[], false⟩
   | _ => throwUnsupportedSyntax
 
 @[tactic smt] def evalSmt : Tactic := fun stx => withMainContext do
