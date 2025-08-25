@@ -63,7 +63,8 @@ where
   | .ITE =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort t.getSort
     let c : Q(Prop) ← reconstructTerm t[0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let oh : Option Q(Decidable $c) ← Meta.synthInstance? q(Decidable $c)
+    let h : Q(Decidable $c) := oh.getD q(Classical.propDecidable $c)
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)

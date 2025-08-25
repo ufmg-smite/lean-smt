@@ -1,1 +1,5 @@
-Test/Prop/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols with `smt [foo, bar]`
+Test/Prop/Comm.lean:4:2: error: unable to prove goal, either it is false or you need to define more symbols. Here is a potential counter-example:
+
+  f = fun _arg_1 _arg_2 => _arg_1 ∧ ¬_arg_2
+  p = False
+  q = True

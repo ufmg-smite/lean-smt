@@ -215,35 +215,51 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   else
     return (dfns, ps, p, h, mvs.toList)
 
+inductive cvc5Result where
+  | sat (model : Array (cvc5.Term × cvc5.Term))
+  | unsat (pf : cvc5.Proof) (uc : Array cvc5.Term)
+  | unknown (reason : cvc5.UnknownExplanation)
+
 open cvc5 in
-def traceSolve (r : Except Exception (Except SolverError Proof)) : MetaM MessageData :=
+def traceSolve (r : Except Exception (Except Error cvc5Result)) : MetaM MessageData :=
   return match r with
   | .ok (.ok _) => m!"{checkEmoji}"
   | _           => m!"{bombEmoji}"
 
 open cvc5 in
-def solve (query : String) (timeout : Option Nat) : MetaM (Except Error cvc5.Proof) :=
-  profileitM Exception "simp" {} do
+def solve (query : String) (timeout : Option Nat) : MetaM (Except cvc5.Error cvc5Result) :=
+  profileitM Exception "smt" {} do
   withTraceNode `smt.solve traceSolve do Solver.run (← TermManager.new) do
     if let .some timeout := timeout then
       Solver.setOption "tlimit" (toString (1000*timeout))
     Solver.setOption "dag-thresh" "0"
     Solver.setOption "simplification" "none"
     Solver.setOption "enum-inst" "true"
+    Solver.setOption "enum-inst-interleave" "true"
     Solver.setOption "cegqi-midpoint" "true"
     Solver.setOption "produce-models" "true"
     Solver.setOption "produce-proofs" "true"
     Solver.setOption "proof-elim-subtypes" "true"
     Solver.setOption "proof-granularity" "dsl-rewrite"
-    Solver.parseCommands query
-    let r ← Solver.checkSat
-    trace[smt.solve] m!"result: {r}"
-    if r.isUnsat then
+    let vs ← Solver.parseCommands query
+    let res ← Solver.checkSat
+    trace[smt.solve] m!"result: {res}"
+    if res.isSat then
+      let ts ← Solver.getValues vs
+      trace[smt.solve] "unsat-core:\n{vs.zip ts}"
+      return .sat (vs.zip ts)
+    else if res.isUnsat then
       let ps ← Solver.getProof
+      let uc ← Solver.getUnsatCore
       if h : 0 < ps.size then
         trace[smt.solve] "proof:\n{← Solver.proofToString ps[0]}"
-        return ps[0]
-    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.error s!"Expected unsat, got {r}")
+        trace[smt.solve] "unsat-core:\n{uc}"
+        return .unsat ps[0] uc
+    else if res.isUnknown then
+      let reason := res.getUnknownExplanation
+      trace[smt.solve] "unknown-reason:\n{reason}"
+      return .unknown reason
+    throwError s!"unexpected check-sat result {res}"
 
 syntax (name := reconstruct) "reconstruct" str : tactic
 
@@ -253,8 +269,10 @@ open Lean.Elab Tactic in
     let some query := stx[1].isStrLit? | throwError "expected string"
     let r ← solve query none
     match r with
-      | .error e => logInfo (repr e)
-      | .ok pf =>
+      | .error e => throwError e.toString
+      | .ok (.sat _) => throwError "expected unsat result"
+      | .ok (.unknown r) => logInfo (repr r)
+      | .ok (.unsat pf _) =>
         let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), false⟩
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
