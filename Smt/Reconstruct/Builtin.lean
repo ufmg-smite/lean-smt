@@ -32,7 +32,7 @@ def getFVarExpr! (n : Name) : MetaM Expr := do
 
 def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
-  | some fv => return .fvar fv
+  | some e => return e
   | none   => match (← getLCtx).findFromUserName? n.toName with
     | some d => return d.toExpr
     | none   =>

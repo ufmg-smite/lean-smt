@@ -37,22 +37,24 @@ structure Config where
       Additionally adds the translation from Lean to SMT to the trusted code base, which is not
       always sound. -/
   trust : Bool := false
+  /-- Whether to show a potential counter-example when the SMT solver returns `sat`. -/
+  model : Bool := false
   /-- Just show the SMT query without invoking a solver. Useful for debugging. -/
   showQuery : Bool := false
 deriving Inhabited, Repr
 
 inductive Result where
-  | sat (model : Array (Expr × Expr))
+  | sat (model : Option (Array (Expr × Expr)))
   | unsat (mvs : List MVarId) (usedHints : Array Expr)
   | unknown (reason : String)
 
-def genUniqueFVarNames : MetaM (Std.HashMap FVarId String × Std.HashMap String FVarId) := do
+def genUniqueFVarNames : MetaM (Std.HashMap FVarId String × Std.HashMap String Expr) := do
   let lCtx ← getLCtx
   let st : NameSanitizerState := { options := {}}
   let (lCtx, _) := (lCtx.sanitizeNames st).run
   return lCtx.getFVarIds.foldl (init := ({}, {})) fun (m₁, m₂) fvarId =>
     let m₁ := m₁.insert fvarId (lCtx.getRoundtrippingUserName? fvarId).get!.toString
-    let m₂ := m₂.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId
+    let m₂ := m₂.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString (.fvar fvarId)
     (m₁, m₂)
 
 def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : Std.HashMap FVarId String) : MetaM (List Command) := do
@@ -116,11 +118,19 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     return .unsat mvs uc
   | .ok (.sat model) =>
     -- 5e. Return potential counter-example.
-    let ctx := { userNames := fvNames₂, native := cfg.native }
-    let (vs, ts) := model.unzip
-    let (vs, state) ← (vs.mapM Reconstruct.reconstructTerm).run ctx {}
-    let (ts, _) ← (ts.mapM Reconstruct.reconstructTerm).run ctx state
-    return .sat (vs.zip ts)
+    if !cfg.model then
+      return .sat none
+    let (uss, es) := model.iss.unzip
+    let cs := es.map Array.size
+    let sortCard := Std.HashMap.insertMany ∅ (uss.zip cs)
+    let ctx := { userNames := fvNames₂, sortCard := sortCard, native := cfg.native }
+    let (uss', _) ← (uss.mapM Reconstruct.reconstructSort).run ctx {}
+    let cs' := cs.map (fun n => .app (.const ``Fin []) (@toExpr Nat Lean.instToExprNat n))
+    let state := { sortCache := Std.HashMap.insertMany ∅ (uss.zip cs') }
+    let (ufs, vs) := model.ifs.unzip
+    let (ufs', state) ← (ufs.mapM Reconstruct.reconstructTerm).run ctx state
+    let (vs', _) ← (vs.mapM Reconstruct.reconstructTerm).run ctx state
+    return .sat (.some (uss'.zip cs' ++ ufs'.zip vs'))
 
 namespace Tactic
 
@@ -232,9 +242,11 @@ def evalSmtCore (cfg : TSyntax ``Parser.Tactic.optConfig) (hs : TSyntax ``smtHin
   let (map, hs) ← elabHints hs
   let res ← Smt.smt cfg mv hs
   match res with
-    | .sat model =>
+    | .sat none =>
+      throwError "unable to prove goal, either it is false or you need to define more symbols. Try adding '+model' config option to display a potential counter-example (experimental)."
+    | .sat (.some model) =>
       if model.isEmpty then
-        throwError "unable to prove goal, either it is false or you need to define more symbols. Could not produce a counter-example. Try introducing variables to get a counter-example."
+        throwError "unable to prove goal, either it is false or you need to define more symbols. Could not produce a counter-example. Try introducing variables into the local context to get a counter-example."
       else
         let mut md := m!""
         for (v, t) in model do

@@ -13,8 +13,8 @@ goal: partCurryAdd a b = partCurryAdd b a
 query:
 (set-logic ALL)
 (define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.50 Int)) Int (+ a a._@.Test.Int.Binders._hyg.50))
-(declare-const b Int)
 (declare-const a Int)
+(declare-const b Int)
 (assert (not (= (partCurryAdd a b) (partCurryAdd b a))))
 (check-sat)
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'

@@ -17,12 +17,15 @@ open Attribute
 
 structure Reconstruct.Context where
   /-- The user names of the variables in the local context. -/
-  userNames : Std.HashMap String FVarId := {}
+  userNames : Std.HashMap String Expr := {}
+  /-- The cardinality of sorts in a model. -/
+  sortCard : Std.HashMap cvc5.Sort Nat := {}
   /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
       reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
   native : Bool := false
 
 structure Reconstruct.State where
+  sortCache : Std.HashMap cvc5.Sort Expr := {}
   termCache : Std.HashMap cvc5.Term Expr := {}
   proofCache : Std.HashMap cvc5.Proof Expr := {}
   count : Nat := 0
@@ -55,10 +58,24 @@ private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (Li
 @[implemented_by getReconstructorsUnsafe]
 opaque getReconstructors (n : Name) (rcons : Type) : MetaM (List (rcons × Name))
 
-def reconstructSort (s : cvc5.Sort) : ReconstructM Expr := do
-  let rs ← getReconstructors ``SortReconstructor SortReconstructor
-  go rs s
+def traceReconstructSort (s : cvc5.Sort) (r : Except Exception Expr) : ReconstructM MessageData :=
+  return m!"{s} ↦ " ++ match r with
+    | .ok e    => m!"{e}"
+    | .error _ => m!"{bombEmoji}"
+
+def reconstructSort : cvc5.Sort → ReconstructM Expr := withSortCache fun s => do
+  withTraceNode ((`smt.reconstruct.sort).str s.getKind.toString) (traceReconstructSort s) do
+    let rs ← getReconstructors ``SortReconstructor SortReconstructor
+    go rs s
 where
+  withSortCache (r : cvc5.Sort → ReconstructM Expr) (s : cvc5.Sort) : ReconstructM Expr := do
+    match (← get).sortCache[s]? with
+    | some e => return e
+    | none   => reconstruct r s
+  reconstruct r s := do
+    let e ← r s
+    modify fun state => { state with sortCache := state.sortCache.insert s e }
+    return e
   go (rs : List (SortReconstructor × Name)) (s : cvc5.Sort) : ReconstructM Expr := do
     for (r, n) in rs do
       if let some e ← r s then
@@ -208,15 +225,19 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
   let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
   let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
-  let (h, ⟨_, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+  let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
   if dfns.isEmpty then
     let h : Q(True → $p) ← pure h
     return (dfns, ps, p, q($h trivial), mvs.toList)
   else
     return (dfns, ps, p, h, mvs.toList)
 
+structure cvc5Model where
+  iss : Array (cvc5.Sort × Array cvc5.Term)
+  ifs : Array (cvc5.Term × cvc5.Term)
+
 inductive cvc5Result where
-  | sat (model : Array (cvc5.Term × cvc5.Term))
+  | sat (model : cvc5Model)
   | unsat (pf : cvc5.Proof) (uc : Array cvc5.Term)
   | unknown (reason : cvc5.UnknownExplanation)
 
@@ -241,13 +262,14 @@ def solve (query : String) (timeout : Option Nat) : MetaM (Except cvc5.Error cvc
     Solver.setOption "produce-proofs" "true"
     Solver.setOption "proof-elim-subtypes" "true"
     Solver.setOption "proof-granularity" "dsl-rewrite"
-    let vs ← Solver.parseCommands query
+    let (uss, ufs) ← Solver.parseCommands query
     let res ← Solver.checkSat
     trace[smt.solve] m!"result: {res}"
     if res.isSat then
-      let ts ← Solver.getValues vs
-      trace[smt.solve] "unsat-core:\n{vs.zip ts}"
-      return .sat (vs.zip ts)
+      let iss ← uss.mapM fun us => return (us, ← Solver.getModelDomainElements us)
+      let ifs ← ufs.mapM fun uf => return (uf, ← Solver.getValue uf)
+      trace[smt.solve] "model:\n{iss}\n{ifs}"
+      return .sat { iss, ifs }
     else if res.isUnsat then
       let ps ← Solver.getProof
       let uc ← Solver.getUnsatCore
@@ -273,15 +295,15 @@ open Lean.Elab Tactic in
       | .ok (.sat _) => throwError "expected unsat result"
       | .ok (.unknown r) => logInfo (repr r)
       | .ok (.unsat pf _) =>
-        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), false⟩
+        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), {}, false⟩
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1
         replaceMainGoal (mv :: mvs)
 where
-  getUserNames : MetaM (Std.HashMap String FVarId) := do
+  getUserNames : MetaM (Std.HashMap String Expr) := do
     let lCtx ← getLCtx
-    return lCtx.getFVarIds.foldl (init := {}) fun m fvarId =>
-      m.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString fvarId
+    return lCtx.getFVarIds.foldl (init := {}) fun m fv =>
+      m.insert (lCtx.getRoundtrippingUserName? fv).get!.toString (.fvar fv)
 
 end Smt
