@@ -6,10 +6,17 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Auto.Tactic
+import Smt.Preprocess.Basic
 
 namespace Auto
 
 open Lean Elab Embedding.Lam
+
+def DTr.contains (self : DTr) (other : DTr) : Bool :=
+  if self == other then true
+  else match self with
+    | .leaf _ => false
+    | .node _ dtrs => dtrs.attach.any fun ⟨dtr, _⟩ => dtr.contains other
 
 structure InputHints' where
   lemmas   : Array Lemma := #[]
@@ -147,7 +154,7 @@ def mono' (declName? : Option Name) (mv : MVarId) (hints : InputHints') (unfoldI
       let f (acc : MessageData) (dtr : FVarId × DTr) :=
         acc ++ m!"\n<{Expr.fvar dtr.fst}> = <{ToString.toString dtr.snd}>"
       let message : MessageData := dtrs.foldl f m!""
-      trace[smt] "dtrs: {message}"
+      trace[smt.preprocess] "dtrs: {message}"
       let (_, mv) ← mvarId.assertHypotheses hs
       absurd.assign proof
       return (mv, dtrs)
@@ -182,3 +189,40 @@ open Lean Elab Tactic in
   | _ => throwUnsupportedSyntax
 
 end Auto.Tactic
+
+namespace Smt.Preprocess
+
+open Lean
+
+open Auto in
+def hintsToAutoHints (hs : Array Expr) : MetaM (Std.HashMap DTr Expr × InputHints' × Array Prep.ConstUnfoldInfo × Array Name) := do
+  let lemmas ← hs.mapM inferLemma
+  let map := .ofList (lemmas.map (fun l => (l.deriv, l.proof))).toList
+  return (map, ⟨lemmas, #[], false⟩, #[], #[])
+where
+  inferLemma (e : Expr) : MetaM Lemma := do
+    let paramNames ← getLevelParamNames e
+    return Lemma.mk ⟨e, ← Meta.inferType e, (.node "smtHint" #[.leaf s!"{e}"])⟩ paramNames
+  getLevelParamNames {ω : Type} {m} [STWorld ω m] [MonadLiftT (ST ω) m] [Monad m] (e : Expr) : m (Array Name) := do
+    let ((), names) ← (e.forEach getLevelParamName).run (m := m) {}
+    return names.toArray
+  getLevelParamName {m} [Monad m] (e : Expr) : StateT (Std.HashSet Name) m Unit := do
+    match e with
+    | .const _ lvls =>
+      let names := lvls.filterMap fun lvl => do
+        let .param name := lvl | none
+        some name
+      modify fun s => s.insertMany names
+    | _ => return
+
+def mono (mv : MVarId) (hs : Array Expr) : MetaM Result := do
+  let (invMap, hints, unfoldInfos, defeqNames) ← hintsToAutoHints hs
+  let (mv, dtrs) ← Auto.mono' `smt mv hints unfoldInfos defeqNames
+  let map := dtrs.foldl (init := {}) fun map (fv, dtr) =>
+    let usedHints := invMap.filter (fun k _ => dtr.contains k)
+    map.insert (.fvar fv) usedHints.valuesArray
+  let hs ← mv.withContext (return (← getPropHyps).map Expr.fvar)
+  trace[smt.preprocess] "goal: {mv}"
+  return { map, hs, mv }
+
+end Smt.Preprocess

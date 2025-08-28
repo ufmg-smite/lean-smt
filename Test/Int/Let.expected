@@ -2,19 +2,19 @@ goal: f z = z
 
 query:
 (set-logic ALL)
+(define-fun z () Int 10)
 (declare-fun f (Int) Int)
 (assert (= (f 10) 10))
-(define-fun z () Int 10)
 (assert (not (= (f z) z)))
 (check-sat)
 goal: f y = y
 
 query:
 (set-logic ALL)
-(declare-fun f (Int) Int)
-(assert (= (f 10) 10))
 (define-fun z () Int 10)
 (define-fun y () Int z)
+(declare-fun f (Int) Int)
+(assert (= (f 10) 10))
 (assert (not (= (f y) y)))
 (check-sat)
 goal: z 3 = 10
@@ -22,7 +22,7 @@ goal: z 3 = 10
 query:
 (set-logic ALL)
 (declare-fun f (Int) Int)
-(assert (= (f 10) 10))
 (define-fun z ((x._@.Test.Int.Let._hyg.322 Int)) Int (f 10))
+(assert (= (f 10) 10))
 (assert (not (= (z 3) 10)))
 (check-sat)
