@@ -257,6 +257,10 @@ def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) :
       let h : Q(«$l».abs = «$r».abs) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Rat.mul_abs₁ $hs $h))
     else if ks == .GT && k == .AND then
+      let l : Q(Real) ← reconstructTerm p.getResult[0]![0]![0]!
+      let r : Q(Real) ← reconstructTerm p.getResult[0]![1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(«$ls».abs > «$rs».abs) := hs
       let h : Q(«$l».abs = «$r».abs ∧ «$l».abs ≠ 0) ← reconstructProof p
       return (.GT, lsl, rsr, q(Rat.mul_abs₂ $hs $h))
