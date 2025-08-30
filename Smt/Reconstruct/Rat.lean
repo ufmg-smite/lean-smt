@@ -247,24 +247,28 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 
 def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
-    let l : Q(Rat) ← reconstructTerm p.getResult[0]![0]!
-    let r : Q(Rat) ← reconstructTerm p.getResult[1]![0]!
-    let lsl := q($ls * $l)
-    let rsr := q($rs * $r)
     let k := p.getResult.getKind
     if ks == .EQUAL && k == .EQUAL then
+      let l : Q(Rat) ← reconstructTerm p.getResult[0]![0]!
+      let r : Q(Rat) ← reconstructTerm p.getResult[1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(«$ls».abs = «$rs».abs) := hs
       let h : Q(«$l».abs = «$r».abs) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Rat.mul_abs₁ $hs $h))
     else if ks == .GT && k == .AND then
-      let l : Q(Real) ← reconstructTerm p.getResult[0]![0]![0]!
-      let r : Q(Real) ← reconstructTerm p.getResult[0]![1]![0]!
+      let l : Q(Rat) ← reconstructTerm p.getResult[0]![0]![0]!
+      let r : Q(Rat) ← reconstructTerm p.getResult[0]![1]![0]!
       let lsl := q($ls * $l)
       let rsr := q($rs * $r)
       let hs : Q(«$ls».abs > «$rs».abs) := hs
       let h : Q(«$l».abs = «$r».abs ∧ «$l».abs ≠ 0) ← reconstructProof p
       return (.GT, lsl, rsr, q(Rat.mul_abs₂ $hs $h))
     else if ks == .GT && k == .GT then
+      let l : Q(Rat) ← reconstructTerm p.getResult[0]![0]!
+      let r : Q(Rat) ← reconstructTerm p.getResult[1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(«$ls».abs > «$rs».abs) := hs
       let h : Q(«$l».abs > «$r».abs) ← reconstructProof p
       return (.GT, lsl, rsr, q(Rat.mul_abs₃ $hs $h))
