@@ -49,7 +49,7 @@ theorem eq_conflict {t : Int} {c : Real} (hcc : (↑⌊c⌋ = c) = False) : (t =
         · apply ((Int.floor_eq_iff (z := ⌊c⌋) (a := c)).mp rfl).right
         · rewrite [← Int.cast_one, ← Int.cast_add, Int.cast_le]
           exact htcf
-      simp_all [lt_irrefl]
+      simp_all
 
 theorem geq_tighten {t : Int} {c : Real} {cc : Int} (hc : (↑⌊c⌋ = c) = False) (hcc : cc = Int.addN [⌊c⌋, 1]) : (t ≥ c) = (t ≥ cc) := by
   simp only [hcc, Int.addN, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]

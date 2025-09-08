@@ -332,9 +332,9 @@ end
     let decl ← fvarId.getDecl
     match decl with
     | LocalDecl.cdecl .. => return e
-    | LocalDecl.ldecl (value := v) (nonDep := nonDep) .. =>
+    | LocalDecl.ldecl (value := v) (nondep := nondep) .. =>
       let ctx ← (read : MetaM Meta.Context)
-      if nonDep then
+      if nondep then
         return e
       else
         if ctx.trackZetaDelta then

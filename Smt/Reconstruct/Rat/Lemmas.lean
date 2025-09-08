@@ -72,7 +72,7 @@ protected theorem divInt_lt_divInt
   {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
 : a /. b < c /. d ↔ a * d < c * b := by
   rw [Rat.lt_iff_sub_pos, ← Int.sub_pos]
-  simp only [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
+  simp only [Rat.sub_eq_add_neg, Rat.neg_divInt]
   rw [Rat.divInt_add_divInt]
   simp only [Int.neg_mul, Rat.divInt_pos_iff_of_pos_right (Int.mul_pos d0 b0), Int.sub_pos]
   rw [← Int.sub_pos (a := c * b)]
@@ -449,7 +449,7 @@ theorem abs_of_nonneg {a : Rat} (h : 0 ≤ a) : a.abs = a := by
 theorem abs_mul (a b : Rat) : (a * b).abs = a.abs * b.abs := by
   rw [Rat.abs_eq (Rat.mul_nonneg (Rat.abs_nonneg a) (Rat.abs_nonneg b))]
   rcases Rat.le_total a 0 with ha | ha <;> rcases Rat.le_total b 0 with hb | hb <;>
-    simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, eq_self_iff_true, Rat.neg_mul,
+    simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, Rat.neg_mul,
       Rat.mul_neg, Rat.neg_neg, *]
 
 theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by

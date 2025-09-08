@@ -147,7 +147,7 @@ protected theorem lt_asymm {x y : Rat} : x < y → ¬ y < x := by
         constructor <;> intros <;> simp_all [Int.lt_asymm]
 
 protected theorem add_comm : a + b = b + a := by
-  simp [add_def, Int.add_comm, Int.mul_comm, Nat.mul_comm]
+  simp [add_def, Int.add_comm, Nat.mul_comm]
 
 @[simp]
 protected theorem add_zero : ∀ a : Rat, a + 0 = a
@@ -251,7 +251,7 @@ theorem pos_iff_neg_nonpos : 0 < q ↔ -q < 0 := by
 @[simp]
 theorem num_neg : q.num < 0 ↔ q < 0 := by
   let tmp := @num_pos (-q)
-  simp [Rat.neg_num q, Int.lt_neg_of_lt_neg] at tmp
+  simp [Rat.neg_num q] at tmp
   rw [tmp]
   apply Rat.neg_neg q ▸ Rat.pos_iff_neg_nonpos (q := -q)
 
@@ -324,7 +324,7 @@ protected theorem add_neg_self : x + -x = 0 :=
 protected theorem eq_neg_of_add_eq_zero_left : x + y = 0 → x = - y :=
   numDenCasesOn'' x fun nx dx h_dx h_dx_red =>
   numDenCasesOn'' y fun ny dy h_dy h_dy_red => by
-    simp only [Rat.neg_divInt, Rat.add_def, Neg.neg]
+    simp only [Rat.add_def, Neg.neg]
     simp only [Rat.neg, normalize_eq_zero]
     simp only [eq_iff_mul_eq_mul, ← Int.neg_mul_eq_neg_mul]
     intro h
@@ -340,11 +340,11 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
     unfold Rat.blt
     simp only
       [ Bool.and_eq_true, decide_eq_true_eq, Bool.ite_eq_false_distrib,
-        decide_eq_false_iff_not, Rat.not_lt, ite_eq_left_iff,
-        not_and, Rat.not_le, ← Rat.num_nonneg ]
+        decide_eq_false_iff_not, ite_eq_left_iff,
+        not_and, ← Rat.num_nonneg ]
     if h : ny < 0 ∧ 0 ≤ nx then
       simp only [h, and_self, ↓reduceIte, Bool.true_eq_false, num_nonneg, false_iff]
-      simp only [Rat.sub_def, Rat.not_le, normalize_eq, Rat.neg]
+      simp only [Rat.sub_def, Rat.not_le, normalize_eq]
       simp [← Rat.num_neg]
       apply Int.ediv_neg_of_neg_of_pos
       · apply Int.sub_neg_of_lt
@@ -383,7 +383,7 @@ protected theorem le_iff_sub_nonneg (x y : Rat) : x ≤ y ↔ 0 ≤ y - x :=
               · apply Int.mul_nonneg _ (Int.natCast_nonneg ↑dx)
                 exact Int.le_of_lt ny_pos
         else
-          simp [ny_pos, Int.not_lt, ← Int.sub_nonneg]
+          simp [ny_pos, ← Int.sub_nonneg]
           rw [Int.sub_zero]
           rw [Int.sub_zero]
           apply Iff.symm
@@ -416,7 +416,7 @@ protected theorem divInt_le_divInt
   {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
 : a /. b ≤ c /. d ↔ a * d ≤ c * b := by
   rw [Rat.le_iff_sub_nonneg, ← Int.sub_nonneg]
-  simp [Rat.sub_eq_add_neg, Rat.neg_divInt, Int.ne_of_gt b0, Int.ne_of_gt d0, Int.mul_pos d0 b0]
+  simp [Rat.sub_eq_add_neg, Rat.neg_divInt]
   rw [Rat.divInt_add_divInt]
   simp only [Rat.divInt_nonneg_iff_of_pos_right (Int.mul_pos d0 b0), Int.neg_mul]
   rw [← Int.sub_nonneg (a := c * b)]
@@ -428,7 +428,7 @@ theorem mul_assoc (a b c : Rat) : a * b * c = a * (b * c) :=
   numDenCasesOn' a fun n₁ d₁ h₁ =>
     numDenCasesOn' b fun n₂ d₂ h₂ =>
       numDenCasesOn' c fun n₃ d₃ h₃ => by
-        simp [h₁, h₂, h₃, Int.mul_comm, Nat.mul_assoc, Int.mul_left_comm, mkRat_mul_mkRat]
+        simp [Int.mul_comm, Nat.mul_assoc, Int.mul_left_comm, mkRat_mul_mkRat]
 
 theorem cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
   intro h
@@ -611,8 +611,7 @@ theorem mul_nonneg {a b : Rat} : 0 ≤ a → 0 ≤ b → 0 ≤ a * b :=
     numDenCasesOn' b fun n₂ d₂ h₂ => by
       have d₁0 : 0 < (d₁ : Int) := mod_cast Nat.pos_of_ne_zero h₁
       have d₂0 : 0 < (d₂ : Int) := mod_cast Nat.pos_of_ne_zero h₂
-      simp only [d₁0, d₂0, Int.mul_pos, divInt_nonneg_iff_of_pos_right,
-        divInt_mul_divInt _ _ (Ne.symm (Int.ne_of_lt d₁0)) (Ne.symm (Int.ne_of_lt d₁0))]
+      simp only [d₁0, d₂0, divInt_nonneg_iff_of_pos_right]
       intro h1 h2
       have h1' : 0 ≤ Rat.divInt n₁ d₁ := divInt_nonneg h1 (Int.ofNat_zero_le d₁)
       have h2' : 0 ≤ Rat.divInt n₂ d₂ := divInt_nonneg h2 (Int.ofNat_zero_le d₂)

@@ -82,11 +82,10 @@ def emitIte (cond : Expr) (t : TranslationM Term) (f : TranslationM Term)
       (Meta.lambdaTelescope b fun args bd => applyTranslators! (bd.instantiate args))
   | _ => return none
 
--- Local `have` proofs are encoded as `let_fun`. Remove them.
+-- Remove local `have` proofs.
 @[smt_translate] def translateHave : Translator := fun e => do
-  let some (_, _, _, e) := letFun? e | return none
-  if !e.appFn!.isLambda then return none
-  Meta.lambdaTelescope e.appFn! fun args bd => do
+  if !e.isHave then return none
+  Meta.letTelescope e.appFn! (nondepLetOnly := true) fun args bd => do
     trace[smt.translatePropLetFun] "found let_fun {e}"
     let #[arg] := args | return none
     trace[smt.translatePropLetFun] "arg : {arg}"
