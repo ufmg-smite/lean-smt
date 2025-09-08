@@ -116,7 +116,7 @@ open Elab Term in
 /-- A `let_opaque` declaration is not eliminated via substitution during WHNFConfigurable normalization,
 but rather persists in the output term. -/
 @[term_elab «let_opaque»] def elabLetOpaqueDecl : TermElab := fun stx expectedType? => do
-  let e ← elabLetDeclCore stx expectedType? (useLetExpr := true) (elabBodyFirst := false) (usedLetOnly := false)
+  let e ← elabLetDeclCore stx expectedType? {}
   return mkMData ({ : MData}.insert `zeta false) e
 
 open Lean.Parser.Term

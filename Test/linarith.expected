@@ -1,19 +1,28 @@
 Test/linarith.lean:27:5: warning: unused variable `h₁`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:34:9: warning: unused variable `e`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:53:0: warning: declaration uses 'sorry'
 Test/linarith.lean:101:9: warning: unused variable `a`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:101:13: warning: unused variable `c`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:111:60: warning: unused variable `h3`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:118:9: warning: unused variable `a`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:118:13: warning: unused variable `c`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:161:34: warning: unused variable `z`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:162:5: warning: unused variable `h5`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`

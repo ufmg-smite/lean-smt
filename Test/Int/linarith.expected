@@ -1,11 +1,16 @@
 Test/Int/linarith.lean:39:5: warning: unused variable `h₁`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/Int/linarith.lean:46:9: warning: unused variable `e`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/Int/linarith.lean:65:0: warning: declaration uses 'sorry'
 Test/Int/linarith.lean:79:62: warning: unused variable `h3`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/Int/linarith.lean:83:36: warning: unused variable `z`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/Int/linarith.lean:84:5: warning: unused variable `h5`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`

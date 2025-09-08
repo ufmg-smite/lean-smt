@@ -109,7 +109,7 @@ theorem foldl_mul_insert {ctx : Context} :
   | nil => simp [mul.insert]
   | cons x ys ih =>
     by_cases h : y ≤ x
-    · simp [mul.insert, h, foldl_assoc Int.mul_assoc (ctx y) (ctx x), Int.mul_assoc]
+    · simp [mul.insert, h, foldl_assoc Int.mul_assoc (ctx y) (ctx x)]
     · simp only [mul.insert, h, List.foldl_cons, ite_false, Int.mul_comm,
                  foldl_assoc Int.mul_assoc, ih]
       rw [←Int.mul_assoc, Int.mul_comm (ctx x) (ctx y), Int.mul_assoc]
@@ -122,7 +122,7 @@ theorem denote_mul {m₁ m₂ : Monomial} : (m₁.mul m₂).denote ctx = m₁.de
   simp only [denote, mul, Int.mul_assoc]; congr 1
   rw [← Int.mul_assoc, Int.mul_comm _ m₂.coeff, Int.mul_assoc]; congr 1
   induction m₁.vars with
-  | nil => simp [Int.mul_assoc]
+  | nil => simp
   | cons y ys ih =>
     simp [foldl_mul_insert, ←foldl_assoc Int.mul_assoc, ih]
 
@@ -186,7 +186,7 @@ theorem foldl_add_insert (ctx : Context) :
       · split <;> rename_i hneq
         · rw [←Int.add_assoc, Int.add_comm, ←Monomial.denote_add heq]
           simp [Monomial.denote, hneq]
-        · simp [-Int.add_zero, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote_add, heq, Int.add_assoc]
+        · simp [-Int.add_zero, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Monomial.denote_add, Int.add_assoc]
       · simp only [List.foldl_cons, Int.add_comm 0, ih, Monomial.foldl_assoc Int.add_assoc]
         rw [←Int.add_assoc, Int.add_comm (Monomial.denote ctx n), Int.add_assoc]
 
@@ -200,7 +200,7 @@ theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx := by
 theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
   simp only [denote, add]
   induction p with
-  | nil => simp [add.insert]
+  | nil => simp
   | cons x ys ih =>
     simp only [List.foldr_cons, List.foldl_cons, Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, Int.add_assoc]
     rw [← ih, foldl_add_insert]
@@ -223,7 +223,7 @@ theorem denote_nil_add : denote ctx (p.add []) = denote ctx p := by
   induction p with
   | nil => simp [add]
   | cons n p ih =>
-    simp [denote_add, List.foldr_cons, denote_cons, ih, show denote ctx [] = 0 by rfl]
+    simp [denote_add, denote_cons, show denote ctx [] = 0 by rfl]
 
 theorem denote_add_insert {g : Monomial → Polynomial} :
   denote ctx (List.foldl (fun acc m => (g m).add acc) n p) = denote ctx n + denote ctx (List.foldl (fun acc m => (g m).add acc) [] p) := by
@@ -232,7 +232,7 @@ theorem denote_add_insert {g : Monomial → Polynomial} :
   | nil => simp [denote]
   | cons k p ih =>
     intro n
-    simp only [List.foldl_cons, List.foldr, @ih n]
+    simp only [List.foldl_cons]
     rw [ih, @ih ((g k).add []), ← Int.add_assoc, denote_nil_add, denote_add, Int.add_comm _ (denote ctx n)]
 
 theorem denote_foldl {g : Monomial → Polynomial} :
@@ -240,7 +240,7 @@ theorem denote_foldl {g : Monomial → Polynomial} :
   induction p with
   | nil => simp [denote]
   | cons n p ih =>
-    simp only [List.foldl_cons, Int.add_comm, List.foldr] at *
+    simp only [List.foldl_cons, Int.add_comm] at *
     rw [Int.add_comm 0, Monomial.foldl_assoc Int.add_assoc, ←ih, denote_add_insert, denote_nil_add]
 
 theorem denote_mul {p q : Polynomial} : (p.mul q).denote ctx = p.denote ctx * q.denote ctx := by

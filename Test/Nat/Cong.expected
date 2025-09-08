@@ -8,6 +8,6 @@ query:
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-fun f (Nat) Nat)
-(assert (forall ((_uniq.35 Nat)) (=> (>= _uniq.35 0) (>= (f _uniq.35) 0))))
+(assert (forall ((_uniq.63 Nat)) (=> (>= _uniq.63 0) (>= (f _uniq.63) 0))))
 (assert (not (=> (= x y) (= (f x) (f y)))))
 (check-sat)
