@@ -264,7 +264,10 @@ def solve (query : String) (timeout : Option Nat) (options : List (String × Str
   profileitM Exception "smt" {} do
   withTraceNode `smt.solve traceSolve do Solver.run (← TermManager.new) do
     if let .some timeout := timeout then
-      Solver.setOption "tlimit" (toString (1000*timeout))
+      -- NOTE: `tlimit` wouldn't have any effect here, since we're not running in
+      -- the binary, and because we only have a single `checkSat`, we can use
+      -- `tlimit-per` instead to achieve the same effect.
+      Solver.setOption "tlimit-per" (toString (1000*timeout))
     for (opt, val) in options do
       Solver.setOption opt val
     let (uss, ufs) ← Solver.parseCommands query
