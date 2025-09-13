@@ -247,21 +247,29 @@ def traceSolve (r : Except Exception (Except Error cvc5Result)) : MetaM MessageD
   | .ok (.ok _) => m!"{checkEmoji}"
   | _           => m!"{bombEmoji}"
 
+def defaultSolverOptions : List (String × String) := [
+  ("dag-thresh", "0"),
+  ("simplification", "none"),
+  ("enum-inst", "true"),
+  ("enum-inst-interleave", "true"),
+  ("cegqi-midpoint", "true"),
+  ("produce-models", "true"),
+  ("produce-proofs", "true"),
+  ("proof-elim-subtypes", "true"),
+  ("proof-granularity", "dsl-rewrite"),
+]
+
 open cvc5 in
-def solve (query : String) (timeout : Option Nat) : MetaM (Except cvc5.Error cvc5Result) :=
+def solve (query : String) (timeout : Option Nat) (options : List (String × String)) : MetaM (Except cvc5.Error cvc5Result) :=
   profileitM Exception "smt" {} do
   withTraceNode `smt.solve traceSolve do Solver.run (← TermManager.new) do
     if let .some timeout := timeout then
-      Solver.setOption "tlimit" (toString (1000*timeout))
-    Solver.setOption "dag-thresh" "0"
-    Solver.setOption "simplification" "none"
-    Solver.setOption "enum-inst" "true"
-    Solver.setOption "enum-inst-interleave" "true"
-    Solver.setOption "cegqi-midpoint" "true"
-    Solver.setOption "produce-models" "true"
-    Solver.setOption "produce-proofs" "true"
-    Solver.setOption "proof-elim-subtypes" "true"
-    Solver.setOption "proof-granularity" "dsl-rewrite"
+      -- NOTE: `tlimit` wouldn't have any effect here, since we're not running in
+      -- the binary, and because we only have a single `checkSat`, we can use
+      -- `tlimit-per` instead to achieve the same effect.
+      Solver.setOption "tlimit-per" (toString (1000*timeout))
+    for (opt, val) in options do
+      Solver.setOption opt val
     let (uss, ufs) ← Solver.parseCommands query
     let res ← Solver.checkSat
     trace[smt.solve] m!"result: {res}"
@@ -289,7 +297,7 @@ open Lean.Elab Tactic in
 @[tactic reconstruct] def evalReconstruct : Tactic := fun stx =>
   withMainContext do
     let some query := stx[1].isStrLit? | throwError "expected string"
-    let r ← solve query none
+    let r ← solve query none defaultSolverOptions
     match r with
       | .error e => throwError e.toString
       | .ok (.sat _) => throwError "expected unsat result"

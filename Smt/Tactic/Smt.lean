@@ -41,6 +41,8 @@ structure Config where
   model : Bool := false
   /-- Just show the SMT query without invoking a solver. Useful for debugging. -/
   showQuery : Bool := false
+  /-- Options to pass to the solver, in addition to the default ones. -/
+  extraSolverOptions : List (String × String) := []
 deriving Inhabited, Repr
 
 inductive Result where
@@ -83,7 +85,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
-  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout
+  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (defaultSolverOptions ++ cfg.extraSolverOptions)
   -- trace[smt] "\nresult: {res}"
   match res with
   | .error e =>
