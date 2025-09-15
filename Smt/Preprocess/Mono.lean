@@ -148,16 +148,22 @@ def mono' (declName? : Option Name) (mv : MVarId) (hints : InputHints') (unfoldI
   let (ngoal, absurd) ← MVarId.intro1 nngoal
   absurd.withContext do
     let (lemmas, inhFacts) ← collectAllLemmas' hints unfoldInfos defeqNames (goalBinders.push ngoal)
-    let (proof, (mvarId, dtrs)) ← runMono declName? lemmas inhFacts
+    let (proof, (mvarId, fvs, dtrs)) ← runMono declName? lemmas inhFacts
     mvarId.withContext do
       let hs ← dtrs.filterMapM createInhHyps
-      let f (acc : MessageData) (dtr : FVarId × DTr) :=
-        acc ++ m!"\n<{Expr.fvar dtr.fst}> = <{ToString.toString dtr.snd}>"
-      let message : MessageData := dtrs.foldl f m!""
-      trace[smt.preprocess] "dtrs: {message}"
+      if ← isTracingEnabledFor `smt.preprocess then
+        let f (acc : MessageData) (dtr : FVarId × DTr) :=
+          acc ++ m!"\n<{Expr.fvar dtr.fst}> = <{ToString.toString dtr.snd}>"
+        let message : MessageData := dtrs.foldl f m!""
+        trace[smt.preprocess] "dtrs: {message}"
+        trace[smt.preprocess] "fvs:"
+        for (fv, e) in fvs do
+          trace[smt.preprocess] m!"fv: {Expr.fvar fv}"
+          absurd.withContext do
+            trace[smt.preprocess] m!"e : {e}"
       let (_, mv) ← mvarId.assertHypotheses hs
       absurd.assign proof
-      return (mv, dtrs)
+      return (mv, fvs, dtrs)
 
 namespace Tactic
 
@@ -217,8 +223,10 @@ where
 
 def mono (mv : MVarId) (hs : Array Expr) : MetaM Result := do
   let (invMap, hints, unfoldInfos, defeqNames) ← hintsToAutoHints hs
-  let (mv, dtrs) ← Auto.mono' `smt mv hints unfoldInfos defeqNames
-  let map := dtrs.foldl (init := {}) fun map (fv, dtr) =>
+  let (mv, fvs, dtrs) ← Auto.mono' `smt mv hints unfoldInfos defeqNames
+  let map := fvs.foldl (init := {}) fun map (fv, e) =>
+    map.insert (.fvar fv) #[e]
+  let map := dtrs.foldl (init := map) fun map (fv, dtr) =>
     let usedHints := invMap.filter (fun k _ => dtr.contains k)
     map.insert (.fvar fv) usedHints.valuesArray
   let hs ← mv.withContext (return (← getPropHyps).map Expr.fvar)
