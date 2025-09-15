@@ -97,7 +97,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     trace[smt.solve] "\nunknown reason:\n{r}\n"
     return .unknown r.toString
   | .ok (.unsat pf uc) =>
-    -- 5.d Reconstruct unsat core proofs.
+    -- 5.c Reconstruct unsat core proofs.
     let ctx := { userNames := fvNames₂, native := cfg.native }
     let (uc, _) ← (uc.mapM Reconstruct.reconstructTerm).run ctx {}
     trace[smt] "unsat core: {uc}"
@@ -119,7 +119,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     mv.assign (.mvar mv₁)
     return .unsat mvs uc
   | .ok (.sat model) =>
-    -- 5e. Return potential counter-example.
+    -- 5d. Return potential counter-example.
     if !cfg.model then
       return .sat none
     let (uss, es) := model.iss.unzip
@@ -127,10 +127,14 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let sortCard := Std.HashMap.insertMany ∅ (uss.zip cs)
     let ctx := { userNames := fvNames₂, sortCard := sortCard, native := cfg.native }
     let (uss', _) ← (uss.mapM Reconstruct.reconstructSort).run ctx {}
-    let cs' := cs.map (fun n => .app (.const ``Fin []) (@toExpr Nat Lean.instToExprNat n))
+    let uss' := if !cfg.mono then uss' else
+      uss'.map fun us => (map₁[us]?.getD #[us])[0]?.getD us
+    let cs' := cs.map (fun n => .app (.const ``Fin []) (toExpr n))
     let state := { sortCache := Std.HashMap.insertMany ∅ (uss.zip cs') }
     let (ufs, vs) := model.ifs.unzip
     let (ufs', state) ← (ufs.mapM Reconstruct.reconstructTerm).run ctx state
+    let ufs' := if !cfg.mono then ufs' else
+      ufs'.map fun uf => (map₁[uf]?.getD #[uf])[0]?.getD uf
     let (vs', _) ← (vs.mapM Reconstruct.reconstructTerm).run ctx state
     return .sat (.some (uss'.zip cs' ++ ufs'.zip vs'))
 
@@ -245,15 +249,15 @@ def evalSmtCore (cfg : TSyntax ``Parser.Tactic.optConfig) (hs : TSyntax ``smtHin
   let res ← Smt.smt cfg mv hs
   match res with
     | .sat none =>
-      throwError "unable to prove goal, either it is false or you need to define more symbols. Try adding '+model' config option to display a potential counter-example (experimental)."
+      throwError "unable to prove goal, either it is false or you need to provide more facts. Try adding '+model' config option to display a potential counter-example (experimental)."
     | .sat (.some model) =>
       if model.isEmpty then
-        throwError "unable to prove goal, either it is false or you need to define more symbols. Could not produce a counter-example. Try introducing variables into the local context to get a counter-example."
+        throwError "unable to prove goal, either it is false or you need to provide more facts. Could not produce a counter-example. Try introducing variables into the local context to get a counter-example."
       else
         let mut md := m!""
         for (v, t) in model do
           md := md ++ m!"\n  {v} = {t}"
-        throwError "unable to prove goal, either it is false or you need to define more symbols. Here is a potential counter-example:\n{md}"
+        throwError "unable to prove goal, either it is false or you need to provide more facts. Here is a potential counter-example:\n{md}"
     | .unsat mvs uc =>
       Tactic.replaceMainGoal mvs
       let uc := uc.filterMap map.get?
