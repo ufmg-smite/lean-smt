@@ -142,7 +142,7 @@ theorem lt_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0
 
 theorem le_of_sub_eq_pos {c₁ c₂ : Real} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
   have {c x y : Real} (hc : c > 0) : (c * (x - y) ≤ 0) = (x - y ≤ 0) := by
-    rw (config := { occs := .pos [1] }) [← mul_zero c, mul_le_mul_left hc]
+    rw (config := { occs := .pos [1] }) [← mul_zero c, mul_le_mul_iff_right₀ hc]
   rw [le_eq_sub_le_zero, @le_eq_sub_le_zero b₁, ← this hc₁, ← this hc₂, h]
 
 theorem le_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≤ a₂) = (b₁ ≤ b₂) := by
@@ -163,7 +163,7 @@ theorem eq_of_sub_eq {c₁ c₂ : Real} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0
 
 theorem ge_of_sub_eq_pos {c₁ c₂ : Real} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   have {c x y : Real} (hc : c > 0) : (c * (x - y) ≥ 0) = (x - y ≥ 0) := by
-    rw (config := { occs := .pos [1] }) [← mul_zero c, ge_iff_le, mul_le_mul_left hc]
+    rw (config := { occs := .pos [1] }) [← mul_zero c, ge_iff_le, mul_le_mul_iff_right₀ hc]
   rw [ge_eq_sub_ge_zero, @ge_eq_sub_ge_zero b₁, ← this hc₁, ← this hc₂, h]
 
 theorem ge_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by

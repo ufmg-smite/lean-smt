@@ -93,7 +93,7 @@ where
     | 0     => q(0 : Real)
     | 1     => q(1 : Real)
     | _ + 2 =>
-      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(instNatAtLeastTwo)
+      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(Nat.instAtLeastTwo)
       let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do

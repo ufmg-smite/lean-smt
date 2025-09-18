@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed, Harun Khan
 
 import Mathlib.Data.Rat.Cast.CharZero
 import Mathlib.Data.Real.Basic
+import Mathlib.Util.AtLocation
 import Smt.Recognizers
 
 namespace Smt.Reconstruct.Real.PolyNorm
@@ -521,11 +522,13 @@ def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
   | .ok _ => m!"{checkEmoji}"
   | _     => m!"{bombEmoji}"
 
-open Mathlib.Meta.NormNum in
+open Mathlib.Meta.NormNum Mathlib.Tactic in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
-  if let some (_, mv) ← normNumAt mv (← Meta.Simp.mkContext) #[] true false then
-    throwError "[norm_num]: could not prove {← mv.getType}"
-
+  let simpCtx ← Meta.Simp.mkContext
+  let remainingGoal? ← (transformAtTarget (fun e ctx ↦ deriveSimp ctx (useSimp := true) e) "norm_num" (failIfUnchanged := false) mv).run simpCtx
+  match remainingGoal? with
+  | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
+  | .none => pure ()
 namespace Tactic
 
 syntax (name := polyNorm) "poly_norm" : tactic

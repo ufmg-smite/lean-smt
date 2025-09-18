@@ -88,7 +88,7 @@ where
     leftAssocOp q(@OrOp.or (BitVec $w) _) t
   | .BITVECTOR_XOR =>
     let w : Nat := t.getSort.getBitVectorSize!.toNat
-    leftAssocOp q(@Xor.xor (BitVec $w) _) t
+    leftAssocOp q(@XorOp.xor (BitVec $w) _) t
   | .BITVECTOR_NOT =>
     let w : Nat := t.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!

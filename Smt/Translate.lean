@@ -81,7 +81,7 @@ def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
   match (← get).cache[e]? with
   | some (some (tm, depConsts, depFVars)) =>
     modify fun st => { st with
-      depConstants := st.depConstants.union depConsts
+      depConstants := st.depConstants ∪ depConsts
       depFVars := st.depFVars.union depFVars
     }
     return some tm
@@ -93,7 +93,7 @@ def withCache (k : Translator) (e : Expr) : TranslationM (Option Term) := do
     modify fun st => { st with depConstants := .empty, depFVars := .empty }
     let ret? ← k e
     modify fun st => { st with
-      depConstants := st.depConstants.union depConstantsBefore
+      depConstants := st.depConstants ∪ depConstantsBefore
       depFVars := st.depFVars.union depFVarsBefore
       cache := st.cache.insert e <| ret?.map ((·, st.depConstants, st.depFVars))
     }
