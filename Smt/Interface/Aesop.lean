@@ -15,6 +15,8 @@ open Lean Meta Parser Elab Tactic Syntax Aesop Qq
 -- The string representation and the actual expr of the premisses
 abbrev Premises := List (String × Expr)
 
+example : True := by smt
+
 -- TODO: For now we just produce `smt` with all facts included. Once we can extract and parse the unsat core we
 -- will change this function to filter the relevant premises and produce a tactic invocation with just those,
 -- like in lean-hammer.
@@ -22,13 +24,14 @@ def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun
   let preState ← saveState
   input.goal.withContext do
     let idents := ps.map (fun p => Lean.mkIdent p.1.toName)
+    let idents : Array (TSyntax `Smt.Tactic.smtHintElem) := idents.toArray.map (fun i => ⟨i.raw⟩)
     let stx ←
       if includeLCtx && !ps.isEmpty then
-        `(tactic| smt [*, $(idents.toArray),*])
+        `(tactic| smt [*, $(idents),*])
       else if includeLCtx && ps.isEmpty then
         `(tactic| smt [*])
       else if !includeLCtx && !ps.isEmpty then
-        `(tactic| smt [$(idents.toArray),*])
+        `(tactic| smt [$(idents),*])
       else -- if !includeLCtx && ps.isEmpty
         `(tactic| smt)
     let tac := withoutRecover $ evalTactic stx
