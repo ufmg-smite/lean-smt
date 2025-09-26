@@ -206,7 +206,7 @@ theorem deMorgan₂ : ∀ {l : List Prop}, andN l → ¬ orN (notN l) := by
   | [] => by
     simp [orN, notN]
   | [t] => by
-    simp only [orN, notN]
+    simp only [notN]
     simp [andN] at h
     exact notNotIntro h
   | h₁::h₂::t => by
@@ -228,8 +228,8 @@ theorem deMorgan₃ : ∀ {l : List Prop}, ¬ orN l → andN (notN l) := by
   | h₁::h₂::t => by
     simp only [orN, Not] at h
     have ⟨t₁, t₂⟩ := deMorganSmall h
-    simp only [orN, Not] at t₂
-    simp [andN, notN, map]
+    simp only [Not] at t₂
+    simp [notN, map]
     have ih := @deMorgan₃ (h₂::t) t₂
     exact ⟨t₁, andN_cons_append ▸ ih⟩
 
@@ -548,7 +548,7 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notN l) := by
   match l with
   | []         => exact False.elim (h True.intro)
   | [_]        => exact h
-  | p₁::p₂::ps => simp [orN, notN, map]
+  | p₁::p₂::ps => simp [notN, map]
                   match deMorganSmall₃ h with
                   | Or.inl hnp₁ => exact Or.inl hnp₁
                   | Or.inr hnAndTail =>
@@ -604,10 +604,10 @@ theorem orN_eraseIdx (hj : j < qs.length) : (orN (qs.eraseIdx j) ∨ qs[j]) = (o
     intro j hj
     cases j with
     | zero =>
-      simp only [eraseIdx_cons_zero, getElem_cons_zero, orN_cons, eraseIdx_cons_succ, getElem_cons_succ]
+      simp only [eraseIdx_cons_zero, getElem_cons_zero, orN_cons]
       rw [or_comm]
     | succ j =>
-      simp only [eraseIdx_cons_succ, getElem_cons_succ, orN_cons, eraseIdx, or_assoc]
+      simp only [getElem_cons_succ, orN_cons, eraseIdx, or_assoc]
       congr
       rw [@ih j (by rw [length_cons, succ_lt_succ_iff] at hj; exact hj)]
 
@@ -677,7 +677,7 @@ theorem drop_append (a b : List α): drop a.length (a ++ b) = b := by
 
 theorem orN_append_left (hps : orN ps) : orN (ps ++ qs) := by
   apply @orN_subList ps (ps ++ qs) 0 ps.length hps
-  simp [subList', take_append]
+  simp [subList']
 
 theorem orN_append_right (hqs : orN qs) : orN (ps ++ qs) := by
   apply @orN_subList qs (ps ++ qs) ps.length (ps.length + qs.length) hqs
@@ -687,7 +687,7 @@ theorem orN_resolution (hps : orN ps) (hqs : orN qs) (hi : i < ps.length) (hj : 
   have H1 := orN_eraseIdx hj
   have H2 := orN_eraseIdx hi
   by_cases h : ps[i]
-  · simp only [eq_iff_iff, true_iff, iff_true, h, hqs, hij, hps] at *
+  · simp only [eq_iff_iff, true_iff, iff_true, h, hqs, hps] at *
     apply orN_append_right (by simp [*] at *; exact H1)
   · simp only [hps, hqs, h, eq_iff_iff, false_iff, not_not, iff_true, or_false,
     not_false_eq_true] at *
@@ -697,7 +697,7 @@ theorem implies_of_not_and : ¬(andN (ps ++ [¬q])) → impliesN ps q := by
   induction ps with
   | nil => exact notNotElim
   | cons p ps ih =>
-    simp only [andN, impliesN]
+    simp only [impliesN]
     intro hnpps hp
     cases ps
     <;> have hnpnps := deMorganSmall₃ hnpps

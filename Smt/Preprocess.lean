@@ -6,3 +6,5 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
 import Smt.Preprocess.Iff
+import Smt.Preprocess.Mono
+import Smt.Preprocess.PushHintsToCtx

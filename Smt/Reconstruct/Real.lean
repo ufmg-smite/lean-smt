@@ -93,7 +93,7 @@ where
     | 0     => q(0 : Real)
     | 1     => q(1 : Real)
     | _ + 2 =>
-      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(instNatAtLeastTwo)
+      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(Nat.instAtLeastTwo)
       let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
@@ -255,20 +255,28 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 
 def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
-    let l : Q(Real) ← reconstructTerm p.getResult[0]![0]!
-    let r : Q(Real) ← reconstructTerm p.getResult[1]![0]!
-    let lsl := q($ls * $l)
-    let rsr := q($rs * $r)
     let k := p.getResult.getKind
     if ks == .EQUAL && k == .EQUAL then
+      let l : Q(Real) ← reconstructTerm p.getResult[0]![0]!
+      let r : Q(Real) ← reconstructTerm p.getResult[1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(|$ls| = |$rs|) := hs
       let h : Q(|$l| = |$r|) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Real.mul_abs₁ $hs $h))
     else if ks == .GT && k == .AND then
+      let l : Q(Real) ← reconstructTerm p.getResult[0]![0]![0]!
+      let r : Q(Real) ← reconstructTerm p.getResult[0]![1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(|$ls| > |$rs|) := hs
       let h : Q(|$l| = |$r| ∧ |$l| ≠ 0) ← reconstructProof p
       return (.GT, lsl, rsr, q(Real.mul_abs₂ $hs $h))
     else if ks == .GT && k == .GT then
+      let l : Q(Real) ← reconstructTerm p.getResult[0]![0]!
+      let r : Q(Real) ← reconstructTerm p.getResult[1]![0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(|$ls| > |$rs|) := hs
       let h : Q(|$l| > |$r|) ← reconstructProof p
       return (.GT, lsl, rsr, q(Real.mul_abs₃ $hs $h))

@@ -47,16 +47,6 @@ def Kind.toDefaultPath : Kind → String
   | .yices => "yices-smt2"
   | k      => toString k
 
-register_option smt.solver.kind : Kind := {
-  defValue := Kind.cvc5
-  descr := "The solver to use for solving the SMT query."
-}
-
-register_option smt.solver.path : String := {
-  defValue := "cvc5"
-  descr := "The path to the solver used for solving the SMT query."
-}
-
 /-- Result of an SMT query. -/
 inductive Result where
   | sat     : Result

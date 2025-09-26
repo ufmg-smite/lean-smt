@@ -49,7 +49,7 @@ theorem eq_conflict {t : Int} {c : Real} (hcc : (↑⌊c⌋ = c) = False) : (t =
         · apply ((Int.floor_eq_iff (z := ⌊c⌋) (a := c)).mp rfl).right
         · rewrite [← Int.cast_one, ← Int.cast_add, Int.cast_le]
           exact htcf
-      simp_all [lt_irrefl]
+      simp_all
 
 theorem geq_tighten {t : Int} {c : Real} {cc : Int} (hc : (↑⌊c⌋ = c) = False) (hcc : cc = Int.addN [⌊c⌋, 1]) : (t ≥ c) = (t ≥ cc) := by
   simp only [hcc, Int.addN, ge_iff_le, eq_iff_iff, le_iff_eq_or_lt, ← Int.floor_lt]
@@ -66,9 +66,9 @@ theorem abs_eq : (|x| = |y|) = (x = y ∨ x = -y) := propext abs_eq_abs
 theorem abs_gt : (|x| > |y|) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)) (ite (y ≥ 0) (-x > y) (-x > -y)) := by
   split <;> rename_i hx <;> split <;> rename_i hy
   · rw [abs_eq_self.mpr hx, abs_eq_self.mpr hy]
-  · rw [abs_eq_self.mpr hx, abs_eq_neg_self.mpr (le_of_not_le hy)]
-  · rw [abs_eq_neg_self.mpr (le_of_not_le hx), abs_eq_self.mpr hy]
-  · rw [abs_eq_neg_self.mpr (le_of_not_le hx), abs_eq_neg_self.mpr (le_of_not_le hy)]
+  · rw [abs_eq_self.mpr hx, abs_eq_neg_self.mpr (le_of_not_ge hy)]
+  · rw [abs_eq_neg_self.mpr (le_of_not_ge hx), abs_eq_self.mpr hy]
+  · rw [abs_eq_neg_self.mpr (le_of_not_ge hx), abs_eq_neg_self.mpr (le_of_not_ge hy)]
 
 -- ITE lifting
 
@@ -92,7 +92,7 @@ theorem min_lt2 : (ite (t < s) t s ≤ s) = True := by
 
 theorem max_geq1 : (ite (t ≥ s) t s ≥ t) = True := by
   cases h : decide (t ≥ s) <;>
-  simp_all only [ge_iff_le, decide_eq_false_iff_not, ite_false, not_false_eq_true, le_of_not_le,
+  simp_all only [ge_iff_le, decide_eq_false_iff_not, ite_false, not_false_eq_true, le_of_not_ge,
                  decide_eq_true_eq, ite_true, le_refl]
 
 theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by

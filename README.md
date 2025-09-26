@@ -11,10 +11,6 @@ Integer/Real Arithmetic with quantifiers. Mathlib is required for Real
 Arithmetic. Support for the theory of Bitvectors is at an experimental stage.
 Support for additional theories is in progress.
 
-## Requirements
-`lean-smt` depends on [`lean-cvc5`](https://github.com/abdoo8080/lean-cvc5),
-which currently only supports Linux and macOS.
-
 ## Setup
 To use `lean-smt` in your project, add the following lines to your list of
 dependencies in `lakefile.toml`:
@@ -52,27 +48,21 @@ import Smt.Real
 example (ε : Real) (h1 : ε > 0) : ε / 2 + ε / 3 + ε / 7 < ε := by
   smt [h1]
 ```
-`lean-smt` integrates with
-[`lean-auto`](https://github.com/leanprover-community/lean-auto) to provide
-basic hammer-like capabilities. To set the `smt` tactic as a backend for `auto`,
-import `Smt.Interface.Auto` and set `auto.native` to `true`:
+`lean-smt` utilizes
+[`lean-auto`](https://github.com/leanprover-community/lean-auto) to monomorphize
+goals in dependent type theory and higher-order logic into first-order logic.
+Enable auto's monomorphization procedure via `smt +mono`:
 ```lean
-import Mathlib.Algebra.Group.Defs
 import Smt
-import Smt.Interface.Auto
-
-attribute [rebind Auto.Native.solverFunc] Smt.smtSolverFunc
-
-set_option auto.native true
 
 variable [Group G]
 
 theorem inverse : ∀ (a : G), a * a⁻¹ = 1 := by
-  auto [mul_assoc, one_mul, inv_mul_cancel]
+  smt +mono [mul_assoc, one_mul, inv_mul_cancel]
 
 theorem identity : ∀ (a : G), a * 1 = a := by
-  auto [mul_assoc, one_mul, inv_mul_cancel, inverse]
+  smt +mono [mul_assoc, one_mul, inv_mul_cancel, inverse]
 
 theorem unique_identity : ∀ (e : G), (∀ a, e * a = a) ↔ e = 1 := by
-  auto [mul_assoc, one_mul, inv_mul_cancel]
+  smt +mono [mul_assoc, one_mul, inv_mul_cancel]
 ```

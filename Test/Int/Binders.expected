@@ -3,8 +3,8 @@ goal: curryAdd a b = curryAdd b a
 query:
 (set-logic ALL)
 (define-fun curryAdd ((a._@.Test.Int.Binders._hyg.4 Int) (a._@.Test.Int.Binders._hyg.6 Int)) Int (+ a._@.Test.Int.Binders._hyg.4 a._@.Test.Int.Binders._hyg.6))
-(declare-const a Int)
 (declare-const b Int)
+(declare-const a Int)
 (assert (not (= (curryAdd a b) (curryAdd b a))))
 (check-sat)
 Test/Int/Binders.lean:5:0: warning: declaration uses 'sorry'
@@ -13,8 +13,8 @@ goal: partCurryAdd a b = partCurryAdd b a
 query:
 (set-logic ALL)
 (define-fun partCurryAdd ((a Int) (a._@.Test.Int.Binders._hyg.50 Int)) Int (+ a a._@.Test.Int.Binders._hyg.50))
-(declare-const b Int)
 (declare-const a Int)
+(declare-const b Int)
 (assert (not (= (partCurryAdd a b) (partCurryAdd b a))))
 (check-sat)
 Test/Int/Binders.lean:11:0: warning: declaration uses 'sorry'
@@ -22,7 +22,7 @@ goal: partCurryAdd' a b = partCurryAdd' b a
 
 query:
 (set-logic ALL)
-(define-fun |partCurryAdd'| ((a Int) (a._@.Init.Prelude._hyg.2075 Int)) Int (+ a a._@.Init.Prelude._hyg.2075))
+(define-fun |partCurryAdd'| ((a Int) (a._@.Init.Prelude._hyg.2138 Int)) Int (+ a a._@.Init.Prelude._hyg.2138))
 (declare-const a Int)
 (declare-const b Int)
 (assert (not (= (|partCurryAdd'| a b) (|partCurryAdd'| b a))))

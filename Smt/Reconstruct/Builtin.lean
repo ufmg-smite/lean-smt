@@ -32,7 +32,7 @@ def getFVarExpr! (n : Name) : MetaM Expr := do
 
 def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
-  | some fv => return .fvar fv
+  | some e => return e
   | none   => match (← getLCtx).findFromUserName? n.toName with
     | some d => return d.toExpr
     | none   =>
@@ -63,7 +63,8 @@ where
   | .ITE =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort t.getSort
     let c : Q(Prop) ← reconstructTerm t[0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let oh : Option Q(Decidable $c) ← Meta.synthInstance? q(Decidable $c)
+    let h : Q(Decidable $c) := oh.getD q(Classical.propDecidable $c)
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)
@@ -270,9 +271,7 @@ where
     let b : Q(Bool) := .const auxDeclName []
     return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
   mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← match (← getEnv).asyncPrefix? with
-      | none          => Lean.mkAuxName baseName 1
-      | some declName => Lean.mkAuxName (declName ++ baseName) 1
+    let auxName ← Lean.mkAuxDeclName baseName
     let decl := Declaration.defnDecl {
       name := auxName, levelParams := [], type, value
       hints := .abbrev

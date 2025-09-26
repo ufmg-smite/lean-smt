@@ -29,7 +29,7 @@ theorem abs_of_nonneg {a : Int} (h : 0 ≤ a) : a.abs = a := by
 theorem abs_mul (a b : Int) : (a * b).abs = a.abs * b.abs := by
   rw [Int.abs_eq (Int.mul_nonneg (Int.abs_nonneg a) (Int.abs_nonneg b))]
   rcases Int.le_total a 0 with ha | ha <;> rcases Int.le_total b 0 with hb | hb <;>
-    simp only [Int.abs_of_nonpos, Int.abs_of_nonneg, true_or, or_true, eq_self_iff_true, Int.neg_mul,
+    simp only [Int.abs_of_nonpos, Int.abs_of_nonneg, true_or, or_true, Int.neg_mul,
       Int.mul_neg, Int.neg_neg, *]
 
 def addN : List Int → Int
@@ -69,7 +69,7 @@ def mulN : List Int → Int
 protected theorem cast_pos' {x : Nat} : x ≠ 0 → (0 : Int) < x := by
   intro h
   have h' := Nat.zero_lt_of_ne_zero h
-  exact Int.ofNat_pos.mpr h'
+  exact Int.natCast_pos.mpr h'
 
 protected theorem gcd_def (i j : Int) : i.gcd j = i.natAbs.gcd j.natAbs :=
   rfl
@@ -143,7 +143,6 @@ theorem zero_le_natCast {n : Nat} : (0 : Int) ≤ n := by omega
 
 theorem div_nonneg_iff_of_pos' {a b : Int} (h : 0 < b) : 0 ≤ a / b ↔ 0 ≤ a := by
   let tmp := @Int.ediv_nonneg_iff_of_pos a b h
-  simp [GE.ge] at tmp
   exact tmp
 
 variable {a b c : Int}
@@ -155,7 +154,7 @@ protected theorem div_gcd_nonneg_iff_of_pos
 : 0 ≤ a / (a.gcd b) ↔ 0 ≤ a := by
   let nz_den : (0 : Int) < a.gcd b := by
     apply Int.natCast_pos.mpr
-    simp [gcd, natAbs_natCast, Nat.gcd_pos_iff, natAbs_pos, ne_eq, b_pos]
+    simp [gcd, Nat.gcd_pos_iff, natAbs_pos, ne_eq, b_pos]
   exact Int.ediv_nonneg_iff_of_pos nz_den
 
 protected theorem div_gcd_nonneg_iff_of_nz {b : Nat} (nz_b : b ≠ 0) : 0 ≤ a / (a.gcd b) ↔ 0 ≤ a :=

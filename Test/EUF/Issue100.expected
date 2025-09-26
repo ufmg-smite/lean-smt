@@ -10,3 +10,4 @@
     (assert (forall ((x node)) (forall ((x_1 round)) (forall ((x_2 round)) (forall ((x_3 value)) (= (upd_rel x x_1 x_2 x_3) (rel x x_1 x_2 x_3)))))))
     (assert (not true))
     (check-sat)
+[smt] unsat core: [¬True]

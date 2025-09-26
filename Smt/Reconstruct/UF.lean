@@ -15,7 +15,7 @@ open Lean Qq
 
 def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
-  | some fv => return .fvar fv
+  | some e => return e
   | none   => match (← getLCtx).findFromUserName? n.toName with
     | some d => return d.toExpr
     | none   =>
@@ -32,6 +32,18 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     for i in [1:t.getNumChildren] do
       curr := .app curr (← reconstructTerm t[i]!)
     return curr
+  | .UNINTERPRETED_SORT_VALUE =>
+    let some n := (← read).sortCard[t.getSort]? | throwError "unknown sort {t.getSort}"
+    let s := t.toString
+    let endPos := s.endPos - ⟨t.getSort.toString.utf8ByteSize + 2⟩
+    let endPos := if s.get (endPos - ⟨1⟩) == '|' then endPos - ⟨1⟩ else endPos
+    let startPos := (s.revFindAux (· != '_') endPos).get!
+    let i : Nat := (s.extract startPos endPos).toNat!
+    if h : i < n then
+      let i : Fin n := ⟨i, h⟩
+      return toExpr i
+    else
+      throwError "index {i} is out of bounds for uninterpreted sort of cardinality {n}"
   | .SKOLEM =>
     match t.getSkolemId! with
     | .GROUND_TERM =>

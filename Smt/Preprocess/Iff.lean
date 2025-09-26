@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+import Smt.Preprocess.Basic
 import Qq
 
 namespace Smt.Preprocess
@@ -27,43 +27,46 @@ def replaceIff (e : Expr) : MetaM Expr :=
 def containsIff (e : Expr) : Bool :=
   (Expr.const ``Iff []).occurs e
 
-def elimIff (mv : MVarId) (hs : List Expr) : MetaM (List Expr × MVarId) := mv.withContext do
+def elimIff (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext do
   let t ← instantiateMVars (← mv.getType)
   let ts ← hs.mapM (Meta.inferType · >>= instantiateMVars)
   if !(containsIff t || ts.any containsIff) then
-    return (hs, mv)
+    return { map := Std.HashMap.insertMany ∅ (hs.zip (hs.map .singleton)), hs, mv }
   let simpTheorems ← #[``eq_self, ``iff_eq_eq].foldlM (·.addConst ·) ({} : Meta.SimpTheorems)
   let simpTheorems := #[simpTheorems]
   let congrTheorems ← Meta.getSimpCongrTheorems
   let ctx ← Meta.Simp.mkContext {} simpTheorems congrTheorems
-  let (hs, mv) ← elimIffLocalDecls mv hs ctx
-  let mv ← elimIffTarget mv ctx
-  return (hs, mv)
+  let (hs', mv') ← elimIffLocalDecls mv hs.toList ctx #[]
+  let mv' ← elimIffTarget mv' ctx
+  return { map := Std.HashMap.insertMany ∅ (hs'.zip (hs.map .singleton)), hs := hs', mv := mv' }
 where
-  elimIffLocalDecls mv hs ctx := mv.withContext do
-    let mut newHs := []
-    let mut toAssert := #[]
-    for h in hs do
+  elimIffLocalDecls mv hs ctx hs' := do match hs with
+    | [] => return (hs', mv)
+    | h :: hs =>
       let type ← Meta.inferType h
       let eq ← replaceIff (← instantiateMVars type)
       let (_, l, r) := eq.eq?.get!
       if l == r then
-        newHs := h :: newHs
+        elimIffLocalDecls mv hs ctx (hs'.push h)
       else
-        let userName ← if h.isFVar then h.fvarId!.getUserName else Lean.mkFreshId
-        let type := r
-        let (r, _) ←  Meta.simp eq ctx
-        let value ←  Meta.mkAppM ``eq_resolve #[h, ← Meta.mkOfEqTrue (← r.getProof)]
-        toAssert := toAssert.push { userName, type, value }
-    let (fvs, mv) ← mv.assertHypotheses toAssert
-    newHs := newHs.reverse ++ (fvs.map (.fvar ·)).toList
-    return (newHs, mv)
+        let (res, _) ← Meta.simp eq ctx
+        let h' := mkApp4 (.const ``eq_resolve []) l r h (mkOfEqTrue eq (← res.getProof))
+        if let .some fv := h.fvarId? then
+          let res ← mv.replace fv h' (.some r)
+          let hs' := hs'.map res.subst.apply
+          let hs := hs.map res.subst.apply
+          res.mvarId.withContext (elimIffLocalDecls res.mvarId hs ctx (hs'.push (.fvar res.fvarId)))
+        else
+          elimIffLocalDecls mv hs ctx (hs'.push h')
+      termination_by hs.length
   elimIffTarget mv ctx := mv.withContext do
     let eq ← replaceIff (← instantiateMVars (← mv.getType))
-    let (r, _) ←  Meta.simp eq ctx
-    if r.expr.isTrue then
-      mv.replaceTargetEq eq.appArg! (← Meta.mkOfEqTrue (← r.getProof))
+    let (res, _) ← Meta.simp eq ctx
+    if res.expr.isTrue then
+      mv.replaceTargetEq eq.appArg! (mkOfEqTrue eq (← res.getProof))
     else
       return mv
+  mkOfEqTrue p hpt :=
+    mkApp2 (.const ``of_eq_true []) p hpt
 
 end Smt.Preprocess
