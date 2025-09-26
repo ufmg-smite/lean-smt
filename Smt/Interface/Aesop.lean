@@ -10,6 +10,7 @@ import Smt.Real
 import Aesop
 import Qq
 
+
 open Lean Meta Parser Elab Tactic Syntax Aesop Qq
 
 -- The string representation and the actual expr of the premisses
@@ -24,7 +25,7 @@ def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun
   let preState ← saveState
   input.goal.withContext do
     let idents := ps.map (fun p => Lean.mkIdent p.1.toName)
-    let idents : Array (TSyntax `Smt.Tactic.smtHintElem) := idents.toArray.map (fun i => ⟨i.raw⟩)
+    let idents ← idents.toArray.mapM (fun i => `(Smt.Tactic.smtHintElem| $i:term))
     let stx ←
       if includeLCtx && !ps.isEmpty then
         `(tactic| smt [*, $(idents),*])
@@ -45,6 +46,7 @@ def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun
     }
     let postGoals ← postGoals.mapM (mvarIdToSubgoal input.goal ·)
     return (postGoals, some #[step], some ⟨1.0⟩)
+
 
 -- Example using the above function to integrate lean-smt into aesop
 
@@ -67,9 +69,10 @@ def evalFoo : Tactic := fun stx => withMainContext do
     mkDefinitionValEx `instantiatedSmtCoreRuleTac [] ruleTacType ruleTacVal ReducibilityHints.opaque DefinitionSafety.safe [`instantiatedSmtCoreRuleTac]
   addAndCompile $ Declaration.defnDecl ruleTacDecl
   let ruleTacStx ← `(Aesop.rule_expr| ($(mkIdent `instantiatedSmtCoreRuleTac)))
-  evalTactic (← `(tactic| aesop? (add unsafe 1% tactic $ruleTacStx)))
+  Aesop.evalAesop (← `(tactic| aesop? (add unsafe 1% tactic $ruleTacStx)))
 
 example (a b : Int) : a + b = b + a := by foo -- Try this: smt
 
+set_option pp.rawOnError true in
 example (ε : Real) (h1 : ε > 0) : ε / 2 + ε / 3 + ε / 7 < ε := by
   foo [h1] -- Try this: simp_all only [gt_iff_lt]; smt [h1]
