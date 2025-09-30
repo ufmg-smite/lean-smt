@@ -10,15 +10,15 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_SINE_SYMMETRYE
 -/
 
-import Mathlib.Data.Complex.Exponential
-
-namespace Smt.Reconstruct.Arith
+import Mathlib.Analysis.Complex.Trigonometric
 
 open Real
+
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransSineSymmetry : ∀ (t : ℝ), sin t + sin (- t) = 0 := by
   intro t
   rw [sin_neg]
   simp
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns

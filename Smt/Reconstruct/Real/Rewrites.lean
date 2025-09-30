@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Real.Core
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Data.Real.Archimedean
 
 namespace Smt.Reconstruct.Real.Rewrite
@@ -99,5 +100,21 @@ theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by
   cases h : decide (t ≥ s) <;>
   simp_all only [ge_iff_le, decide_eq_false_iff_not, ite_false, le_refl,
                  decide_eq_true_eq, ite_true]
+
+theorem arith_sine_zero : Real.sin 0 = 0 := Real.sin_zero
+theorem arith_sine_pi2 : Real.sin ((1/2) * Real.pi) = 1 := by
+  have : 1 / 2 * Real.pi = Real.pi / 2 := one_div_mul_eq_div 2 Real.pi
+  rw [this]
+  exact Real.sin_pi_div_two
+
+theorem arith_cosine_elim (x : Real) : Real.cos x = Real.sin ((1/2) * Real.pi - x) := by
+  have : 1 / 2 * Real.pi = Real.pi / 2 := one_div_mul_eq_div 2 Real.pi
+  rw [this]
+  exact Eq.symm (Real.sin_pi_div_two_sub x)
+
+theorem arith_tangent_elim (x : Real) : Real.tan x = Real.sin x / Real.cos x := Real.tan_eq_sin_div_cos x
+theorem arith_cotangent_elim (x : Real) : Real.cot x = Real.cos x / Real.sin x := Real.cot_eq_cos_div_sin x
+
+-- TODO: Secant and cosecant. There is no definition for those in mathlib. Should we define our own?
 
 end Smt.Reconstruct.Real.Rewrite

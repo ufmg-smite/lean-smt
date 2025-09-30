@@ -10,13 +10,15 @@ import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 
-namespace Smt.Reconstruct.Arith
+import Mathlib.Tactic
 
 open scoped Nat
 
 open Set Real
+
+namespace Smt.Reconstruct.Real
 
 theorem concaveOn_sin_Icc : ConcaveOn ℝ (Icc 0 π) sin := StrictConcaveOn.concaveOn strictConcaveOn_sin_Icc
 
@@ -42,31 +44,31 @@ theorem iteratedDeriv_sin_cos (n : Nat) :
     if n % 4 = 2 then -cos else
     sin) := by
   induction' n with n ih
-  · simp [iteratedDeriv]
-  · simp [ih.1, ih.2, iteratedDeriv_succ']
+  · simp
+  · simp [ih.2, iteratedDeriv_succ']
     have :=  Nat.mod_lt n (show 4 > 0 by decide)
     interval_cases hn : n % 4
-    <;> simp [hn, Nat.add_mod]
-    <;> ext
-    <;> simp [iteratedDeriv_neg, ih]
+      <;> simp [hn, Nat.add_mod]
+      <;> ext
+      <;> have : (fun x => (-sin x)) = -Real.sin := rfl
+      <;> simp [this, iteratedDeriv_neg, ih]
 
 theorem iteratedDerivWithin_eq_iteratedDeriv {f : Real → Real} (hf : ContDiff Real (⊤ : ℕ∞) f) (hs : UniqueDiffOn Real s):
   ∀ x ∈ s, iteratedDerivWithin d f s x = iteratedDeriv d f x := by
   induction' d with d hd
   · simp
   · intro x hx
-    rw [iteratedDerivWithin_succ (UniqueDiffOn.uniqueDiffWithinAt hs hx), iteratedDeriv_succ, derivWithin, deriv]
+    rw [iteratedDerivWithin_succ, iteratedDeriv_succ, derivWithin, deriv]
     rw [fderivWithin_congr hd (hd x hx)]
     rw [fderivWithin_eq_fderiv (UniqueDiffOn.uniqueDiffWithinAt hs hx)]
     apply Differentiable.differentiableAt (ContDiff.differentiable_iteratedDeriv d hf (Batteries.compareOfLessAndEq_eq_lt.mp rfl))
 
-
-theorem iteratedDerivWithin_congr {𝕜 : Type u} [NontriviallyNormedField 𝕜] {F : Type v} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {f : 𝕜 → F} {f₁ : 𝕜 → F} {x : 𝕜} {s : Set 𝕜} (hs : Set.EqOn f₁ f s) (hxs : UniqueDiffOn 𝕜 s) (hx2 : x ∈ s) : iteratedDerivWithin n f₁ s x = iteratedDerivWithin n f s x := by
+theorem iteratedDerivWithin_congr {𝕜 : Type u} [NontriviallyNormedField 𝕜] {F : Type v} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {f : 𝕜 → F} {f₁ : 𝕜 → F} {x : 𝕜} {s : Set 𝕜} (hs : Set.EqOn f₁ f s) (_hxs : UniqueDiffOn 𝕜 s) (hx2 : x ∈ s) : iteratedDerivWithin n f₁ s x = iteratedDerivWithin n f s x := by
   revert x
   induction' n with n hn
   <;> intro x hx2
   · have hx : f₁ x = f x := hs hx2; simp [hx]
-  · simp only [iteratedDerivWithin_succ (UniqueDiffOn.uniqueDiffWithinAt hxs hx2)]
+  · simp only [iteratedDerivWithin_succ]
     simp only [Set.EqOn] at hs
     rw [derivWithin_congr (by simp [Set.EqOn]; intro y hy; exact hn hy) (hn hx2)]
 
@@ -74,8 +76,8 @@ theorem deriv_comp_mul {f : Real → Real} (hd : Differentiable Real f) :
     ∀ x, deriv (fun x => f (c*x)) x = c * deriv f (c*x) := by
   intro x
   rw [show (fun x => f (c*x)) = f ∘ (fun x => c*x) by rfl]
-  rw [deriv_comp _ (Differentiable.differentiableAt hd) (by apply DifferentiableAt.const_mul (differentiableAt_id'))]
-  rw [deriv_const_mul _ (differentiableAt_id'), mul_comm]
+  rw [deriv_comp _ (Differentiable.differentiableAt hd) (by apply DifferentiableAt.const_mul (differentiableAt_fun_id))]
+  rw [deriv_const_mul _ (differentiableAt_fun_id), mul_comm]
   simp
 
 theorem iteratedDeriv_const_mul {f : ℝ → ℝ } (d : Nat) (c : Real) (hf : ContDiff Real (⊤ : ℕ∞) f) :
@@ -111,7 +113,6 @@ theorem taylorWithinEval_neg {f : Real → Real} (hf : ContDiff Real (⊤ : ℕ�
   simp
   apply Finset.sum_congr rfl
   intro d _
-  simp only [PolynomialModule.eval_smul, Polynomial.eval_pow, Polynomial.eval_X]
   simp [← mul_pow, ← mul_assoc]
   apply Or.inl; ring
 
@@ -179,4 +180,24 @@ theorem taylorSin_neg (x : Real) (d : Nat) :
   · rw [Odd.neg_pow h]
     simp
 
-end Smt.Reconstruct.Arith
+theorem neg_one_le_iteratedDeriv_sin (n : Nat) (x : Real) : -1 ≤ (iteratedDeriv n sin) x := by
+  have :=  Nat.mod_lt n (show 4 > 0 by decide)
+  interval_cases hn : n % 4
+  <;> simp [iteratedDeriv_sin_cos, hn, sin_le_one, neg_one_le_sin, cos_le_one, neg_one_le_cos]
+
+theorem iteratedDeriv_sin_le_one (n : Nat) (x : Real) : (iteratedDeriv n sin) x ≤ 1 := by
+  have :=  Nat.mod_lt n (show 4 > 0 by decide)
+  interval_cases hn : n % 4
+  <;> simp [iteratedDeriv_sin_cos, hn, sin_le_one, neg_one_le_sin, cos_le_one, neg_one_le_cos, neg_le]
+
+theorem neg_one_le_iteratedDeriv_cos (n : Nat) (x : Real) : -1 ≤ (iteratedDeriv n cos) x := by
+  have :=  Nat.mod_lt n (show 4 > 0 by decide)
+  interval_cases hn : n % 4
+  <;> simp [iteratedDeriv_sin_cos, hn, sin_le_one, neg_one_le_sin, cos_le_one, neg_one_le_cos]
+
+theorem iteratedDeriv_cos_le_one (n : Nat) (x : Real) : (iteratedDeriv n cos) x ≤ 1 := by
+  have :=  Nat.mod_lt n (show 4 > 0 by decide)
+  interval_cases hn : n % 4
+  <;> simp [iteratedDeriv_sin_cos, hn, sin_le_one, neg_one_le_sin, cos_le_one, neg_one_le_cos, neg_le]
+
+end Smt.Reconstruct.Real

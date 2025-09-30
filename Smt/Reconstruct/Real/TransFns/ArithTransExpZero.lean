@@ -10,9 +10,9 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule20ARITH_TRANS_EXP_ZEROE
 -/
 
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 
-namespace Smt.Reconstruct.Arith
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransExpZero (t : ℝ) :
     t = 0 ↔ Real.exp t = 1 := by
@@ -20,4 +20,7 @@ theorem arithTransExpZero (t : ℝ) :
   · intro h; rw [h]; simp
   · intro h; simp at h; assumption
 
-end Smt.Reconstruct.Arith
+theorem arithTransExpZeroEq (t : ℝ) :
+    (t = 0) = (Real.exp t = 1) := propext (arithTransExpZero t)
+
+end Smt.Reconstruct.Real.TransFns

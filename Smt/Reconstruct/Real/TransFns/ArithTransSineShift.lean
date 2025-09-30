@@ -13,16 +13,46 @@ https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58inte
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Data.Real.StarOrdered
 
-namespace Smt.Reconstruct.Arith
-
 open Real
 
-def norm' (x : Real) : Prop := ((-Real.pi) ≤ x) ∧ (x ≤ Real.pi)
+namespace Smt.Reconstruct.Real.TransFns
 
-def P (x : Real) (s : Int) (y : Real) : Prop :=
-  (norm' y) ∧ (sin y = sin x) ∧ (if -Real.pi ≤ x ∧ x ≤ Real.pi then x = y else x = y + 2 * Real.pi * s)
+def norm' (x : Real) : Prop := (-Real.pi ≤ x) ∧ (x ≤ Real.pi)
 
-def P2 (x : Real) (s : Int) : Prop := ∃ y , P x s y
+def shift_prop (x : Real) (s : Real) (y : Real) : Prop :=
+  y ≥ (-1) * Real.pi ∧ y ≤ Real.pi ∧ s = ⌊s⌋ ∧ (if x ≥ (-1) * Real.pi ∧ x ≤ Real.pi then x = y else x = y + 2 * s * Real.pi) ∧ (sin y = sin x)
+
+def shift_prop' (x : Real) (s : Real) (y : Real) : Prop :=
+  (norm' y) ∧ s = ⌊s⌋ ∧ (if -Real.pi ≤ x ∧ x ≤ Real.pi then x = y else x = y + 2 * Real.pi * s) ∧ (sin y = sin x)
+
+theorem shift_prop_shift_prop' (x : Real) (s : Real) (y : Real) :
+    shift_prop x s y ↔ shift_prop' x s y := by
+  simp [shift_prop, shift_prop', norm']
+  constructor
+  · rintro ⟨h1, h2, h3, h4, h5⟩
+    constructor
+    · exact And.symm ⟨h2, h1⟩
+    · constructor
+      · exact h3
+      · constructor
+        · by_cases -π ≤ x ∧ x ≤ π
+          next H => simp [H] at h4 ⊢; exact h4
+          next H => simp [H] at h4 ⊢; linarith
+        · exact h5
+  · rintro ⟨⟨h1, h2⟩, h3, h4, h5⟩
+    constructor
+    · exact h1
+    · constructor
+      · exact h2
+      · constructor
+        · exact h3
+        · constructor
+          · by_cases -π ≤ x ∧ x ≤ π
+            next H => simp [H] at ⊢ h4; exact h4
+            next H => simp [H] at ⊢ h4; linarith
+          · exact h5
+
+abbrev shift_prop_part (x : Real) (s : Real) : Prop := ∃ y , shift_prop x s y
 
 theorem tau (x : Real) : x - Real.pi + 2 * Real.pi = x + Real.pi := by linarith
 
@@ -36,13 +66,18 @@ theorem floor_div_add_one (a b : Real) : b ≠ 0 → Int.floor (a / b) + 1 = Int
   rw [<- div_add_one h]
   exact Eq.symm (Int.floor_add_one (a / b))
 
-theorem arithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
+theorem arithTransSineShift₀ : ∀ x , ∃ s y , shift_prop x s y := fun x =>
   if h : (-Real.pi ≤ x ∧ x ≤ Real.pi) then by
+    simp [shift_prop_shift_prop']
     use 0, x
-    simp only [P, Int.cast_zero, mul_zero, add_zero, ite_self, and_self, and_true]
-    exact h
+    simp only [shift_prop', mul_zero, add_zero, ite_self, and_self, and_true]
+    constructor
+    · exact h
+    · simp
   else if h2 : (Real.pi < x) then by
-    let s := Int.ceil ((x - Real.pi) / (2 * Real.pi))
+    simp [shift_prop_shift_prop']
+    let s' : Int := Int.ceil ((x - Real.pi) / (2 * Real.pi))
+    let s : Real := s'
     use s, x - 2 * Real.pi * s
     simp only [s]
     constructor
@@ -60,11 +95,14 @@ theorem arithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
         apply (div_le_iff₀' (two_pi_pos)).mp
         exact Int.le_ceil ((x - π) / (2 * π))
     · constructor
-      · rw [mul_comm, sin_sub_int_mul_two_pi x s]
-      · simp only [sub_add_cancel, if_true_right, and_imp]
-        intros h3 h4
-        linarith
+      · unfold s'; simp
+      · constructor
+        · simp only [sub_add_cancel, if_true_right, and_imp]
+          intros h3 h4
+          linarith
+        · rw [mul_comm, sin_sub_int_mul_two_pi x s']
   else by
+    simp [shift_prop_shift_prop']
     have h3 : x < -Real.pi := by aesop
     let s := Int.floor ((x + Real.pi) / (2 * Real.pi))
     use s, x - 2 * Real.pi * s
@@ -81,17 +119,17 @@ theorem arithTransSineShift₀ : ∀ x , ∃ s y , P x s y := fun x =>
         apply Int.cast_le.mpr
         rw [floor_div_add_one _ _ two_pi_ne_zero, tau]
     · constructor
-      · rw [mul_comm, sin_sub_int_mul_two_pi x s]
-      · simp only [sub_add_cancel, if_true_right, and_imp]
-        intros h3 h4
-        linarith
+      · simp
+      · constructor
+        · simp only [sub_add_cancel, if_true_right, and_imp]
+          intros h3 h4
+          linarith
+        · rw [mul_comm, sin_sub_int_mul_two_pi x s]
 
 open Classical
 
-theorem arithTransSineShift₁ : ∀ (x : Real) ,
-    let s := epsilon (P2 x)
-    let y := epsilon (P x s)
-    P x s y :=
-  fun x => epsilon_spec (epsilon_spec (arithTransSineShift₀ x))
+theorem arithTransSineShift₁ : ∀ (x : Real),
+    shift_prop x (epsilon (shift_prop_part x)) (epsilon (shift_prop x (epsilon (shift_prop_part x)))) := fun x =>
+  epsilon_spec (epsilon_spec (arithTransSineShift₀ x))
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns

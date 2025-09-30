@@ -58,11 +58,17 @@ theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
 theorem mul_abs₁ (h₁ : |x₁| = |y₁|) (h₂ : |x₂| = |y₂|) : |x₁ * x₂| = |y₁ * y₂| := by
   rw [abs_mul x₁ x₂, abs_mul y₁ y₂, h₁, h₂]
 
-theorem mul_abs₂ (h₁ : |x₁| > |y₁|) (h₂ : |x₂| = |y₂| ∧ |x₂| ≠ 0) : |x₁ * x₂| > |y₁ * y₂| := by
+theorem mul_abs₂ (h₁ : |x₁| > |y₁|) (h₂ : |x₂| = |y₂| ∧ x₂ ≠ 0) : |x₁ * x₂| > |y₁ * y₂| := by
   rw [abs_mul, abs_mul]
   apply mul_lt_mul h₁ (le_of_eq h₂.left.symm) _ (abs_nonneg x₁)
   rewrite [← h₂.left]
-  exact lt_of_le_of_ne (abs_nonneg x₂) h₂.right.symm
+  have : abs x₂ ≠ 0 := by
+    intro abs_0
+    have := h₂.2
+    have abs_pos : abs x₂ > 0 := abs_pos.mpr this
+    rw [abs_0] at abs_pos
+    simp at abs_pos
+  exact lt_of_le_of_ne (abs_nonneg x₂) this.symm
 
 theorem mul_abs₃ (h₁ : |x₁| > |y₁|) (h₂ : |x₂| > |y₂|) : |x₁ * x₂| > |y₁ * y₂| := by
   rw [abs_mul, abs_mul]

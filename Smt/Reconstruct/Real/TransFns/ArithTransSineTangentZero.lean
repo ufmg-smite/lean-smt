@@ -11,11 +11,11 @@ https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58inte
 -/
 
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-import Mathlib.Data.Complex.Exponential
-
-namespace Smt.Reconstruct.Arith
+import Mathlib.Analysis.Complex.Exponential
 
 open Real
+
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem sin_neg' : ∀ (t : ℝ), sin t = - sin (-t) := by
   intro t
@@ -33,4 +33,4 @@ theorem arithTransSinTangentZero : ∀ (t : ℝ),
     apply sin_lt
     linarith
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns
