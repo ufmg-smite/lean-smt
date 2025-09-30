@@ -16,11 +16,11 @@ namespace Smt.Reconstruct.Real
 
 open Lean Qq
 
-def reconstructRealSort : SortReconstructor := fun s => do match s.getKind with
+@[smt_sort_reconstruct] def reconstructRealSort : SortReconstructor := fun s => do match s.getKind with
   | .REAL_SORT => return q(Real)
   | _          => return none
 
-def reconstructReal : TermReconstructor := fun t => do match t.getKind with
+@[smt_term_reconstruct] def reconstructReal : TermReconstructor := fun t => do match t.getKind with
   | .SKOLEM => match t.getSkolemId! with
     | .DIV_BY_ZERO => return q(fun (x : Real) => x / 0)
     | .TRANSCENDENTAL_PURIFY_ARG =>
