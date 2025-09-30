@@ -354,12 +354,12 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 
 def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
-    let l : Q(Real) ← reconstructTerm (p.getResult[0]!)[0]!
-    let r : Q(Real) ← reconstructTerm (p.getResult[1]!)[0]!
-    let lsl := q($ls * $l)
-    let rsr := q($rs * $r)
     let k := p.getResult.getKind
     if ks == .EQUAL && k == .EQUAL then
+      let l : Q(Real) ← reconstructTerm (p.getResult[0]!)[0]!
+      let r : Q(Real) ← reconstructTerm (p.getResult[1]!)[0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(|$ls| = |$rs|) := hs
       let h : Q(|$l| = |$r|) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Real.mul_abs₁ $hs $h))
@@ -372,6 +372,10 @@ def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) :
       let h : Q(|$l| = |$r| ∧ $l ≠ 0) ← reconstructProof p
       return (.GT, lsl, rsr, q(Real.mul_abs₂ $hs $h))
     else if ks == .GT && k == .GT then
+      let l : Q(Real) ← reconstructTerm (p.getResult[0]!)[0]!
+      let r : Q(Real) ← reconstructTerm (p.getResult[1]!)[0]!
+      let lsl := q($ls * $l)
+      let rsr := q($rs * $r)
       let hs : Q(|$ls| > |$rs|) := hs
       let h : Q(|$l| > |$r|) ← reconstructProof p
       return (.GT, lsl, rsr, q(Real.mul_abs₃ $hs $h))
