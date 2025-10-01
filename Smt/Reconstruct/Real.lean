@@ -8,8 +8,9 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 import Qq
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Real.Lemmas
-import Smt.Reconstruct.Real.TransFns
+import Smt.Reconstruct.Real.Polynorm
 import Smt.Reconstruct.Real.Rewrites
+import Smt.Reconstruct.Real.TransFns
 import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Real
