@@ -610,71 +610,71 @@ where
 
     let poly_deg : Q(Nat) := q((2 : Nat) * $d - 1)
     let goal : Q(Prop) := q(TransFns.expTaylor $poly_deg $c = $w)
-    let (.mvar mv) ← Meta.mkFreshExprMVar (some goal) | throwError "impossible 2"
-    normNumFactorial mv
+    let goal_pf : Q($goal) ← Meta.mkFreshExprMVar (some goal)
+    normNumFactorial goal_pf.mvarId!
 
     let poly_deg_is_odd : Q(Prop) := q($poly_deg = 2 * ($d - 1) + 1)
-    let (.mvar poly_deg_is_odd_pf) ← Meta.mkFreshExprMVar (some poly_deg_is_odd) | throwError "impossible 3"
-    Real.normNum poly_deg_is_odd_pf
+    let poly_deg_is_odd_pf : Q($poly_deg_is_odd) ← Meta.mkFreshExprMVar (some poly_deg_is_odd)
+    Real.normNum poly_deg_is_odd_pf.mvarId!
 
     let prop : Q(Prop) ← reconstructTerm pf.getResult
-    let proof ← Meta.mkAppM ``TransFns.arithTransExpApproxBelowComp #[t, c, w, q(2 * $d - 1), q($d - 1), Expr.mvar mv, Expr.mvar poly_deg_is_odd_pf]
+    let proof := q(TransFns.arithTransExpApproxBelowComp $t $c $w (2 * $d - 1) ($d - 1) $goal_pf $poly_deg_is_odd_pf)
     addThm prop proof
   | .ARITH_TRANS_EXP_APPROX_ABOVE_POS =>
     let d : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let l : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let u : Q(Real) ← reconstructTerm pf.getArguments[3]!
-    let evalL : Q(Real) ← reconstructTerm ((pf.getResult[1]!)[1]!)[0]!
-    let evalU : Q(Real) ← reconstructTerm (((((pf.getResult[1]!)[1]!)[1]!)[0]!)[0]!)[1]!
+    let eval_l : Q(Real) ← reconstructTerm ((pf.getResult[1]!)[1]!)[0]!
+    let eval_u : Q(Real) ← reconstructTerm (((((pf.getResult[1]!)[1]!)[1]!)[0]!)[0]!)[1]!
     let real_d : Q(Nat) := q($d - 1)
 
-    let goalL : Q(Prop) := q($evalL = TransFns.expTaylor $real_d $l / (1 - $l ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvL) ← Meta.mkFreshExprMVar (some goalL) | throwError "impossible 2"
-    normNumFactorial mvL
+    let goal_l : Q(Prop) := q($eval_l = TransFns.expTaylor $real_d $l / (1 - $l ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_l_pf : Q($goal_l) ← Meta.mkFreshExprMVar (some goal_l)
+    normNumFactorial goal_l_pf.mvarId!
 
-    let goalU : Q(Prop) := q($evalU = TransFns.expTaylor $real_d $u / (1 - $u ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvU) ← Meta.mkFreshExprMVar (some goalU) | throwError "impossible 2"
-    normNumFactorial mvU
+    let goal_u : Q(Prop) := q($eval_u = TransFns.expTaylor $real_d $u / (1 - $u ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_u_pf : Q($goal_u) ← Meta.mkFreshExprMVar (some goal_u)
+    normNumFactorial goal_u_pf.mvarId!
 
     let goal_l_nonneg : Q(Prop) := q(0 ≤ $l)
-    let (.mvar mv_l_nonneg) ← Meta.mkFreshExprMVar (some goal_l_nonneg) | throwError "impossible 3"
-    normNumFactorial mv_l_nonneg
+    let goal_l_nonneg_pf : Q($goal_l_nonneg) ← Meta.mkFreshExprMVar (some goal_l_nonneg)
+    normNumFactorial goal_l_nonneg_pf.mvarId!
 
     let goal_bound_u : Q(Prop) := q($u ^ ($real_d + 1) < Nat.factorial ($real_d + 1))
-    let (.mvar mv_bound_u) ← Meta.mkFreshExprMVar (some goal_bound_u) | throwError "impossible 4"
-    normNumFactorial mv_bound_u
+    let goal_bound_u_pf : Q($goal_bound_u) ← Meta.mkFreshExprMVar (some goal_bound_u)
+    normNumFactorial goal_bound_u_pf.mvarId!
 
     let prop ← reconstructTerm pf.getResult
-    let proof ← Meta.mkAppM ``TransFns.arithTransExpApproxAbovePosComp #[real_d, l, u, t, evalL, evalU, .mvar mv_l_nonneg, .mvar mv_bound_u, .mvar mvL, .mvar mvU]
+    let proof := q(TransFns.arithTransExpApproxAbovePosComp ($d - 1) $l $u $t $eval_l $eval_u $goal_l_nonneg_pf $goal_bound_u_pf $goal_l_pf $goal_u_pf)
     addThm prop proof
   | .ARITH_TRANS_EXP_APPROX_ABOVE_NEG =>
-    let evalL : Q(Real) ← reconstructTerm ((pf.getResult[1]!)[1]!)[0]!
-    let evalU : Q(Real) ← reconstructTerm (((((pf.getResult[1]!)[1]!)[1]!)[0]!)[0]!)[1]!
+    let eval_l : Q(Real) ← reconstructTerm ((pf.getResult[1]!)[1]!)[0]!
+    let eval_u : Q(Real) ← reconstructTerm (((((pf.getResult[1]!)[1]!)[1]!)[0]!)[0]!)[1]!
     let d_nat : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
     let l : Q(Real) ← reconstructTerm pf.getArguments[2]!
     let u : Q(Real) ← reconstructTerm pf.getArguments[3]!
     let d_half : Q(Nat) := q(Nat.div $d_nat 2)
 
-    let goalL : Q(Prop) := q(TransFns.expTaylor $d_nat $l = $evalL)
-    let (.mvar mvL) ← Meta.mkFreshExprMVar (some goalL) | throwError "impossible 2"
-    normNumFactorial mvL
+    let goal_l : Q(Prop) := q(TransFns.expTaylor $d_nat $l = $eval_l)
+    let goal_l_pf : Q($goal_l) ← Meta.mkFreshExprMVar (some goal_l)
+    normNumFactorial goal_l_pf.mvarId!
 
-    let goalU : Q(Prop) := q(TransFns.expTaylor $d_nat $u = $evalU)
-    let (.mvar mvU) ← Meta.mkFreshExprMVar (some goalU) | throwError "impossible 2"
-    normNumFactorial mvU
+    let goal_u : Q(Prop) := q(TransFns.expTaylor $d_nat $u = $eval_u)
+    let goal_u_pf : Q($goal_u) ← Meta.mkFreshExprMVar (some goal_u)
+    normNumFactorial goal_u_pf.mvarId!
 
-    let goalDeg : Q(Prop) := q($d_nat = 2 * $d_half)
-    let (.mvar goalDeg_pf) ← Meta.mkFreshExprMVar (some goalDeg) | throwError "impossible 3"
-    normNumFactorial goalDeg_pf
+    let goal_deg : Q(Prop) := q($d_nat = 2 * $d_half)
+    let goal_deg_pf : Q($goal_deg) ← Meta.mkFreshExprMVar (some goal_deg)
+    normNumFactorial goal_deg_pf.mvarId!
 
     let uNeg : Q(Prop) := q($u < 0)
-    let (.mvar uNeg_pf) ← Meta.mkFreshExprMVar (some uNeg) | throwError "impossible 4"
-    Real.normNum uNeg_pf
+    let uNeg_pf : Q($uNeg) ← Meta.mkFreshExprMVar (some uNeg)
+    Real.normNum uNeg_pf.mvarId!
 
     let prop : Q(Prop) ← reconstructTerm pf.getResult
-    let proof ← Meta.mkAppM ``TransFns.arithTransExpApproxAboveNegComp #[q($d_nat), d_half, l, u, t, evalL, evalU, .mvar mvL, .mvar mvU, .mvar goalDeg_pf, .mvar uNeg_pf]
+    let proof := q(TransFns.arithTransExpApproxAboveNegComp $d_nat (Nat.div $d_nat 2) $l $u $t $eval_l $eval_u $goal_l_pf $goal_u_pf $goal_deg_pf $uNeg_pf)
     addThm prop proof
   | .ARITH_TRANS_SINE_APPROX_BELOW_NEG =>
     let d : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
@@ -686,27 +686,26 @@ where
     let real_d : Q(Nat) := q($d - 1)
     let d_half : Q(Nat) := q(Nat.div $real_d 2)
 
-    let goalDeg : Q(Prop) := q($real_d = 2 * $d_half + 1)
-    let (.mvar goalDeg_pf) ← Meta.mkFreshExprMVar (some goalDeg) | throwError "impossible 3"
-    normNumFactorial goalDeg_pf
+    let goal_deg : Q(Prop) := q($real_d = 2 * $d_half + 1)
+    let goal_deg_pf : Q($goal_deg) ← Meta.mkFreshExprMVar (some goal_deg)
+    normNumFactorial goal_deg_pf.mvarId!
 
     let goal_l_bound : Q(Prop) := q(-Real.pi ≤ $lb)
-    let (.mvar mv_l_bound) ← Meta.mkFreshExprMVar (some goal_l_bound) | throwError "impossible 3"
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := mv_l_bound)
+    let goal_l_bound_pf : Q($goal_l_bound) ← Meta.mkFreshExprMVar (some goal_l_bound)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := goal_l_bound_pf.mvarId!)
 
-    let ubBound : Q(Prop) := q($ub ≤ 0)
-    let (.mvar ubBound_pf) ← Meta.mkFreshExprMVar (some ubBound) | throwError "impossible 4"
+    let ub_bound : Q(Prop) := q($ub ≤ 0)
+    let ub_bound_pf : Q($ub_bound) ← Meta.mkFreshExprMVar (some ub_bound)
     -- linarith [pi_gt_d20, pi_lt_d20] at ubBound_pf
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ubBound_pf)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ub_bound_pf.mvarId!)
 
-    let goalC : Q(Prop) := q($eval_c = TransFns.sinTaylor $real_d $c - ($c ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvC) ← Meta.mkFreshExprMVar (some goalC) | throwError "impossible 2"
-    normNumFactorial mvC
+    let goal_c : Q(Prop) := q($eval_c = TransFns.sinTaylor $real_d $c - ($c ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_c_pf : Q($goal_c) ← Meta.mkFreshExprMVar (some goal_c)
+    normNumFactorial goal_c_pf.mvarId!
 
-    let goalIf : Q(Prop) := q($c = if -Real.pi/2 < $lb then $lb else if - Real.pi/2 < $ub then -Real.pi/2 else $ub)
-    let (.mvar if_proof) ← Meta.mkFreshExprMVar (some goalIf) | throwError "impossible 4"
-    let some [if1, if2] ← Meta.splitTarget? if_proof | throwError "split 1"
-
+    let goal_if : Q(Prop) := q($c = if -Real.pi/2 < $lb then $lb else if - Real.pi/2 < $ub then -Real.pi/2 else $ub)
+    let goal_if_pf : Q($goal_if) ← Meta.mkFreshExprMVar (some goal_if)
+    let some [if1, if2] ← Meta.splitTarget? goal_if_pf.mvarId! | throwError "split 1"
     let some [if3, if4] ← Meta.splitTarget? if2 | throwError "split 2"
 
     Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := if1)
@@ -714,8 +713,7 @@ where
     Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := if4)
 
     let prop : Q(Prop) ← reconstructTerm pf.getResult
-    let proof ← Meta.mkAppM ``TransFns.arithTransSineApproxBelowNegComp
-      #[real_d, d_half, lb, ub, t, c, eval_c, .mvar goalDeg_pf, .mvar mvC,  .mvar mv_l_bound, .mvar ubBound_pf, .mvar if_proof]
+    let proof := q(TransFns.arithTransSineApproxBelowNegComp ($d - 1) (Nat.div ($d - 1) 2) $lb $ub $t $c $eval_c $goal_deg_pf $goal_c_pf $goal_l_bound_pf $ub_bound_pf $goal_if_pf)
     addThm prop proof
   | .ARITH_TRANS_SINE_APPROX_ABOVE_NEG =>
     let d : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
@@ -727,31 +725,30 @@ where
     let real_d : Q(Nat) := q($d - 1)
     let d_half : Q(Nat) := q(Nat.div $real_d 2)
 
-    let goalDeg : Q(Prop) := q($real_d = 2 * $d_half + 1)
-    let (.mvar goalDeg_pf) ← Meta.mkFreshExprMVar (some goalDeg) | throwError "impossible 3"
-    normNumFactorial goalDeg_pf
+    let goal_deg : Q(Prop) := q($real_d = 2 * $d_half + 1)
+    let goal_deg_pf : Q($goal_deg) ← Meta.mkFreshExprMVar (some goal_deg)
+    normNumFactorial goal_deg_pf.mvarId!
 
     let ubNonpos : Q(Prop) := q($ub ≤ 0)
-    let (.mvar ubNonpos_pf) ← Meta.mkFreshExprMVar (some ubNonpos) | throwError "impossible 4"
-    Real.normNum ubNonpos_pf
+    let ubNonpos_pf : Q($ubNonpos) ← Meta.mkFreshExprMVar (some ubNonpos)
+    Real.normNum ubNonpos_pf.mvarId!
 
     let lbBound : Q(Prop) := q(-Real.pi ≤ $lb)
-    let (.mvar lbBound_pf) ← Meta.mkFreshExprMVar (some lbBound) | throwError "impossible 4"
+    let lbBound_pf : Q($lbBound) ← Meta.mkFreshExprMVar (some lbBound)
     -- linarith [pi_gt_d20, pi_lt_d20] at ubBound_pf
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := lbBound_pf)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := lbBound_pf.mvarId!)
 
-    let goalL : Q(Prop) := q($l = TransFns.sinTaylor $real_d $lb + ($lb ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvL) ← Meta.mkFreshExprMVar (some goalL) | throwError "impossible 2"
-    normNumFactorial mvL
+    let goal_l : Q(Prop) := q($l = TransFns.sinTaylor $real_d $lb + ($lb ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_l_pf : Q($goal_l) ← Meta.mkFreshExprMVar (some goal_l)
+    normNumFactorial goal_l_pf.mvarId!
 
-    let goalU : Q(Prop) := q($u = TransFns.sinTaylor $real_d $ub + ($ub ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvU) ← Meta.mkFreshExprMVar (some goalU) | throwError "impossible 2"
-    normNumFactorial mvU
+    let goal_u : Q(Prop) := q($u = TransFns.sinTaylor $real_d $ub + ($ub ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_u_pf : Q($goal_u) ← Meta.mkFreshExprMVar (some goal_u)
+    normNumFactorial goal_u_pf.mvarId!
 
     let prop ← reconstructTerm pf.getResult
-    let pf ← Meta.mkAppM ``TransFns.arithTransSineApproxAboveNegComp
-      #[real_d, d_half, lb, ub, t, l, u, .mvar goalDeg_pf, .mvar ubNonpos_pf, .mvar lbBound_pf, .mvar mvL, .mvar mvU]
-    addThm prop pf
+    let proof := q(TransFns.arithTransSineApproxAboveNegComp ($d - 1) (Nat.div ($d - 1) 2) $lb $ub $t $l $u $goal_deg_pf $ubNonpos_pf $lbBound_pf $goal_l_pf $goal_u_pf)
+    addThm prop proof
   | .ARITH_TRANS_SINE_APPROX_BELOW_POS =>
     let d : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
@@ -762,26 +759,25 @@ where
     let real_d : Q(Nat) := q($d - 1)
 
     let lbNonneg : Q(Prop) := q(0 ≤ $lb)
-    let (.mvar lbNonneg_pf) ← Meta.mkFreshExprMVar (some lbNonneg) | throwError "impossible 4"
-    Real.normNum lbNonneg_pf
+    let lbNonneg_pf : Q($lbNonneg) ← Meta.mkFreshExprMVar (some lbNonneg)
+    Real.normNum lbNonneg_pf.mvarId!
 
     let ubBound : Q(Prop) := q($ub ≤ Real.pi)
-    let (.mvar ubBound_pf) ← Meta.mkFreshExprMVar (some ubBound) | throwError "impossible 4"
+    let ubBound_pf : Q($ubBound) ← Meta.mkFreshExprMVar (some ubBound)
     -- linarith [pi_gt_d20, pi_lt_d20] at ubBound_pf
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ubBound_pf)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ubBound_pf.mvarId!)
 
-    let goalL : Q(Prop) := q($l = TransFns.sinTaylor $real_d $lb - ($lb ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvL) ← Meta.mkFreshExprMVar (some goalL) | throwError "impossible 2"
-    normNumFactorial mvL
+    let goal_l : Q(Prop) := q($l = TransFns.sinTaylor $real_d $lb - ($lb ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_l_pf : Q($goal_l) ← Meta.mkFreshExprMVar (some goal_l)
+    normNumFactorial goal_l_pf.mvarId!
 
-    let goalU : Q(Prop) := q($u = TransFns.sinTaylor $real_d $ub - ($ub ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvU) ← Meta.mkFreshExprMVar (some goalU) | throwError "impossible 2"
-    normNumFactorial mvU
+    let goal_u : Q(Prop) := q($u = TransFns.sinTaylor $real_d $ub - ($ub ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_u_pf : Q($goal_u) ← Meta.mkFreshExprMVar (some goal_u)
+    normNumFactorial goal_u_pf.mvarId!
 
     let prop ← reconstructTerm pf.getResult
-    let pf ← Meta.mkAppM ``TransFns.arithTransSineApproxBelowPosComp
-      #[real_d, t, lb, ub, l, u, .mvar lbNonneg_pf, .mvar ubBound_pf, .mvar mvL, .mvar mvU]
-    addThm prop pf
+    let proof := q(TransFns.arithTransSineApproxBelowPosComp ($d - 1) $t $lb $ub $l $u $lbNonneg_pf $ubBound_pf $goal_l_pf $goal_u_pf)
+    addThm prop proof
   | .ARITH_TRANS_SINE_APPROX_ABOVE_POS =>
     let d : Nat := pf.getArguments[0]!.getIntegerValue!.natAbs
     let t : Q(Real) ← reconstructTerm pf.getArguments[1]!
@@ -791,26 +787,27 @@ where
     let eval_c : Q(Real) ← reconstructTerm (pf.getResult[1]!)[1]!
     let real_d : Q(Nat) := q($d - 1)
     let d_half : Q(Nat) := q(Nat.div $real_d 2)
-    let goalDeg : Q(Prop) := q($real_d = 2 * $d_half + 1)
-    let (.mvar goalDeg_pf) ← Meta.mkFreshExprMVar (some goalDeg) | throwError "impossible 3"
-    normNumFactorial goalDeg_pf
+
+    let goal_deg : Q(Prop) := q($real_d = 2 * $d_half + 1)
+    let goal_deg_pf : Q($goal_deg) ← Meta.mkFreshExprMVar (some goal_deg)
+    normNumFactorial goal_deg_pf.mvarId!
 
     let goal_l_nonneg : Q(Prop) := q(0 ≤ $lb)
-    let (.mvar mv_l_nonneg) ← Meta.mkFreshExprMVar (some goal_l_nonneg) | throwError "impossible 3"
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := mv_l_nonneg)
+    let goal_l_nonneg_pf : Q($goal_l_nonneg) ← Meta.mkFreshExprMVar (some goal_l_nonneg)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := goal_l_nonneg_pf.mvarId!)
 
     let ubBound : Q(Prop) := q($ub ≤ Real.pi)
-    let (.mvar ubBound_pf) ← Meta.mkFreshExprMVar (some ubBound) | throwError "impossible 4"
+    let ubBound_pf : Q($ubBound) ← Meta.mkFreshExprMVar (some ubBound)
     -- linarith [pi_gt_d20, pi_lt_d20] at ubBound_pf
-    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ubBound_pf)
+    Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := ubBound_pf.mvarId!)
 
-    let goalC : Q(Prop) := q($eval_c = TransFns.sinTaylor $real_d $c + ($c ^ ($real_d + 1) / ($real_d + 1).factorial))
-    let (.mvar mvC) ← Meta.mkFreshExprMVar (some goalC) | throwError "impossible 2"
-    normNumFactorial mvC
+    let goal_c : Q(Prop) := q($eval_c = TransFns.sinTaylor $real_d $c + ($c ^ ($real_d + 1) / ($real_d + 1).factorial))
+    let goal_c_pf : Q($goal_c) ← Meta.mkFreshExprMVar (some goal_c)
+    normNumFactorial goal_c_pf.mvarId!
 
-    let goalIf : Q(Prop) := q($c = if $ub < Real.pi/2 then $ub else if $lb < Real.pi/2 then Real.pi/2 else $lb)
-    let (.mvar if_proof) ← Meta.mkFreshExprMVar (some goalIf) | throwError "impossible 4"
-    let some [if1, if2] ← Meta.splitTarget? if_proof | throwError "split 1"
+    let goal_if : Q(Prop) := q($c = if $ub < Real.pi/2 then $ub else if $lb < Real.pi/2 then Real.pi/2 else $lb)
+    let goal_if_pf : Q($goal_if) ← Meta.mkFreshExprMVar (some goal_if)
+    let some [if1, if2] ← Meta.splitTarget? goal_if_pf.mvarId! | throwError "split 1"
     let some [if3, if4] ← Meta.splitTarget? if2 | throwError "split 2"
 
     Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := if1)
@@ -818,8 +815,7 @@ where
     Mathlib.Tactic.Linarith.linarith false [.const `Real.pi_gt_d20 [], .const `Real.pi_lt_d20 []] (g := if4)
 
     let prop : Q(Prop) ← reconstructTerm pf.getResult
-    let proof ← Meta.mkAppM ``TransFns.arithTransSineApproxAbovePosComp
-      #[real_d, d_half, lb, ub, t, c, eval_c, .mvar goalDeg_pf, .mvar mv_l_nonneg, .mvar ubBound_pf, .mvar mvC, .mvar if_proof]
+    let proof := q(TransFns.arithTransSineApproxAbovePosComp ($d - 1) (Nat.div ($d - 1) 2) $lb $ub $t $c $eval_c $goal_deg_pf $goal_l_nonneg_pf $ubBound_pf $goal_c_pf $goal_if_pf)
     addThm prop proof
   | _ => return none
 where
