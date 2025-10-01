@@ -24,7 +24,7 @@ open Lean Qq
   | .SKOLEM => match t.getSkolemId! with
     | .DIV_BY_ZERO => return q(fun (x : Real) => x / 0)
     | .TRANSCENDENTAL_PURIFY_ARG =>
-      let .app _ X ← reconstructTerm t.getSkolemIndices![0]! | throwError "assumption failed: purify arg is always an application"
+      let .app _ x ← reconstructTerm t.getSkolemIndices![0]! | return none
       let X : Q(Real) := X
       let s : Q(Real) := q(Classical.epsilon (TransFns.shift_prop_part $X))
       let y : Q(Real) := q(Classical.epsilon (TransFns.shift_prop $X $s))
