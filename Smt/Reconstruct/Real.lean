@@ -25,9 +25,9 @@ open Lean Qq
     | .DIV_BY_ZERO => return q(fun (x : Real) => x / 0)
     | .TRANSCENDENTAL_PURIFY_ARG =>
       let .app _ x ← reconstructTerm t.getSkolemIndices![0]! | return none
-      let X : Q(Real) := X
-      let s : Q(Real) := q(Classical.epsilon (TransFns.shift_prop_part $X))
-      let y : Q(Real) := q(Classical.epsilon (TransFns.shift_prop $X $s))
+      let x : Q(Real) := x
+      let s : Q(Real) := q(Classical.epsilon (TransFns.shift_prop_part $x))
+      let y : Q(Real) := q(Classical.epsilon (TransFns.shift_prop $x $s))
       return y
     | .TRANSCENDENTAL_SINE_PHASE_SHIFT =>
       let X : Q(Real) ← reconstructTerm t.getSkolemIndices![0]!
@@ -70,64 +70,24 @@ open Lean Qq
     let x : Q(Real) ← reconstructTerm t[0]!
     return q(|$x|)
   | .LEQ =>
-    if t[0]!.getSort.isInteger && t[1]!.getSort.isInteger then return none
-    let x ← reconstructTerm t[0]!
-    let x : Q(Real) :=
-      if (← Meta.inferType x) == .const `Int [] then
-        let x : Q(Int) := x
-        q(IntCast.intCast (R := Real) $x)
-      else x
-    let y ← reconstructTerm t[1]!
-    let y : Q(Real) :=
-      if (← Meta.inferType y) == .const `Int [] then
-        let y : Q(Int) := y
-        q(IntCast.intCast (R := Real) $y)
-      else y
+    if t[0]!.getSort.isInteger then return none
+    let x : Q(Real) ← reconstructTerm t[0]!
+    let y : Q(Real) ← reconstructTerm t[1]!
     return q($x ≤ $y)
   | .LT =>
-    if t[0]!.getSort.isInteger && t[1]!.getSort.isInteger then return none
-    let x ← reconstructTerm t[0]!
-    let x : Q(Real) :=
-      if (← Meta.inferType x) == .const `Int [] then
-        let x : Q(Int) := x
-        q(IntCast.intCast (R := Real) $x)
-      else x
-    let y ← reconstructTerm t[1]!
-    let y : Q(Real) :=
-      if (← Meta.inferType y) == .const `Int [] then
-        let y : Q(Int) := y
-        q(IntCast.intCast (R := Real) $y)
-      else y
+    if t[0]!.getSort.isInteger then return none
+    let x : Q(Real) ← reconstructTerm t[0]!
+    let y : Q(Real) ← reconstructTerm t[1]!
     return q($x < $y)
   | .GEQ =>
-    if t[0]!.getSort.isInteger && t[1]!.getSort.isInteger then return none
-    let x ← reconstructTerm t[0]!
-    let x : Q(Real) :=
-      if (← Meta.inferType x) == .const `Int [] then
-        let x : Q(Int) := x
-        q(IntCast.intCast (R := Real) $x)
-      else x
-    let y ← reconstructTerm t[1]!
-    let y : Q(Real) :=
-      if (← Meta.inferType y) == .const `Int [] then
-        let y : Q(Int) := y
-        q(IntCast.intCast (R := Real) $y)
-      else y
+    if t[0]!.getSort.isInteger then return none
+    let x : Q(Real) ← reconstructTerm t[0]!
+    let y : Q(Real) ← reconstructTerm t[1]!
     return q($x ≥ $y)
   | .GT =>
-    if t[0]!.getSort.isInteger && t[1]!.getSort.isInteger then return none
-    let x ← reconstructTerm t[0]!
-    let x : Q(Real) :=
-      if (← Meta.inferType x) == .const `Int [] then
-        let x : Q(Int) := x
-        q(IntCast.intCast (R := Real) $x)
-      else x
-    let y ← reconstructTerm t[1]!
-    let y : Q(Real) :=
-      if (← Meta.inferType y) == .const `Int [] then
-        let y : Q(Int) := y
-        q(IntCast.intCast (R := Real) $y)
-      else y
+    if t[0]!.getSort.isInteger then return none
+    let x : Q(Real) ← reconstructTerm t[0]!
+    let y : Q(Real) ← reconstructTerm t[1]!
     return q($x > $y)
   | .TO_REAL =>
     let x : Q(Int) ← reconstructTerm t[0]!
@@ -169,20 +129,9 @@ where
       let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
-    let tmp : Q(Int) ← reconstructTerm t[0]!
-    let mut curr : Q(Real) :=
-      if (← Meta.inferType tmp) == .const `Int [] then
-        q(IntCast.intCast (R := Real) $tmp)
-      else tmp
+    let mut curr ← reconstructTerm t[0]!
     for i in [1:t.getNumChildren] do
-      let tr : Q(Int) ← reconstructTerm t[i]!
-      let tt ← Meta.inferType tr
-      let tr : Q(Real) :=
-        if tt != .const `Real [] then
-          q(IntCast.intCast (R := Real) $tr)
-        else
-          tr
-      curr := mkApp2 op curr tr
+      curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
