@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Qq
+import Smt.Reconstruct
 import Smt.Reconstruct.Builtin.Lemmas
 import Smt.Reconstruct.Real.Lemmas
 import Smt.Reconstruct.Real.Polynorm
