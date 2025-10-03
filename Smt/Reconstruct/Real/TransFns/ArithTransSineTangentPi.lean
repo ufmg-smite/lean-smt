@@ -12,11 +12,11 @@ https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58inte
 
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-import Mathlib.Data.Complex.Exponential
-
-namespace Smt.Reconstruct.Arith
+import Mathlib.Analysis.Complex.Exponential
 
 open Real
+
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransSineTangentPi₁ : ∀ (t : ℝ),
     t > - Real.pi → sin t > - Real.pi - t := by
@@ -43,7 +43,8 @@ theorem arithTransSineTangentPi₂ : ∀ (t : ℝ),
   exact sin_lt e_pos
 
 theorem arithTransSineTangentPi : ∀ (t : ℝ),
-    (t > -Real.pi → sin t > -Real.pi - t) ∧ (t < Real.pi → sin t < Real.pi - t) := fun t =>
-  ⟨arithTransSineTangentPi₁ t, arithTransSineTangentPi₂ t⟩
+    (t > (-1) * Real.pi → sin t > (-1) * Real.pi - t) ∧ (t < Real.pi → sin t < Real.pi - t) := fun t =>
+  by simp only [neg_mul, one_mul, gt_iff_lt]
+     exact ⟨arithTransSineTangentPi₁ t, arithTransSineTangentPi₂ t⟩
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns

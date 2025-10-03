@@ -10,11 +10,11 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule23ARITH_TRANS_SINE_BOUNDSE
 -/
 
-import Mathlib.Data.Complex.Exponential
-
-namespace Smt.Reconstruct.Arith
+import Mathlib.Analysis.Complex.Trigonometric
 
 open Real
+
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransSineBounds : ∀ (t : ℝ), sin t ≤ 1 ∧ sin t ≥ -1 := by
   intro t
@@ -22,4 +22,4 @@ theorem arithTransSineBounds : ∀ (t : ℝ), sin t ≤ 1 ∧ sin t ≥ -1 := by
   · exact sin_le_one t
   · exact neg_one_le_sin t
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns

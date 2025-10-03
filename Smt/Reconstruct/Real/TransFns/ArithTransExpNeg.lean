@@ -10,11 +10,14 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule19ARITH_TRANS_EXP_NEGE
 -/
 
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 
-namespace Smt.Reconstruct.Arith
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransExpNeg (t : ℝ) : t < 0 ↔ Real.exp t < 1 :=
   Iff.comm.mp Real.exp_lt_one_iff
 
-end Smt.Reconstruct.Arith
+theorem arithTransExpNeg' (t : ℝ) : (t < 0) = (Real.exp t < 1) :=
+  propext (Iff.comm.mp Real.exp_lt_one_iff)
+
+end Smt.Reconstruct.Real.TransFns

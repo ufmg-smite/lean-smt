@@ -10,11 +10,11 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_EXP_SUPER_LINE
 -/
 
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 
 import Smt.Reconstruct.Prop
 
-namespace Smt.Reconstruct.Arith
+namespace Smt.Reconstruct.Real.TransFns
 
 open Smt.Reconstruct.Prop
 
@@ -29,4 +29,4 @@ theorem arithTransExpSuperLin (t : ℝ) :
   simp at h
   exact arithTransExpSuperLin' t h
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns

@@ -10,10 +10,10 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule26ARITH_TRANS_EXP_POSITIVITYE
 -/
 
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 
-namespace Smt.Reconstruct.Arith
+namespace Smt.Reconstruct.Real.TransFns
 
 theorem arithTransExpPositivity (t : Real) : Real.exp t > 0 := Real.exp_pos t
 
-end Smt.Reconstruct.Arith
+end Smt.Reconstruct.Real.TransFns
