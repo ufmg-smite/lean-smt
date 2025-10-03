@@ -10,31 +10,47 @@ import Smt.Real
 import Aesop
 import Qq
 
-
 open Lean Meta Parser Elab Tactic Syntax Aesop Qq
 
 -- The string representation and the actual expr of the premisses
-abbrev Premises := List (String × Expr)
+abbrev Premises := List (Expr × Syntax)
 
-example : True := by smt
+def f (stx : Syntax) : BaseM (TSyntax `term) :=
+  match stx with
+  | `($t) => return t
 
--- TODO: For now we just produce `smt` with all facts included. Once we can extract and parse the unsat core we
--- will change this function to filter the relevant premises and produce a tactic invocation with just those,
--- like in lean-hammer.
+def f' (stx : Syntax) : TacticM (TSyntax `term) :=
+  match stx with
+  | `($t) => return t
+
 def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun input => do
   let preState ← saveState
   input.goal.withContext do
-    let idents := ps.map (fun p => Lean.mkIdent p.1.toName)
-    let idents ← idents.toArray.mapM (fun i => `(Smt.Tactic.smtHintElem| $i:term))
+
+    let goal_copy := (← Meta.mkFreshExprMVar (← input.goal.getType)).mvarId!
+    let V := (ps.map (fun p => p.1)).toArray
+    try
+      let res ← Smt.smt default goal_copy V
+    catch e => logInfo "hi"
+    finally logInfo "erro"
+    let unsat_core : List String := []
+    /- let unsat_core ← -/
+    /-   match res with -/
+    /-   | .unsat mvs uc => pure uc -/
+    /-   | _ => throwError "[Smt.smt]: Got SAT from solver" -/
+
+    /- let names := unsat_core.map (fun e => (ps.lookup e).get!) -/
+    /- let namesT ← names.mapM f -/
+    /- let idents ← namesT.mapM (fun i => `(Smt.Tactic.smtHintElem| $i:term)) -/
     let stx ←
-      if includeLCtx && !ps.isEmpty then
-        `(tactic| smt [*, $(idents),*])
-      else if includeLCtx && ps.isEmpty then
+      if includeLCtx && !unsat_core.isEmpty then
         `(tactic| smt [*])
-      else if !includeLCtx && !ps.isEmpty then
-        `(tactic| smt [$(idents),*])
-      else -- if !includeLCtx && ps.isEmpty
-        `(tactic| smt)
+      else if includeLCtx && unsat_core.isEmpty then
+        `(tactic| smt [*])
+      else if !includeLCtx && !unsat_core.isEmpty then
+        `(tactic| smt [*])
+      else -- if !includeLCtx && unsat_core.isEmpty
+        `(tactic| smt [*])
     let tac := withoutRecover $ evalTactic stx
     let postGoals := (← Elab.Tactic.run input.goal tac |>.run').toArray
     let postState ← saveState
@@ -47,22 +63,20 @@ def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun
     let postGoals ← postGoals.mapM (mvarIdToSubgoal input.goal ·)
     return (postGoals, some #[step], some ⟨1.0⟩)
 
-
 -- Example using the above function to integrate lean-smt into aesop
 
 syntax (name := foo) "foo" ("[" term,* "]")? : tactic
 
-def parseFoo : Syntax → TacticM (List (String × Expr))
+def parseFoo : Syntax → TacticM (List (Expr × Syntax))
   | `(tactic| foo) => pure []
   | `(tactic| foo [ $[$ns],* ]) => do
-      let terms : List String := ns.toList.map (fun n => n.raw.getId.toString)
       let exprs ← ns.toList.mapM (fun t => elabTerm t.raw none)
-      return List.zip terms exprs
+      return List.zip exprs ns.toList
   | _ => throwError "[foo]: unexpected syntax"
 
 @[tactic foo]
 def evalFoo : Tactic := fun stx => withMainContext do
-  let names : List (String × Expr) ← parseFoo stx
+  let names : List (Expr × Syntax) ← parseFoo stx
   let ruleTacVal ← mkAppM `smtSingleRuleTac #[q($names), q(false)]
   let ruleTacType := mkConst `Aesop.SingleRuleTac
   let ruleTacDecl :=
@@ -73,6 +87,33 @@ def evalFoo : Tactic := fun stx => withMainContext do
 
 example (a b : Int) : a + b = b + a := by foo -- Try this: smt
 
-set_option pp.rawOnError true in
+syntax (name := bar) "bar" ("[" term,* "]")? : tactic
+
+def parseBar : Syntax → TacticM (List (Expr × Syntax))
+  | `(tactic| bar) => pure []
+  | `(tactic| bar [ $[$ns],* ]) => do
+      let exprs ← ns.toList.mapM (fun t => elabTerm t.raw none)
+      return List.zip exprs ns.toList
+  | _ => throwError "[foo]: unexpected syntax"
+
+#check default
+
+@[tactic bar] def evalBar : Tactic := fun stx => withMainContext do
+  let names ← parseBar stx
+  let mvar ← getMainGoal
+  let goal_copy := (← Meta.mkFreshExprMVar (← mvar.getType)).mvarId!
+  let res ← Smt.smt default goal_copy (names.map (fun p => p.1)).toArray
+  /- let r : Expr := names.head!.1 -/
+  /- let res ← Smt.smt default goal_copy #[q($r)] -/
+  let unsat_core ←
+    match res with
+    | .unsat _ uc => pure uc
+    | _ => throwError "[Smt.smt]: Got SAT from solver"
+  let names' := unsat_core.map (fun e => (names.lookup e).get!)
+  let names' ← names'.mapM f'
+  let idents ← names'.mapM (fun i => `(Smt.Tactic.smtHintElem| $i:term))
+  let stx ← `(tactic| smt [$(idents),*])
+  withoutRecover $ evalTactic stx
+
 example (ε : Real) (h1 : ε > 0) : ε / 2 + ε / 3 + ε / 7 < ε := by
-  foo [h1] -- Try this: simp_all only [gt_iff_lt]; smt [h1]
+  foo [h1]
