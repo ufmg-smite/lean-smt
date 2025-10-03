@@ -12,7 +12,7 @@ import Qq
 
 open Lean Meta Parser Elab Tactic Syntax Aesop Qq
 
--- The string representation and the actual expr of the premisses
+-- The actual expr of the premisses and the corresponding syntax
 abbrev Premises := List (Expr × Syntax)
 
 def cast_stx (stx : Syntax) : BaseM (TSyntax `term) :=
@@ -21,6 +21,9 @@ def cast_stx (stx : Syntax) : BaseM (TSyntax `term) :=
 
 def smtSingleRuleTac (ps : Premises) (includeLCtx : Bool) : SingleRuleTac := fun input => do
   let preState ← saveState
+  --  input.goal.withContext
+  -- NOTE: I am removing this for now as it seems to remove visibility from the main goal hypothesis. The tactic
+  -- seems to still work without it.
   let goal_copy := (← Meta.mkFreshExprMVar (← input.goal.getType)).mvarId!
   let res ← Smt.smt default goal_copy (ps.map (fun p => p.1)).toArray
   let unsat_core ←
