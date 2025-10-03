@@ -117,7 +117,6 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let mut gs ← mv₂.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
     mv₂.withContext (gs.forM (·.assumption))
     mv.assign (.mvar mv₁)
-    logInfo m!"HERE: {uc.map repr}"
     return .unsat mvs uc
   | .ok (.sat model) =>
     -- 5d. Return potential counter-example.
