@@ -15,11 +15,7 @@ open Lean Meta Parser Elab Tactic Syntax Aesop Qq
 -- The type and the corresponding syntax
 abbrev Premises := List (Expr × Syntax)
 
-def cast_stx (stx : Syntax) : BaseM (TSyntax `term) :=
-  match stx with
-  | `($t) => return t
-
-def cast_stx' (stx : Syntax) : TacticM (TSyntax `term) :=
+def cast_stx {m : Type → Type} [Monad m] (stx : Syntax) : m (TSyntax `term) :=
   match stx with
   | `($t) => return t
 
@@ -75,7 +71,7 @@ syntax (name := foo) "foo" ("[" term,* "]")? : tactic
 def parseFoo : Syntax → TacticM (List (Expr × Syntax))
   | `(tactic| foo) => pure []
   | `(tactic| foo [ $[$ns],* ]) => do
-      let hints ← ns.mapM (fun n => cast_stx' n)
+      let hints ← ns.mapM (fun n => cast_stx n)
       let hints ← hints.mapM (fun n => `(Smt.Tactic.smtHintElem| $n:term))
       let (_, elabedHints) ← Smt.Tactic.elabHints (← `(Smt.Tactic.smtHints| [$(hints),*]))
       let types ← elabedHints.mapM (fun h => Meta.inferType h)
