@@ -5,8 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
-import Batteries.Data.Rat
-
 import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Rat.Core
 
@@ -16,57 +14,24 @@ section le_lt_defs
 
 variable {x y : Rat}
 
-theorem le_of_not_le {a b : Rat} : ¬ a ≤ b → b ≤ a := (Rat.le_total a b).resolve_left
+theorem le_of_not_le {a b : Rat} : ¬ a ≤ b → b ≤ a := Rat.le_total.resolve_left
 
 theorem lt_iff_le_not_le (a b : Rat) : a < b ↔ a ≤ b ∧ ¬b ≤ a := by
   rw [← Rat.not_le]
   refine Iff.symm ((and_iff_right_of_imp (a := a ≤ b) (b := ¬ b ≤ a)) ?_)
   intro h
-  cases le_total a b with
+  cases Rat.le_total with
   | inl hl => exact hl
   | inr hr => exact False.elim (h hr)
 
 theorem neg_self_add (c : Rat) : -c + c = 0 := by
   simp only [add_def, neg_num, Int.neg_mul, neg_den, Int.add_left_neg, normalize_zero]
 
-theorem le_antisymm {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := by
-  rw [Rat.le_iff_sub_nonneg] at hab hba
-  rw [Rat.sub_eq_add_neg] at hba
-  rw [← Rat.neg_sub, Rat.sub_eq_add_neg] at hab
-  have := Rat.nonneg_antisymm _ hba hab
-  have := congrArg (fun x => x + b) this
-  simp at this
-  rw [Rat.add_assoc, Rat.neg_self_add] at this
-  rw [Rat.add_zero] at this
-  exact this
-
 theorem le_antisymm_iff (a b : Rat) : a = b ↔ a ≤ b ∧ b ≤ a :=
-  ⟨fun h ↦ ⟨by rw [h]; exact Rat.le_refl _, by rw [h]; exact Rat.le_refl _⟩, fun ⟨ab, ba⟩ ↦ Rat.le_antisymm ab ba⟩
+  ⟨fun h ↦ ⟨by rw [h]; exact Rat.le_refl, by rw [h]; exact Rat.le_refl⟩, fun ⟨ab, ba⟩ ↦ Rat.le_antisymm ab ba⟩
 
 theorem le_iff_eq_or_lt (a b : Rat) : a ≤ b ↔ a = b ∨ a < b := by
   rw [Rat.le_antisymm_iff, Rat.lt_iff_le_not_le, ← and_or_left]; simp [Classical.em]
-
-theorem lt_iff_sub_pos (a b : Rat) : a < b ↔ 0 < b - a := by
-  constructor
-  · intro h
-    have ⟨le, nle⟩ := (Rat.lt_iff_le_not_le a b).mp h
-    have h' := (Rat.le_iff_sub_nonneg a b).mp le
-    cases (Rat.le_iff_eq_or_lt 0 (b - a)).mp h' with
-    | inl eq =>
-        have eq' := Eq.symm eq
-        rw [Rat.sub_eq_add_neg] at eq'
-        have h'' := Rat.eq_neg_of_add_eq_zero_left _ _ eq'
-        rw [Rat.neg_neg] at h''
-        rw [h''] at h
-        have abs := Rat.ne_of_lt _ _ h
-        exact (False.elim (abs rfl))
-    | inr lt => exact lt
-  · intro h
-    have ⟨le, nle⟩ := (Rat.lt_iff_le_not_le 0 (b - a)).mp h
-    have h' := (Rat.le_iff_sub_nonneg a b).mpr le
-    cases (Rat.le_iff_eq_or_lt a b).mp h' with
-    | inl eq => rw [eq] at h; simp at h; apply False.elim; exact (Bool.eq_not_self (Rat.blt 0 0)).mp h
-    | inr lt => exact lt
 
 protected theorem divInt_lt_divInt
   {a b c d : Int} (b0 : 0 < b) (d0 : 0 < d)
@@ -95,9 +60,6 @@ theorem add_sub_add_left_eq_sub (a b c : Rat) : c + a - (c + b) = a - b := by
        Rat.add_comm,
     ]
 
-theorem add_le_add_left {a b c : Rat} : c + a ≤ c + b ↔ a ≤ b := by
-  rw [Rat.le_iff_sub_nonneg, Rat.add_sub_add_left_eq_sub, ← Rat.le_iff_sub_nonneg]
-
 theorem add_lt_add_left {a b c : Rat} : c + a < c + b ↔ a < b := by
   rw [Rat.lt_iff_sub_pos, Rat.add_sub_add_left_eq_sub, ← Rat.lt_iff_sub_pos]
 
@@ -107,7 +69,7 @@ protected theorem le_def : x ≤ y ↔ x.num * y.den ≤ y.num * x.den := by
   exact Rat.divInt_le_divInt (mod_cast x.den_pos) (mod_cast y.den_pos)
 
 protected theorem lt_iff_le_and_ne : x < y ↔ x ≤ y ∧ x ≠ y := ⟨
-  fun h => ⟨Rat.le_of_lt _ _ h, Rat.ne_of_lt _ _ h⟩,
+  fun h => ⟨Rat.le_of_lt h, Rat.ne_of_lt h⟩,
   fun h => by
     let ⟨h_le, h_ne⟩ := h
     rw [Rat.lt_iff_le_not_le]
@@ -136,46 +98,9 @@ theorem self_le_floor_add_one (r : Rat) : r < ↑(r.floor + 1) := by
 end Rat
 
 private theorem Rat.mul_le_mul_left {c x y : Rat} (hc : c > 0) : (c * x ≤ c * y) = (x ≤ y) := by
-  apply propext
-  exact
-    numDenCasesOn' x fun n₁ d₁ h₁ =>
-    numDenCasesOn' y fun n₂ d₂ h₂ => by
-      cases c_def : c with
-      | mk' nc dc dc_nz _ =>
-        rw [<- c_def, <- divInt_self c]
-        have foo : (c.den : Int) ≠ (0 : Int) := by rw [c_def]; exact Int.ofNat_ne_zero.mpr dc_nz
-        have bar : (d₂ : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr h₂
-        have baz : (d₁ : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr h₁
-        rw [Rat.divInt_mul_divInt _ _ foo bar, Rat.divInt_mul_divInt _ _ foo baz]
-        have c_den_pos : (0 : Int) < c.den := Int.cast_pos' fun a => foo (congrArg Nat.cast a)
-        have d1_pos : (0 : Int) < d₁ := Int.cast_pos' h₁
-        have d2_pos : (0 : Int) < d₂ := Int.cast_pos' h₂
-        have den_pos1 : (0 : Int) < c.den * d₁ := Int.mul_pos c_den_pos d1_pos
-        have den_pos2 : (0 : Int) < c.den * d₂ := Int.mul_pos c_den_pos d2_pos
-        rw [Rat.divInt_le_divInt den_pos1 den_pos2]
-        rw [Rat.divInt_le_divInt d1_pos d2_pos]
-        rw [Int.mul_assoc, Int.mul_assoc]
-        constructor
-        · intro h
-          have c_num_pos : 0 < c.num := (Rat.num_pos c).mpr hc
-          have h' := Int.le_of_mul_le_mul_left h c_num_pos
-          rw [<- Int.mul_assoc,
-              <- Int.mul_assoc,
-              Int.mul_comm n₁ c.den,
-              Int.mul_comm n₂ c.den,
-              Int.mul_assoc,
-              Int.mul_assoc] at h'
-          exact Int.le_of_mul_le_mul_left h' c_den_pos
-        · intro h
-          have : 0 ≤ c.num := (Rat.num_nonneg c).mpr (Rat.le_of_lt 0 c hc)
-          refine Int.mul_le_mul_of_nonneg_left ?_ this
-          rw [<- Int.mul_assoc,
-              <- Int.mul_assoc,
-              Int.mul_comm n₁ c.den,
-              Int.mul_comm n₂ c.den,
-              Int.mul_assoc,
-              Int.mul_assoc]
-          exact Int.mul_le_mul_of_nonneg_left h (Int.ofNat_zero_le c.den)
+  ext; constructor
+  · apply Rat.le_of_mul_le_mul_left (hc := hc)
+  · apply Rat.mul_le_mul_of_nonneg_left (hc := Rat.le_of_lt hc)
 
 private theorem Rat.mul_le_mul_left' {c x y : Rat} (hc : c ≥ 0) : x ≤ y → (c * x ≤ c * y) := by
   intro h
@@ -183,54 +108,9 @@ private theorem Rat.mul_le_mul_left' {c x y : Rat} (hc : c ≥ 0) : x ≤ y → 
   cases this
   next heq =>
     rw [<- heq]
-    simp
+    simp +decide
   next hlt =>
     exact (Rat.mul_le_mul_left hlt).mpr h
-
-private theorem Rat.mul_lt_mul_left {c x y : Rat} : 0 < c → ((c * x < c * y) ↔ (x < y)) :=
-  numDenCasesOn' x fun n₁ d₁ h₁ =>
-    numDenCasesOn' y fun n₂ d₂ h₂ => by
-      cases c_def : c with
-      | mk' nc dc dc_nz _ =>
-        rw [<- c_def, <- divInt_self c]
-        have foo : (c.den : Int) ≠ (0 : Int) := by rw [c_def]; exact Int.ofNat_ne_zero.mpr dc_nz
-        have bar : (d₂ : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr h₂
-        have baz : (d₁ : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr h₁
-        rw [Rat.divInt_mul_divInt _ _ foo bar, Rat.divInt_mul_divInt _ _ foo baz]
-        have c_den_pos : (0 : Int) < c.den := Int.cast_pos' fun a => foo (congrArg Nat.cast a)
-        have d1_pos : (0 : Int) < d₁ := Int.cast_pos' h₁
-        have d2_pos : (0 : Int) < d₂ := Int.cast_pos' h₂
-        have den_pos1 : (0 : Int) < c.den * d₁ := Int.mul_pos c_den_pos d1_pos
-        have den_pos2 : (0 : Int) < c.den * d₂ := Int.mul_pos c_den_pos d2_pos
-        rw [Rat.divInt_lt_divInt den_pos1 den_pos2]
-        rw [Rat.divInt_lt_divInt d1_pos d2_pos]
-        intro h
-        have c_pos : 0 < c.num := (divInt_pos_iff_of_pos_right c_den_pos).mp h
-        constructor
-        · intro h2
-          rw [Int.mul_assoc] at h2
-          rw [Int.mul_assoc] at h2
-          have h2' := Int.lt_of_mul_lt_mul_left (a := c.num) h2 (Int.le_of_lt c_pos)
-          rw [<- Int.mul_assoc, <- Int.mul_assoc, Int.mul_comm n₁ c.den, Int.mul_comm n₂ c.den] at h2'
-          rw [Int.mul_assoc, Int.mul_assoc] at h2'
-          exact Int.lt_of_mul_lt_mul_left (a := c.den) h2' (Int.ofNat_zero_le c.den)
-        · intro h2
-          have h2' := Int.mul_lt_mul_of_pos_left h2 c_pos
-          have h2'' := Int.mul_lt_mul_of_pos_left h2' c_den_pos
-          rw [<- Int.mul_assoc] at h2''
-          rw [<- Int.mul_assoc] at h2''
-          rw [<- Int.mul_assoc] at h2''
-          rw [<- Int.mul_assoc] at h2''
-          rw [Int.mul_comm c.den c.num] at h2''
-          rw [Int.mul_assoc c.num c.den n₁] at h2''
-          rw [Int.mul_comm c.den n₁] at h2''
-          rw [<- Int.mul_assoc] at h2''
-          rw [Int.mul_assoc] at h2''
-          rw [Int.mul_assoc c.num c.den n₂] at h2''
-          rw [Int.mul_comm c.den n₂] at h2''
-          rw [<- Int.mul_assoc c.num n₂ c.den] at h2''
-          rw [Int.mul_assoc (c.num * n₂) c.den d₁] at h2''
-          exact h2''
 
 private theorem Rat.mul_eq_zero_left {x y : Rat} : x ≠ 0 → x * y = 0 → y = 0 :=
   numDenCasesOn' x fun nx dx nz_dx =>
@@ -245,7 +125,7 @@ private theorem Rat.mul_eq_zero_left {x y : Rat} : x ≠ 0 → x * y = 0 → y =
             | inr ny0 => exact ny0
        have nz_dy' : (dy : Int) ≠ 0 := Int.ofNat_ne_zero.mpr nz_dy
        have nz_dx' : (dx : Int) ≠ 0 := Int.ofNat_ne_zero.mpr nz_dx
-       rw [Rat.divInt_mul_divInt nx ny nz_dx' nz_dy'] at h2
+       rw [Rat.divInt_mul_divInt nx ny] at h2
        have nz_dxdy : (dx * dy) ≠ 0 := Nat.mul_ne_zero nz_dx nz_dy
        exact (Rat.mkRat_eq_zero nz_dxdy).mp h2
 
@@ -392,7 +272,7 @@ theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
     intro h
     have := Rat.not_lt.mp hr
     rw [h] at this
-    have : 0 = b := Eq.symm (Rat.nonneg_antisymm b hb this)
+    have : 0 = b := Eq.symm (Rat.nonneg_antisymm hb this)
     rw [<- this] at h
     simp at h
     exact trans h this
@@ -400,7 +280,7 @@ theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
 theorem neg_of_pos {a : Rat} : 0 < a → -a < 0 := by
   intro h
   rw [<- Rat.neg_self_add a]
-  have : -a = -a + 0 := by simp
+  have : -a = -a + 0 := by simp [Rat.add_zero]
   conv =>
     lhs
     rw [this]
@@ -410,7 +290,7 @@ theorem neg_of_pos {a : Rat} : 0 < a → -a < 0 := by
 theorem pos_of_neg {a : Rat} : a < 0 → 0 < -a := by
   intro h
   rw [<- Rat.neg_self_add a]
-  have : -a = -a + 0 := by simp
+  have : -a = -a + 0 := by simp [Rat.add_zero]
   conv =>
     rhs
     rw [this]
@@ -448,7 +328,7 @@ theorem abs_of_nonneg {a : Rat} (h : 0 ≤ a) : a.abs = a := by
 
 theorem abs_mul (a b : Rat) : (a * b).abs = a.abs * b.abs := by
   rw [Rat.abs_eq (Rat.mul_nonneg (Rat.abs_nonneg a) (Rat.abs_nonneg b))]
-  rcases Rat.le_total a 0 with ha | ha <;> rcases Rat.le_total b 0 with hb | hb <;>
+  rcases @Rat.le_total a 0 with ha | ha <;> rcases @Rat.le_total b 0 with hb | hb <;>
     simp only [Rat.abs_of_nonpos, Rat.abs_of_nonneg, true_or, or_true, Rat.neg_mul,
       Rat.mul_neg, Rat.neg_neg, *]
 
@@ -527,7 +407,7 @@ theorem int_tight_lb {i : Int} (h : i > c) : i ≥ c.floor + 1 := by
     have : i ≤ c := Rat.le_trans (Rat.cast_le.mp h2) c_le_floor
     have abs := Rat.lt_of_le_of_lt this h
     apply False.elim
-    exact Rat.lt_irrefl _ abs
+    exact Rat.lt_irrefl abs
   | inr h' =>
     cases h' with
     | inl ieqc => exact Int.le_of_eq (id (Eq.symm ieqc))
@@ -607,7 +487,7 @@ theorem mul_sign₁ : a < 0 → b < 0 → a * b > 0 :=
       have b_num_neg : b_num < 0 := (Rat.divInt_neg_iff_of_neg_right b_den_pos).mp hb
       have bar : (a_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr a_den_nz
       have bar' : (b_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr b_den_nz
-      rw [Rat.divInt_mul_divInt _ _ bar bar']
+      rw [Rat.divInt_mul_divInt _ _]
       have : 0 < (a_den : Int) * b_den := Int.mul_pos a_den_pos b_den_pos
       apply (Rat.divInt_pos_iff_of_pos_right this).mpr
       exact Int.mul_pos_of_neg_of_neg a_num_neg b_num_neg
@@ -623,7 +503,7 @@ theorem mul_sign₃ : a < 0 → b > 0 → a * b < 0 :=
       have b_num_neg : 0 < b_num := (Rat.divInt_pos_iff_of_pos_right b_den_pos).mp hb
       have bar : (a_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr a_den_nz
       have bar' : (b_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr b_den_nz
-      rw [Rat.divInt_mul_divInt _ _ bar bar']
+      rw [Rat.divInt_mul_divInt _ _]
       have : 0 < (a_den : Int) * b_den := Int.mul_pos a_den_pos b_den_pos
       apply (Rat.divInt_neg_iff_of_neg_right this).mpr
       exact Int.mul_neg_of_neg_of_pos a_num_neg b_num_neg
@@ -645,7 +525,7 @@ theorem nonpos_of_mul_nonneg (a b : Rat) : a < 0 → 0 ≤ a * b → b ≤ 0 := 
   have : 0 < b := (Rat.not_nonpos _).mp h3
   have : a * b < 0 := mul_sign₃ h1 this
   have := Rat.lt_of_lt_of_le this h2
-  exact Rat.lt_irrefl _ this
+  exact Rat.lt_irrefl this
 
 theorem neg_of_mul_pos (a b : Rat) : a < 0 → 0 < a * b → b < 0 := by
   intros h1 h2
@@ -653,8 +533,8 @@ theorem neg_of_mul_pos (a b : Rat) : a < 0 → 0 < a * b → b < 0 := by
   intro h3
   have : 0 ≤ b := Rat.not_lt.mp h3
   cases (Rat.le_iff_eq_or_lt 0 b).mp this with
-  | inl heq => rw [<-heq, Rat.mul_zero] at h2; exact Rat.lt_irrefl _ h2
-  | inr hlt => have := mul_sign₃ h1 hlt; have := Rat.lt_trans h2 this; exact Rat.lt_irrefl _ this
+  | inl heq => rw [<-heq, Rat.mul_zero] at h2; exact Rat.lt_irrefl h2
+  | inr hlt => have := mul_sign₃ h1 hlt; have := Rat.lt_trans h2 this; exact Rat.lt_irrefl this
 
 theorem le_iff_sub_nonneg' (x y : Rat) : y ≤ x ↔ y - x ≤ 0 := by
   rw [Rat.le_iff_sub_nonneg]
@@ -725,9 +605,9 @@ theorem ge_of_sub_eq_pos {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0)
 theorem mul_neg (a b : Rat) : a * (-b) = - (a * b) :=
   Rat.numDenCasesOn' a fun a_num a_den a_den_nz =>
     Rat.numDenCasesOn' b fun b_num b_den b_den_nz => by
-      rw [Rat.divInt_mul_divInt _ _ (Int.ofNat_ne_zero.mpr a_den_nz) (Int.ofNat_ne_zero.mpr b_den_nz)]
+      rw [Rat.divInt_mul_divInt _ _]
       rw [Rat.neg_divInt]
-      rw [Rat.divInt_mul_divInt _ _ (Int.ofNat_ne_zero.mpr a_den_nz) (Int.ofNat_ne_zero.mpr b_den_nz)]
+      rw [Rat.divInt_mul_divInt _ _]
       rw [Int.mul_neg, Rat.neg_divInt]
 
 theorem neg_eq {a b : Rat} : -a = -b → a = b := by
@@ -738,7 +618,7 @@ theorem neg_eq {a b : Rat} : -a = -b → a = b := by
 
 theorem ge_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ ≥ a₂) = (b₁ ≥ b₂) := by
   show (a₂ ≤ a₁) = (b₂ ≤ b₁)
-  rw [<- Rat.neg_sub, <- Rat.neg_sub (x := b₂) (y := b₁), mul_neg, mul_neg] at h
+  rw [<- Rat.neg_sub, <- Rat.neg_sub b₂ b₁, mul_neg, mul_neg] at h
   have h' := neg_eq h
   exact le_of_sub_eq_neg hc₁ hc₂ h'
 
@@ -749,7 +629,7 @@ theorem gt_of_sub_eq_pos {c₁ c₂ : Rat} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0)
 
 theorem gt_of_sub_eq_neg {c₁ c₂ : Rat} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   show (a₂ < a₁) = (b₂ < b₁)
-  rw [<- Rat.neg_sub, <- Rat.neg_sub (x := b₂) (y := b₁), mul_neg, mul_neg] at h
+  rw [<- Rat.neg_sub, <- Rat.neg_sub b₂ b₁, mul_neg, mul_neg] at h
   have h' := neg_eq h
   exact lt_of_sub_eq_neg hc₁ hc₂ h'
 
@@ -854,7 +734,7 @@ theorem mul_sign₆ : a > 0 → b > 0 → a * b > 0 :=
       have b_num_pos : 0 < b_num := (Rat.divInt_pos_iff_of_pos_right b_den_pos).mp hb
       have bar : (a_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr a_den_nz
       have bar' : (b_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr b_den_nz
-      rw [Rat.divInt_mul_divInt _ _ bar bar']
+      rw [Rat.divInt_mul_divInt _ _]
       have : 0 < (a_den : Int) * b_den := Int.mul_pos a_den_pos b_den_pos
       apply (Rat.divInt_pos_iff_of_pos_right this).mpr
       exact Int.mul_pos a_num_pos b_num_pos
@@ -871,7 +751,7 @@ theorem mul_sign₀ : a ≠ 0 → a * a > 0 :=
     have : 0 < a_num * a_num := Int.square_pos this
     have bar : (a_den : Int) ≠ (0 : Int) := Int.ofNat_ne_zero.mpr a_den_nz
     have foo : (0 : Int) < a_den * a_den := Int.square_pos bar
-    rw [Rat.divInt_mul_divInt _ _ bar bar]
+    rw [Rat.divInt_mul_divInt _ _]
     exact (Rat.divInt_pos_iff_of_pos_right foo).mpr this
 
 theorem mul_sign₂ (ha : a < 0) (hb : b ≠ 0) : a * b * b < 0 := by
@@ -903,8 +783,8 @@ theorem mul_neg_lt : (c < 0 ∧ a < b) → c * a > c * b :=
     Rat.numDenCasesOn' b fun b_num b_den b_den_nz =>
       Rat.numDenCasesOn' c fun c_num c_den c_den_nz => by
         rintro ⟨h1, h2⟩
-        rw [Rat.divInt_mul_divInt _ _ (Int.ofNat_ne_zero.mpr c_den_nz) (Int.ofNat_ne_zero.mpr a_den_nz)]
-        rw [Rat.divInt_mul_divInt _ _ (Int.ofNat_ne_zero.mpr c_den_nz) (Int.ofNat_ne_zero.mpr b_den_nz)]
+        rw [Rat.divInt_mul_divInt _ _]
+        rw [Rat.divInt_mul_divInt _ _]
         have c_den_pos : (0 : Int) < c_den := Int.cast_pos' c_den_nz
         have a_den_pos : (0 : Int) < a_den := Int.cast_pos' a_den_nz
         have b_den_pos : (0 : Int) < b_den := Int.cast_pos' b_den_nz
@@ -969,8 +849,8 @@ theorem Rat.mul_le_mul_of_neg_left (a b c : Rat) : c < 0 -> (a ≤ b <-> c * a �
         have ca_den_pos : (0 : Int) < c_den * a_den := Int.mul_pos this a_den_pos
         have cb_den_pos : (0 : Int) < c_den * b_den := Int.mul_pos this b_den_pos
         rw [Rat.divInt_le_divInt a_den_pos b_den_pos]
-        rw [Rat.divInt_mul_divInt _ _ c_den_nz' a_den_nz']
-        rw [Rat.divInt_mul_divInt _ _ c_den_nz' b_den_nz']
+        rw [Rat.divInt_mul_divInt _ _]
+        rw [Rat.divInt_mul_divInt _ _]
         show a_num * ↑b_den ≤ b_num * ↑a_den ↔ Rat.divInt _ _ ≤ Rat.divInt _ _
         rw [Rat.divInt_le_divInt cb_den_pos ca_den_pos]
         rw [Int.mul_assoc, Int.mul_assoc]
@@ -1017,7 +897,7 @@ theorem mul_tangent_mp_lower (h : x * y ≤ b * x + a * y - a * b)
       rw [Rat.mul_comm, Rat.mul_comm a _] at h
       have := (Rat.mul_le_mul_of_neg_left _ _ _ h3).mpr h
       have := Rat.lt_of_lt_of_le h2 this
-      exact Rat.lt_irrefl _ this
+      exact Rat.lt_irrefl this
   | inr h2 =>
     rw [and_comm]
     constructor
@@ -1028,7 +908,7 @@ theorem mul_tangent_mp_lower (h : x * y ≤ b * x + a * y - a * b)
       rw [Rat.mul_comm, Rat.mul_comm a _] at h
       have : 0 < y - b := (Rat.lt_iff_sub_pos b y).mp h2
       rw [Rat.mul_le_mul_left this] at h
-      exact Rat.lt_irrefl _ (Rat.lt_of_le_of_lt h h3)
+      exact Rat.lt_irrefl (Rat.lt_of_le_of_lt h h3)
 
 theorem mul_tangent_mpr_lower (h : x ≤ a ∧ y ≥ b ∨ x ≥ a ∧ y ≤ b)
   : x * y ≤ b * x + a * y - a * b := by
@@ -1097,7 +977,7 @@ theorem mul_tangent_mp_upper (h : x * y ≥ b * x + a * y - a * b)
       rw [Rat.not_le] at h3
       have : 0 < y - b := (Rat.lt_iff_sub_pos b y).mp h3
       rw [Rat.mul_le_mul_left this] at h
-      exact Rat.lt_irrefl _ (Rat.lt_of_lt_of_le h2 h)
+      exact Rat.lt_irrefl (Rat.lt_of_lt_of_le h2 h)
   | inr h2 =>
     constructor
     · have : y - b < 0 := by exact (lt_iff_sub_pos' b y).mp h2

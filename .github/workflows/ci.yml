@@ -30,6 +30,6 @@ jobs:
     - name: Build and Test Lean-SMT
       run: |
         lake update
-        lake build Smt Smt.Rat Smt.Real
+        lake build Smt Smt.Rat Smt.Real Smt.Preprocess.Embedding
         lake run test
       shell: bash

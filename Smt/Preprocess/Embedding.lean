@@ -1,13 +1,11 @@
 import Lean
-import Smt
-import Smt.Real
-import Lean.Meta.Tactic.Congr
 
+import Smt.Preprocess.Basic
 import Smt.Preprocess.BoolAsProp
 import Smt.Preprocess.NatAsInt
 import Smt.Preprocess.RatAsReal
 
-namespace Smt.Preprocess.SmtTranslate
+namespace Smt.Preprocess
 
 open Lean Meta
 
@@ -334,7 +332,7 @@ def addNonNegToHypotheses (mv : MVarId) (sortedNatDomainVars : Array Expr) : Met
     `Int.toNat_of_nonneg` normalization, generalize away Bool/Rat/Nat locals,
     then re-introduce hypotheses and clear the original variables.
 -/
-def smt_translate (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruct.smt_translate traceSmtTranslate do
+def smtTranslateCore (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruct.smtTranslate traceSmtTranslate do
   trace[debug] m!"initial goal: {mv'}"
 
   let mut mv := mv'
@@ -397,7 +395,7 @@ def smt_translate (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruc
   -- For each `x : Rat`, assert a witness equation `x = a / b` with `a b : Int`
   for ratVar in sortedRatVars do
     let varName ← ratVar.fvarId!.getUserName
-    let divProof ← mkAppOptM ``Rat.cast_eq_div_int #[ratVar]
+    let divProof ← mkAppOptM `Rat.cast_eq_div_int #[ratVar]
     let divType ← inferType divProof
     mv ← mv.assert (varName.appendAfter "_rat") divType divProof
     let (fVarId, mv') ← mv.intro (varName.appendAfter "_rat")
@@ -669,7 +667,7 @@ def smt_translate (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruc
   let ns := [
     ``Bool.and_eq_true, ``Bool.or_eq_true, ``Bool.not_eq_true2, ``Bool.iff_eq_true, ``Bool.xor_eq_true, ``Bool.eq_eq_true, ``Bool.eq_self, ``Bool.true_eq_false, ``Bool.false_eq_true, ``Prop.eq_true, ``Prop.eq_false,
 
-    ``Int.natCast_add, ``Int.natCast_sub2, ``Int.natCast_mul, ``Int.natCast_ediv, ``Int.natCast_emod, ``Int.ofNat_eq, ``Int.ofNat_le2, ``Int.ofNat_lt2, ``Int.ofNat_ge, ``Int.ofNat_gt, ``Int.ofNat_ne, ``Nat.cast_zero, ``Nat.cast_one, ``Nat.cast_ofNat, ``Int.natSub.eq_1, ``Int.toNat_of_nonneg, ``Int.ofNat_eq_coe,
+    ``Int.natCast_add, ``Int.natCast_sub2, ``Int.natCast_mul, ``Int.natCast_ediv, ``Int.natCast_emod, ``Int.ofNat_eq, ``Int.ofNat_le2, ``Int.ofNat_lt2, ``Int.ofNat_ge, ``Int.ofNat_gt, ``Int.ofNat_ne, ``Int.natSub.eq_1, ``Int.toNat_of_nonneg, ``Int.ofNat_eq_coe, ``Int.cast_ofNat_Int,
 
     ``Rat.cast_add, ``Rat.cast_sub, ``Rat.cast_mul, ``Rat.cast_div, ``Rat.cast_neg, ``Rat.cast_inv, ``Rat.cast_eq, ``Rat.cast_le, ``Rat.cast_lt, ``Rat.cast_ge, ``Rat.cast_gt, ``Rat.cast_ne, ``Rat.cast_zero, ``Rat.cast_one, ``Rat.cast_ofNat,
   ]
@@ -729,7 +727,7 @@ def smt_translate (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruc
 
   for ratVar in sortedRatVars do
     let varName ← ratVar.fvarId!.getUserName
-    let castExpr ← mkAppOptM ``Rat.cast #[mkConst ``Real, none, ratVar]
+    let castExpr ← mkAppOptM `Rat.cast #[mkConst `Real, none, ratVar]
     (_, mv) ← mv.generalize #[{ expr := castExpr, xName? := varName }]
 
   for natVar in sortedNatVars do
@@ -751,14 +749,10 @@ def smt_translate (mv' : MVarId) : MetaM MVarId := withTraceNode `smt.reconstruc
 
   return mv
 
-namespace Tactic
+def smtTranslate (mv : MVarId) : MetaM Result := do
+  let mv ← smtTranslateCore mv
+  trace[smt.preprocess] m!"final translated goal: {mv}"
+  let hs ← mv.withContext (return (← getPropHyps).map Expr.fvar)
+  return { map := {}, hs, mv }
 
-syntax (name := smt_translate) "smt_translate" : tactic
-
-open Lean.Elab Tactic in
-@[tactic smt_translate] def evalSmtTranslate : Tactic := fun _ => withMainContext do
-  let mv ← Tactic.getMainGoal
-  let mv ← SmtTranslate.smt_translate mv
-  replaceMainGoal [mv]
-
-end Tactic
+end Smt.Preprocess

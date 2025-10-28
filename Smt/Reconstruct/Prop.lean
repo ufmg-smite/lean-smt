@@ -242,17 +242,13 @@ def reclausify (c : Array cvc5.Term) (l : cvc5.Term) : Array cvc5.Term :=
 def clausify (c l : cvc5.Term) : Array cvc5.Term :=
   reclausify (nary .OR c) l
 
+private def isNotOf (t₁ t₂ : cvc5.Term) : Bool :=
+  t₁.getKind == .NOT && t₁[0]! == t₂
+
 def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
-  let l₁ := if pol.getBooleanValue! then l else l.not!
-  let l₂ := if pol.getBooleanValue! then l.not! else l
-  let mut ls := #[]
-  for li in c₁ do
-    if li != l₁ then
-      ls := ls.push li
-  for li in c₂ do
-    if li != l₂ then
-      ls := ls.push li
-  return ls
+  let l₁ := if pol.getBooleanValue! then (· == l) else (isNotOf · l)
+  let l₂ := if pol.getBooleanValue! then (isNotOf · l) else (· == l)
+  return c₁.eraseP l₁ ++ c₂.eraseP l₂
 
 def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps hqs : Expr) : ReconstructM Expr := do
   let f t ps := do
@@ -262,7 +258,9 @@ def reconstructResolution (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) (hps
   let qs : Q(List Prop) ← c₂.foldrM f q([])
   let hps : Q(orN $ps) ← pure hps
   let hqs : Q(orN $qs) ← pure hqs
-  let (i?, j?) := if pol.getBooleanValue! then (c₁.finIdxOf? l, c₂.finIdxOf? l.not!) else (c₁.finIdxOf? l.not!, c₂.finIdxOf? l)
+  let (i?, j?) := if pol.getBooleanValue!
+    then (c₁.finIdxOf? l, c₂.findFinIdx? (isNotOf · l))
+    else (c₁.findFinIdx? (isNotOf · l), c₂.finIdxOf? l)
   if let (some ⟨i, _⟩, some ⟨j, _⟩) := (i?, j?) then
     let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hj : Q($j < «$qs».length) := .app q(@of_decide_eq_true ($j < «$qs».length) _) q(Eq.refl true)

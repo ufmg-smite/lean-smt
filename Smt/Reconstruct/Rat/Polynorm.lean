@@ -5,7 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Batteries.Data.Rat
 import Smt.Reconstruct.Rat.Core
 import Smt.Recognizers
 import Lean
@@ -199,14 +198,14 @@ theorem foldl_add_insert (ctx : Context) :
   List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 (add.insert m p) =
   (Monomial.denote ctx m) + List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 p := by
   induction p with
-  | nil => simp [add.insert]
+  | nil => simp [add.insert, Rat.zero_add, Rat.add_zero]
   | cons n p ih =>
     simp only [add.insert]
     split <;> rename_i hlt <;> simp only [List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc]
     · split <;> rename_i heq
       · split <;> rename_i hneq
         · rw [←Rat.add_assoc, Rat.add_comm, ←Monomial.denote_add heq]
-          simp [Monomial.denote, hneq]
+          simp [Monomial.denote, hneq, Rat.add_zero]
         · simp only [List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc, Monomial.denote_add, Rat.add_assoc]
       · simp only [List.foldl_cons, Rat.add_comm 0, ih, Monomial.foldl_assoc Rat.add_assoc]
         rw [←Rat.add_assoc, Rat.add_comm (Monomial.denote ctx n), Rat.add_assoc]
@@ -221,7 +220,7 @@ theorem denote_neg {p : Polynomial} : p.neg.denote ctx = -p.denote ctx := by
 theorem denote_add {p q : Polynomial} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
   simp only [denote, add]
   induction p with
-  | nil => simp
+  | nil => simp [Rat.zero_add]
   | cons x ys ih =>
     simp only [List.foldr_cons, List.foldl_cons, Rat.add_comm 0, Monomial.foldl_assoc Rat.add_assoc, Rat.add_assoc]
     rw [← ih, foldl_add_insert]
@@ -244,13 +243,13 @@ theorem denote_nil_add : denote ctx (p.add []) = denote ctx p := by
   induction p with
   | nil => simp [add]
   | cons n p ih =>
-    simp [denote_add, denote_cons, show denote ctx [] = 0 by rfl]
+    simp [denote_add, denote_cons, show denote ctx [] = 0 by rfl, Rat.add_zero]
 
 theorem denote_add_insert {g : Monomial → Polynomial} :
   denote ctx (List.foldl (fun acc m => (g m).add acc) n p) = denote ctx n + denote ctx (List.foldl (fun acc m => (g m).add acc) [] p) := by
   revert n
   induction p with
-  | nil => simp [denote]
+  | nil => simp [denote, Rat.add_zero]
   | cons k p ih =>
     intro n
     simp only [List.foldl_cons]
@@ -315,9 +314,9 @@ theorem denote_toPolynomial {rctx : RatContext} {e : IntExpr} : e.denote ictx = 
     simp only [denote, toPolynomial]
     split <;> rename_i hv
     · rewrite [hv]; rfl
-    · simp [Polynomial.denote, Monomial.denote]
+    · simp [Polynomial.denote, Monomial.denote, Rat.zero_add]
   | var v =>
-    simp [denote, toPolynomial, Polynomial.denote, Monomial.denote]
+    simp [denote, toPolynomial, Polynomial.denote, Monomial.denote, Rat.zero_add]
   | neg a ih =>
     simp only [denote, toPolynomial, Polynomial.denote_neg, Rat.intCast_neg, ih]
   | add a b ih₁ ih₂ =>
@@ -368,9 +367,9 @@ theorem denote_toPolynomial {e : RatExpr} : e.denote ictx rctx = e.toPolynomial.
     simp only [denote, toPolynomial]
     split <;> rename_i hv
     · rewrite [hv]; rfl
-    · simp [Polynomial.denote, Monomial.denote]
+    · simp [Polynomial.denote, Monomial.denote, Rat.zero_add]
   | var v =>
-    simp [denote, toPolynomial, Polynomial.denote, Monomial.denote]
+    simp [denote, toPolynomial, Polynomial.denote, Monomial.denote, Rat.zero_add]
   | neg a ih =>
     simp only [denote, toPolynomial, Polynomial.denote_neg, ih]
   | add a b ih₁ ih₂ =>

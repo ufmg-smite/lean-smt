@@ -1,7 +1,20 @@
 import Smt
+import Smt.Real
 import Smt.Preprocess.Embedding
 
 -- Boolean tests
+
+namespace Smt.Preprocess.Tactic
+
+syntax (name := smt_translate) "smt_translate" : tactic
+
+open Lean.Elab Tactic in
+@[tactic smt_translate] def evalSmtTranslate : Tactic := fun _ => withMainContext do
+  let mv ← Tactic.getMainGoal
+  let ⟨_, _, mv⟩ ← Preprocess.smtTranslate mv
+  replaceMainGoal [mv]
+
+end Smt.Preprocess.Tactic
 
 example (p q : Bool) (h : p && q) (h2 : p || q) : (1 : Int) + 1 = 2 := by
   smt_translate

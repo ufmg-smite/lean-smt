@@ -36,7 +36,7 @@ open Lean Qq
       return s
     | _ => return none
   | .CONST_RATIONAL =>
-    let c : Std.Internal.Rat := t.getRationalValue!
+    let c : Rat := t.getRationalValue!
     let num : Q(Real) := mkRealLit c.num.natAbs
     if c.den == 1 then
       if c.num ≥ 0 then
@@ -126,7 +126,7 @@ where
     | 0     => q(0 : Real)
     | 1     => q(1 : Real)
     | _ + 2 =>
-      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(Nat.instAtLeastTwo)
+      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(Nat.instAtLeastTwoHAddOfNat _)
       let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
@@ -399,7 +399,7 @@ where
       return ha
 
 def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  let lcx : Std.Internal.Rat := (pf.getChildren[0]!.getResult[0]!)[0]!.getRationalValue!
+  let lcx : Rat := (pf.getChildren[0]!.getResult[0]!)[0]!.getRationalValue!
   let cx : Q(Real) ← reconstructTerm (pf.getChildren[0]!.getResult[0]!)[0]!
   let cy : Q(Real) ← reconstructTerm (pf.getChildren[0]!.getResult[1]!)[0]!
   let x₁ : Q(Real) ← reconstructTerm (pf.getResult[0]!)[0]!

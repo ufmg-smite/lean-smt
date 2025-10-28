@@ -139,7 +139,7 @@ theorem gt_eq_sub_gt_zero : (a > b) = (a - b > 0) := by
 
 theorem lt_of_sub_eq_pos {c₁ c₂ : Real} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
   have {c x y : Real} (hc : c > 0) : (c * (x - y) < 0) = (x - y < 0) := by
-    rw (config := { occs := .pos [1] }) [← mul_zero c, mul_lt_mul_left hc]
+    rw (config := { occs := .pos [1] }) [← mul_zero c, mul_lt_mul_iff_right₀ hc]
   rw [lt_eq_sub_lt_zero, @lt_eq_sub_lt_zero b₁, ← this hc₁, ← this hc₂, h]
 
 theorem lt_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ < a₂) = (b₁ < b₂) := by
@@ -178,7 +178,7 @@ theorem ge_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0
 
 theorem gt_of_sub_eq_pos {c₁ c₂ : Real} (hc₁ : c₁ > 0) (hc₂ : c₂ > 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by
   have {c x y : Real} (hc : c > 0) : (c * (x - y) > 0) = (x - y > 0) := by
-    rw (config := { occs := .pos [1] }) [← mul_zero c, gt_iff_lt, mul_lt_mul_left hc]
+    rw (config := { occs := .pos [1] }) [← mul_zero c, gt_iff_lt, mul_lt_mul_iff_right₀ hc]
   rw [gt_eq_sub_gt_zero, @gt_eq_sub_gt_zero b₁, ← this hc₁, ← this hc₂, h]
 
 theorem gt_of_sub_eq_neg {c₁ c₂ : Real} (hc₁ : c₁ < 0) (hc₂ : c₂ < 0) (h : c₁ * (a₁ - a₂) = c₂ * (b₁ - b₂)) : (a₁ > a₂) = (b₁ > b₂) := by

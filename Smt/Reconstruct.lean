@@ -262,27 +262,29 @@ def defaultSolverOptions : List (String × String) := [
 open cvc5 in
 def solve (query : String) (timeout : Option Nat) (options : List (String × String)) : MetaM (Except cvc5.Error cvc5Result) :=
   profileitM Exception "smt" {} do
-  withTraceNode `smt.solve traceSolve do Solver.run (← TermManager.new) do
+  withTraceNode `smt.solve traceSolve do cvc5.run do
+    let tm ← TermManager.new
+    let slv ← Solver.new tm
     if let .some timeout := timeout then
       -- NOTE: `tlimit` wouldn't have any effect here, since we're not running in
       -- the binary, and because we only have a single `checkSat`, we can use
       -- `tlimit-per` instead to achieve the same effect.
-      Solver.setOption "tlimit-per" (toString (1000*timeout))
+      slv.setOption "tlimit-per" (toString (1000*timeout))
     for (opt, val) in options do
-      Solver.setOption opt val
-    let (uss, ufs) ← Solver.parseCommands query
-    let res ← Solver.checkSat
+      slv.setOption opt val
+    let (uss, ufs) ← slv.parseCommands query
+    let res ← slv.checkSat
     trace[smt.solve] m!"result: {res}"
     if res.isSat then
-      let iss ← uss.mapM fun us => return (us, ← Solver.getModelDomainElements us)
-      let ifs ← ufs.mapM fun uf => return (uf, ← Solver.getValue uf)
+      let iss ← uss.mapM fun us => return (us, ← slv.getModelDomainElements us)
+      let ifs ← ufs.mapM fun uf => return (uf, ← slv.getValue uf)
       trace[smt.solve] "model:\n{iss}\n{ifs}"
       return .sat { iss, ifs }
     else if res.isUnsat then
-      let ps ← Solver.getProof
-      let uc ← Solver.getUnsatCore
+      let ps ← slv.getProof
+      let uc ← slv.getUnsatCore
       if h : 0 < ps.size then
-        trace[smt.solve] "proof:\n{← Solver.proofToString ps[0]}"
+        trace[smt.solve] "proof:\n{← slv.proofToString ps[0]}"
         trace[smt.solve] "unsat-core:\n{uc}"
         return .unsat ps[0] uc
     else if res.isUnknown then

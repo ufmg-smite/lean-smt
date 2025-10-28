@@ -21,7 +21,7 @@ def generalIdent : Parser :=
     fn := fun c s =>
       let startPos := s.pos
       let s := takeWhile1Fn (fun c => !("(){}[].".contains c) ∧ !c.isWhitespace) "expected generalized identifier" c s
-      mkNodeToken `generalIdent startPos c s }
+      mkNodeToken `generalIdent startPos true c s }
 
 def Lean.TSyntax.getGeneralId : TSyntax `generalIdent → String
   | ⟨.node _ `generalIdent args⟩ => args[0]!.getAtomVal
