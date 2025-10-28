@@ -3,8 +3,8 @@ goal: (f p (f q r) == f (f p q) r) = true
 query:
 (set-logic ALL)
 (declare-const q Bool)
-(declare-const r Bool)
 (declare-fun f (Bool Bool) Bool)
+(declare-const r Bool)
 (declare-const p Bool)
 (assert (not (= (= (f p (f q r)) (f (f p q) r)) true)))
 (check-sat)

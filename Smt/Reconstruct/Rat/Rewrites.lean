@@ -5,7 +5,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Batteries.Data.Rat
 import Smt.Reconstruct.Rat.Lemmas
 
 namespace Smt.Reconstruct.Rat.Rewrite
@@ -82,12 +81,12 @@ theorem min_lt1 : (ite (t < s) t s ≤ t) = True := by
   cases h : decide (t < s) <;> simp_all [Rat.not_lt.mp]
 
 theorem min_lt2 : (ite (t < s) t s ≤ s) = True := by
-  cases h : decide (t < s) <;> simp_all [Rat.le_of_lt]
+  cases h : decide (t < s) <;> simp_all [Rat.le_of_lt, Rat.le_refl]
 
 theorem max_geq1 : (ite (t ≥ s) t s ≥ t) = True := by
-  cases h : decide (t ≥ s) <;> simp_all [Rat.le_of_not_le]
+  cases h : decide (t ≥ s) <;> simp_all [Rat.le_of_not_le, Rat.le_refl]
 
 theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by
-  cases h : decide (t ≥ s) <;> simp_all
+  cases h : decide (t ≥ s) <;> simp_all [Rat.le_refl]
 
 end Smt.Reconstruct.Rat.Rewrite

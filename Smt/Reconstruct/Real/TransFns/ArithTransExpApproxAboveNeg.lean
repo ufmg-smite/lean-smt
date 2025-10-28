@@ -34,10 +34,10 @@ theorem le_of_ConvexOn {s : Set ℝ} {x z t : ℝ} (f : ℝ → ℝ) (hf : Conve
       · have := ConvexOn.secant_mono_aux2 hf hx hz
                 (Eq.trans_lt
                   (by ring)
-                  ((Real.add_lt_add_iff_left _).mpr ((mul_lt_mul_left (by linarith)).mpr hxz))) (show t*x + (1-t)*z < z by
+                  ((add_lt_add_iff_left _).mpr ((mul_lt_mul_iff_right₀ (by linarith)).mpr hxz))) (show t*x + (1-t)*z < z by
                     apply Eq.trans_gt
                           (by ring)
-                          ((add_lt_add_iff_right _).mpr ((mul_lt_mul_left (by linarith)).mpr hxz)))
+                          ((add_lt_add_iff_right _).mpr ((mul_lt_mul_iff_right₀ (by linarith)).mpr hxz)))
         rw [show t*x + (1-t)*z -x = (1-t)*(z-x) by linarith, div_mul_eq_div_div] at this
         rw [div_le_div_iff_of_pos_right (by linarith), div_le_iff₀ (by linarith)] at this
         linarith

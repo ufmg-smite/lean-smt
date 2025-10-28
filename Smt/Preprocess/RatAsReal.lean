@@ -1,7 +1,4 @@
 import Mathlib.Data.Real.Basic
-import Batteries.Data.Rat.Basic
-import Batteries.Classes.RatCast
-import Mathlib.Data.Rat.Cast.CharZero
 import Mathlib.Data.Rat.Cast.Order
 
 open Real

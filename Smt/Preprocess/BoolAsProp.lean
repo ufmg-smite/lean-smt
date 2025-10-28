@@ -13,7 +13,7 @@ theorem Bool.eq_eq_true (x y : Bool) : (x = y : Bool) = ((x : Prop) = (y : Prop)
   simp only [decide_eq_true_eq, _root_.eq_iff_iff, coe_iff_coe]
 
 theorem Bool.eq_self (x : Bool): (x = x) = (True : Prop) := by
-  simp only [eq_self]
+  simp only
 
 theorem Prop.eq_true (x : Prop) : (x = True : Prop) = (x : Prop) := by
   simp only [eq_iff_iff, iff_true]
