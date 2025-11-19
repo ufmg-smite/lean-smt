@@ -1,8 +1,0 @@
-goal: p = true → q = true → (p && q) = true
-
-query:
-(set-logic ALL)
-(declare-const q Bool)
-(declare-const p Bool)
-(assert (not (=> (= p true) (=> (= q true) (= (and p q) true)))))
-(check-sat)

@@ -1,11 +1,6 @@
-goal: (f p (f q r) == f (f p q) r) = true
+Test/Bool/Assoc.lean:5:2: error: unable to prove goal, either it is false or you need to provide more facts. Here is a potential counter-example:
 
-query:
-(set-logic ALL)
-(declare-const q Bool)
-(declare-fun f (Bool Bool) Bool)
-(declare-const r Bool)
-(declare-const p Bool)
-(assert (not (= (= (f p (f q r)) (f (f p q) r)) true)))
-(check-sat)
-Test/Bool/Assoc.lean:3:8: warning: declaration uses 'sorry'
+  q = False
+  f = fun _arg_1 _arg_2 => if _arg_1 then ¬_arg_2 else ¬_arg_1 ∧ ¬_arg_2
+  p = True
+  r = False

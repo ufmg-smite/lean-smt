@@ -1,7 +1,0 @@
-goal: ∃ x, x = 1
-
-query:
-(set-logic ALL)
-(define-sort Nat () Int)
-(assert (not (exists ((x Nat)) (= x 1))))
-(check-sat)
