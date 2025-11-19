@@ -1,0 +1,97 @@
+Test/Unit/Embedding.lean:32:22: warning: unused variable `h`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Test/Unit/Embedding.lean:32:35: warning: unused variable `h2`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Try this:
+  smt [h1, h2, h3, h4, h5]
+Test/Unit/Embedding.lean:309:2: error: [poly_norm] expected a rational number, got ↑x.7561
+Test/Unit/Embedding.lean:314:34: error: unsolved goals
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
+    (¬∀ (x.7534 x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) →
+      (∀ (x : ℝ), (∀ (a b : ℤ), ¬x = ↑a / ↑b) ∨ x * x ≥ 0) =
+        ∀ (x : ℝ) (x.7534 x.7536 : ℤ), ¬x = ↑x.7534 / ↑x.7536 ∨ x * x ≥ 0
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
+    ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+        ↑(Classical.epsilon fun x.7536 =>
+            ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) / ↑x.7536 *
+                  (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+                    ↑x.7536) ≥
+                0) =
+      if
+          (Classical.epsilon fun x.7536 =>
+              ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+                      ↑x.7536 *
+                    (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+                      ↑x.7536) ≥
+                  0) =
+            0 then
+        (fun x => x / 0) ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0)
+      else
+        ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+          ↑(Classical.epsilon fun x.7536 =>
+              ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+                      ↑x.7536 *
+                    (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
+                      ↑x.7536) ≥
+                  0)
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
+    (∀ (x : ℝ), (∀ (a b : ℤ), ¬x = ↑a / ↑b) ∨ x * x ≥ 0) =
+      ∀ (x : ℝ) (x.7534 x.7536 : ℤ), ¬x = ↑x.7534 / ↑x.7536 ∨ x * x ≥ 0
+Map: []
+Map: []
+goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x = 0)
+
+query:
+(set-logic ALL)
+(assert (not (exists ((x Real)) (and (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (=> (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (= x 0.0))))))
+(check-sat)
+Test/Unit/Embedding.lean:317:30: error: unsolved goals
+⊢ ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x = 0)
+goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x ≤ f x)
+
+query:
+(set-logic ALL)
+(declare-fun f (Real) Real)
+(assert (forall ((x Real)) (=> (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (exists ((a Int)) (exists ((b Int)) (= (f x) (/ (to_real a) (to_real b))))))))
+(assert (not (exists ((x Real)) (and (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (=> (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (<= x (f x)))))))
+(check-sat)
+Test/Unit/Embedding.lean:333:42: error: unsolved goals
+f : ℚ → ℚ
+⊢ ∃ n, f n ≥ n
+goal: ∃ x x_1, (∃ a b, x_1 = ↑a / ↑b) ∧ ((∃ a b, x_1 = ↑a / ↑b) → x_1 ≤ f x x_1)
+
+query:
+(set-logic ALL)
+(declare-fun f (Int Real) Real)
+(assert (forall ((|a₁| Int)) (forall ((|a₂| Real)) (exists ((a Int)) (exists ((b Int)) (= (f |a₁| |a₂|) (/ (to_real a) (to_real b))))))))
+(assert (not (exists ((x Int)) (exists ((x_1 Real)) (and (exists ((a Int)) (exists ((b Int)) (= x_1 (/ (to_real a) (to_real b))))) (=> (exists ((a Int)) (exists ((b Int)) (= x_1 (/ (to_real a) (to_real b))))) (<= x_1 (f x x_1))))))))
+(check-sat)
+Test/Unit/Embedding.lean:336:52: error: unsolved goals
+f : ℤ → ℚ → ℚ
+⊢ ∃ x n, f x n ≥ n
+Test/Unit/Embedding.lean:343:2: error: [poly_norm] expected a rational number, got ↑x.7567
+Test/Unit/Embedding.lean:349:2: error: [poly_norm] expected a rational number, got ↑x.7555
+goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → 0 ≤ x ∧ f x)
+
+query:
+(set-logic ALL)
+(declare-const x Real)
+(assert (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))))
+(declare-fun f (Real) Bool)
+(assert (f x))
+(assert (not (exists ((x Real)) (and (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (=> (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (and (<= 0.0 x) (f x)))))))
+(check-sat)
+Test/Unit/Embedding.lean:351:67: error: unsolved goals
+p : ℚ → Prop
+w : ℚ
+h : p w
+⊢ ∃ x ≥ 0, p x
+Test/Unit/Embedding.lean:355:2: error: [poly_norm] expected a rational number, got ↑x.7542
+Test/Unit/Embedding.lean:357:83: error: unsolved goals
+⊢ ∀ (f : ℝ → ℤ → ℝ),
+    (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (a₂ : ℤ), ∃ a b, f x a₂ = ↑a / ↑b) →
+      ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ {y : ℤ} {h : ↑y = x} {h' : f x y ≠ ↑(f ↑y ⌊x⌋).toRat}, False

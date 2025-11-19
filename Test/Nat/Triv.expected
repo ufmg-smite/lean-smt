@@ -1,6 +1,0 @@
-goal: Nat.zero + Nat.zero.succ = Nat.zero.succ
-
-query:
-(set-logic ALL)
-(assert (not (= (+ 0 (+ 0 1)) (+ 0 1))))
-(check-sat)

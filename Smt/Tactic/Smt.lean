@@ -32,6 +32,8 @@ structure Config where
   mono : Bool := false
   /-- Whether to eliminate `↔` in the Lean goal before sending it to the SMT solver. -/
   elimIff : Bool := true
+  /-- Whether to embed subtypes (e.g., `Nat`, `Bool`, `Rat`) into types understood by the SMT solver. -/
+  embeddings : Bool := true
   /-- Whether to trust the result of the SMT solver. Closes the current goal with a `sorry` if the
       SMT solver returns `unsat`. **Warning**: use with caution, as this may lead to unsoundness.
       Additionally adds the translation from Lean to SMT to the trusted code base, which is not
@@ -66,21 +68,24 @@ def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : Std.HashMap FV
 
 def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext do
   -- 0. Create a duplicate goal to preserve the original goal.
-  let mv₁ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
-  -- 1. Process the hints passed to the tactic.
-  let ⟨map₁, hs₁, mv₂⟩ ← (if cfg.mono then Preprocess.mono else Preprocess.pushHintsToCtx) mv₁ hs
-  -- 2. Preprocess the hypotheses and goal.
-  let ⟨map₂, hs₂, mv₂⟩ ← if cfg.elimIff then Preprocess.elimIff mv₂ hs₁ else pure ⟨map₁, hs₁, mv₂⟩
-  mv₂.withContext do
-  let goalType : Q(Prop) ← mv₂.getType
+  let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
+  -- 2. Preprocess the hints and goal.
+  let mut steps := #[if cfg.mono then Preprocess.mono else Preprocess.pushHintsToCtx]
+  if cfg.elimIff then
+    steps := steps.push Preprocess.elimIff
+  if cfg.embeddings then
+    steps := steps.push Smt.Preprocess.embedding
+  let ⟨map, hs₁, mv₁⟩ ← Preprocess.applySteps mv₀ hs steps
+  mv₁.withContext do
+  let goalType : Q(Prop) ← mv₁.getType
   -- 3. Generate the SMT query.
   let (fvNames₁, fvNames₂) ← genUniqueFVarNames
-  let cmds ← prepareSmtQuery hs₂.toList (← mv₂.getType) fvNames₁
+  let cmds ← prepareSmtQuery hs₁.toList (← mv₁.getType) fvNames₁
   let cmds := .setLogic "ALL" :: cmds
   if cfg.showQuery then
     logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
     -- Return original goal.
-    return .unsat [mv] hs
+    return .unsat [mv] hs₁
   else
     trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
@@ -101,10 +106,10 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let ctx := { userNames := fvNames₂, native := cfg.native }
     let (uc, _) ← (uc.mapM Reconstruct.reconstructTerm).run ctx {}
     trace[smt] "unsat core: {uc}"
-    let ts₂ ← hs₂.mapM Meta.inferType
-    let uc := uc.filterMap fun p => ts₂.findIdx? (· == p) >>= (hs₂[·]?)
-    let uc := uc.filterMap (map₂[·]?)
-    let uc := uc.flatten.filterMap (map₁[·]?)
+    let ts₁ ← hs₁.mapM Meta.inferType
+    let uc ← uc.filterMapM fun p => ts₁.findIdxM? (Meta.isDefEq p)
+    let uc := uc.filterMap fun p => (hs₁[p]?)
+    let uc := uc.filterMap (map[·]?)
     let uc := hs.filter uc.flatten.contains
     if cfg.trust then
       -- 6. Trust the result by admitting original goal.
@@ -112,11 +117,11 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
       return .unsat [] uc
     -- 7. Reconstruct proof.
     let (_, ps, p, hp, mvs) ← reconstructProof pf ctx
-    let mv₂ ← mv₂.assert (← mkFreshId) p hp
-    let ⟨_, mv₂⟩ ← mv₂.intro1
-    let mut gs ← mv₂.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
-    mv₂.withContext (gs.forM (·.assumption))
-    mv.assign (.mvar mv₁)
+    let mv₂ ← mv₁.assert (← mkFreshId) p hp
+    let ⟨_, mv₃⟩ ← mv₂.intro1
+    let mut gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
+    mv₃.withContext (gs.forM (·.assumption))
+    mv.assign (.mvar mv₀)
     return .unsat mvs uc
   | .ok (.sat model) =>
     -- 5d. Return potential counter-example.
@@ -127,14 +132,12 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let sortCard := Std.HashMap.insertMany ∅ (uss.zip cs)
     let ctx := { userNames := fvNames₂, sortCard := sortCard, native := cfg.native }
     let (uss', _) ← (uss.mapM Reconstruct.reconstructSort).run ctx {}
-    let uss' := if !cfg.mono then uss' else
-      uss'.map fun us => (map₁[us]?.getD #[us])[0]?.getD us
+    let uss' := uss'.map fun us => (map[us]?.getD #[us])[0]?.getD us
     let cs' := cs.map (fun n => .app (.const ``Fin []) (toExpr n))
     let state := { sortCache := Std.HashMap.insertMany ∅ (uss.zip cs') }
     let (ufs, vs) := model.ifs.unzip
     let (ufs', state) ← (ufs.mapM Reconstruct.reconstructTerm).run ctx state
-    let ufs' := if !cfg.mono then ufs' else
-      ufs'.map fun uf => (map₁[uf]?.getD #[uf])[0]?.getD uf
+    let ufs' := ufs'.map fun uf => (map[uf]?.getD #[uf])[0]?.getD uf
     let (vs', _) ← (vs.mapM Reconstruct.reconstructTerm).run ctx state
     return .sat (.some (uss'.zip cs' ++ ufs'.zip vs'))
 

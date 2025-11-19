@@ -1,14 +1,3 @@
-goal: ∀ (x : Nat), x ≠ 0
+Test/Nat/NeqZero.lean:5:2: error: unable to prove goal, either it is false or you need to provide more facts. Here is a potential counter-example:
 
-query:
-(set-logic ALL)
-(assert (not (forall ((x Int)) (=> (>= x 0) (distinct x 0)))))
-(check-sat)
-Test/Nat/NeqZero.lean:3:8: warning: declaration uses 'sorry'
-goal: ∀ (x : Nat), x + 1 ≠ 0
-
-query:
-(set-logic ALL)
-(assert (not (forall ((x Int)) (=> (>= x 0) (distinct (+ x 1) 0)))))
-(check-sat)
-Test/Nat/NeqZero.lean:7:8: warning: declaration uses 'sorry'
+  x = 0

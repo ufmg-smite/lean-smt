@@ -231,7 +231,7 @@ theorem cast_lt2 {a b : Int} : a < b → Rat.ofInt a < Rat.ofInt b := by
       · omega
       · exact h
 
-theorem cast_lt {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
+theorem cast_lt' {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
   ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
 
 theorem cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
@@ -271,13 +271,13 @@ theorem cast_le2 {a b : Int} : a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
     simp [hb]
     constructor <;> omega
 
-theorem cast_le {a b : Int} : a ≤ b ↔ Rat.ofInt a ≤ Rat.ofInt b :=
+theorem cast_le' {a b : Int} : a ≤ b ↔ Rat.ofInt a ≤ Rat.ofInt b :=
   ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
 
-theorem cast_ge {a b : Int} : a ≥ b ↔ Rat.ofInt a ≥ Rat.ofInt b :=
+theorem cast_ge' {a b : Int} : a ≥ b ↔ Rat.ofInt a ≥ Rat.ofInt b :=
   ⟨ Rat.cast_le2, Rat.cast_le1 ⟩
 
-theorem cast_gt {a b : Int} : a > b ↔ Rat.ofInt a > Rat.ofInt b :=
+theorem cast_gt' {a b : Int} : a > b ↔ Rat.ofInt a > Rat.ofInt b :=
   ⟨ Rat.cast_lt2, Rat.cast_lt1 ⟩
 
 theorem cast_eq {a b : Int} : a = b ↔ Rat.ofInt a = Rat.ofInt b := by

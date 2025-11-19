@@ -122,11 +122,11 @@ open Lean Qq
   | .PI => return q(Real.pi)
   | _ => return none
 where
-  mkRealLit (n : Nat) : Q(Real) := match h : n with
+  mkRealLit (n : Nat) : Q(Real) := match n with
     | 0     => q(0 : Real)
     | 1     => q(1 : Real)
-    | _ + 2 =>
-      let h : Q(Nat.AtLeastTwo $n) := h ▸ q(Nat.instAtLeastTwoHAddOfNat _)
+    | n' + 1 + 1 =>
+      let h : Q(Nat.AtLeastTwo $n) := mkApp2 q(@Nat.instAtLeastTwoHAddOfNat) (toExpr (n' + 1)) q(@Nat.instNeZeroSucc $n')
       let h := mkApp3 q(@instOfNatAtLeastTwo Real) (mkRawNatLit n) q(Real.instNatCast) h
       mkApp2 q(@OfNat.ofNat Real) (mkRawNatLit n) h
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do

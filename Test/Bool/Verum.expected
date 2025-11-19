@@ -1,6 +1,0 @@
-goal: true = true
-
-query:
-(set-logic ALL)
-(assert (not (= true true)))
-(check-sat)

@@ -1,6 +1,0 @@
-goal: ∃ p, p = true
-
-query:
-(set-logic ALL)
-(assert (not (exists ((p Bool)) (= p true))))
-(check-sat)
