@@ -71,10 +71,11 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
   let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 2. Preprocess the hints and goal.
   let mut steps := #[if cfg.mono then Preprocess.mono else Preprocess.pushHintsToCtx]
-  if cfg.elimIff then
-    steps := steps.push Preprocess.elimIff
   if cfg.embeddings then
     steps := steps.push Smt.Preprocess.embedding
+  -- Run `elimIff` after embedding, in case embedding introduces `↔` in the goal.
+  if cfg.elimIff then
+    steps := steps.push Preprocess.elimIff
   let ⟨map, hs₁, mv₁⟩ ← Preprocess.applySteps mv₀ hs steps
   mv₁.withContext do
   let goalType : Q(Prop) ← mv₁.getType

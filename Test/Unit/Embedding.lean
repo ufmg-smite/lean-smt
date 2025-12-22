@@ -364,3 +364,43 @@ example {f : Rat → Int → Rat} {x y} {h : x = ↑y} {h' : f x y ≠ f x y} : 
 
 example {x : Nat} : x + 3 = 3 + x := by
   smt
+
+
+private theorem ite_infinite_simp_recursion (node : Type) [DecidableEq node] [Nonempty node]
+  (n : node) (f : node → Bool)
+  (h : ∀ (a : node), f a = if n = a then true else true) :
+  ∀ N M, f N = true → f M = true → N = N := by
+  smt [h]
+
+private theorem ite_simplification (node : Type) [node_dec_eq : DecidableEq node] [Nonempty node] (sender n next : node)
+  (st_leader : node → Bool) (st_pending : node → node → Bool)
+  (st'_leader : node → Bool) (st'_pending : node → node → Bool)
+  (h : ∀ (a a_1 : node), st'_pending a a_1 = if sender = a ∧ n = a_1 then x else st_pending a a_1) :
+  ∀ N M, st'_leader N = true → st'_leader M = true → N = N := by
+  smt [h]
+
+private theorem more_complex (node : Type) [node_dec_eq : DecidableEq node] (sender n next : node)
+  (tot_le : node → node → Prop) (tot_le_refl : ∀ (x : node), tot_le x x)
+  (tot_le_trans : ∀ (x y z : node), tot_le x y → tot_le y z → tot_le x z)
+  (tot_le_antisymm : ∀ (x y : node), tot_le x y → tot_le y x → x = y)
+  (tot_le_total : ∀ (x y : node), tot_le x y ∨ tot_le y x) (btwn_btw : node → node → node → Prop)
+  (btwn_btw_ring : ∀ (x y z : node), btwn_btw x y z → btwn_btw y z x)
+  (btwn_btw_trans : ∀ (w x y z : node), btwn_btw w x y → btwn_btw w y z → btwn_btw w x z)
+  (btwn_btw_side : ∀ (w x y : node), btwn_btw w x y → ¬btwn_btw w y x)
+  (btwn_btw_total : ∀ (w x y : node), btwn_btw w x y ∨ btwn_btw w y x ∨ w = x ∨ w = y ∨ x = y) (h : sender = n)
+  (a_left : ∀ (Z : node), ¬n = next ∧ (¬Z = n → ¬Z = next → btwn_btw n next Z)) (x : Bool) (st_leader : node → Bool)
+  (hinv_right_left : ∀ (L N : node), st_leader L = true → tot_le N L)
+  (hinv_left : ∀ (N M : node), st_leader N = true → st_leader M = true → N = M) (st_pending : node → node → Bool)
+  (hinv_right_right_right : ∀ (L N : node), st_pending L L = true → tot_le N L)
+  (hinv_right_right_left : ∀ (S D N : node), st_pending S D = true → btwn_btw S N D → tot_le N S)
+  (a_right_left : st_pending sender n = true) (st'_leader : node → Bool) (st'_pending : node → node → Bool)
+  (a_right_right_1_1_left_left : ∀ (a : node), st'_leader a = if n = a then true else st_leader a)
+  (a_right_right_1_1_left_right :
+    ∀ (a a_1 : node), st'_pending a a_1 = if sender = a ∧ n = a_1 then x else st_pending a a_1)
+  (h : sender = n)
+  (N M : node) : st'_leader N = true → st'_leader M = true → N = M := by
+  smt (config := { extraSolverOptions := [("finite-model-find", "true")] })
+  [hinv_left, h, a_right_left, a_right_right_1_1_left_left, a_right_right_1_1_left_right,
+    tot_le_refl, tot_le_trans, tot_le_antisymm, tot_le_total, hinv_right_left,
+    hinv_right_right_right, btwn_btw_ring, btwn_btw_trans, btwn_btw_side, btwn_btw_total,
+    a_left, hinv_right_right_left]
