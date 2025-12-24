@@ -34,11 +34,11 @@ attribute [embedding ↓] cond_eq_if
 namespace Smt.Preprocess.Embedding
 
 @[embedding ↓ low]
-theorem Bool.decide_eq_bool {p : Prop} [Decidable p] {b : Bool} : (decide p = b) ↔ (p ↔ (b : Prop)) := by
+theorem Bool.decide_eq_bool {p : Prop} [Decidable p] {b : Bool} : (decide p = b) ↔ (p = (b : Prop)) := by
   cases b <;> simp
 
 @[embedding ↓ low]
-theorem Bool.bool_eq_decide {p : Prop} [Decidable p] {b : Bool} : (b = decide p) ↔ ((b : Prop) ↔ p) := by
+theorem Bool.bool_eq_decide {p : Prop} [Decidable p] {b : Bool} : (b = decide p) ↔ ((b : Prop) = p) := by
   cases b <;> simp
 
 open Lean Meta Simp in
@@ -204,12 +204,12 @@ dite_then_false dite_else_false dite_then_true dite_else_true
 
 @[embedding ↓ low]
 theorem Bool.bool_eq_ite_iff {p : Prop} [Decidable p] {b x y : Bool} :
-    (b = ite p x y) ↔ (if p then (b : Prop) ↔ (x : Prop) else (b : Prop) ↔ (y : Prop)) := by
+    (b = ite p x y) ↔ (if p then (b : Prop) ↔ (x : Prop) else (b : Prop) = (y : Prop)) := by
   by_cases hp : p <;> simp_all
 
 @[embedding ↓ low]
 theorem Bool.ite_eq_bool_iff {p : Prop} [Decidable p] {b x y : Bool} :
-    (ite p x y = b) ↔ (if p then (x : Prop) ↔ (b : Prop) else (y : Prop) ↔ (b : Prop)) := by
+    (ite p x y = b) ↔ (if p then (x : Prop) ↔ (b : Prop) else (y : Prop) = (b : Prop)) := by
   by_cases hp : p <;> simp_all
 
 end Smt.Preprocess.Embedding
