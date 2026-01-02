@@ -1,5 +1,5 @@
 import Smt
 
-theorem index : "a".get 0 = 'a' := by
+theorem index : String.Pos.Raw.get! "a" 0 = 'a' := by
   smt_show
   rfl

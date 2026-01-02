@@ -97,7 +97,7 @@ private def getSexp : SolverT m Sexp := do
     let err ← state.proc.stderr.readToEnd
     (throw (IO.userError (parseErrMsg e out err)) : IO _)
 where
-  unquote s := s.extract ⟨1⟩ ⟨s.length - 1⟩
+  unquote s := String.Pos.Raw.extract s ⟨1⟩ ⟨s.length - 1⟩
   parseErrMsg (e : String) (out err : String) :=
     s!"could not parse solver output: {e}\nsolver stdout:\n{out}\nsolver stderr:\n{err}"
 

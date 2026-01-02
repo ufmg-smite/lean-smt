@@ -35,7 +35,8 @@ def expr_pi_lower : Expr :=
     (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
     (.lit (.natVal 314159265358979323846)) (mkConst ``Bool.true) (.lit (.natVal 20))
 
-theorem ratCast_le {x y : ℚ} : x ≤ y → (x : ℝ) ≤ (y : ℝ) := fun a => GCongr.ratCast_le_ratCast a
+theorem ratCast_le {x y : ℚ} : x ≤ y → (x : ℝ) ≤ (y : ℝ) :=
+  Rat.cast_le.mpr
 
 def ratOfFloat : Expr → Expr
   | .app (.app (.app (.app (.app a _) _) d) e) f =>
