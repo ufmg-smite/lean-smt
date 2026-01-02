@@ -11,9 +11,9 @@ import Lean.Message
 
 open Lean
 
-abbrev Graph (α) (β) [BEq α] [Hashable α] := Std.HashMap α (Std.HashMap α β)
+abbrev Smt.Graph (α) (β) [BEq α] [Hashable α] := Std.HashMap α (Std.HashMap α β)
 
-namespace Graph
+namespace Smt.Graph
 
 variable {α} {β} [BEq α] [Hashable α] (g : Graph α β) (v u : α) (e : β)
 
@@ -87,4 +87,4 @@ open Lean in
 instance [ToMessageData α] [ToMessageData β] : ToMessageData (Graph α β) where
   toMessageData g := Graph.toMessageData g
 
-end Graph
+end Smt.Graph
