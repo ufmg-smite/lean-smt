@@ -35,7 +35,7 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   | .UNINTERPRETED_SORT_VALUE =>
     let some n := (← read).sortCard[t.getSort]? | throwError "unknown sort {t.getSort}"
     let s := t.toString
-    let endPos := (s.endPos - t.getSort.toString).decreaseBy 2
+    let endPos := (s.rawEndPos - t.getSort.toString).decreaseBy 2
     let endPos := if endPos.dec.get? s == some '|' then endPos.dec else endPos
     let startPos := (s.revFindAux (· != '_') endPos).get!
     let i : Nat := (String.Pos.Raw.extract s startPos endPos).toNat!

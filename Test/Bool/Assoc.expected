@@ -2,5 +2,5 @@ Test/Bool/Assoc.lean:5:2: error: unable to prove goal, either it is false or you
 
   f = fun _arg_1 _arg_2 => if _arg_1 then ¬_arg_2 else ¬_arg_1 ∧ ¬_arg_2
   r = False
-  p = True
   q = False
+  p = True

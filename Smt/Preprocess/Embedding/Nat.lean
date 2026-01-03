@@ -49,7 +49,7 @@ theorem Int.toNat_eq_toNat_of_nonneg {x y : Int} (hx : x ≥ 0) (hy : y ≥ 0) :
   | .negSucc n, _ => contradiction
   | _, .negSucc m => contradiction
   | .ofNat n, .ofNat m =>
-    simp only [Int.ofNat_eq_coe, Int.toNat_natCast, Int.natCast_inj]
+    simp only [Int.ofNat_eq_natCast, Int.toNat_natCast, Int.natCast_inj]
 
 @[embedding ↓]
 theorem Int.toNat_ne_toNat_of_nonneg {x y : Int} (hx : x ≥ 0) (hy : y ≥ 0) : (x.toNat ≠ y.toNat) ↔ (x ≠ y) := by
@@ -57,7 +57,7 @@ theorem Int.toNat_ne_toNat_of_nonneg {x y : Int} (hx : x ≥ 0) (hy : y ≥ 0) :
   | .negSucc n, _ => contradiction
   | _, .negSucc m => contradiction
   | .ofNat n, .ofNat m =>
-    simp only [Int.ofNat_eq_coe, Int.toNat_natCast, ne_eq, Int.natCast_inj]
+    simp only [Int.ofNat_eq_natCast, Int.toNat_natCast, ne_eq, Int.natCast_inj]
 
 namespace Smt.Preprocess.Embedding
 

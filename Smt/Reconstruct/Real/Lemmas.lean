@@ -17,41 +17,40 @@ namespace Smt.Reconstruct.Real
 variable {a b c d x₁ x₂ y₁ y₂ : Real}
 
 theorem sum_ub₁ (h₁ : a < b) (h₂ : c < d) : a + c < b + d := by
-  have r₁ : a + c < a + d := add_lt_add_left h₂ a
-  have r₂ : a + d < b + d := add_lt_add_right h₁ d
+  have r₁ : a + c < a + d := add_lt_add_right h₂ a
+  have r₂ : a + d < b + d := add_lt_add_left h₁ d
   exact lt_trans r₁ r₂
 
 theorem sum_ub₂ (h₁ : a < b) (h₂ : c ≤ d) : a + c < b + d := by
-  have r₁ : a + c ≤ a + d := add_le_add_left h₂ a
-  have r₂ : a + d < b + d := add_lt_add_right h₁ d
+  have r₁ : a + c ≤ a + d := add_le_add_right h₂ a
+  have r₂ : a + d < b + d := add_lt_add_left h₁ d
   exact lt_of_le_of_lt r₁ r₂
 
 theorem sum_ub₃ (h₁ : a < b) (h₂ : c = d) : a + c < b + d := by
   rewrite [h₂]
-  exact add_lt_add_right h₁ d
+  exact add_lt_add_left h₁ d
 
 theorem sum_ub₄ (h₁ : a ≤ b) (h₂ : c < d) : a + c < b + d := by
-  have r₁ : a + c < a + d := add_lt_add_left h₂ a
-  have r₂ : a + d ≤ b + d := add_le_add_right h₁ d
+  have r₁ : a + c < a + d := add_lt_add_right h₂ a
+  have r₂ : a + d ≤ b + d := add_le_add_left h₁ d
   exact lt_of_lt_of_le r₁ r₂
 
 theorem sum_ub₅ (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d := by
-  have r₁ : a + c ≤ a + d := add_le_add_left h₂ a
-  have r₂ : a + d ≤ b + d := add_le_add_right h₁ d
+  have r₁ : a + c ≤ a + d := add_le_add_right h₂ a
+  have r₂ : a + d ≤ b + d := add_le_add_left h₁ d
   exact le_trans r₁ r₂
 
 theorem sum_ub₆ (h₁ : a ≤ b) (h₂ : c = d) : a + c ≤ b + d := by
   rewrite [h₂]
-  exact add_le_add_right h₁ d
+  exact add_le_add_left h₁ d
 
 theorem sum_ub₇ (h₁ : a = b) (h₂ : c < d) : a + c < b + d := by
   rewrite [h₁]
-  exact add_lt_add_left h₂ b
+  exact add_lt_add_right h₂ b
 
 theorem sum_ub₈ (h₁ : a = b) (h₂ : c ≤ d) : a + c ≤ b + d := by
   rewrite [h₁]
-  exact add_le_add_left h₂ b
-
+  exact add_le_add_right h₂ b
 theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
   rw [h₁, h₂]
 
