@@ -144,10 +144,10 @@ theorem add_nonneg : 0 ≤ a → 0 ≤ b → 0 ≤ a + b :=
     apply Int.add_nonneg
     · apply Int.mul_nonneg
       · exact (Rat.divInt_nonneg_iff_of_pos_right d₁0).mp n₁0
-      · exact Int.ofNat_zero_le d₂
+      · exact Int.natCast_nonneg d₂
     · apply Int.mul_nonneg
       · exact (Rat.divInt_nonneg_iff_of_pos_right d₂0).mp n₂0
-      · exact Int.ofNat_zero_le d₁
+      · exact Int.natCast_nonneg d₁
 
 theorem le_trans (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c := by
   rw [Rat.le_iff_sub_nonneg] at hab hbc

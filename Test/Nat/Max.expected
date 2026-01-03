@@ -4,7 +4,7 @@ query:
 (set-logic ALL)
 (define-sort Nat () Int)
 (declare-fun |Nat.max'| (Nat Nat) Nat)
-(assert (forall ((_uniq.155 Nat)) (=> (>= _uniq.155 0) (forall ((_uniq.156 Nat)) (=> (>= _uniq.156 0) (>= (|Nat.max'| _uniq.155 _uniq.156) 0))))))
+(assert (forall ((_uniq.164 Nat)) (=> (>= _uniq.164 0) (forall ((_uniq.165 Nat)) (=> (>= _uniq.165 0) (>= (|Nat.max'| _uniq.164 _uniq.165) 0))))))
 (declare-const x Nat)
 (assert (>= x 0))
 (declare-const y Nat)

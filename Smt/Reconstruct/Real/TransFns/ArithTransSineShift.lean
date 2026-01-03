@@ -87,7 +87,7 @@ theorem arithTransSineShift₀ : ∀ x , ∃ s y , shift_prop x s y := fun x =>
         have := Int.ceil_le_floor_add_one ((x - Real.pi) / (2 * Real.pi))
         apply le_trans (Int.cast_le.mpr this)
         have : Int.floor ((x - Real.pi) / (2 * Real.pi)) + 1 ≤ (x - Real.pi) / (2 * Real.pi) + 1 :=
-          add_le_add_right (Int.floor_le _) 1
+          add_le_add_left (Int.floor_le _) 1
         simp only [Int.cast_add, Int.cast_one, ge_iff_le]
         apply le_trans this
         rw [← div_add_same two_pi_ne_zero, tau]

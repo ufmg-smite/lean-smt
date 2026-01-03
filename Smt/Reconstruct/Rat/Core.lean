@@ -182,7 +182,7 @@ protected theorem sub_nonneg {a b : Rat} : 0 ≤ a - b ↔ b ≤ a := by
 
 theorem divInt_pos_iff_of_pos_right {a b : Int} (hb : 0 < b) : 0 < a /. b ↔ 0 < a := by
   cases hab : a /. b with | mk' n d hd hnd =>
-  rw [mk'_eq_divInt, divInt_eq_divInt_iff (Int.ne_of_lt hb).symm (mod_cast hd)] at hab
+  rw [mk_eq_divInt, divInt_eq_divInt_iff (Int.ne_of_lt hb).symm (mod_cast hd)] at hab
   rw [ ← Rat.num_pos, <- Int.mul_pos_iff_of_pos_right hb, <- hab,
        Int.mul_pos_iff_of_pos_right (mod_cast Nat.pos_of_ne_zero hd)]
 
@@ -291,12 +291,12 @@ theorem floor_def' (a : Rat) : a.floor = a.num / a.den := by
   · next h => simp [h]
   · next => rfl
 
-theorem intCast_eq_divInt (z : Int) : (z : Rat) = z /. 1 := mk'_eq_divInt
+theorem intCast_eq_divInt (z : Int) : (z : Rat) = z /. 1 := mk_eq_divInt
 
 theorem le_floor {z : Int} : ∀ {r : Rat}, z ≤ Rat.floor r ↔ (z : Rat) ≤ r
   | ⟨n, d, h, c⟩ => by
     simp only [Rat.floor_def']
-    rw [mk'_eq_divInt]
+    rw [mk_eq_divInt]
     have h' := Int.ofNat_lt.2 (Nat.pos_of_ne_zero h)
     conv =>
       rhs
