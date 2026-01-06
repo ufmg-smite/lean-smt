@@ -1,3 +1,10 @@
+/-
+Copyright (c) 2021-2026 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Abdalrhman Mohamed
+-/
+
 import Mathlib.Data.Real.Archimedean
 import Smt.Preprocess.Embedding.Attribute
 
@@ -48,6 +55,11 @@ theorem Real.ratCast_div (x y : Rat) : ↑(x / y) = (x / y : Real) :=
 @[embedding ↓]
 theorem Real.ratCast_inv (x : Rat) : ↑x⁻¹ = (x⁻¹ : Real) :=
   Rat.cast_inv x
+
+@[embedding ↓]
+theorem Real.ratCast_ite [Decidable c] {t e : Rat} :
+    (if c then t else e : Rat) = (if c then t else e : Real) := by
+  exact apply_ite Rat.cast c t e
 
 @[embedding ↓ ←]
 theorem Real.ratCast_eq {p q : Rat} : (p : Real) = q ↔ p = q :=

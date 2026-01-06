@@ -5,6 +5,5 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean.Meta.Tactic.Simp.RegisterCommand
-
-register_simp_attr embedding
+import Mathlib.Data.Real.Basic
+import Smt.Preprocess.Normalize.Attribute

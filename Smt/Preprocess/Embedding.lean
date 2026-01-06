@@ -1,3 +1,10 @@
+/-
+Copyright (c) 2021-2026 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Abdalrhman Mohamed
+-/
+
 import Lean.Meta.Tactic.Simp
 import Smt.Preprocess.Basic
 import Smt.Preprocess.Embedding.Attribute
@@ -35,15 +42,17 @@ def embedding (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
   let simpTheorems := #[← thmsExt.getTheorems]
   let simpProcs := #[← procsExt.getSimprocs]
   -- Assert all hypotheses that are not free vars.
-  let hsts := (hs.zip ts).filter fun (h, _) => !h.isFVar
-  let as : Array Meta.Hypothesis := hsts.map fun (h, t) => { userName := .anonymous, type := t, value := h }
-  let (as, mv) ← mv.assertHypotheses as
+  let (hs₁, hs₂) := hs.partition Expr.isFVar
+  let ts₂ ← hs₂.mapM Meta.inferType
+  let as₂ : Array Meta.Hypothesis := (hs₂.zip ts₂).map fun (h, t) => { userName := .anonymous, type := t, value := h }
+  let (fvs₂, mv) ← mv.assertHypotheses as₂
   -- Build map from new hypotheses to old ones.
   let inverseMap₁ : Std.HashMap Expr Expr := hs.foldl (init := {}) fun map h =>
-    match hsts.findIdx? (·.fst == h) with
-    | some idx => map.insert h (.fvar as[idx]!)
+    match hs₂.findIdx? (· == h) with
+    | some idx => map.insert h (.fvar fvs₂[idx]!)
     | none => map.insert h h
   -- Revert free vars in `hs` and `mv`.
+  let fvs := fvs ++ hs₁.map Expr.fvarId! ++ fvs₂
   let (fvs, mv) ← mv.revert fvs true
   -- Simplify the goal using the embedding theorems.
   let congrTheorems ← Meta.getSimpCongrTheorems

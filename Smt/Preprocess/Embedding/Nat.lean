@@ -1,3 +1,10 @@
+/-
+Copyright (c) 2021-2026 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Abdalrhman Mohamed
+-/
+
 import Smt.Preprocess.Embedding.Attribute
 
 import Lean
@@ -28,6 +35,11 @@ theorem Int.ofNat_sub' {x y : Nat} : (x - y : Nat) = (if x ≥ y then x - y else
   · exact Int.natCast_sub h
   · rewrite [natCast_eq_zero]
     exact Nat.sub_eq_zero_of_le (Nat.le_of_not_le h)
+
+@[embedding ↓]
+theorem Int.natCast_ite [Decidable c] {t e : Nat} :
+    (if c then t else e : Nat) = (if c then t else e : Int) := by
+  exact apply_ite Nat.cast c t e
 
 @[embedding ↓ ←]
 theorem Int.ofNat_ge {x y : Nat} : ((x : Int) ≥ (y : Int)) ↔ (x ≥ y) := by

@@ -1,0 +1,23 @@
+Map: []
+Map: []
+Map: []
+Map: []
+Before: [h]
+After: [h]
+Map: [(h, [_fvar.3476])]
+Map: [(_fvar.3495, [h])]
+Before: [hpqr, ht, ht', t]
+After: [hpqr, ht, ht', a✝]
+Map: [(ht, [_fvar.3931]), (hpqr, [_fvar.3932]), (ht', [_fvar.3933]), (a✝, [t])]
+Map: [(_fvar.4031, [ht]), (_fvar.4032, [hpqr]), (_fvar.4033, [ht']), (_fvar.4030, [t])]
+Test/Unit/Normalize.lean:54:22: warning: unused variable `h`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Test/Unit/Normalize.lean:54:35: warning: unused variable `h2`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Test/Unit/Normalize.lean:212:0: warning: declaration uses 'sorry'
+Test/Unit/Normalize.lean:216:0: warning: declaration uses 'sorry'
+Test/Unit/Normalize.lean:229:0: warning: declaration uses 'sorry'
+Test/Unit/Normalize.lean:233:0: warning: declaration uses 'sorry'
+Test/Unit/Normalize.lean:240:0: warning: declaration uses 'sorry'

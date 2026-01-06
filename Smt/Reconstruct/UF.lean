@@ -24,7 +24,13 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
 
 @[smt_sort_reconstruct] def reconstructUS : SortReconstructor := fun s => do match s.getKind with
   | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol!
-  | _ => return none
+  | _ =>
+    if s.isInstantiated then
+      let base ← reconstructSort s.getUninterpretedSortConstructor!
+      let params ← s.getInstantiatedParameters!.mapM reconstructSort
+      return some (mkAppN base params)
+    else
+      return none
 
 @[smt_term_reconstruct] def reconstructUF : TermReconstructor := fun t => do match t.getKind with
   | .APPLY_UF =>

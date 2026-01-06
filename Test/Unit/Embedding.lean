@@ -365,7 +365,6 @@ example {f : Rat → Int → Rat} {x y} {h : x = ↑y} {h' : f x y ≠ f x y} : 
 example {x : Nat} : x + 3 = 3 + x := by
   smt
 
-
 private theorem ite_infinite_simp_recursion (node : Type) [DecidableEq node] [Nonempty node]
   (n : node) (f : node → Bool)
   (h : ∀ (a : node), f a = if n = a then true else true) :

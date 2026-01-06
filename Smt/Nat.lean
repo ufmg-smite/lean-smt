@@ -7,3 +7,4 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Translate.Nat
 import Smt.Preprocess.Embedding.Nat
+import Smt.Preprocess.Normalize.Nat
