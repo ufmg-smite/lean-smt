@@ -1,3 +1,10 @@
+/-
+Copyright (c) 2021-2026 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Abdalrhman Mohamed, George Pîrlea
+-/
+
 import Smt.Preprocess.Embedding.Attribute
 import Smt.Reconstruct.Prop.Core
 
@@ -29,17 +36,13 @@ theorem Bool.ne_eq_true {x y : Bool} : (x ≠ y) ↔ ((x : Prop) ≠ (y : Prop))
 
 attribute [embedding ↓] beq_iff_eq
 attribute [embedding ↓] bne_iff_ne
-attribute [embedding ↓] cond_eq_if
+attribute [embedding ↓] cond_eq_ite
+
+@[embedding ↓]
+theorem ite_eq_true [Decidable c] : (if c then t else e) = true ↔ if c then (t = true) else (e = true) := by
+  simp only [Bool.ite_eq_true_distrib]
 
 namespace Smt.Preprocess.Embedding
-
-@[embedding ↓ low]
-theorem Bool.decide_eq_bool {p : Prop} [Decidable p] {b : Bool} : (decide p = b) ↔ (p = (b : Prop)) := by
-  cases b <;> simp
-
-@[embedding ↓ low]
-theorem Bool.bool_eq_decide {p : Prop} [Decidable p] {b : Bool} : (b = decide p) ↔ ((b : Prop) = p) := by
-  cases b <;> simp
 
 open Lean Meta Simp in
 /-- This is a `simproc` since `Bool.eq_eq_true` on its own can lead to simp
@@ -47,9 +50,9 @@ loops. This breaks if there are no occurrences of `decide` in the body of the
 expression. -/
 simproc ↓ [embedding] boolEqSimproc (_ = _) := fun e => do
   let_expr Eq α x y := e | return .continue
-  unless α.isConstOf ``Bool do return .continue
-  if !(mkConst ``decide).occurs e then
-    return .done { expr := e, proof? := none }
+  if !(α.isConstOf ``Bool) then return .continue
+  -- Prevent loops
+  if y.isConstOf ``true then return .continue
   -- (x : Prop) is `x = true` by the Bool → Prop coercion
   let xAsProp ← mkEq x (mkConst ``true)
   let yAsProp ← mkEq y (mkConst ``true)
@@ -193,23 +196,5 @@ theorem forall_bool_out_as_prop₅ {p : (α₁ → α₂ → α₃ → α₄ →
     have hf := h (fun a₁ a₂ a₃ a₄ a₅ => f a₁ a₂ a₃ a₄ a₅)
     simp only [@Bool.decide_eq_true] at hf
     exact hf
-
-attribute [embedding ↓ low] decide_implies decide_ite ite_then_decide_self
-ite_else_decide_self ite_then_decide_not_self ite_else_decide_not_self
-dite_eq_left_iff dite_eq_right_iff left_eq_dite_iff right_eq_dite_iff
-dite_iff_left_iff dite_iff_right_iff left_iff_dite_iff right_iff_dite_iff
-ite_eq_left_iff ite_eq_right_iff left_eq_ite_iff right_eq_ite_iff
-ite_iff_left_iff ite_iff_right_iff left_iff_ite_iff right_iff_ite_iff
-dite_then_false dite_else_false dite_then_true dite_else_true
-
-@[embedding ↓ low]
-theorem Bool.bool_eq_ite_iff {p : Prop} [Decidable p] {b x y : Bool} :
-    (b = ite p x y) ↔ (if p then (b : Prop) ↔ (x : Prop) else (b : Prop) = (y : Prop)) := by
-  by_cases hp : p <;> simp_all
-
-@[embedding ↓ low]
-theorem Bool.ite_eq_bool_iff {p : Prop} [Decidable p] {b x y : Bool} :
-    (ite p x y = b) ↔ (if p then (x : Prop) ↔ (b : Prop) else (y : Prop) = (b : Prop)) := by
-  by_cases hp : p <;> simp_all
 
 end Smt.Preprocess.Embedding

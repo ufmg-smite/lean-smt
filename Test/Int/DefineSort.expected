@@ -2,10 +2,12 @@ goal: a.add b = b.add a
 
 query:
 (set-logic ALL)
-(define-sort MyInt () Int)
-(define-fun MyInt.add ((a MyInt) (b MyInt)) MyInt (+ a b))
+(declare-sort MyInt 0)
+(declare-fun |a✝| (MyInt MyInt) MyInt)
+(declare-sort |a✝¹| 0)
 (declare-const b MyInt)
 (declare-const a MyInt)
+(declare-fun MyInt.add (MyInt MyInt) MyInt)
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
 Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'

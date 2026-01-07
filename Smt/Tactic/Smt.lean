@@ -28,10 +28,13 @@ structure Config where
   /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
       reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
   native : Bool := false
-  /-- Whether to monomorphize the Lean goal before sending it to the SMT solver. -/
+  /-- Whether to monomorphize the Lean goal before sending it to the SMT solver. The monomorphization
+      step reduces the goal from Lean's dependent type theory to a simpler, first-order logic. -/
   mono : Bool := false
-  /-- Whether to eliminate `↔` in the Lean goal before sending it to the SMT solver. -/
-  elimIff : Bool := true
+  /-- Whether to normalize the Lean goal before sending it to the SMT solver. The normalization
+      step performs unconditional rewrites to ensure that the goal is in a standard form suitable
+      for SMT solving. -/
+  normalize : Bool := true
   /-- Whether to embed subtypes (e.g., `Nat`, `Bool`, `Rat`) into types understood by the SMT solver. -/
   embeddings : Bool := true
   /-- Whether to trust the result of the SMT solver. Closes the current goal with a `sorry` if the
@@ -70,12 +73,9 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
   -- 0. Create a duplicate goal to preserve the original goal.
   let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 2. Preprocess the hints and goal.
-  let mut steps := #[if cfg.mono then Preprocess.mono else Preprocess.pushHintsToCtx]
-  if cfg.embeddings then
-    steps := steps.push Smt.Preprocess.embedding
-  -- Run `elimIff` after embedding, in case embedding introduces `↔` in the goal.
-  if cfg.elimIff then
-    steps := steps.push Preprocess.elimIff
+  let steps := if cfg.mono then #[Preprocess.mono] else #[Preprocess.pushHintsToCtx]
+  let steps := if cfg.normalize then steps.push Preprocess.normalize else steps
+  let steps := if cfg.embeddings then steps.push Preprocess.embedding else steps
   let ⟨map, hs₁, mv₁⟩ ← Preprocess.applySteps mv₀ hs steps
   mv₁.withContext do
   let goalType : Q(Prop) ← mv₁.getType
@@ -120,7 +120,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let (_, ps, p, hp, mvs) ← reconstructProof pf ctx
     let mv₂ ← mv₁.assert (← mkFreshId) p hp
     let ⟨_, mv₃⟩ ← mv₂.intro1
-    let mut gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
+    let gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
     mv₃.withContext (gs.forM (·.assumption))
     mv.assign (.mvar mv₀)
     return .unsat mvs uc

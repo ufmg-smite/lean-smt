@@ -5,6 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean.Meta.Tactic.Simp.RegisterCommand
+import Smt.Preprocess.Normalize.Attribute
 
-register_simp_attr embedding
+@[smt_normalize ↓]
+theorem iff_eq_eq : (p ↔ q) = (p = q) := propext ⟨propext, (· ▸ ⟨(·), (·)⟩)⟩
+
+attribute [smt_normalize ↓] ite_cond_congr dite_eq_ite

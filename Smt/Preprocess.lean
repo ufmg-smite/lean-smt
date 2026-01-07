@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Smt.Preprocess.Iff
-import Smt.Preprocess.Mono
-import Smt.Preprocess.PushHintsToCtx
 import Smt.Preprocess.Embedding
+import Smt.Preprocess.Mono
+import Smt.Preprocess.Normalize
+import Smt.Preprocess.PushHintsToCtx

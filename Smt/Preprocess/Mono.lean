@@ -7,6 +7,7 @@ Authors: Abdalrhman Mohamed
 
 import Auto.Tactic
 import Smt.Preprocess.Basic
+import Smt.Preprocess.Normalize.Auto
 
 namespace Auto
 

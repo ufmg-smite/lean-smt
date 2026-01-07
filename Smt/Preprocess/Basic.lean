@@ -27,8 +27,9 @@ def getPropHyps : MetaM (Array FVarId) := do
   return result
 where
   isNonEmpty (e : Expr) : Bool :=
-  match_expr e with
-  | Nonempty _ => true
+  match e with
+  | .app (.const ``Nonempty _) _ => true
+  | .forallE _ _ b _ => isNonEmpty b
   | _ => false
 
 def applySteps (mv : MVarId) (hs : Array Expr) (steps : Array (MVarId → Array Expr → MetaM Result)) : MetaM Result := do
@@ -39,6 +40,7 @@ def applySteps (mv : MVarId) (hs : Array Expr) (steps : Array (MVarId → Array 
       map := compose map map'
       hs := hs'
       mv := mv'
+      trace[smt.preprocess] "after step: {mv}"
     return { map, hs, mv }
   else
     return Result.mk {} #[] mv

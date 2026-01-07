@@ -7,4 +7,4 @@ Authors: Abdalrhman Mohamed
 
 import Lean.Meta.Tactic.Simp.RegisterCommand
 
-register_simp_attr embedding
+register_simp_attr smt_normalize
