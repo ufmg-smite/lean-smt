@@ -5,42 +5,52 @@ Test/Unit/Embedding.lean:32:35: warning: unused variable `h2`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Try this:
-  [apply] smt [h1, h2, h3, h4, h5]
-Test/Unit/Embedding.lean:309:2: error: [poly_norm] expected a rational number, got ↑x.7561
-Test/Unit/Embedding.lean:314:34: error: unsolved goals
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
-    (¬∀ (x.7534 x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) →
-      (∀ (x : ℝ), (∀ (a b : ℤ), ¬x = ↑a / ↑b) ∨ x * x ≥ 0) =
-        ∀ (x : ℝ) (x.7534 x.7536 : ℤ), ¬x = ↑x.7534 / ↑x.7536 ∨ x * x ≥ 0
+  [apply] smt [h2, h4, h5]
+Test/Unit/Embedding.lean:190:39: error: unsolved goals
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
+    ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
 
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
-    ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-        ↑(Classical.epsilon fun x.7536 =>
-            ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) / ↑x.7536 *
-                  (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-                    ↑x.7536) ≥
-                0) =
-      if
-          (Classical.epsilon fun x.7536 =>
-              ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-                      ↑x.7536 *
-                    (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-                      ↑x.7536) ≥
-                  0) =
-            0 then
-        (fun x => x / 0) ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0)
-      else
-        ↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-          ↑(Classical.epsilon fun x.7536 =>
-              ¬↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-                      ↑x.7536 *
-                    (↑(Classical.epsilon fun x.7534 => ¬∀ (x.7536 : ℤ), ↑x.7534 / ↑x.7536 * (↑x.7534 / ↑x.7536) ≥ 0) /
-                      ↑x.7536) ≥
-                  0)
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
+    ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
 
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ x * x) →
-    (∀ (x : ℝ), (∀ (a b : ℤ), ¬x = ↑a / ↑b) ∨ x * x ≥ 0) =
-      ∀ (x : ℝ) (x.7534 x.7536 : ℤ), ¬x = ↑x.7534 / ↑x.7536 ∨ x * x ≥ 0
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
+    ∀ (x x_1 : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
+    ∀ (x x_1 : ℝ) (a b : ℤ), a / ↑b = a / b
+Test/Unit/Embedding.lean:190:0: error: (kernel) application type mismatch
+  HDiv.hDiv a
+argument has type
+  ℤ
+but function has type
+  ℝ → ℝ → ℝ
+Test/Unit/Embedding.lean:302:50: error: unsolved goals
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
+    ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
+    ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
+    ∀ (x x_1 : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
+
+⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
+    ∀ (x x_1 : ℝ) (a b : ℤ), a / ↑b = a / b
+Test/Unit/Embedding.lean:302:0: error: (kernel) application type mismatch
+  HDiv.hDiv a
+argument has type
+  ℤ
+but function has type
+  ℝ → ℝ → ℝ
+Test/Unit/Embedding.lean:309:2: error: [poly_norm] expected a rational number, got x.7407
+Test/Unit/Embedding.lean:315:2: error: Application type mismatch: The argument
+  x.7376
+has type
+  ℤ
+but is expected to have type
+  ℝ
+in the application
+  HDiv.hDiv x.7376
 Map: []
 Map: []
 goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x = 0)
@@ -73,8 +83,38 @@ query:
 Test/Unit/Embedding.lean:336:52: error: unsolved goals
 f : ℤ → ℚ → ℚ
 ⊢ ∃ x n, f x n ≥ n
-Test/Unit/Embedding.lean:343:2: error: [poly_norm] expected a rational number, got ↑x.7567
-Test/Unit/Embedding.lean:349:2: error: [poly_norm] expected a rational number, got ↑x.7555
+Test/Unit/Embedding.lean:343:2: error: Application type mismatch: The argument
+  a
+has type
+  ℤ
+but is expected to have type
+  ℝ
+in the application
+  HDiv.hDiv a
+Test/Unit/Embedding.lean:345:52: error: unsolved goals
+f : ℝ → ℝ
+a✝ : ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b
+⊢ (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b) →
+    (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ f x ∨ f x < 0) → ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
+
+f : ℝ → ℝ
+a✝ : ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b
+⊢ (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b) →
+    (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ f x ∨ f x < 0) → ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
+Test/Unit/Embedding.lean:345:0: error: (kernel) application type mismatch
+  HDiv.hDiv a
+argument has type
+  ℤ
+but function has type
+  ℝ → ℝ → ℝ
+Test/Unit/Embedding.lean:349:2: error: Application type mismatch: The argument
+  a
+has type
+  ℤ
+but is expected to have type
+  ℝ
+in the application
+  HDiv.hDiv a
 goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → 0 ≤ x ∧ f x)
 
 query:
@@ -90,7 +130,7 @@ p : ℚ → Prop
 w : ℚ
 h : p w
 ⊢ ∃ x ≥ 0, p x
-Test/Unit/Embedding.lean:355:2: error: [poly_norm] expected a rational number, got ↑x.7542
+Test/Unit/Embedding.lean:355:2: error: [poly_norm] expected a rational number, got x.7380
 Test/Unit/Embedding.lean:357:83: error: unsolved goals
 ⊢ ∀ (f : ℝ → ℤ → ℝ),
     (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (a₂ : ℤ), ∃ a b, f x a₂ = ↑a / ↑b) →

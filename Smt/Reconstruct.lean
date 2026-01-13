@@ -257,7 +257,20 @@ def defaultSolverOptions : List (String × String) := [
   ("produce-proofs", "true"),
   ("proof-elim-subtypes", "true"),
   ("proof-granularity", "dsl-rewrite"),
+  ("proof-chain-m-res", "false"),
 ]
+
+def runQuery (solver : cvc5.Solver) (query : String) : cvc5.Env (Array cvc5.Sort × Array cvc5.Term) := do
+  let parser ← cvc5.InputParser.new solver
+  let sm ← parser.getSymbolManager
+  parser.setStringInput query .SMT_LIB_2_6
+  while true do
+    let cmd ← parser.nextCommand
+    if cmd.isNull then break
+    _ ← cmd.invoke solver sm
+  let svs ← sm.getDeclaredSorts
+  let tvs ← sm.getDeclaredTerms
+  return (svs, tvs)
 
 open cvc5 in
 def solve (query : String) (timeout : Option Nat) (options : List (String × String)) : MetaM (Except cvc5.Error cvc5Result) :=
@@ -272,7 +285,7 @@ def solve (query : String) (timeout : Option Nat) (options : List (String × Str
       slv.setOption "tlimit-per" (toString (1000*timeout))
     for (opt, val) in options do
       slv.setOption opt val
-    let (uss, ufs) ← slv.parseCommands query
+    let (uss, ufs) ← runQuery slv query
     let res ← slv.checkSat
     trace[smt.solve] m!"result: {res}"
     if res.isSat then
