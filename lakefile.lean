@@ -6,7 +6,7 @@ require auto from
   git "https://github.com/leanprover-community/lean-auto.git" @ "2fb3dbc0ff47ab2846e71bc3dbd6b505bd088bf3"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "finite-fields"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "6754354"
 
 require mathlib from
   git "https://github.com/leanprover-community/mathlib4.git" @ "v4.26.0"
