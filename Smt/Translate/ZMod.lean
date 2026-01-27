@@ -31,7 +31,7 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
   else
     return none
 
-@[smt_translate] def translateBitVec : Translator := fun e => do match_expr e with
+@[smt_translate] def translateZMod : Translator := fun e => do match_expr e with
   | OfNat.ofNat α n _ =>
     let some _ ← reduceZModOrder? α | return none
     let n ← reduceLit n e
