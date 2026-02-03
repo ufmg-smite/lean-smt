@@ -27,8 +27,11 @@ open Lean Qq
   @[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind with
   | .CONST_FINITE_FIELD =>
     let o : Nat := t.getSort.getFiniteFieldSize!
-    let v : Int := t.getFiniteFieldValue!.toInt!
-    return q($v : ZMod $o)
+    if ho: o ≠  0 then
+      let v : Fin o := @Fin.ofNat o ( NeZero.mk ho) (t.getFiniteFieldValue!.toInt! % o).toNat
+      return q($v : ZMod $o)
+    else
+      throwError "Expected finite field order to be non zero but got {o}"
   | .FINITE_FIELD_ADD =>
     let w : Nat := t.getSort.getFiniteFieldSize!
     leftAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
