@@ -6,24 +6,9 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Smt.Preprocess.Normalize.Attribute
+import Mathlib.Data.ZMod.Basic
+
+
 
 @[smt_normalize ↓]
-theorem Int.neg_def : Int.neg a = -a := rfl
-
-@[smt_normalize ↓]
-theorem Int.sub_def : Int.sub a b = a - b := rfl
-
-@[smt_normalize ↓]
-theorem Int.mod_def : Int.emod a b = a % b := rfl
-
-@[smt_normalize ↓]
-theorem Int.pow_def : Int.pow a b = a ^ b := rfl
-
-@[smt_normalize ↓]
-theorem Int.lt_def : Int.lt a b = (a < b) := rfl
-
-@[smt_normalize ↓]
-theorem Int.le_def' : Int.le a b = (a ≤ b) := rfl
-
-attribute [smt_normalize ↓] Int.add_def Int.mul_def Int.div_def
-  Int.ofNat_eq_natCast Int.negSucc_eq Int.cast_ofNat_Int
+theorem neg_add_sub {a b : ZMod n} : a - b = a + - b := by exact sub_eq_add_neg a b
