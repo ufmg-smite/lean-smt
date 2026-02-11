@@ -29,8 +29,8 @@ private def mkString : Expr :=
 @[smt_translate] def translateString : Translator := fun e => do
   if let .lit (.strVal s) := e then
     return literalT s!"\"{s}\""
-  else if e.isAppOfArity ``String.replace 11 then
-    let #[_, _, _, _, _, _, _, _, x, y, z] := e.getAppArgsN 11 | return none
+  else if e.isAppOfArity ``String.replace 10 then
+    let #[_, _, _, _, _, _, x, y, _, z] := e.getAppArgsN 10 | return none
     return mkApp3 (symbolT "str.replace_all") (← applyTranslators! x) (← applyTranslators! y) (← applyTranslators! z)
   else if let some (x, y) := e.hAppendOf? mkString mkString then
     return mkApp2 (symbolT "str.++") (← applyTranslators! x) (← applyTranslators! y)

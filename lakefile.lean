@@ -3,13 +3,13 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/leanprover-community/lean-auto.git" @ "2fb3dbc0ff47ab2846e71bc3dbd6b505bd088bf3"
+  git "https://github.com/abdoo8080/lean-auto.git" @ "v4.27.0"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "be011cf"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "0cfacc8"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.26.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.27.0"
 
 package smt
 
@@ -70,7 +70,7 @@ Run tests.
 where
   runTest (test : FilePath) (expected : FilePath) : ScriptM UInt32 := do
     IO.println s!"Start : {test}"
-    let some cvc5 ← findPackage? ``cvc5 | return 2
+    let some cvc5 ← findPackageByName? ``cvc5 | return 2
     let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
     let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
     let out ← IO.Process.output {
@@ -116,7 +116,7 @@ where
   updateTest (test : FilePath) : ScriptM UInt32 := do
     let expected := test.withExtension "expected"
     IO.println s!"Start : {test}"
-    let some cvc5 ← findPackage? ``cvc5 | return 2
+    let some cvc5 ← findPackageByName? ``cvc5 | return 2
     let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
     let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
     let out ← IO.Process.output {
@@ -138,7 +138,7 @@ Use Firefox Profiler UI to view profiling information.
 script profile args do
   let file : FilePath := args[0]!
   let log : FilePath := args[1]!
-  let some cvc5 ← findPackage? ``cvc5 | return 2
+  let some cvc5 ← findPackageByName? ``cvc5 | return 2
   let some libcvc5 := cvc5.findLeanLib? `cvc5 | return 3
   let libcvc5 := s!"--plugin={libcvc5.sharedLibFile}"
   let child ← IO.Process.spawn {

@@ -15,7 +15,7 @@ example (a b : Int) : partCurryAdd a b = partCurryAdd b a := by
 example (a b : Int)
     : let partCurryAdd' := fun a => HAdd.hAdd a;
     partCurryAdd' a b = partCurryAdd' b a := by
-  smt
+  smt +mono
 
 set_option linter.unusedVariables false in
 @[smt_normalize]

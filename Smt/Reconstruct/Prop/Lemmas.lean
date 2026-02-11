@@ -705,6 +705,9 @@ theorem implies_of_not_and : ¬(andN (ps ++ [¬q])) → impliesN ps q := by
         | .inl hnp => contradiction
         | .inr hnps => exact ih hnps
 
+theorem implies_false_of_not_and : ¬(andN ps) → impliesN ps False := by
+  simp_all [implies_of_not_and]
+
 syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules
 | `(flipCongrArg $premiss:term [$arg:term]) => `(congrArg $arg $premiss)

@@ -6,6 +6,8 @@ Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
 import Smt.Preprocess.Embedding
+import Smt.Preprocess.Intros
 import Smt.Preprocess.Mono
 import Smt.Preprocess.Normalize
+import Smt.Preprocess.NegateGoal
 import Smt.Preprocess.PushHintsToCtx

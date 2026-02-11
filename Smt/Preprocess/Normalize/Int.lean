@@ -25,5 +25,7 @@ theorem Int.lt_def : Int.lt a b = (a < b) := rfl
 @[smt_normalize ↓]
 theorem Int.le_def' : Int.le a b = (a ≤ b) := rfl
 
-attribute [smt_normalize ↓] Int.add_def Int.mul_def Int.div_def
+attribute [smt_normalize ↓] Int.add_def Int.mul_def
   Int.ofNat_eq_natCast Int.negSucc_eq Int.cast_ofNat_Int
+
+attribute [smt_normalize ↓ ←] Int.div_def

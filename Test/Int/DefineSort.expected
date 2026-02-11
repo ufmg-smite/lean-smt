@@ -3,7 +3,7 @@ goal: a.add b = b.add a
 query:
 (set-logic ALL)
 (declare-sort MyInt 0)
-(declare-fun |a✝| (MyInt MyInt) MyInt)
+(declare-fun |a✝²| (MyInt MyInt) MyInt)
 (declare-sort |a✝¹| 0)
 (declare-const b MyInt)
 (declare-const a MyInt)

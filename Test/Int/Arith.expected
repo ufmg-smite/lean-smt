@@ -1,6 +1,7 @@
 Test/Int/Arith.lean:3:47: error: unsolved goals
 n m : Int
 h : 0 < m
+a✝ : ¬n % m < m
 ⊢ 0 < m →
     ¬n % m < m →
       ¬(m + -1 * if m = 0 then (fun x => x % 0) n else n % m) ≥ 1 →
@@ -9,6 +10,7 @@ h : 0 < m
 
 n m : Int
 h : 0 < m
+a✝ : ¬n % m < m
 ⊢ 0 < m →
     ¬n % m < m →
       n = (if m = 0 then (fun x => x % 0) n else n % m) + m * (n / m) →
@@ -18,6 +20,7 @@ h : 0 < m
 
 n m : Int
 h : 0 < m
+a✝ : ¬n % m < m
 ⊢ 0 < m →
     ¬n % m < m →
       n % m = n - m * (n / m) ∧
@@ -25,4 +28,5 @@ h : 0 < m
 
 n m : Int
 h : 0 < m
+a✝ : ¬n % m < m
 ⊢ 0 < m → ¬n % m < m → n % m = if m = 0 then (fun x => x % 0) n else n % m

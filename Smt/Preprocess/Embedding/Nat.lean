@@ -17,6 +17,7 @@ attribute [embedding ↓] Int.cast_ofNat_Int
 attribute [embedding ↓] Int.natCast_add
 attribute [embedding ↓] Int.natCast_mul
 attribute [embedding ↓] Int.natCast_ediv
+attribute [embedding ↓] Int.natCast_emod
 attribute [embedding ↓ ←] Int.ofNat_inj
 attribute [embedding ↓ ←] Int.ofNat_le
 attribute [embedding ↓ ←] Int.ofNat_lt
