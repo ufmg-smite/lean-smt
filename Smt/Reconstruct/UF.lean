@@ -42,9 +42,9 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     let some n := (← read).sortCard[t.getSort]? | throwError "unknown sort {t.getSort}"
     let s := t.toString
     let endPos := (s.rawEndPos - t.getSort.toString).decreaseBy 2
-    let endPos := if endPos.dec.get? s == some '|' then endPos.dec else endPos
-    let startPos := (s.revFindAux (· != '_') endPos).get!
-    let i : Nat := (String.Pos.Raw.extract s startPos endPos).toNat!
+    let endPos := s.pos! (if endPos.dec.get? s == some '|' then endPos.dec else endPos)
+    let startPos := (endPos.revFind? (· != '_')).get!
+    let i : Nat := (s.extract startPos endPos).toNat!
     if h : i < n then
       let i : Fin n := ⟨i, h⟩
       return toExpr i

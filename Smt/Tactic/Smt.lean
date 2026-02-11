@@ -28,6 +28,10 @@ structure Config where
   /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
       reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
   native : Bool := false
+  /-- Whether to introduce binders automatically. Disable to generate a more faithful SMT-LIB query
+      or if introducing binders causes undesired behavior (e.g., not eliminating let expressions).
+      Ignored if monomorphization is enabled. -/
+  intros : Bool := true
   /-- Whether to monomorphize the Lean goal before sending it to the SMT solver. The monomorphization
       step reduces the goal from Lean's dependent type theory to a simpler, first-order logic. -/
   mono : Bool := false
@@ -64,31 +68,34 @@ def genUniqueFVarNames : MetaM (Std.HashMap FVarId String × Std.HashMap String 
     let m₂ := m₂.insert (lCtx.getRoundtrippingUserName? fvarId).get!.toString (.fvar fvarId)
     (m₁, m₂)
 
-def prepareSmtQuery (hs : List Expr) (goalType : Expr) (fvNames : Std.HashMap FVarId String) : MetaM (List Command) := do
-  let goalId ← Lean.mkFreshMVarId
-  Lean.Meta.withLocalDeclD goalId.name (mkNot goalType) fun g =>
-  Query.generateQuery g hs fvNames
+def prepareSmtQuery (hs : List Expr) (fvNames : Std.HashMap FVarId String) : MetaM (List Command) := do
+  Query.generateQuery hs fvNames
 
 def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext do
   -- 0. Create a duplicate goal to preserve the original goal.
+  let goalType : Q(Prop) ← mv.getType
   let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
+  -- 1. Cleanup goal.
+  let mv₀ ← mv₀.cleanup (← hs.foldlM (fun s h => return (← (Expr.collectFVars h).run s).snd) {}).fvarIds
+  trace[smt.preprocess] "after cleanup: {mv₀}"
+  mv₀.withContext do
   -- 2. Preprocess the hints and goal.
-  let steps := if cfg.mono then #[Preprocess.mono] else #[Preprocess.pushHintsToCtx]
+  let steps := if cfg.mono then #[Preprocess.mono] else #[Preprocess.pushHintsToCtx] ++
+              (if cfg.intros then #[Preprocess.intros] else #[]) ++ #[Preprocess.negateGoal]
   let steps := if cfg.normalize then steps.push Preprocess.normalize else steps
   let steps := if cfg.embeddings then steps.push Preprocess.embedding else steps
   let ⟨map, hs₁, mv₁⟩ ← Preprocess.applySteps mv₀ hs steps
   mv₁.withContext do
-  let goalType : Q(Prop) ← mv₁.getType
   -- 3. Generate the SMT query.
   let (fvNames₁, fvNames₂) ← genUniqueFVarNames
-  let cmds ← prepareSmtQuery hs₁.toList (← mv₁.getType) fvNames₁
+  let cmds ← prepareSmtQuery hs₁.toList fvNames₁
   let cmds := .setLogic "ALL" :: cmds
   if cfg.showQuery then
-    logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
+    mv.withContext do logInfo m!"goal: {goalType}\n\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
     -- Return original goal.
     return .unsat [mv] hs₁
   else
-    trace[smt] "goal: {goalType}"
+    mv.withContext do trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
   let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (defaultSolverOptions ++ cfg.extraSolverOptions)
@@ -120,7 +127,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let (_, ps, p, hp, mvs) ← reconstructProof pf ctx
     let mv₂ ← mv₁.assert (← mkFreshId) p hp
     let ⟨_, mv₃⟩ ← mv₂.intro1
-    let gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_of_not_and #[listExpr ps.dropLast q(Prop), goalType])
+    let gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_false_of_not_and #[listExpr ps q(Prop)])
     mv₃.withContext (gs.forM (·.assumption))
     mv.assign (.mvar mv₀)
     return .unsat mvs uc

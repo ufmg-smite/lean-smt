@@ -6,51 +6,7 @@ Test/Unit/Embedding.lean:32:35: warning: unused variable `h2`
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Try this:
   [apply] smt [h2, h4, h5]
-Test/Unit/Embedding.lean:190:39: error: unsolved goals
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
-    ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
-    ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
-    ∀ (x x_1 : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → x * x_1 = x_1 * x) →
-    ∀ (x x_1 : ℝ) (a b : ℤ), a / ↑b = a / b
-Test/Unit/Embedding.lean:190:0: error: (kernel) application type mismatch
-  HDiv.hDiv a
-argument has type
-  ℤ
-but function has type
-  ℝ → ℝ → ℝ
-Test/Unit/Embedding.lean:302:50: error: unsolved goals
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
-    ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
-    ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
-    ∀ (x x_1 : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
-
-⊢ (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (x_1 : ℝ), (∃ a b, x_1 = ↑a / ↑b) → 0 ≤ x - x_1 ∨ x - x_1 < 0) →
-    ∀ (x x_1 : ℝ) (a b : ℤ), a / ↑b = a / b
-Test/Unit/Embedding.lean:302:0: error: (kernel) application type mismatch
-  HDiv.hDiv a
-argument has type
-  ℤ
-but function has type
-  ℝ → ℝ → ℝ
 Test/Unit/Embedding.lean:309:2: error: [poly_norm] expected a rational number, got x.7407
-Test/Unit/Embedding.lean:315:2: error: Application type mismatch: The argument
-  x.7376
-has type
-  ℤ
-but is expected to have type
-  ℝ
-in the application
-  HDiv.hDiv x.7376
 Map: []
 Map: []
 goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x = 0)
@@ -61,7 +17,7 @@ query:
 (check-sat)
 Test/Unit/Embedding.lean:317:30: error: unsolved goals
 ⊢ ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x = 0)
-goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → x ≤ f x)
+goal: ∃ n, f n ≥ n
 
 query:
 (set-logic ALL)
@@ -72,7 +28,7 @@ query:
 Test/Unit/Embedding.lean:333:42: error: unsolved goals
 f : ℚ → ℚ
 ⊢ ∃ n, f n ≥ n
-goal: ∃ x x_1, (∃ a b, x_1 = ↑a / ↑b) ∧ ((∃ a b, x_1 = ↑a / ↑b) → x_1 ≤ f x x_1)
+goal: ∃ x n, f x n ≥ n
 
 query:
 (set-logic ALL)
@@ -91,22 +47,6 @@ but is expected to have type
   ℝ
 in the application
   HDiv.hDiv a
-Test/Unit/Embedding.lean:345:52: error: unsolved goals
-f : ℝ → ℝ
-a✝ : ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b
-⊢ (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b) →
-    (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ f x ∨ f x < 0) → ∀ (x : ℝ) (a b : ℤ), ↑a / ↑b = a / ↑b
-
-f : ℝ → ℝ
-a✝ : ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b
-⊢ (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∃ a b, f x = ↑a / ↑b) →
-    (¬∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → 0 ≤ f x ∨ f x < 0) → ∀ (x : ℝ) (a b : ℤ), a / ↑b = a / b
-Test/Unit/Embedding.lean:345:0: error: (kernel) application type mismatch
-  HDiv.hDiv a
-argument has type
-  ℤ
-but function has type
-  ℝ → ℝ → ℝ
 Test/Unit/Embedding.lean:349:2: error: Application type mismatch: The argument
   a
 has type
@@ -115,7 +55,7 @@ but is expected to have type
   ℝ
 in the application
   HDiv.hDiv a
-goal: ∃ x, (∃ a b, x = ↑a / ↑b) ∧ ((∃ a b, x = ↑a / ↑b) → 0 ≤ x ∧ f x)
+goal: ∃ x ≥ 0, p x
 
 query:
 (set-logic ALL)
@@ -135,3 +75,9 @@ Test/Unit/Embedding.lean:357:83: error: unsolved goals
 ⊢ ∀ (f : ℝ → ℤ → ℝ),
     (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (a₂ : ℤ), ∃ a b, f x a₂ = ↑a / ↑b) →
       ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ {y : ℤ} {h : ↑y = x} {h' : f x y ≠ ↑(f ↑y ⌊x⌋).toRat}, False
+Test/Unit/Embedding.lean:374:108: warning: unused variable `next`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Test/Unit/Embedding.lean:375:3: warning: unused variable `st_leader`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`

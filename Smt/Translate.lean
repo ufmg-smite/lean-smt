@@ -156,7 +156,7 @@ partial def applyTranslators? : Translator := withCache fun e => do
           return arrowT (← applyTranslators! t) tmB
         else
           return forallT n.toString (← applyTranslators! t) tmB
-      | letE n t v b _ =>
+      | letE n t v b true =>
         let tmB ← Meta.withLetDecl n t v (translateBody b)
         return letT n.toString (← applyTranslators! v) tmB
       | mdata _ e => go ts e

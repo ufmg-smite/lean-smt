@@ -56,7 +56,7 @@ def embedding (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
   let (fvs, mv) ← mv.revert fvs true
   -- Simplify the goal using the embedding theorems.
   let congrTheorems ← Meta.getSimpCongrTheorems
-  let ctx ← Meta.Simp.mkContext {} simpTheorems congrTheorems
+  let ctx ← Meta.Simp.mkContext { zeta := false } simpTheorems congrTheorems
   let (some mv, _) ← Meta.simpTarget mv ctx simpProcs (mayCloseGoal := false) | throwError "[embedding] simplification failed"
   -- Extend `fvs` to account for `nonneg` assumptions.
   let bts := bts.pop -- Do not consider `Bool` for assumptions.
