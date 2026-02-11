@@ -10,4 +10,9 @@ import Smt.Preprocess.Normalize.Attribute
 @[smt_normalize ↓]
 theorem iff_eq_eq : (p ↔ q) = (p = q) := propext ⟨propext, (· ▸ ⟨(·), (·)⟩)⟩
 
-attribute [smt_normalize ↓] ite_cond_congr dite_eq_ite
+attribute [smt_normalize ↓] dite_eq_ite
+
+@[smt_normalize ↓]
+theorem classical_ite_cond_congr [hc : Decidable c] {x y : α} :
+  @ite α c (Classical.propDecidable c) x y = @ite α c hc x y := by
+  simp
