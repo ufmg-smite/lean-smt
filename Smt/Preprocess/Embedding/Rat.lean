@@ -58,8 +58,8 @@ theorem Real.ratCast_inv (x : Rat) : ↑x⁻¹ = (x⁻¹ : Real) :=
 
 @[embedding ↓]
 theorem Real.ratCast_ite [Decidable c] {t e : Rat} :
-    (if c then t else e : Rat) = (if c then t else e : Real) := by
-  exact apply_ite Rat.cast c t e
+    (if c then t else e : Rat) = (if c then t else e : Real) :=
+  apply_ite Rat.cast c t e
 
 @[embedding ↓ ←]
 theorem Real.ratCast_eq {p q : Rat} : (p : Real) = q ↔ p = q :=
@@ -68,9 +68,6 @@ theorem Real.ratCast_eq {p q : Rat} : (p : Real) = q ↔ p = q :=
 @[embedding ↓ ←]
 theorem Real.cast_ne {p q : Rat} : (p : Real) ≠ q ↔ p ≠ q := by
   simp only [ne_eq, Rat.cast_inj]
-
-attribute [embedding ↓ ←] Rat.cast_le
-attribute [embedding ↓ ←] Rat.cast_lt
 
 @[embedding ↓ ←]
 theorem Real.cast_le {p q : Rat} : (p : Real) ≤ q ↔ p ≤ q :=
@@ -89,6 +86,10 @@ theorem Real.cast_gt {p q : Rat} : (p : Real) > q ↔ p > q := by
   simp only [gt_iff_lt, Rat.cast_lt]
 
 attribute [embedding ↓] Rat.cast_intCast
+
+@[embedding ↓]
+theorem Real.cast_intCast {n : Int} : (((n : Int) : Rat) : Real) = (n : Real) :=
+  Rat.cast_intCast n
 
 open Classical in
 noncomputable def Real.toRat (x : Real) : Rat :=
@@ -116,9 +117,18 @@ theorem Real.cast_toRat {x : Real} (h : ∃ a b : Int, x = a / b) : (x.toRat : R
     Exists.choose_spec (Exists.choose_spec h)
   simp [Real.toRat, h, ← hab]
 
+open Classical in
+@[embedding ↓ low]
+theorem Real.cast_toRat' {x : Real} : x.toRat = if ∃ a b : Int, x = a / b then x else 0 := by
+  by_cases h : ∃ a b : Int, x = a / b
+  · simp only [h, ↓reduceIte]
+    rewrite (occs := .neg [1]) [h.choose_spec.choose_spec]
+    simp [Real.toRat, h]
+  · simp [Real.toRat, h]
+
 @[embedding ↓]
 theorem forall_rat_as_real {p : Rat → Prop} :
-    (∀ x : Rat, p x) ↔ (∀ x : Real, (h : ∃ a b : Int, x = a / b) → p x.toRat) := by
+    (∀ x : Rat, p x) ↔ (∀ x : Real, (∃ a b : Int, x = a / b) → p x.toRat) := by
   constructor
   · intro h x hx
     apply h
@@ -294,13 +304,17 @@ def isFractional : Expr → Bool
   | _ => false
 
 def addRealIsFractionalLemma : Simproc := fun e => do
-  let .forallE _ p q _ := e | return .continue
+  let .forallE n p q bi := e | return .continue
   if !isFractional p then return .continue
-  let r ← Meta.withLocalDeclD .anonymous p fun hp => Simp.withFreshCache do
-    let qx := q.instantiate1 hp
-    let r ← withNewLemmas #[hp] (simp qx)
-    r.addForalls #[hp]
-  return .continue r
+  let rp ← simp p
+  let r ← Meta.withLocalDeclD n rp.expr fun hp => do
+    let rq ← withNewLemmas #[hp] (simp q)
+    match rq.proof? with
+    | none    => mkImpCongr e rp rq
+    | some hq =>
+      let hq ← mkLambdaFVars #[hp] hq
+      return { expr := .forallE n rp.expr rq.expr bi, proof? := ← mkImpCongrCtx (← rp.getProof) hq }
+  return .done r
 
 simproc ↓ [embedding] add_real_is_fractional_lemma (_ → _) :=
   addRealIsFractionalLemma

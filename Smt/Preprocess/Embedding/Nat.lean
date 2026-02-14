@@ -273,13 +273,17 @@ def isIntGeLitZero : Expr → Bool
   | _ => false
 
 def addIntGtZeroLemma : Simproc := fun e => do
-  let .forallE _ p q _ := e | return .continue
+  let .forallE n p q bi := e | return .continue
   if !isIntGeLitZero p then return .continue
-  let r ← Meta.withLocalDeclD .anonymous p fun hp => Simp.withFreshCache do
-    let qx := q.instantiate1 hp
-    let r ← withNewLemmas #[hp] (simp qx)
-    r.addForalls #[hp]
-  return .continue r
+  let rp ← simp p
+  let r ← Meta.withLocalDeclD n rp.expr fun hp => do
+    let rq ← withNewLemmas #[hp] (simp q)
+    match rq.proof? with
+    | none    => mkImpCongr e rp rq
+    | some hq =>
+      let hq ← mkLambdaFVars #[hp] hq
+      return { expr := .forallE n rp.expr rq.expr bi, proof? := ← mkImpCongrCtx (← rp.getProof) hq }
+  return .done r
 
 def decideIntGtZero : Simproc := fun e => do
   simpUsingDecide e

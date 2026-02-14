@@ -74,7 +74,9 @@ Test/Unit/Embedding.lean:355:2: error: [poly_norm] expected a rational number, g
 Test/Unit/Embedding.lean:357:83: error: unsolved goals
 ⊢ ∀ (f : ℝ → ℤ → ℝ),
     (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (a₂ : ℤ), ∃ a b, f x a₂ = ↑a / ↑b) →
-      ∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ {y : ℤ} {h : ↑y = x} {h' : f x y ≠ ↑(f ↑y ⌊x⌋).toRat}, False
+      ∀ (x : ℝ),
+        (∃ a b, x = ↑a / ↑b) →
+          ∀ {y : ℤ} {h : ↑y = x} {h' : f x y ≠ if ∃ a b, f ↑↑y ⌊x.toRat⌋ = ↑a / ↑b then f ↑y ⌊x⌋ else 0}, False
 Test/Unit/Embedding.lean:374:108: warning: unused variable `next`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

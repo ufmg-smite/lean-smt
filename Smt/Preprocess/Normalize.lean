@@ -34,7 +34,7 @@ def normalize (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
   let (fvs', mv) ← mv.revert fvs true
   -- Simplify the goal using the smt_normalize theorems.
   let congrTheorems ← Meta.getSimpCongrTheorems
-  let ctx ← Meta.Simp.mkContext { zeta := false } simpTheorems congrTheorems
+  let ctx ← Meta.Simp.mkContext { zeta := false, singlePass := true } simpTheorems congrTheorems
   let (some mv, _) ← Meta.simpTarget mv ctx simpProcs (mayCloseGoal := false) | throwError "[smt_normalize] simplification failed"
   -- Re-introduce all free vars.
   let (fvs'', mv) ← mv.introNP fvs'.size

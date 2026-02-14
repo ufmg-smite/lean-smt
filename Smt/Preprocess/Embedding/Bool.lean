@@ -59,7 +59,7 @@ simproc ↓ [embedding] boolEqSimproc (_ = _) := fun e => do
   let newExpr ← mkEq xAsProp yAsProp
   let iffPrf := mkApp2 (mkConst ``Bool.eq_eq_true) x y
   let proof ← mkAppM ``propext #[iffPrf]
-  return .done { expr := newExpr, proof? := some proof }
+  return .continue (some { expr := newExpr, proof? := some proof })
 
 open Classical
 

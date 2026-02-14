@@ -7,6 +7,8 @@ Authors: Abdalrhman Mohamed
 
 import Smt.Preprocess.Normalize.Attribute
 
+attribute [smt_normalize ↓] Nat.zero_eq Nat.succ_eq_add_one
+
 @[smt_normalize ↓]
 theorem Nat.add_def : Nat.add a b = a + b := rfl
 
