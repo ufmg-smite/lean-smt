@@ -8,8 +8,8 @@ Map: [(h, [_fvar.3485])]
 Map: [(_fvar.3504, [h])]
 Before: [hpqr, ht, ht', t]
 After: [hpqr, ht, ht', a✝]
-Map: [(hpqr, [_fvar.3955]), (ht', [_fvar.3956]), (ht, [_fvar.3954]), (a✝, [_fvar.3960])]
-Map: [(_fvar.4055, [hpqr]), (_fvar.4056, [ht']), (_fvar.4054, [ht]), (_fvar.4053, [_fvar.3960])]
+Map: [(ht', [_fvar.3956]), (hpqr, [_fvar.3955]), (a✝, [_fvar.3960]), (ht, [_fvar.3954])]
+Map: [(_fvar.4055, [ht']), (_fvar.4054, [hpqr]), (_fvar.4052, [_fvar.3960]), (_fvar.4053, [ht])]
 Test/Unit/Normalize.lean:54:22: warning: unused variable `h`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

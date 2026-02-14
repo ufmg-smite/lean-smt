@@ -32,7 +32,13 @@ where
   | .forallE _ _ b _ => isNonEmpty b
   | _ => false
 
-def applySteps (mv : MVarId) (hs : Array Expr) (steps : Array (MVarId → Array Expr → MetaM Result)) : MetaM Result := do
+def traceApplySteps (r : Except Exception Result) : MetaM MessageData :=
+  return match r with
+    | .ok r    => m!"after steps: {r.mv}"
+    | .error _ => m!"{bombEmoji}"
+
+def applySteps (mv : MVarId) (hs : Array Expr) (steps : Array (MVarId → Array Expr → MetaM Result)) : MetaM Result :=
+  withTraceNode `smt.preprocess traceApplySteps do
   if h : 0 < steps.size then
     let mut { map, hs, mv } ← steps[0] mv hs
     for step in steps[1:] do
@@ -40,7 +46,6 @@ def applySteps (mv : MVarId) (hs : Array Expr) (steps : Array (MVarId → Array 
       map := compose map map'
       hs := hs'
       mv := mv'
-      trace[smt.preprocess] "after step: {mv}"
     return { map, hs, mv }
   else
     return Result.mk {} #[] mv
