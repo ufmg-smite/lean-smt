@@ -63,8 +63,7 @@ where
   | .ITE =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort t.getSort
     let c : Q(Prop) ← reconstructTerm t[0]!
-    let oh : Option Q(Decidable $c) ← Meta.synthInstance? q(Decidable $c)
-    let h : Q(Decidable $c) := oh.getD q(Classical.propDecidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let x : Q($α) ← reconstructTerm t[1]!
     let y : Q($α) ← reconstructTerm t[2]!
     return q(@ite $α $c $h $x $y)
@@ -103,13 +102,13 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[2]!.getSort
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
     let y : Q($α) ← reconstructTerm pf.getArguments[3]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite (¬$c) $x $y = ite $c $y $x) q(@Builtin.ite_not_cond $c $α $x $y $h)
   | .ITE_EQ_BRANCH =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[2]!.getSort
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite $c $x $x = $x) q(@Builtin.ite_eq_branch $c $α $x $h)
   | .ITE_THEN_LOOKAHEAD =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -117,7 +116,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
     let y : Q($α) ← reconstructTerm pf.getArguments[3]!
     let z : Q($α) ← reconstructTerm pf.getArguments[4]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite $c (ite $c $x $y) $z = ite $c $x $z) q(@Builtin.ite_then_lookahead $c $α $x $y $z $h)
   | .ITE_ELSE_LOOKAHEAD =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -125,7 +124,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
     let y : Q($α) ← reconstructTerm pf.getArguments[3]!
     let z : Q($α) ← reconstructTerm pf.getArguments[4]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite $c $x (ite $c $y $z) = ite $c $x $z) q(@Builtin.ite_else_lookahead $c $α $x $y $z $h)
   | .ITE_THEN_NEG_LOOKAHEAD =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -133,7 +132,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
     let y : Q($α) ← reconstructTerm pf.getArguments[3]!
     let z : Q($α) ← reconstructTerm pf.getArguments[4]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite $c (ite (¬$c) $x $y) $z = ite $c $y $z) q(@Builtin.ite_then_neg_lookahead $c $α $x $y $z $h)
   | .ITE_ELSE_NEG_LOOKAHEAD =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
@@ -141,7 +140,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let x : Q($α) ← reconstructTerm pf.getArguments[2]!
     let y : Q($α) ← reconstructTerm pf.getArguments[3]!
     let z : Q($α) ← reconstructTerm pf.getArguments[4]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     addThm q(ite $c $x (ite (¬$c) $y $z) = ite $c $x $y) q(@Builtin.ite_else_neg_lookahead $c $α $x $y $z $h)
   | _ => return none
 
@@ -171,7 +170,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     if pf.getResult[0]! == pf.getResult[1]! then
       addThm q($t = $t') q(Eq.refl $t)
     else
-      let hp : Q(Decidable ($t = $t')) ← Meta.synthInstance q(Decidable ($t = $t'))
+      let hp : Q(Decidable ($t = $t')) ← Meta.synthDecidableInstance q(($t = $t'))
       if hp.getUsedConstants.any (isNoncomputable (← getEnv)) then
         return none
       if ← useNative then
@@ -195,65 +194,65 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .THEORY_REWRITE => reconstructRewrite pf
   | .ITE_ELIM1 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[2]!
     let h : Q(@ite Prop $c $hc $p $q) ← reconstructProof pf.getChildren[0]!
     addThm q(¬$c ∨ $p) q(Builtin.iteElim1 $h)
   | .ITE_ELIM2 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
     let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[2]!
     let h : Q(@ite Prop $c $hc $p $q) ← reconstructProof pf.getChildren[0]!
     addThm q($c ∨ $q) q(Builtin.iteElim2 $h)
   | .NOT_ITE_ELIM1 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![2]!
     let hn : Q(¬@ite Prop $c $hc $p $q) ← reconstructProof pf.getChildren[0]!
     addThm q(¬$c ∨ ¬$p) q(Builtin.notIteElim1 $hn)
   | .NOT_ITE_ELIM2 =>
     let c : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![0]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getChildren[0]!.getResult[0]![2]!
     let hn : Q(¬@ite Prop $c $hc $p $q) ← reconstructProof pf.getChildren[0]!
     addThm q($c ∨ ¬$q) q(Builtin.notIteElim2 $hn)
   | .CNF_ITE_POS1 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(¬(ite $c $p $q) ∨ ¬$c ∨ $p) q(@Builtin.cnfItePos1 $c $p $q $h)
   | .CNF_ITE_POS2 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(¬(ite $c $p $q) ∨ $c ∨ $q) q(@Builtin.cnfItePos2 $c $p $q $h)
   | .CNF_ITE_POS3 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(¬(ite $c $p $q) ∨ $p ∨ $q) q(@Builtin.cnfItePos3 $c $p $q $h)
   | .CNF_ITE_NEG1 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(ite $c $p $q ∨ ¬$c ∨ ¬$p) q(@Builtin.cnfIteNeg1 $c $p $q $h)
   | .CNF_ITE_NEG2 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(ite $c $p $q ∨ $c ∨ ¬$q) q(@Builtin.cnfIteNeg2 $c $p $q $h)
   | .CNF_ITE_NEG3 =>
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
-    let h : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let h : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let p : Q(Prop) ← reconstructTerm pf.getArguments[0]![1]!
     let q : Q(Prop) ← reconstructTerm pf.getArguments[0]![2]!
     addThm q(ite $c $p $q ∨ ¬$p ∨ ¬$q) q(@Builtin.cnfIteNeg3 $c $p $q $h)

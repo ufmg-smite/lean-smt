@@ -10,6 +10,12 @@ import Qq
 
 import Smt.Attribute
 
+open Qq in
+def Lean.Meta.synthDecidableInstance (e : Q(Prop)) : MetaM Expr := do
+  let oh : Option Q(Decidable $e) ← Meta.synthInstance? q(Decidable $e)
+  let h : Q(Decidable $e) := oh.getD q(Classical.propDecidable $e)
+  return h
+
 namespace Smt
 
 open Lean

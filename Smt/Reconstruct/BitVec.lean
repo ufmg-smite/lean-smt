@@ -46,7 +46,7 @@ partial def synthDecidableInst (t : cvc5.Term) : ReconstructM Expr := do match t
         let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
         return q(@instDecidableEqBitVec $w)
       let p : Q(Prop) ← reconstructTerm t
-      Meta.synthInstance q(Decidable $p)
+      Meta.synthDecidableInstance q($p)
     | .BITVECTOR_BIT =>
       let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
       let x : Q(BitVec $w) ← reconstructTerm t[0]!
@@ -54,7 +54,7 @@ partial def synthDecidableInst (t : cvc5.Term) : ReconstructM Expr := do match t
       return q(instDecidableEqBool («$x».getLsbD $i) true)
     | _ =>
       let p : Q(Prop) ← reconstructTerm t
-      Meta.synthInstance q(Decidable $p)
+      Meta.synthDecidableInstance q($p)
 where
    rightAssocOpDecidableInst (op : Expr) (inst : Expr) (t : cvc5.Term) : ReconstructM Expr := do
     let mut curr ← reconstructTerm t[t.getNumChildren - 1]!
