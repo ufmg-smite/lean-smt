@@ -71,15 +71,27 @@ w : ℚ
 h : p w
 ⊢ ∃ x ≥ 0, p x
 Test/Unit/Embedding.lean:355:2: error: [poly_norm] expected a rational number, got x.7380
+goal: False
+
+query:
+(set-logic ALL)
+(declare-fun f (Real Int) Real)
+(assert (forall ((x Real)) (=> (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))) (forall ((|a₂| Int)) (exists ((a Int)) (exists ((b Int)) (= (f x |a₂|) (/ (to_real a) (to_real b)))))))))
+(declare-const x Real)
+(assert (exists ((a Int)) (exists ((b Int)) (= x (/ (to_real a) (to_real b))))))
+(declare-const y Int)
+(assert (distinct (f x y) (ite (exists ((a Int)) (exists ((b Int)) (= (f (to_real y) (to_int x)) (/ (to_real a) (to_real b))))) (f (to_real y) (to_int x)) 0.0)))
+(check-sat)
 Test/Unit/Embedding.lean:357:83: error: unsolved goals
-⊢ ∀ (f : ℝ → ℤ → ℝ),
-    (∀ (x : ℝ), (∃ a b, x = ↑a / ↑b) → ∀ (a₂ : ℤ), ∃ a b, f x a₂ = ↑a / ↑b) →
-      ∀ (x : ℝ),
-        (∃ a b, x = ↑a / ↑b) →
-          ∀ {y : ℤ} {h : ↑y = x} {h' : f x y ≠ if ∃ a b, f ↑↑y ⌊x.toRat⌋ = ↑a / ↑b then f ↑y ⌊x⌋ else 0}, False
-Test/Unit/Embedding.lean:374:108: warning: unused variable `next`
+f : ℚ → ℤ → ℚ
+x : ℚ
+y : ℤ
+h : ↑y = x
+h' : f x y ≠ f ↑y ⌊x⌋
+⊢ False
+Test/Unit/Embedding.lean:372:108: warning: unused variable `next`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Unit/Embedding.lean:375:3: warning: unused variable `st_leader`
+Test/Unit/Embedding.lean:373:3: warning: unused variable `st_leader`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

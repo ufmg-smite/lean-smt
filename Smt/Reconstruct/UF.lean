@@ -79,7 +79,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm q((($t = $s) = ($t = $r)) = (¬$t = $s ∧ ¬$t = $r)) q(@UF.eq_cond_deq $α $t $s $r $h)
   | .EQ_ITE_LIFT =>
     let c : Q(Bool) ← reconstructTerm pf.getArguments[1]!
-    let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+    let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[2]!.getSort
     let t : Q($α) ← reconstructTerm pf.getArguments[2]!
     let s : Q($α) ← reconstructTerm pf.getArguments[3]!

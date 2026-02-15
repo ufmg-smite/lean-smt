@@ -208,7 +208,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
       let c : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![0]!
       let p : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![1]!
       let q : Q(Prop) ← reconstructTerm pf.getResult[0]![1]![2]!
-      let hc : Q(Decidable $c) ← Meta.synthInstance q(Decidable $c)
+      let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
       let h : Q((ite $c $p $q) = (ite $c $p $q)) := q(Eq.refl (ite $c $p $q))
       let f := fun x (p, q, r, h) => do
         let u ← Meta.getLevel (← Meta.inferType x)

@@ -355,9 +355,7 @@ example (p : Rat → Prop) (h : ∃ x, p x) : ∃ y, p y := by
   smt [*]
 
 example {f : Rat → Int → Rat} {x y} {h : ↑y = x} {h' : f x y ≠ f y ⌊x⌋} : False := by
-  revert f x y
-  simp only [embedding]
-  -- smt [h']
+  smt +showQuery [h']
 
 example {f : Rat → Int → Rat} {x y} {h : x = ↑y} {h' : f x y ≠ f x y} : False := by
   smt [*]
