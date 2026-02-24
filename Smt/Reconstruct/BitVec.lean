@@ -10,7 +10,8 @@ import Smt.Reconstruct.BitVec.Bitblast
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct
 
-def Std.Range.foldlM [Monad m] (f : α → Nat → m α) (r : Range) (init : α) : m α := do
+def Std.Legacy.Range.foldlM [Monad m]
+    (f : α → Nat → m α) (r : Std.Legacy.Range) (init : α) : m α := do
   let mut a := init
   for i in r do
     a ← f a i
@@ -78,7 +79,8 @@ where
       let w₂ : Nat := t[i]!.getSort.getBitVectorSize!.toNat
       let x : Q(BitVec $w₂) ← reconstructTerm t[i]!
       return ⟨q($w₁ + $w₂), q($a ++ $x)⟩
-    let ⟨_, a⟩ ← [1:n].foldlM f (⟨q($w₁), a⟩ : Σ w : Q(Nat), Q(BitVec $w))
+    let is := (List.range (n - 1)).map (· + 1)
+    let ⟨_, a⟩ ← is.foldlM f (⟨q($w₁), a⟩ : Σ w : Q(Nat), Q(BitVec $w))
     return a
   | .BITVECTOR_AND =>
     let w : Nat := t.getSort.getBitVectorSize!.toNat
