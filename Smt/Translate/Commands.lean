@@ -20,6 +20,8 @@ inductive Command where
   | declareSort (nm : String) (arity : Nat)
   | defineSort (nm : String) (ps : List Term) (tm : Term)
   | declare (nm : String) (st : Term)
+  | declareDatatypes (sorts : List (String × Nat))
+      (dtypes : List (List (String × List (String × Term))))
   | defineFun (nm : String) (ps : List (String × Term)) (cod : Term) (tm : Term) (rec : Bool)
   | assert (tm : Term)
   | checkSat
@@ -52,6 +54,18 @@ protected def toSexp : Command → Sexp
   | .declare nm st                => sexp!{(declare-const {quoteSymbol nm} {st})}
   | .declareSort nm arity         =>
     sexp!{(declare-sort {quoteSymbol nm} {toString arity})}
+  | .declareDatatypes sorts dtypes =>
+    let sortDecls : List Sexp :=
+      sorts.map fun (nm, ar) => sexp!{({quoteSymbol nm} {toString ar})}
+    let dtypeDecls : List Sexp :=
+      dtypes.map fun ctors =>
+        let ctorDecls : List Sexp :=
+          ctors.map fun (ctorNm, fields) =>
+            let flds : List Sexp :=
+              fields.map fun (fnm, fsort) => sexp!{({quoteSymbol fnm} {fsort})}
+            sexp!{({quoteSymbol ctorNm} ...{flds})}
+        sexp!{(...{ctorDecls})}
+    sexp!{(declare-datatypes (...{sortDecls}) (...{dtypeDecls}))}
   | .defineSort nm ps tm          =>
     sexp!{(define-sort {quoteSymbol nm} (...{ps.map toSexp}) {tm})}
   | .defineFun nm ps cod tm false =>
