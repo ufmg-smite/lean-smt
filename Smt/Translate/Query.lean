@@ -135,12 +135,42 @@ def addDefineCommandFor (nm : String) (e : Expr) (params : Array Expr) (cod : Ex
 def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod : Expr)
     : QueryBuilderM (Array Expr) := do
   if cod.isSort && !cod.isProp then
+    -- For simple (non-parametric) inductive types, emit a
+    -- `declare-datatypes` command so the solver has full algebraic datatype support.
+    if params.isEmpty then
+      if let some cname := e.constName? then
+        if let some (.inductInfo iVal) := (← getEnv).find? cname then
+          if iVal.numParams == 0 && iVal.numIndices == 0 then
+            -- Build the list of constructor declarations with field selectors.
+            let mut allDeps : Array Expr := #[]
+            let mut ctorDecls : List (String × List (String × Term)) := []
+            let mut allOk := true
+            for ctorNm in iVal.ctors do
+              match (← getEnv).find? ctorNm with
+              | some (.ctorInfo cVal) =>
+                let fields := ctorFieldTypes cVal.numFields cVal.type
+                let mut fieldDecls : List (String × Term) := []
+                for (fname, ftype) in fields do
+                  let (tmSort, deps) ← translateAndFindDeps ftype (fvarDeps := false)
+                  fieldDecls := fieldDecls ++ [(s!"{ctorNm}.{fname}", tmSort)]
+                  allDeps := allDeps ++ deps
+                ctorDecls := ctorDecls ++ [(ctorNm.toString, fieldDecls)]
+              | _ => allOk := false
+            if allOk then
+              addCommand e <| .declareDatatypes [(nm, 0)] [ctorDecls]
+              return allDeps
     addCommand e <| .declareSort nm params.size
     return #[]
   else
     let (tmTp, deps) ← translateAndFindDeps tp
     addCommand e <| .declare nm tmTp
     return deps
+where
+  /-- Extract the first `n` field name/type pairs from a constructor's type (a chain of `forallE`). -/
+  ctorFieldTypes : Nat → Expr → List (Name × Expr)
+    | 0, _ => []
+    | n + 1, .forallE nm ftype body _ => (nm, ftype) :: ctorFieldTypes n body
+    | _, _ => []
 
 /-- Build the command for `e : tp` and add it to the graph. Return the command's dependencies. -/
 def addCommandFor (e tp : Expr) : QueryBuilderM (Array Expr) := do

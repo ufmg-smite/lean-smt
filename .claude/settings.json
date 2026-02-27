@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lake build Smt.Translate)",
+      "Bash(lake build Smt.Translate.Query)",
+      "Bash(lake build)",
+      "Bash(lake build Smt.Translate.Commands)"
+    ]
+  }
+}

@@ -8,6 +8,7 @@ Authors: Abdalrhman Mohamed
 import Smt.BitVec
 import Smt.Bool
 import Smt.Builtin
+import Smt.Datatype
 import Smt.Int
 import Smt.Nat
 import Smt.Options
