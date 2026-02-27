@@ -150,10 +150,21 @@ def addDeclareCommandFor (nm : String) (e tp : Expr) (params : Array Expr) (cod 
               | some (.ctorInfo cVal) =>
                 let fields := ctorFieldTypes cVal.numFields cVal.type
                 let mut fieldDecls : List (String × Term) := []
+                let mut selectorNames : Std.HashSet String := {}
+                let mut idx := 0
                 for (fname, ftype) in fields do
+                  let baseName :=
+                    if fname == Name.anonymous then s!"field{idx + 1}" else fname.toString
+                  let mut selectorName := s!"{ctorNm}.{baseName}"
+                  let mut suffix := 1
+                  while selectorNames.contains selectorName do
+                    selectorName := s!"{ctorNm}.{baseName}_{suffix}"
+                    suffix := suffix + 1
+                  selectorNames := selectorNames.insert selectorName
                   let (tmSort, deps) ← translateAndFindDeps ftype (fvarDeps := false)
-                  fieldDecls := fieldDecls ++ [(s!"{ctorNm}.{fname}", tmSort)]
+                  fieldDecls := fieldDecls ++ [(selectorName, tmSort)]
                   allDeps := allDeps ++ deps
+                  idx := idx + 1
                 ctorDecls := ctorDecls ++ [(ctorNm.toString, fieldDecls)]
               | _ => allOk := false
             if allOk then
