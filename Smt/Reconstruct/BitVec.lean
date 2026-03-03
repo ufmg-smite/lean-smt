@@ -147,53 +147,53 @@ where
     let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
     return q(BitVec.sshiftRight $x $i)
   | .BITVECTOR_ULT =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
     return q($x < $y)
   | .BITVECTOR_ULE =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
     return q($x ≤ $y)
   | .BITVECTOR_UGT =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
     return q($x > $y)
   | .BITVECTOR_UGE =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
     return q($x ≥ $y)
   | .BITVECTOR_SLT =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
-    return q(BitVec.slt $x $y)
+    return q(BitVec.slt $x $y = true)
   | .BITVECTOR_SLE =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let y : Q(BitVec $w) ← reconstructTerm t[1]!
-    return q(BitVec.sle $x $y)
+    return q(BitVec.sle $x $y = true)
   | .BITVECTOR_EXTRACT =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
     let j : Nat := t.getOp![1]!.getIntegerValue!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».extractLsb $i $j)
   | .BITVECTOR_REPEAT =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let n : Nat := t.getOp![0]!.getIntegerValue!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».replicate $n)
   | .BITVECTOR_ZERO_EXTEND =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let n : Nat := t.getOp![0]!.getIntegerValue!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».zeroExtend $n)
   | .BITVECTOR_SIGN_EXTEND =>
-    let w : Nat := t.getSort.getBitVectorSize!.toNat
+    let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let n : Nat := t.getOp![0]!.getIntegerValue!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     return q(«$x».signExtend $n)
@@ -210,11 +210,11 @@ where
   | .INT_TO_BITVECTOR =>
     let w : Nat := t.getSort.getBitVectorSize!.toNat
     let x : Q(Int) ← reconstructTerm t[0]!
-    return q(BitVec.ofNat $w «$x».toNat)
-  | .BITVECTOR_TO_NAT =>
+    return q(BitVec.ofInt $w $x)
+  | .BITVECTOR_UBV_TO_INT =>
     let w : Nat := t[0]!.getSort.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    return q(«$x».toNat)
+    return q((«$x».toNat : Int))
   | .BITVECTOR_FROM_BOOLS =>
     let w : Nat := t.getNumChildren
     let bs : Q(BitVec 0) := q(.nil)

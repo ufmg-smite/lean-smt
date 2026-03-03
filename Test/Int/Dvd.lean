@@ -11,10 +11,7 @@ example
     (h4 : dvd d e) :
   dvd a e := by
     have h5 : dvd a c := by
-      smt_show -embeddings [h1, h2, dvdax]
-      exact dvdax _ _ _ h1 h2
+      smt +mono [h1, h2, dvdax]
     have h6 : dvd c e := by
-      smt_show -embeddings [h3, h4, dvdax]
-      exact dvdax _ _ _ h3 h4
-    smt_show -embeddings [h5, h6, dvdax]
-    exact dvdax _ _ _ h5 h6
+      smt +mono [h3, h4, dvdax]
+    smt +mono [h5, h6, dvdax]
