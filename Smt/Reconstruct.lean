@@ -244,7 +244,7 @@ structure cvc5Model where
 
 inductive cvc5Result where
   | sat (model : cvc5Model)
-  | unsat (pf : cvc5.Proof) (uc : Array cvc5.Term)
+  | unsat (pf : Option cvc5.Proof) (uc : Array cvc5.Term)
   | unknown (reason : cvc5.UnknownExplanation)
 
 open cvc5 in
@@ -260,7 +260,7 @@ def defaultSolverOptions : List (String × String) := [
   ("enum-inst-interleave", "true"),
   ("cegqi-midpoint", "true"),
   ("produce-models", "true"),
-  ("produce-proofs", "true"),
+  ("produce-unsat-cores", "true"),
   ("proof-elim-subtypes", "true"),
   ("proof-granularity", "dsl-rewrite"),
   ("proof-chain-m-res", "false"),
@@ -279,7 +279,7 @@ def runQuery (solver : cvc5.Solver) (query : String) : cvc5.Env (Array cvc5.Sort
   return (svs, tvs)
 
 open cvc5 in
-def solve (query : String) (timeout : Option Nat) (options : List (String × String)) : MetaM (Except cvc5.Error cvc5Result) :=
+def solve (query : String) (timeout : Option Nat) (prove : Bool := true) (options : List (String × String) := defaultSolverOptions) : MetaM (Except cvc5.Error cvc5Result) :=
   profileitM Exception "smt" {} do
   withTraceNode `smt.solve traceSolve do cvc5.run do
     let tm ← TermManager.new
@@ -300,12 +300,13 @@ def solve (query : String) (timeout : Option Nat) (options : List (String × Str
       trace[smt.solve] "model:\n{iss}\n{ifs}"
       return .sat { iss, ifs }
     else if res.isUnsat then
-      let ps ← slv.getProof
       let uc ← slv.getUnsatCore
+      let ps ← if prove then slv.getProof else pure #[]
       if h : 0 < ps.size then
         trace[smt.solve] "proof:\n{← slv.proofToString ps[0]}"
         trace[smt.solve] "unsat-core:\n{uc}"
-        return .unsat ps[0] uc
+        return .unsat (some ps[0]) uc
+      return .unsat none uc
     else if res.isUnknown then
       let reason := res.getUnknownExplanation
       trace[smt.solve] "unknown-reason:\n{reason}"
@@ -318,12 +319,13 @@ open Lean.Elab Tactic in
 @[tactic reconstruct] def evalReconstruct : Tactic := fun stx =>
   withMainContext do
     let some query := stx[1].isStrLit? | throwError "expected string"
-    let r ← solve query none defaultSolverOptions
+    let r ← solve query none true (defaultSolverOptions ++ [("produce-proofs", "true")])
     match r with
       | .error e => throwError e.toString
       | .ok (.sat _) => throwError "expected unsat result"
       | .ok (.unknown r) => logInfo (repr r)
-      | .ok (.unsat pf _) =>
+      | .ok (.unsat none _) => throwError "expected proof for unsat result"
+      | .ok (.unsat (some pf) _) =>
         let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), {}, false⟩
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp

@@ -16,6 +16,9 @@ open Translator Term
 private def mkProp : Lean.Expr :=
   .sort 0
 
+private def mkBool : Lean.Expr :=
+  toTypeExpr Bool
+
 @[smt_translate] def translateType : Translator := fun e => match e with
   | .sort 0        => return symbolT "Bool"
   | _              => return none
@@ -31,9 +34,11 @@ private def mkProp : Lean.Expr :=
     return mkApp2 (symbolT "and") (← applyTranslators! p) (← applyTranslators! q)
   else if let some (p, q) := e.or? then
     return mkApp2 (symbolT "or") (← applyTranslators! p) (← applyTranslators! q)
-  else if let some (_, x, y) := e.eq? then
+  else if let some (α, x, y) := e.eq? then
+    if α == mkBool then return none
     return mkApp2 (symbolT "=") (← applyTranslators! x) (← applyTranslators! y)
-  else if let some (_, x, y) := e.ne? then
+  else if let some (α, x, y) := e.ne? then
+    if α == mkBool then return none
     return mkApp2 (symbolT "distinct") (← applyTranslators! x) (← applyTranslators! y)
   -- Implication is more expensive than other connectives, because it is
   -- represented as a (non-)dependent arrow in Lean. So we keep it last.

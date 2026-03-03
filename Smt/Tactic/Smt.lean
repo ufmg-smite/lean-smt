@@ -98,7 +98,8 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     mv.withContext do trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
-  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (defaultSolverOptions ++ cfg.extraSolverOptions)
+  let options := defaultSolverOptions ++ if cfg.trust then [] else [("produce-proofs", "true")] ++ cfg.extraSolverOptions
+  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (!cfg.trust) options
   -- trace[smt] "\nresult: {res}"
   match res with
   | .error e =>
@@ -124,6 +125,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
       mv.admit true
       return .unsat [] uc
     -- 7. Reconstruct proof.
+    let some pf := pf | throwError "failed to reconstruct proof for unsat result"
     let (_, ps, p, hp, mvs) ← reconstructProof pf ctx
     let mv₂ ← mv₁.assert (← mkFreshId) p hp
     let ⟨_, mv₃⟩ ← mv₂.intro1
