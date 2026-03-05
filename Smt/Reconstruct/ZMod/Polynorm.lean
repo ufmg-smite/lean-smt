@@ -210,12 +210,17 @@ theorem foldl_add_insert (ctx : Context o) :
       · simp only [List.foldl_cons, add_comm (0: ZMod o), ih, Monomial.foldl_assoc add_assoc]
         rw [←add_assoc, add_comm (Monomial.denote ctx n), add_assoc]
 
-theorem denote_neg {p : Polynomial o} : p.neg.denote ctx = -p.denote ctx := by
+theorem denote_neg {p : Polynomial o} :
+ p.neg.denote ctx = -p.denote ctx := by
   simp only [denote, neg]
   induction p with
   | nil => simp
   | cons m p ih =>
-    simp only [List.foldl_cons, add_comm (0:ZMod o), Monomial.foldl_assoc add_assoc,neg_add, ←ih, List.map, Monomial.denote_neg]
+    simp only [List.foldl_cons, add_comm (0:ZMod o),
+     Monomial.foldl_assoc add_assoc,neg_add, 
+     ←ih, 
+     List.map, 
+     Monomial.denote_neg]
 
 theorem denote_add {p q : Polynomial n} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
   simp only [denote, add]
@@ -460,5 +465,5 @@ end Smt.Reconstruct.ZMod.Tactic
 example (x y z : ZMod 3) : 1 * (x + y) * z  = z * y + x * z := by
   poly_norm
 
-example (x y z : ZMod 3) : 1 * (x + y) * z  = z * y + x * z := by
+example (x y z : ZMod 6) : 1 * (x + y) * z  = z * y + x * z := by
   native_poly_norm
