@@ -26,9 +26,12 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   | .UNINTERPRETED_SORT => getFVarOrConstExpr! s.getSymbol!
   | _ =>
     if s.isInstantiated then
-      let base ← reconstructSort s.getUninterpretedSortConstructor!
-      let params ← s.getInstantiatedParameters!.mapM reconstructSort
-      return some (mkAppN base params)
+      if let some ctor := s.getUninterpretedSortConstructor? then
+        let base ← reconstructSort ctor
+        let params ← s.getInstantiatedParameters!.mapM reconstructSort
+        return some (mkAppN base params)
+      else
+        return none
     else
       return none
 
