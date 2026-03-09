@@ -5,12 +5,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki
 -/
 
+
 import Smt.Recognizers
 import Smt.Translate
 import Mathlib.Data.ZMod.Basic
-
 namespace Smt.Translate.ZMod
 
+/-
 open Lean Expr
 open Translator Term
 
@@ -48,5 +49,5 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
     let some _ ← reduceZModOrder? β | return none
     return some (mkApp2 (symbolT "ff.mul") (← applyTranslators! x) (← applyTranslators! y))
   | _                  => return none
-
+-/
 end Smt.Translate.ZMod
