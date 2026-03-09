@@ -9,11 +9,8 @@ example : Color.red ≠ Color.blue := by
   intro hrb
   nomatch hrb
 
-set_option trace.smt true in
 example : Color.red ≠ Color.blue := by
-  smt +trust +showQuery
-  grind
-
+  smt
 
 inductive mynat where
  | zero
