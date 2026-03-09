@@ -10,7 +10,84 @@ import Mathlib.Algebra.Field.Defs
 set_option trace.smt true
 set_option trace.smt.reconstruct.proof true
 set_option trace.smt.solve true
+namespace Smt.Translate.ZMod
 
+open Lean Expr
+open Translator Term
+
+-- Focus on ZModExpr instead of ZMods. Use MVPolynomial if ZModExpr is not useful 
+private def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
+  let some n ← (Meta.evalNat (← Meta.whnf n)).run | throwError "literal{indentD n}\nis not constant in{indentD e}"
+  return n
+
+private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
+  let some o := e.app1? ``ZMod | return none
+  let some o' ← (Meta.evalNat o).run | throwError "zmod type{indentD e}\nhas variable order"
+  if o'.minFac != o' then
+    throwError "zmod order{indentD o}\nis not a prime in{indentD e}"
+  return o'
+
+@[smt_translate] def translateType : Translator := fun e => do
+  if let some o ← reduceZModOrder? e then
+    return mkApp2 (symbolT "_") (symbolT "FiniteField") (literalT (toString o))
+  else
+    return none
+
+-- Modify to work with ZmodExpr instead of ZMod
+@[smt_translate] def translateZMod : Translator := fun e => do match_expr e with
+  | OfNat.ofNat α n _ =>
+    let some _ ← reduceZModOrder? α | return none
+    let n ← reduceLit n e
+    return some (mkApp2 (symbolT "as") (literalT s!"ff{n}") (← applyTranslators! α))
+  | Neg.neg α _ x =>
+    let some _ ← reduceZModOrder? α | return none
+    return some (appT (symbolT "ff.neg") (← applyTranslators! x))
+  | HAdd.hAdd α β _ _ x y =>
+    let some _ ← reduceZModOrder? α | return none
+    let some _ ← reduceZModOrder? β | return none
+    return some (mkApp2 (symbolT "ff.add") (← applyTranslators! x) (← applyTranslators! y))
+  | HMul.hMul α β _ _ x y =>
+    let some _ ← reduceZModOrder? α | return none
+    let some _ ← reduceZModOrder? β | return none
+    return some (mkApp2 (symbolT "ff.mul") (← applyTranslators! x) (← applyTranslators! y))
+  | _                  => return none
+end Smt.Translate.ZMod
+
+abbrev R (n : ℕ) := ZMod n
+abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
+
+/-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
+inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
+| var   : σ → ZModExpr n σ
+| const : R n → ZModExpr n σ
+| add   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
+| mul   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
+| neg   : ZModExpr n σ → ZModExpr n σ
+| pow   : ZModExpr n σ → ℕ → ZModExpr n σ
+
+namespace ZModExpr
+
+def toZMod (f: σ → ZMod n)(p: ZModExpr n σ) : ZMod n := 
+  match p with 
+  | .var i     => f i
+  | .const c   => c
+  | .add a b   => toZMod f a + toZMod f b
+  | .mul a b   => toZMod f a * toZMod f b
+  | .neg a     =>  -(toZMod f a)
+  | .pow a k   => (toZMod f a) ^ k
+
+
+noncomputable section
+
+def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
+| .var i     => MvPolynomial.X i
+| .const c   => MvPolynomial.C c
+| .add a b   => toPoly a + toPoly b
+| .mul a b   => toPoly a * toPoly b
+| .neg a     =>  MvPolynomial.C (-1) * toPoly a
+| .pow a k   => (toPoly a) ^ k
+end 
+end ZModExpr
 example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
   smt
 
@@ -58,6 +135,27 @@ abbrev help2 : Semiring (ZMod 7) := (@Field.toSemifield _ (test_prime sorry)).to
 
 
 noncomputable section 
+
+def toMVPoly (σ) (x: ZMod n) : MvPolynomial σ (ZMod n) := MvPolynomial.C x
+
+def toZModExpr (σ) (x: ZMod n) : ZModExpr n σ := ZModExpr.const x
+
+-- Figure out what are the theorems that we want to prove in this conversion. (either aeval or something equivalent).
+example (x y: ZMod n) : x = y ↔ toMVPoly σ x = toMVPoly σ y := by  
+  simp [toMVPoly]
+
+example (x y: ZMod n) : x ≠ y ↔ toMVPoly σ x ≠ toMVPoly σ y := by  
+  simp [toMVPoly]
+
+example : toMVPoly (ZMod 0) (3: ZMod 5)  = MvPolynomial.C (3) := by 
+  simp [toMVPoly]
+
+example : toMVPoly (ZMod 0) (3 + 4 : ZMod 5)  = MvPolynomial.C (3) + MvPolynomial.C 4 := by 
+  simp [toMVPoly] 
+
+example (x y: ZMod 5): toMVPoly (ZMod 0) (x + y : ZMod 5) = MvPolynomial.C x + MvPolynomial.C y := by 
+  simp_all [toMVPoly]
+  sorry
 /-- The polynomial corresponding to (x + y) -/
 def poly_xy : @MvPolynomial σ (ZMod 7) help:= @MvPolynomial.C _ _ help 3 * @MvPolynomial.X _ _ help  (0 : σ) + @MvPolynomial.X  _ _ help (1 : σ)
 
@@ -77,6 +175,7 @@ variable {p : ℕ} [Fact p.Prime]
 local instance : NeZero p := ⟨(Fact.out : Nat.Prime p).ne_zero⟩
 #check (inferInstance : Field (ZMod p))
 #check (inferInstance : Field K)
+
 -- Overhead is checking if the number is prime
 abbrev zp := ZMod 52435875175126190479447740508185965837690552500527637822603658699938581184513
 
@@ -106,5 +205,35 @@ abbrev zp := ZMod 52435875175126190479447740508185965837690552500527637822603658
 --  unfold zz at x m isz
 --  smt +trust
 --  sorry
+variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R S₁] 
 
+variable (f : σ → S₁)
 
+theorem aeval_X (s : σ) : MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) = f s := by 
+  simp
+
+theorem aeval_C (r : R) : MvPolynomial.aeval f (MvPolynomial.C r) = algebraMap R S₁ r := by
+  simp
+
+variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R R] 
+
+variable (f : σ → R)
+
+example (s: σ) (r: R): MvPolynomial.aeval f (MvPolynomial.C r) = MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) := by 
+  simp 
+  have hrr: (algebraMap R R) r = id r := by sorry
+  simp [hrr] 
+  sorry 
+
+-- This is false
+example (s: σ) (r: R):  (MvPolynomial.C r) = (MvPolynomial.X s : MvPolynomial σ R) := by  
+  sorry
+
+-- σ = Fin n -> n is the number of variables
+-- R = ZMod p -> p is the prime order
+-- r = ZMod p var (x, y, ...)
+-- s = index of vars x, y, ...
+-- f = {s ↦ r}
+-- 1st question: Are we able to prove the above theorem with this assumptions
+-- 2nd question: Does this transformation preserve the semantics of the proof rules
+-- Can we actually pick such f (looks like it).
