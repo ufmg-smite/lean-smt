@@ -70,6 +70,7 @@ def traceReconstructSort (s : cvc5.Sort) (r : Except Exception Expr) : Reconstru
     | .error _ => m!"{bombEmoji}"
 
 def reconstructSort : cvc5.Sort → ReconstructM Expr := withSortCache fun s => do
+  if s.isNull then throwError "reconstructSort: null sort (called with Inhabited default)"
   withTraceNode ((`smt.reconstruct.sort).str s.getKind.toString) (traceReconstructSort s) do
     let rs ← getReconstructors ``SortReconstructor SortReconstructor
     go rs s
