@@ -218,19 +218,6 @@ macro "smt_show " c:optConfig h:smtHints : tactic => do
 
 declare_config_elab elabConfig Smt.Config
 
-/-- If `nm` names a non-Prop definition with auto-generated equation lemmas `nm.eq_1`, `nm.eq_2`, …,
-return those as expressions.  Returns an empty array for theorems/props or missing lemmas. -/
-private def getEqLemmas (nm : Name) : MetaM (Array Expr) := do
-  let env ← getEnv
-  let some info := env.find? nm | return #[]
-  -- Only expand non-Prop definitions (i.e., functions, not theorems)
-  if info.type.isProp then return #[]
-  -- Use Lean's proper API to retrieve the auto-generated equation lemmas.
-  let some eqNames ← Lean.Meta.getEqnsFor? nm | return #[]
-  return eqNames.map fun eqNm =>
-    let lvls := (env.find? eqNm).map (·.levelParams.map .param) |>.getD []
-    .const eqNm lvls
-
 def elabSmtHintElem : TSyntax ``smtHintElem → TacticM (Array (Expr × (TSyntax ``smtHintElem)) × Array Expr)
   | `(smtHintElem| *) => do
     let fvs ← Smt.Preprocess.getPropHyps
@@ -247,21 +234,15 @@ def elabSmtHintElem : TSyntax ``smtHintElem → TacticM (Array (Expr × (TSyntax
         `(smtHintElem| *)
     return (hs.zip ss, hs)
   | `(smtHintElem| $h:term) => do
-    -- If the hint is a bare identifier naming a non-Prop definition, expand it to its
-    -- auto-generated equation lemmas (nm.eq_1, nm.eq_2, …) automatically.
-    let eqExprs ← do
-      if h.raw.isIdent then
-        let nm := h.raw.getId
-        let env ← getEnv
-        if let some info := env.find? nm then
-          if !info.type.isProp then
-            getEqLemmas nm
-          else pure #[]
-        else pure #[]
-      else pure #[]
-    if !eqExprs.isEmpty then
-      let pairs ← eqExprs.mapM fun e => return (e, ← `(smtHintElem| $h:term))
-      return (pairs, eqExprs)
+    -- If the hint is a bare identifier naming a non-Prop definition, pass it as a constant
+    -- so that generateQuery can emit a define-fun-rec command for it.
+    if h.raw.isIdent then
+      let nm := h.raw.getId
+      let env ← getEnv
+      if let some info := env.find? nm then
+        if !info.type.isProp then
+          let e := mkConst nm (info.levelParams.map .param)
+          return (#[(e, ← `(smtHintElem| $h:term))], #[e])
     -- Fall through: treat as a regular lemma (prop hypothesis or theorem).
     let h' ← Auto.Prep.elabLemma h (.leaf s!"❰{h}❱")
     return (#[(h'.proof, ← `(smtHintElem| $h:term))], #[h'.proof])
