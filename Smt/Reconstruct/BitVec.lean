@@ -10,7 +10,7 @@ import Smt.Reconstruct.BitVec.Bitblast
 import Smt.Reconstruct.Prop.Core
 import Smt.Reconstruct
 
-def Std.Range.foldlM [Monad m] (f : α → Nat → m α) (r : Range) (init : α) : m α := do
+def Std.Legacy.Range.foldlM [Monad m] (f : α → Nat → m α) (r : Std.Legacy.Range) (init : α) : m α := do
   let mut a := init
   for i in r do
     a ← f a i

@@ -70,6 +70,9 @@ open Lean Qq
     if t.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm t[0]!
     return q(|$x|)
+  | .POW =>
+    if t.getSort.isInteger then return none
+    leftAssocOp q(@HPow.hPow Real Int Real _) t
   | .LEQ =>
     if t[0]!.getSort.isInteger then return none
     let x : Q(Real) ← reconstructTerm t[0]!
@@ -526,6 +529,18 @@ where
   | .ARITH_POLY_NORM_REL =>
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
+  | .ARITH_COVERINGS_UNIV =>
+    let n_args := pf.getArguments.size
+    /- let t1 ← reconstructTerm (pf.getArguments[0]!)[0]! -- first polynomial -/
+    /- let t2 ← reconstructTerm (pf.getArguments[0]!)[1]! -- first algebraic number - root of the first polynomial -/
+    let n_children := pf.getChildren.size
+    for i in List.range n_children do
+      let p ← reconstructProof pf.getChildren[i]!
+      logInfo m!"p = {p}"
+      logInfo m!"repr p = {repr p}"
+      let t ← Meta.inferType p
+      logInfo m!"t = {t}"
+    return none
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none
     reconstructMulSign pf

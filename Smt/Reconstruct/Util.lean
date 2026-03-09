@@ -173,7 +173,7 @@ partial def expandLet : Expr → MetaM Expr
     | some (.ldecl _ _ userName _ value _ _) =>
       match userName with
       | .str _ userNameStr =>
-        let userNamePref: String := userNameStr.take 3
+        let userNamePref: String := (userNameStr.take 3).toString
         if userNamePref = "let" then expandLet value else pure (fvar fid)
       | _ => pure (fvar fid)
     | _ => pure (fvar fid)
