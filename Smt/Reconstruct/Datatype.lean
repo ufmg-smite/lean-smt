@@ -11,6 +11,10 @@ namespace Smt.Reconstruct.Datatype
 
 open Lean Meta Qq
 
+-- Strip SMT-LIB2 pipe quoting (|name|) from a symbol if present.
+private def stripSMTPipes (s : String) : String :=
+  if s.startsWith "|" && s.endsWith "|" then s.drop 1 |>.dropRight 1 else s
+
 private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
   | some e => return e
@@ -30,7 +34,8 @@ private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   | .APPLY_CONSTRUCTOR =>
     -- t[0]! is the constructor symbol. It has INTERNAL_KIND in cvc5 (even for non-zero-arity),
     -- so we look it up by name instead of calling reconstructTerm recursively.
-    let mut curr ← getFVarOrConstExpr! t[0]!.toString
+    -- toString may include SMT-LIB pipe escaping (e.g., "|mynat'.succ|"), so strip it.
+    let mut curr ← getFVarOrConstExpr! (stripSMTPipes t[0]!.toString)
     for i in [1:t.getNumChildren] do
       curr := .app curr (← reconstructTerm t[i]!)
     return curr
