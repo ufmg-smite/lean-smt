@@ -11,6 +11,7 @@ import Smt.Reconstruct.Real.Lemmas
 import Smt.Reconstruct.Real.Polynorm
 import Smt.Reconstruct.Real.Rewrites
 import Smt.Reconstruct.Real.TransFns
+import Smt.Reconstruct.Real.CAD
 import Smt.Reconstruct.Rewrite
 
 namespace Smt.Reconstruct.Real
@@ -123,6 +124,7 @@ open Lean Qq
     let x : Q(Real) ← reconstructTerm t[0]!
     return q(Real.cot $x)
   | .PI => return q(Real.pi)
+  /- | .REAL_ALGEBRAIC_NUMBER => logInfo "algebraic number!" -/
   | _ => return none
 where
   mkRealLit (n : Nat) : Q(Real) := match n with
@@ -368,7 +370,7 @@ def reconstructMulSign (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     Meta.mkLambdaFVars hs h
   addThm q(andN $ps → $q) q(Builtin.scopes $h)
 where
-  go vs ts hs map (ka : cvc5.Kind) (a : Q(Real)) (ha : Expr) i : ReconstructM Expr := do
+  go (vs : Array cvc5.Term) ts hs map (ka : cvc5.Kind) (a : Q(Real)) (ha : Expr) i : ReconstructM Expr := do
     if hi : i < vs.size then
       let b : Q(Real) ← reconstructTerm vs[i]
       let k : cvc5.Kind := ts[map[vs[i]]!]!.getKind
@@ -530,16 +532,9 @@ where
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
-    let n_args := pf.getArguments.size
-    /- let t1 ← reconstructTerm (pf.getArguments[0]!)[0]! -- first polynomial -/
-    /- let t2 ← reconstructTerm (pf.getArguments[0]!)[1]! -- first algebraic number - root of the first polynomial -/
-    let n_children := pf.getChildren.size
-    for i in List.range n_children do
-      let p ← reconstructProof pf.getChildren[i]!
-      logInfo m!"p = {p}"
-      logInfo m!"repr p = {repr p}"
-      let t ← Meta.inferType p
-      logInfo m!"t = {t}"
+    let ineq_pfs ← pf.getChildren.mapM reconstructProof
+    /- let polys_and_roots ← pf.getArguments.mapM (fun arg => return (← reconstructTerm arg[0]!, ← reconstructTerm arg[1]!)) -/
+    let e ← reconsCoveringsUniv ineq_pfs #[]
     return none
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none
