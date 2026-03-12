@@ -15,13 +15,15 @@ namespace Smt.Translate.ZMod
 open Lean Expr
 open Translator Term
 
--- Focus on ZModExpr instead of ZMods. Use MVPolynomial if ZModExpr is not useful 
+-- Focus on ZModExpr instead of ZMods. Use MVPolynomial if ZModExpr is not useful
 private def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
   let some n ← (Meta.evalNat (← Meta.whnf n)).run | throwError "literal{indentD n}\nis not constant in{indentD e}"
   return n
 
 private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
-  let some o := e.app1? ``ZMod | return none
+  let some (order, ring) := e.app2? ``MvPolynomial | return none
+  let some o := ring.app1? ``ZMod | return none
+
   let some o' ← (Meta.evalNat o).run | throwError "zmod type{indentD e}\nhas variable order"
   if o'.minFac != o' then
     throwError "zmod order{indentD o}\nis not a prime in{indentD e}"
@@ -36,7 +38,7 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
 -- Modify to work with ZmodExpr instead of ZMod
 @[smt_translate] def translateZMod : Translator := fun e => do match_expr e with
   | OfNat.ofNat α n _ =>
-    let some _ ← reduceZModOrder? α | return none
+    ---let some _ ← reduceZModOrder? α | return none
     let n ← reduceLit n e
     return some (mkApp2 (symbolT "as") (literalT s!"ff{n}") (← applyTranslators! α))
   | Neg.neg α _ x =>
@@ -50,6 +52,12 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
     let some _ ← reduceZModOrder? α | return none
     let some _ ← reduceZModOrder? β | return none
     return some (mkApp2 (symbolT "ff.mul") (← applyTranslators! x) (← applyTranslators! y))
+  | MvPolynomial.C _ _ _ c =>
+    return some (<- applyTranslators! c)
+  -- | MvPolynomial.X _ _ _ _ x =>
+  --   --let n := x.natLit! | return none
+
+
   | _                  => return none
 end Smt.Translate.ZMod
 
@@ -67,8 +75,8 @@ inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
 
 namespace ZModExpr
 
-def toZMod (f: σ → ZMod n)(p: ZModExpr n σ) : ZMod n := 
-  match p with 
+def toZMod (f: σ → ZMod n)(p: ZModExpr n σ) : ZMod n :=
+  match p with
   | .var i     => f i
   | .const c   => c
   | .add a b   => toZMod f a + toZMod f b
@@ -86,9 +94,14 @@ def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
 | .mul a b   => toPoly a * toPoly b
 | .neg a     =>  MvPolynomial.C (-1) * toPoly a
 | .pow a k   => (toPoly a) ^ k
-end 
+end
 end ZModExpr
-example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
+
+--set_option pp.all true
+-- example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
+--   smt
+
+example (x: MvPolynomial Nat (ZMod 5)) : (3 :MvPolynomial Nat (ZMod 5)) = 3 := by
   smt
 
 example (x: ZMod 3) : x + x = 2 * x := by
@@ -102,10 +115,10 @@ example (x m isz: ZMod 17): (m*x + 16 + isz = 0 ∧ isz * x = 0) →
   smt +trust
 
 example (x: ZMod 17): -(-x) = x := by
-  smt 
+  smt
 
 example (x: ZMod 17): x * x ≠ x ∨ x = 1 ∨ x = 0 := by
-  smt 
+  smt
 
 example (x y: MvPolynomial (Fin 3) (ZMod 17)) : 3 * x + y = y + x + x + x := by
   grind
@@ -113,7 +126,7 @@ example (x y: MvPolynomial (Fin 3) (ZMod 17)) : 3 * x + y = y + x + x + x := by
 
 local instance : Fact (Nat.Prime 7) := ⟨by decide⟩ -- “field coefficients”: ZMod n is a field when n is prime
 
--- define a type class if n is prime then ZMod n is a field 
+-- define a type class if n is prime then ZMod n is a field
 instance test_prime (h: Nat.Prime n): Field (ZMod n) := sorry
 
 
@@ -134,32 +147,32 @@ abbrev help : CommSemiring (ZMod 7) := (@Field.toSemifield _ (test_prime sorry))
 abbrev help2 : Semiring (ZMod 7) := (@Field.toSemifield _ (test_prime sorry)).toSemiring
 
 
-noncomputable section 
+noncomputable section
 
 def toMVPoly (σ) (x: ZMod n) : MvPolynomial σ (ZMod n) := MvPolynomial.C x
 
 def toZModExpr (σ) (x: ZMod n) : ZModExpr n σ := ZModExpr.const x
 
 -- Figure out what are the theorems that we want to prove in this conversion. (either aeval or something equivalent).
-example (x y: ZMod n) : x = y ↔ toMVPoly σ x = toMVPoly σ y := by  
+example (x y: ZMod n) : x = y ↔ toMVPoly σ x = toMVPoly σ y := by
   simp [toMVPoly]
 
-example (x y: ZMod n) : x ≠ y ↔ toMVPoly σ x ≠ toMVPoly σ y := by  
+example (x y: ZMod n) : x ≠ y ↔ toMVPoly σ x ≠ toMVPoly σ y := by
   simp [toMVPoly]
 
-example : toMVPoly (ZMod 0) (3: ZMod 5)  = MvPolynomial.C (3) := by 
+example : toMVPoly (ZMod 0) (3: ZMod 5)  = MvPolynomial.C (3) := by
   simp [toMVPoly]
 
-example : toMVPoly (ZMod 0) (3 + 4 : ZMod 5)  = MvPolynomial.C (3) + MvPolynomial.C 4 := by 
-  simp [toMVPoly] 
+example : toMVPoly (ZMod 0) (3 + 4 : ZMod 5)  = MvPolynomial.C (3) + MvPolynomial.C 4 := by
+  simp [toMVPoly]
 
-example (x y: ZMod 5): toMVPoly (ZMod 0) (x + y : ZMod 5) = MvPolynomial.C x + MvPolynomial.C y := by 
+example (x y: ZMod 5): toMVPoly (ZMod 0) (x + y : ZMod 5) = MvPolynomial.C x + MvPolynomial.C y := by
   simp_all [toMVPoly]
   sorry
 /-- The polynomial corresponding to (x + y) -/
 def poly_xy : @MvPolynomial σ (ZMod 7) help:= @MvPolynomial.C _ _ help 3 * @MvPolynomial.X _ _ help  (0 : σ) + @MvPolynomial.X  _ _ help (1 : σ)
 
-example  MvPolynomial.C 3 + MvPolynomial.C 5 = MvPolynomial.C 8 :=  by 
+example  MvPolynomial.C 3 + MvPolynomial.C 5 = MvPolynomial.C 8 :=  by
   grind
 
 def V : Set (σ → K) :=
@@ -199,34 +212,34 @@ abbrev zp := ZMod 52435875175126190479447740508185965837690552500527637822603658
 --  unfold zz at x
 --  smt +trust
 --  sorry
--- 
+--
 ---- example (x m isz: zz): ((m * x + isz - 1 = 0) ∧ (isz * x = 0)) ->
 --         (((isz = 0) ∨ (isz = 1)) ∧ (isz = 1 ↔ x = 0)):= by
 --  unfold zz at x m isz
 --  smt +trust
 --  sorry
-variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R S₁] 
+variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R S₁]
 
 variable (f : σ → S₁)
 
-theorem aeval_X (s : σ) : MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) = f s := by 
+theorem aeval_X (s : σ) : MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) = f s := by
   simp
 
 theorem aeval_C (r : R) : MvPolynomial.aeval f (MvPolynomial.C r) = algebraMap R S₁ r := by
   simp
 
-variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R R] 
+variable [CommSemiring S₂] [CommSemiring R] [CommSemiring S₁]  [Algebra R R]
 
 variable (f : σ → R)
 
-example (s: σ) (r: R): MvPolynomial.aeval f (MvPolynomial.C r) = MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) := by 
-  simp 
+example (s: σ) (r: R): MvPolynomial.aeval f (MvPolynomial.C r) = MvPolynomial.aeval f (MvPolynomial.X s : MvPolynomial σ R) := by
+  simp
   have hrr: (algebraMap R R) r = id r := by sorry
-  simp [hrr] 
-  sorry 
+  simp [hrr]
+  sorry
 
 -- This is false
-example (s: σ) (r: R):  (MvPolynomial.C r) = (MvPolynomial.X s : MvPolynomial σ R) := by  
+example (s: σ) (r: R):  (MvPolynomial.C r) = (MvPolynomial.X s : MvPolynomial σ R) := by
   sorry
 
 -- σ = Fin n -> n is the number of variables
