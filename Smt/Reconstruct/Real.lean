@@ -124,7 +124,10 @@ open Lean Qq
     let x : Q(Real) ← reconstructTerm t[0]!
     return q(Real.cot $x)
   | .PI => return q(Real.pi)
-  /- | .REAL_ALGEBRAIC_NUMBER => logInfo "algebraic number!" -/
+  | .REAL_ALGEBRAIC_NUMBER =>
+    let s := (cvc5.Term.getRealAgebraicNumberValue! t)
+    logInfo m!"algebraic number! {s}"
+    return none
   | _ => return none
 where
   mkRealLit (n : Nat) : Q(Real) := match n with
@@ -139,6 +142,8 @@ where
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
+
+#check Except
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule! with
@@ -532,8 +537,13 @@ where
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
+    logInfo "ARITH_COVERINGS_UNIV"
     let ineq_pfs ← pf.getChildren.mapM reconstructProof
-    /- let polys_and_roots ← pf.getArguments.mapM (fun arg => return (← reconstructTerm arg[0]!, ← reconstructTerm arg[1]!)) -/
+    let alg := (pf.getArguments[2]!)[1]!
+    let k := alg.getKind
+    logInfo m!"k = {k}"
+    /- let alg' ← reconstructTerm alg -/
+    /- /1- let polys_and_roots ← pf.getArguments.mapM (fun arg => return (← reconstructTerm arg[0]!, ← reconstructTerm arg[1]!)) -1/ -/
     let e ← reconsCoveringsUniv ineq_pfs #[]
     return none
   | .ARITH_MULT_SIGN =>
