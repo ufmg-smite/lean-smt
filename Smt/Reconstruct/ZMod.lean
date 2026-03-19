@@ -29,7 +29,7 @@ abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
 
 /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
 inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
-| var   : σ → ZModExpr n σ
+  | var   : σ → ZModExpr n σ '
 | const : R n → ZModExpr n σ
 | add   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
 | mul   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
@@ -48,40 +48,39 @@ def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
 | .neg a     =>  MvPolynomial.C (-1) * toPoly a
 | .pow a k   => (toPoly a) ^ k
 
-
-@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
-  | .FINITE_FIELD_SORT =>
-    let o : Nat := s.getFiniteFieldSize!
-    return q(ZMod  $o)
-  | _             => return none
-
-  @[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind with
-  | .CONST_FINITE_FIELD =>
-    let o : Nat := t.getSort.getFiniteFieldSize!
-    if ho: o ≠  0 then
-      let v : Fin o := @Fin.ofNat o ( NeZero.mk ho) (t.getFiniteFieldValue!.toInt! % o).toNat
-      return q($v : ZMod $o)
-    else
-      throwError "Expected finite field order to be non zero but got {o}"
-  | .FINITE_FIELD_ADD =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
-    leftAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
-  | .FINITE_FIELD_MULT =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
-    leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
-  | .FINITE_FIELD_NEG =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
-    let x : Q(ZMod $w) ← reconstructTerm t[0]!
-    return q(-$x)
-  -- | .FINITE_FIELD_VARIETY => sorry
-  -- | .FINITE_FIELD_IDEAL => sorry
-  --   let w : Nat := t.getSort.getFiniteFieldSize!
-  --   leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
-
-  | _ => return none
-where
-  leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
-    let mut curr ← reconstructTerm t[0]!
-    for i in [1:t.getNumChildren] do
-      curr := mkApp2 op curr (← reconstructTerm t[i]!)
-    return curr
+--@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
+--  | .FINITE_FIELD_SORT =>
+--    let o : Nat := s.getFiniteFieldSize!
+--    return q(ZMod  $o)
+--  | _             => return none
+--
+--  @[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind with
+--  | .CONST_FINITE_FIELD =>
+--    let o : Nat := t.getSort.getFiniteFieldSize!
+--    if ho: o ≠  0 then
+--      let v : Fin o := @Fin.ofNat o ( NeZero.mk ho) (t.getFiniteFieldValue!.toInt! % o).toNat
+--      return q($v : ZMod $o)
+--    else
+--      throwError "Expected finite field order to be non zero but got {o}"
+--  | .FINITE_FIELD_ADD =>
+--    let w : Nat := t.getSort.getFiniteFieldSize!
+--    leftAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
+--  | .FINITE_FIELD_MULT =>
+--    let w : Nat := t.getSort.getFiniteFieldSize!
+--    leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
+--  | .FINITE_FIELD_NEG =>
+--    let w : Nat := t.getSort.getFiniteFieldSize!
+--    let x : Q(ZMod $w) ← reconstructTerm t[0]!
+--    return q(-$x)
+--  -- | .FINITE_FIELD_VARIETY => sorry
+--  -- | .FINITE_FIELD_IDEAL => sorry
+--  --   let w : Nat := t.getSort.getFiniteFieldSize!
+--  --   leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
+--
+--  | _ => return none
+--where
+--  leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
+--    let mut curr ← reconstructTerm t[0]!
+--    for i in [1:t.getNumChildren] do
+--      curr := mkApp2 op curr (← reconstructTerm t[i]!)
+--    return curr

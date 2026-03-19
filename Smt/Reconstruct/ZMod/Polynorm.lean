@@ -8,11 +8,11 @@ Authors: Abdalrhman Mohamed, Harun Khan
 import Lean
 import Qq
 import Mathlib.Data.ZMod.Basic
+import Mathlib.Data.Real.Basic
 
 import Smt.Recognizers
-
 -- private theorem Int.neg_congr {x y : } (h : x = y) : -x = -y := by
---   simp [h]
+  -- sorry
 
 -- private theorem Int.add_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ + y₁ = x₂ + y₂ := by
 --   simp [h₁, h₂]
@@ -30,7 +30,6 @@ namespace Smt.Reconstruct.ZMod.PolyNorm
 abbrev Var := Nat
 
 def Context (n : Nat) := Var → ZMod n
-
 
 structure Monomial (n : Nat) where
   coeff : ZMod n
