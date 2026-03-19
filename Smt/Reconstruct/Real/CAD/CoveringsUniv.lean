@@ -67,8 +67,9 @@ def natOfExpr (e: Q(Nat)) : MetaM Nat := do
     | _ => panic! "natOfExpr"
   | some n => return n
 
--- given a monomial, compute its coefficient and exponent (as exprs) and the exponent as Nat
-partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat × Nat) × Nat) := do
+
+
+partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat) × Nat) := do
   let (monom, negated) := monom_neg
   -- TODO: refactor negated branching
   match monom with
@@ -79,14 +80,14 @@ partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat × Nat) �
     match lhs with
     | ~q(@HPow.hPow Real Nat Real _ $base $exp) =>
       if negated then
-        return (q((-$rhs, $exp)), ← natOfExpr exp)
+        return (q(-$rhs), ← natOfExpr exp)
       else
-        return (q(($rhs, $exp)), ← natOfExpr exp)
+        return (q($rhs), ← natOfExpr exp)
     | _ =>
       if negated then
-        return (q((-$rhs, 1)), 1)
+        return (q(-$rhs), 1)
       else
-        return (q(($rhs, 1)), 1)
+        return (q($rhs), 1)
   | _ =>
     if monom.hasFVar then
       let exp: Q(Nat) ←
@@ -94,21 +95,21 @@ partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat × Nat) �
         | ~q(@HPow.hPow Real Nat Real _ $base $exp) => return exp
         | _ => return q(1)
       if negated then
-        return (q((-1, $exp)), ← natOfExpr exp)
+        return (q(-1), ← natOfExpr exp)
       else
-        return (q((1, $exp)), ← natOfExpr exp)
+        return (q(1), ← natOfExpr exp)
     else
       let monom ← rat_of_real monom
       if negated then
-        return (q((-$monom, 0)), 0)
+        return (q(-$monom), 0)
       else
-        return (q(($monom, 0)), 0)
+        return (q($monom), 0)
 
-def gen_cpoly_array {α : Type*} [Zero α] (coeffs_and_exps : List (α × Nat)) : Array α :=
+def gen_cpoly_array {α : Type*} (zero : α) (coeffs_and_exps : List (α × Nat)) : Array α :=
   match coeffs_and_exps with
   | [] => #[]
   | (_, exp) :: _ =>
-    let arr : Array α := Array.replicate (exp + 1) 0
+    let arr : Array α := Array.replicate (exp + 1) zero
     go arr coeffs_and_exps
 where go arr coeffs_and_exps :=
   match coeffs_and_exps with
@@ -117,11 +118,12 @@ where go arr coeffs_and_exps :=
     let arr := arr.set! exp coeff
     go arr tl
 
-def toListExpr (α : Q(Type*)) (es : List Q($α)) : Q(List $α) :=
+def toListExpr (es : List (Q(Rat) × Nat)) : Q(List (Rat × Nat)) :=
   match es with
-  | [] => q(@List.nil $α)
-  | hd :: tl =>
-    let tl' : Q(List $α) := toListExpr α tl
+  | [] => q(@List.nil (Rat × Nat))
+  | (r, n) :: tl =>
+    let tl' : Q(List (Rat × Nat)) := toListExpr tl
+    let hd := q(($r, $n))
     q($hd :: $tl')
 
 def CPolynomial.mk_rat (p : Raw Rat) (pf : p.trim = p) : CPolynomial Rat := ⟨p, pf⟩
@@ -148,18 +150,36 @@ where go (m : Q(Real)) : MetaM (Option Expr) :=
   | .fvar _ => return some m
   | _ => return none
 
+private def zero_rat : Rat := 0
+
 -- given a proof that some expression of the form `f(var) <> 0` is true, produce a proof
 -- that `P.eval var <> 0`, where `P` is the polynomial corresponding to `f`. See `p_comp_pf_ex`.
-def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (deg_nat: Nat) (coeffs_and_exps : List (Q(Rat ⨯ Nat))) (ineq_pf : Expr) (P_comp : Expr) : MetaM Expr := do
-  let deg_expr: Q(Nat) := q($deg_nat)
-  let p_deg : Q(Prop) := q(CPolynomial.natDegree $P = $deg_expr)
+def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List (Q(Rat) × Nat)) (ineq_pf : Expr) (P_comp : Expr) : MetaM Expr := do
+  let (_, deg_nat) :: _ ← pure coeffs_and_exps | throwError "impossible"
+  let p_deg : Q(Prop) := q(CPolynomial.natDegree $P = $deg_nat)
   let p_deg_pf : Q($p_deg) ← mkDecideProof p_deg
+  check p_deg_pf
   let mut curr: Expr := mkConst `Nat.zero
-  let mut coeffs_and_exps := List.reverse coeffs_and_exps
-  for _ in List.range (deg_nat + 1) do
-    let coeff_i ← mkAppM `CPolynomial.coeff #[P, curr]
+  let mut coeffs_and_exps_arr := gen_cpoly_array (mkConst ``zero_rat) coeffs_and_exps
+  for i in List.range (deg_nat + 1) do
+    let coeff_i ← mkAppM ``CPolynomial.coeff #[P, curr]
+    let val := coeffs_and_exps_arr.getD i (mkConst ``zero_rat)
+    let eq_p ← mkAppM `Eq #[coeff_i, val]
+    let eq_p_pf ← mkDecideProof eq_p
+    check eq_p_pf
     curr := mkApp (mkConst `Nat.succ) curr
+  let finset_range_lhs : Q(Finset Nat) := q(Finset.range ($deg_nat + 1))
+  let finset_range_rhs : Q(Finset Nat) := go deg_nat
+  let finset_range_prop : Q(Prop) := sorry
   return var
+where
+  go (curr : Nat) : Q(Finset Nat) :=
+    match curr with
+    | 0 => q(singleton 0)
+    | curr + 1 =>
+      let r := go curr
+      q(insert ($curr + 1) $r)
+
 
 def reconsCoveringsUniv (ineq_pfs : Array Expr) (roots_and_polys : Array (Expr × Expr)) : MetaM Unit := do
   for ineq_pf in ineq_pfs do
@@ -175,40 +195,41 @@ def reconsCoveringsUniv (ineq_pfs : Array Expr) (roots_and_polys : Array (Expr �
     -- Gets the list of summands (monomial) in `lhs` (with a flag if they come from a subtraction)
     let monoms ← get_monoms lhs
     -- Collects the coefficients and exponents in each monomial (and tries to cast the coefficients to Rat)
-    let coeffs_and_exps_and_nat_exps ← monoms.mapM get_coeff_exp
-    let coeffs_and_exps := coeffs_and_exps_and_nat_exps.map Prod.fst
-    let nat_exps := coeffs_and_exps_and_nat_exps.map Prod.snd
-    let deg_nat := nat_exps.head!
+    let coeffs_and_exps ← monoms.mapM get_coeff_exp
     -- Create the `CPolynomial.Raw Rat` from the list of coefficients
-    let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[toListExpr q(Rat × Nat) coeffs_and_exps]
-    let foo := gen_cpoly_array coeffs_and_exps
+    let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[q(0: Rat), toListExpr coeffs_and_exps]
+    /- let foo := gen_cpoly_array coeffs_and_exps -/
     -- Proves that `P_raw` is lawful (equal to its `trim`) using `decide +kernel`
     let trim_P_raw : Q(Raw Rat) ← mkAppM ``Raw.trim #[P_raw]
     let P_raw_lawful : Q(Prop) := q($trim_P_raw = $P_raw)
     let P_raw_lawful_pf ← mkDecideProof P_raw_lawful
+    check P_raw_lawful
     -- Create the `CPolynomial Rat` using `P_raw` and the proof that it is lawful
     let P: Q(CPolynomial Rat) ← mkAppM `CPolynomial.mk_rat #[P_raw, P_raw_lawful_pf]
     let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
     let some (var : Q(Real)) ← get_var monoms | throwError "get_var failed"
     let P_eval : Q(Real) := q(CPolynomial.eval₂ (Rat.castHom Real) $var $P)
     let P_comp : Q(Prop) := q($cmp $P_eval 0)
-    let P_comp_pf ← prove_p_comp var P deg_nat coeffs_and_exps ineq_pf P_comp
+    let P_comp_pf ← prove_p_comp var P coeffs_and_exps ineq_pf P_comp
     -- now we need to `P_comp` this using `ineq_pf`. See example below
   return ()
 
 open CompPoly
 open CPolynomial
 lemma p_comp_pf_ex (a : Real) (h : -a^2 > 0) :
-    CompPoly.CPolynomial.eval₂ (Rat.castHom ℝ) a (CPolynomial.mk_rat (gen_cpoly_array [(-1, 2)]) (by decide +kernel)) > 0 := by
-  set P := (CPolynomial.mk_rat (gen_cpoly_array [(-1, 2)]) (by decide +kernel))
+    CompPoly.CPolynomial.eval₂ (Rat.castHom ℝ) a (CPolynomial.mk_rat (gen_cpoly_array 0 [(-1, 2)]) (by decide +kernel)) > 0 := by
+  set P := (CPolynomial.mk_rat (gen_cpoly_array 0 [(-1, 2)]) (by decide +kernel))
   have hdeg : P.natDegree = 2 := by decide +kernel
   have h0 : P.coeff 0 = 0 := by decide +kernel
   have h1 : P.coeff 1 = 0 := by decide +kernel
   have h2 : P.coeff 2 = -1 := by decide +kernel
-  have hf : Finset.range 3 = {0,1,2} := Finset.val_inj.mp rfl
-  have : ∑ i ∈ {0, 1, 2}, (Rat.castHom ℝ) (P.coeff i) * a ^ i =
-         (Rat.castHom ℝ) (P.coeff 0) * a ^ 0 + (Rat.castHom ℝ) (P.coeff 1) * a ^ 1 + (Rat.castHom ℝ) (P.coeff 2) * a ^ 2 := by grind
-  rw [eval₂_eq_sum_range, hdeg, hf, this, h0, h1, h2]
+  have hf : Finset.range 3 = insert 2 (insert 1 (singleton 0)) := by decide
+  have : ∑ i ∈ Finset.range 3, (Rat.castHom ℝ) (P.coeff i) * a ^ i =
+         (Rat.castHom ℝ) (P.coeff 0) * a ^ 0 + (Rat.castHom ℝ) (P.coeff 1) * a ^ 1 + (Rat.castHom ℝ) (P.coeff 2) * a ^ 2 := by
+           grind
+  rw [eval₂_eq_sum_range, hdeg, this, h0, h1, h2]
   simp [h]
 
+#eval insert 1 (@Finset.empty Nat)
 
+#check ({0, 1, 2} : Finset Nat)
