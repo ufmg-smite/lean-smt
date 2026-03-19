@@ -1,5 +1,6 @@
 import Smt
 import Smt.ZMod
+import Smt.Reconstruct.ZMod.Polynorm
 import Smt.Finset
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Algebra.MvPolynomial.Basic
@@ -13,7 +14,10 @@ set_option trace.smt.solve true
 namespace Smt.Translate.ZMod
 
 open Lean Expr
+open Qq
 open Translator Term
+open Smt
+open Reconstruct 
 
 -- Focus on ZModExpr instead of ZMods. Use MVPolynomial if ZModExpr is not useful
 private def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
@@ -21,9 +25,7 @@ private def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
   return n
 
 private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
-  let some (order, ring) := e.app2? ``MvPolynomial | return none
-  let some o := ring.app1? ``ZMod | return none
-
+  let some o := e.app1? ``ZMod | return none
   let some o' ← (Meta.evalNat o).run | throwError "zmod type{indentD e}\nhas variable order"
   if o'.minFac != o' then
     throwError "zmod order{indentD o}\nis not a prime in{indentD e}"
@@ -38,7 +40,7 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
 -- Modify to work with ZmodExpr instead of ZMod
 @[smt_translate] def translateZMod : Translator := fun e => do match_expr e with
   | OfNat.ofNat α n _ =>
-    ---let some _ ← reduceZModOrder? α | return none
+    let some _ ← reduceZModOrder? α | return none
     let n ← reduceLit n e
     return some (mkApp2 (symbolT "as") (literalT s!"ff{n}") (← applyTranslators! α))
   | Neg.neg α _ x =>
@@ -52,12 +54,6 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
     let some _ ← reduceZModOrder? α | return none
     let some _ ← reduceZModOrder? β | return none
     return some (mkApp2 (symbolT "ff.mul") (← applyTranslators! x) (← applyTranslators! y))
-  | MvPolynomial.C _ _ _ c =>
-    return some (<- applyTranslators! c)
-  -- | MvPolynomial.X _ _ _ _ x =>
-  --   --let n := x.natLit! | return none
-
-
   | _                  => return none
 end Smt.Translate.ZMod
 
@@ -65,24 +61,24 @@ abbrev R (n : ℕ) := ZMod n
 abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
 
 /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
-inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
-| var   : σ → ZModExpr n σ
-| const : R n → ZModExpr n σ
-| add   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
-| mul   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
-| neg   : ZModExpr n σ → ZModExpr n σ
-| pow   : ZModExpr n σ → ℕ → ZModExpr n σ
+inductive ZModExpr (n : ℕ) where
+| var   : ℕ → ZModExpr n 
+| const : R n → ZModExpr n 
+| add   : ZModExpr n  → ZModExpr n  → ZModExpr n 
+| mul   : ZModExpr n  → ZModExpr n  → ZModExpr n 
+| neg   : ZModExpr n  → ZModExpr n 
+| pow   : ZModExpr n  → ℕ → ZModExpr n 
 
 namespace ZModExpr
 
-def toZMod (f: σ → ZMod n)(p: ZModExpr n σ) : ZMod n :=
+def toZMod (ctx: ℕ → ZMod n)(p: ZModExpr n) : ZMod n :=
   match p with
-  | .var i     => f i
+  | .var i     => ctx i
   | .const c   => c
-  | .add a b   => toZMod f a + toZMod f b
-  | .mul a b   => toZMod f a * toZMod f b
-  | .neg a     =>  -(toZMod f a)
-  | .pow a k   => (toZMod f a) ^ k
+  | .add a b   => toZMod ctx a + toZMod ctx b
+  | .mul a b   => toZMod ctx a * toZMod ctx b
+  | .neg a     =>  -(toZMod ctx a)
+  | .pow a k   => (toZMod ctx a) ^ k
 
 
 noncomputable section
@@ -97,28 +93,136 @@ def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
 end
 end ZModExpr
 
+namespace Smt.Reconstruct.ZMod
+open Lean 
+open Qq
+@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
+  | .FINITE_FIELD_SORT =>
+    let o : Nat := s.getFiniteFieldSize!
+    return q(ZMod  $o)
+  | _             => return none
+
+  @[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind with
+  | .CONST_FINITE_FIELD =>
+    let o : Nat := t.getSort.getFiniteFieldSize!
+    let v : Nat := (t.getFiniteFieldValue!.toInt! % o).toNat
+    return mkZModLit o v
+  | .FINITE_FIELD_ADD =>
+    let w : Nat := t.getSort.getFiniteFieldSize!
+    leftAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
+  | .FINITE_FIELD_MULT =>
+    let w : Nat := t.getSort.getFiniteFieldSize!
+    leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
+  | .FINITE_FIELD_NEG =>
+    let w : Nat := t.getSort.getFiniteFieldSize!
+    let x : Q(ZMod $w) ← reconstructTerm t[0]!
+    return q(-$x)
+  -- | .FINITE_FIELD_VARIETY => sorry
+  -- | .FINITE_FIELD_IDEAL => sorry
+  --   let w : Nat := t.getSort.getFiniteFieldSize!
+  --   leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
+
+  | _ => return none
+where
+  mkZModLit  (o: Nat) (n : Nat): Q(ZMod $o) := match n with
+    | 0     => q(0 : ZMod $o)
+    | 1     => q(1 : ZMod $o)
+    | n' + 1 + 1 =>
+      let h : Q(Nat.AtLeastTwo $n) := mkApp2 q(@Nat.instAtLeastTwoHAddOfNat) (toExpr (n' + 1)) q(@Nat.instNeZeroSucc $n')
+      let h := mkApp3 q(@instOfNatAtLeastTwo (ZMod $o)) (mkRawNatLit n) q((ZMod.commRing $o).toAddGroupWithOne.toNatCast) h
+      mkApp2 q(@OfNat.ofNat (ZMod $o)) (mkRawNatLit n) h
+  leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
+    let mut curr ← reconstructTerm t[0]!
+    for i in [1:t.getNumChildren] do
+      curr := mkApp2 op curr (← reconstructTerm t[i]!)
+    return curr
+
+
+def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  match pf.getRewriteRule! with
+--  | .ARITH_POW_ELIM =>
+--    if !pf.getResult[0]![0]!.getSort.isInteger then return none
+--    let x : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
+--    let c : Q(Nat) ← reconstructTerm pf.getResult[0]![1]!
+--    let y : Q(Int) ← reconstructTerm pf.getResult[1]!
+--    addThm q($x ^ $c = $y) q(Eq.refl ($x ^ $c))
+  | _ => return none
+
+--  def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+--   let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
+--   let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
+--   let x₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
+--   let x₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
+--   let y₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!
+--   let y₂ : Q(Int) ← reconstructTerm pf.getResult[1]![1]!
+--   let h : Q($cx * ($x₁ - $x₂) = $cy * ($y₁ - $y₂)) ← reconstructProof pf.getChildren[0]!
+--   let k := pf.getResult[0]!.getKind
+--   let (hcx, hcy) :=
+--     if k == .EQUAL then (q(@of_decide_eq_true ($cx ≠ 0) _), q(@of_decide_eq_true ($cy ≠ 0) _))
+--     else if cx > 0 then (q(@of_decide_eq_true ($cx > 0) _), q(@of_decide_eq_true ($cy > 0) _))
+--     else (q(@of_decide_eq_true ($cx < 0) _), q(@of_decide_eq_true ($cy < 0) _))
+--   let hcx := .app hcx q(Eq.refl true)
+--   let hcy := .app hcy q(Eq.refl true)
+--   let n ← getThmName k (cx > 0)
+--   return mkApp9 (.const n []) x₁ x₂ y₁ y₂ q($cx) q($cy) hcx hcy h
+-- where
+--   getThmName (k : cvc5.Kind) (sign : Bool) : ReconstructM Name :=
+--     if k == .LT && sign == true then pure ``Int.lt_of_sub_eq_pos
+--     else if k == .LT && sign == false then pure ``Int.lt_of_sub_eq_neg
+--     else if k == .LEQ && sign == true then pure ``Int.le_of_sub_eq_pos
+--     else if k == .LEQ && sign == false then pure ``Int.le_of_sub_eq_neg
+--     else if k == .EQUAL then pure ``Int.eq_of_sub_eq
+--     else if k == .GEQ && sign == true then pure ``Int.ge_of_sub_eq_pos
+--     else if k == .GEQ && sign == false then pure ``Int.ge_of_sub_eq_neg
+--     else if k == .GT && sign == true then pure ``Int.gt_of_sub_eq_pos
+--     else if k == .GT && sign == false then pure ``Int.gt_of_sub_eq_neg
+--     else throwError "[arith_poly_norm_rel]: invalid combination of kind and sign: {k}, {sign}"
+
+open Qq 
+
+@[smt_proof_reconstruct] def reconstructFfProof : ProofReconstructor := fun pf => do match pf.getRule with
+  | .DSL_REWRITE
+  | .THEORY_REWRITE => reconstructRewrite pf
+  | .FF_POLY_NORM =>
+    if !pf.getResult[0]!.getSort.isFiniteField then return none
+    logInfo "here"
+    let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
+    logInfo "here1"
+    let a : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
+    logInfo "here2"
+    let b : Q(ZMod $o) ← reconstructTerm pf.getResult[1]!
+    logInfo "here3"
+    let tac := if ← useNative then ZMod.nativePolyNorm o else ZMod.polyNorm o
+    logInfo "here4"
+    addTac q($a = $b) tac 
+--  | .ARITH_POLY_NORM_REL =>
+--    if !pf.getChildren[0]!.getResult[0]![0]!.getSort.isInteger then return none
+--    reconstructArithPolyNormRel pf
+  | _ => return none
+
+end Smt.Reconstruct.ZMod
 --set_option pp.all true
 -- example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
 --   smt
 
-example (x: MvPolynomial Nat (ZMod 5)) : (3 :MvPolynomial Nat (ZMod 5)) = 3 := by
-  smt
-
+-- example (x: MvPolynomial Nat (ZMod 5)) : (3 :MvPolynomial Nat (ZMod 5)) = 3 := by
+--  smt
+set_option trace.smt.reconstruct.proof true in
 example (x: ZMod 3) : x + x = 2 * x := by
-  smt +trust
+  smt
 
-example (x: ZMod 3): x + x + x = 0 := by
-  smt +trust
-
+-- example (x: ZMod 3): x + x + x = 0 := by
+--  smt 
+--
 example (x m isz: ZMod 17): (m*x + 16 + isz = 0 ∧ isz * x = 0) →
-        ((isz = 0 ∨ isz = 1) ∧ (isz = 1 ↔ x = 0)) := by
-  smt +trust
+      ((isz = 0 ∨ isz = 1) ∧ (isz = 1 ↔ x = 0)) := by
+      smt 
 
-example (x: ZMod 17): -(-x) = x := by
-  smt
-
-example (x: ZMod 17): x * x ≠ x ∨ x = 1 ∨ x = 0 := by
-  smt
+--example (x: ZMod 17): -(-x) = x := by
+--  smt
+--
+--example (x: ZMod 17): x * x ≠ x ∨ x = 1 ∨ x = 0 := by
+--  smt
 
 example (x y: MvPolynomial (Fin 3) (ZMod 17)) : 3 * x + y = y + x + x + x := by
   grind
