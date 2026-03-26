@@ -17,7 +17,7 @@ open Lean Expr
 open Qq
 open Translator Term
 open Smt
-open Reconstruct 
+open Reconstruct
 
 -- Focus on ZModExpr instead of ZMods. Use MVPolynomial if ZModExpr is not useful
 private def reduceLit (n : Expr) (e : Expr) : TranslationM Nat := do
@@ -57,17 +57,17 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
   | _                  => return none
 end Smt.Translate.ZMod
 
-abbrev R (n : ℕ) := ZMod n
-abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
+-- abbrev R (n : ℕ) := ZMod n
+-- abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
 
 /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
 inductive ZModExpr (n : ℕ) where
-| var   : ℕ → ZModExpr n 
-| const : R n → ZModExpr n 
-| add   : ZModExpr n  → ZModExpr n  → ZModExpr n 
-| mul   : ZModExpr n  → ZModExpr n  → ZModExpr n 
-| neg   : ZModExpr n  → ZModExpr n 
-| pow   : ZModExpr n  → ℕ → ZModExpr n 
+| var   : ℕ → ZModExpr n
+| const : ZMod n → ZModExpr n
+| add   : ZModExpr n  → ZModExpr n  → ZModExpr n
+| mul   : ZModExpr n  → ZModExpr n  → ZModExpr n
+| neg   : ZModExpr n  → ZModExpr n
+| pow   : ZModExpr n  → ℕ → ZModExpr n
 
 namespace ZModExpr
 
@@ -83,18 +83,48 @@ def toZMod (ctx: ℕ → ZMod n)(p: ZModExpr n) : ZMod n :=
 
 noncomputable section
 
-def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
-| .var i     => MvPolynomial.X i
-| .const c   => MvPolynomial.C c
-| .add a b   => toPoly a + toPoly b
-| .mul a b   => toPoly a * toPoly b
-| .neg a     =>  MvPolynomial.C (-1) * toPoly a
-| .pow a k   => (toPoly a) ^ k
+--- TODO CHANG FROM FIELD TO PRIME
+instance test_prime (h: Nat.Prime n): Field (ZMod n) := sorry
+
+-- TODO PROVE THIS THEOREM
+theorem field_toCommSemiring_eq_commRing_toCommSemiring
+    (R : Type*) [Field R] :
+    (Field.toSemifield.toCommSemiring : CommSemiring R) =
+    (CommRing.toCommSemiring : CommSemiring R) := sorry
+
+
+def toPoly {n : ℕ} [Field (ZMod n)] : ZModExpr n → MvPolynomial ℕ (ZMod n) := by
+  letI : CommSemiring (ZMod n) := Field.toSemifield.toCommSemiring
+  intro p
+  induction p with
+  | var i =>
+      exact MvPolynomial.X i
+  | const c =>
+      exact MvPolynomial.C c
+  | add a b ia ib =>
+      exact ia + ib
+  | mul a b ia ib =>
+      exact ia * ib
+  | neg a ia =>
+      exact MvPolynomial.C (-1) * ia
+  | pow a k ia =>
+      exact ia ^ k
+
+
+
+def ideal {n : ℕ} [Field (ZMod n)] (s : Set (ZModExpr n)) : Ideal (MvPolynomial ℕ (ZMod n) ) :=
+  Ideal.span (ZModExpr.toPoly '' s)
+
+def variety {n : ℕ} [Field (ZMod n)] (s : Set (ZModExpr n)) : Set (ℕ → ZMod n) :=
+  MvPolynomial.zeroLocus (ZMod n) (ideal s)
+
 end
 end ZModExpr
 
+
+
 namespace Smt.Reconstruct.ZMod
-open Lean 
+open Lean
 open Qq
 @[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
   | .FINITE_FIELD_SORT =>
@@ -117,10 +147,19 @@ open Qq
     let w : Nat := t.getSort.getFiniteFieldSize!
     let x : Q(ZMod $w) ← reconstructTerm t[0]!
     return q(-$x)
-  -- | .FINITE_FIELD_VARIETY => sorry
-  -- | .FINITE_FIELD_IDEAL => sorry
-  --   let w : Nat := t.getSort.getFiniteFieldSize!
-  --   leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
+  | .FINITE_FIELD_VARIETY =>
+    let o:  Nat := t.getSort.getSetElementSort!.getFiniteFieldSize!
+    let s : Q(Set (_root_.ZModExpr $o))  ← reconstructTerm (t[0]!)[0]!
+    return q(@ZModExpr.variety $o sorry $s)
+  | .FINITE_FIELD_IDEAL =>
+    let o:  Nat := t.getSort.getSetElementSort!.getFiniteFieldSize!
+    let s : Q(Set (_root_.ZModExpr $o))  ← reconstructTerm t[0]!
+    return q(@ZModExpr.ideal $o sorry $s)
+  | .SET_MEMBER =>
+    let o:  Nat := t[0]!.getSort.getSetElementSort!.getFiniteFieldSize!
+    let p:  Q(ZMod $o)  ← reconstructTerm t[0]!
+    let pExpr
+    let s:  Q(Set (_root_.ZModExpr $o))  ← reconstructTerm t[1]!
 
   | _ => return none
 where
@@ -178,7 +217,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 --     else if k == .GT && sign == false then pure ``Int.gt_of_sub_eq_neg
 --     else throwError "[arith_poly_norm_rel]: invalid combination of kind and sign: {k}, {sign}"
 
-open Qq 
+open Qq
 
 @[smt_proof_reconstruct] def reconstructFfProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
@@ -194,7 +233,7 @@ open Qq
     logInfo "here3"
     let tac := if ← useNative then ZMod.nativePolyNorm o else ZMod.polyNorm o
     logInfo "here4"
-    addTac q($a = $b) tac 
+    addTac q($a = $b) tac
 --  | .ARITH_POLY_NORM_REL =>
 --    if !pf.getChildren[0]!.getResult[0]![0]!.getSort.isInteger then return none
 --    reconstructArithPolyNormRel pf
@@ -212,11 +251,11 @@ example (x: ZMod 3) : x + x = 2 * x := by
   smt
 
 -- example (x: ZMod 3): x + x + x = 0 := by
---  smt 
+--  smt
 --
 example (x m isz: ZMod 17): (m*x + 16 + isz = 0 ∧ isz * x = 0) →
       ((isz = 0 ∨ isz = 1) ∧ (isz = 1 ↔ x = 0)) := by
-      smt 
+      smt
 
 --example (x: ZMod 17): -(-x) = x := by
 --  smt
