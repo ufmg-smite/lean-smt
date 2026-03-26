@@ -8,11 +8,6 @@ open CompPoly
 
 def p1 : CPolynomial Int := CPolynomial.X
 
-example (a : Int) : a < 0 → p1.eval a < 0 := by
-  intro h
-  simp [p1, CPolynomial.eval, CPolynomial.Raw.eval, CPolynomial.Raw.eval₂, CPolynomial.X, CPolynomial.Raw.X]
-  exact h
-
 def p2 : CPolynomial Int := CPolynomial.X + CPolynomial.C 1
 
 lemma eval_add (a : Int) (p q : CPolynomial Int) : (p + q).eval a = p.eval a + q.eval a := by
@@ -133,7 +128,6 @@ def ring_compute_norm (e : Expr) : MetaM (Expr × Expr) := do
 
 syntax (name := meta_norm) "meta_norm" term : tactic
 
-
 /-- Given:
   - `h1 : P`  (a proof of some proposition)
   - `h2 : a = b`  (a proof of some equality)
@@ -160,7 +154,6 @@ def ring_normalize (h : Expr) : MetaM Expr := do
   let ⟨_, eq_pf⟩ ← ring_compute_norm t
   rewriteWithEq h eq_pf
 
-
 @[tactic meta_norm] def evalMetaNorm : Tactic := fun stx => withMainContext do
   let h ← elabTerm stx[1] none
   let h' ← ring_normalize h
@@ -169,15 +162,3 @@ def ring_normalize (h : Expr) : MetaM Expr := do
   let mv ← getMainGoal
   let (_, mv) ← MVarId.intro1P $ ← mv.assert .anonymous t h'
   replaceMainGoal [mv]
-
-example (a : Real) : a ^ 2 - 3 * a + a * a - a + 2 = 0 → False := by
-  intro h
-  meta_norm h
-  admit
-
-/- example (α : Type) (a b : |a) -/
-
-/- example (a : Rat) : (34 * a ^ 2 + 1) - (32 * a ^ 2 + a - 3) = 0 → False := by -/
-/-   intro h -/
-/-   rw [h] -/
-/-   admit -/

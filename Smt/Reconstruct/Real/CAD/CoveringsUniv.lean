@@ -1,4 +1,5 @@
 import Lean
+import Lean.Meta.Tactic.Simp
 
 import Smt.Reconstruct.Real.CAD.CPolynomial
 import Smt.Reconstruct.Real.CAD.NormalizePoly
@@ -7,6 +8,10 @@ open Qq Lean Elab Tactic Meta
 
 open CompPoly
 open CPolynomial
+
+def runGrind (mv : MVarId) : MetaM Unit := do
+  let params ← Meta.Grind.mkDefaultParams {}
+  let _ ← Meta.Grind.main mv params
 
 def get_lhs (ineq : Expr) : Expr :=
   match ineq with
@@ -66,8 +71,6 @@ def natOfExpr (e: Q(Nat)) : MetaM Nat := do
     | ~q(@OfNat.ofNat _ $n _) => return n.rawNatLit?.get!
     | _ => panic! "natOfExpr"
   | some n => return n
-
-
 
 partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat) × Nat) := do
   let (monom, negated) := monom_neg
@@ -135,7 +138,7 @@ def get_comparison (ineq : Q(Prop)) : Expr :=
   | .app (.app (.app (.app (.const `GT.gt l) i1) i2) _) _ => .app (.app (.const `GT.gt l) i1) i2
   | .app (.app (.app (.app (.const `GE.ge l) i1) i2) _) _ => .app (.app (.const `GE.ge l) i1) i2
   | .app (.app (.app (.const ``Eq l) i) _) _ => .app (.const ``Eq l) i
-  | _ => panic! "[all_to_lhs]: impossible"
+  | _ => panic! "[get_comparison]: impossible"
 
 partial def get_var (monoms : List (Q(Real) × Bool)) : MetaM (Option Expr) := do
   for (monom, _) in monoms do
@@ -152,25 +155,64 @@ where go (m : Q(Real)) : MetaM (Option Expr) :=
 
 private def zero_rat : Rat := 0
 
+def rewriteMVar (mvarId : MVarId) (eqProof : Expr)
+    : MetaM MVarId :=
+  mvarId.withContext do
+    let tgt    ← mvarId.getType
+    let result ← mvarId.rewrite tgt eqProof
+    let newMVar ← mkFreshExprSyntheticOpaqueMVar result.eNew
+    mvarId.assign (← mkEqMPR result.eqProof newMVar)
+    return newMVar.mvarId!
+
+def simp' (mvarId : MVarId) (h: Expr) : MetaM MVarId := mvarId.withContext do
+  let congrTheorems ← getSimpCongrTheorems
+  let simpTheorems ← getSimpTheorems
+  let simpTheorems ← SimpTheoremsArray.addTheorem (#[simpTheorems] : SimpTheoremsArray) (.other `h) h
+  let simprocs ← Simp.getSimprocs
+  let ctx ← Simp.mkContext (simpTheorems := simpTheorems) (congrTheorems := congrTheorems)
+  let (result?, _) ← simpTarget mvarId ctx (simprocs := #[simprocs])
+  return result?.get!
+
 -- given a proof that some expression of the form `f(var) <> 0` is true, produce a proof
 -- that `P.eval var <> 0`, where `P` is the polynomial corresponding to `f`. See `p_comp_pf_ex`.
 def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List (Q(Rat) × Nat)) (ineq_pf : Expr) (P_comp : Expr) : MetaM Expr := do
-  let (_, deg_nat) :: _ ← pure coeffs_and_exps | throwError "impossible"
+  let (_, deg_nat) :: _ ← pure coeffs_and_exps | throwError "[prove_p_comp] impossible 1"
   let p_deg : Q(Prop) := q(CPolynomial.natDegree $P = $deg_nat)
   let p_deg_pf : Q($p_deg) ← mkDecideProof p_deg
-  check p_deg_pf
-  let mut curr: Expr := mkConst `Nat.zero
+
+  let finset_range_lhs : Q(Finset Nat) := q(Finset.range ($deg_nat + 1))
+  let finset_range_rhs : Q(Finset Nat) := go deg_nat
+  let finset_range_prop : Q(Prop) ← mkAppM `Eq #[finset_range_lhs, finset_range_rhs]
+  let finset_range_pf ← mkDecideProof finset_range_prop
+
+  let mv_e ← mkFreshExprMVar P_comp
+  let mut mv := mv_e.mvarId!
+  mv ← rewriteMVar mv q(CPolynomial.eval₂_eq_sum_range (Rat.castHom Real) $P $var)
+  mv ← rewriteMVar mv p_deg_pf
+  mv ← rewriteMVar mv finset_range_pf
+
+  let curr_goal ← mv.getType
+  let lhs := get_lhs curr_goal
+  let rhs := gen_sum deg_nat var
+  let expand_sum_prop ← mkAppM `Eq #[lhs, rhs]
+  let expand_sum_mv ← mkFreshExprMVar expand_sum_prop
+  let _ ← runGrind expand_sum_mv.mvarId!
+  mv ← rewriteMVar mv expand_sum_mv
+
+  let mut curr: Q(Nat) := q(0)
   let mut coeffs_and_exps_arr := gen_cpoly_array (mkConst ``zero_rat) coeffs_and_exps
   for i in List.range (deg_nat + 1) do
     let coeff_i ← mkAppM ``CPolynomial.coeff #[P, curr]
     let val := coeffs_and_exps_arr.getD i (mkConst ``zero_rat)
     let eq_p ← mkAppM `Eq #[coeff_i, val]
     let eq_p_pf ← mkDecideProof eq_p
-    check eq_p_pf
-    curr := mkApp (mkConst `Nat.succ) curr
-  let finset_range_lhs : Q(Finset Nat) := q(Finset.range ($deg_nat + 1))
-  let finset_range_rhs : Q(Finset Nat) := go deg_nat
-  let finset_range_prop : Q(Prop) := sorry
+    mv ← rewriteMVar mv eq_p_pf
+    curr := q($curr + 1)
+
+  -- I don't understand why we need `ineq_pf` here but it doesn't work without it
+  let mv' ← simp' mv ineq_pf
+  Mathlib.Tactic.Linarith.linarith false [] (g := mv')
+
   return var
 where
   go (curr : Nat) : Q(Finset Nat) :=
@@ -179,7 +221,14 @@ where
     | curr + 1 =>
       let r := go curr
       q(insert ($curr + 1) $r)
-
+  gen_sum (d: Nat) (var : Q(Real)) : Q(Real) :=
+    match d with
+    | 0 => q((Rat.castHom Real) (CPolynomial.coeff $P 0) * ($var ^ 0))
+    | d + 1 =>
+      let r: Q(Real) := gen_sum d var
+      let curr := q((Rat.castHom Real) (CPolynomial.coeff $P ($d + 1)))
+      let curr := q($curr * ($var ^ ($d + 1)))
+      q($curr + $r)
 
 def reconsCoveringsUniv (ineq_pfs : Array Expr) (roots_and_polys : Array (Expr × Expr)) : MetaM Unit := do
   for ineq_pf in ineq_pfs do
@@ -225,11 +274,8 @@ lemma p_comp_pf_ex (a : Real) (h : -a^2 > 0) :
   have h2 : P.coeff 2 = -1 := by decide +kernel
   have hf : Finset.range 3 = insert 2 (insert 1 (singleton 0)) := by decide
   have : ∑ i ∈ Finset.range 3, (Rat.castHom ℝ) (P.coeff i) * a ^ i =
-         (Rat.castHom ℝ) (P.coeff 0) * a ^ 0 + (Rat.castHom ℝ) (P.coeff 1) * a ^ 1 + (Rat.castHom ℝ) (P.coeff 2) * a ^ 2 := by
+         (Rat.castHom ℝ) (P.coeff 2) * a ^ 2 + (Rat.castHom ℝ) (P.coeff 1) * a ^ 1 + (Rat.castHom ℝ) (P.coeff 0) * a ^ 0 := by
            grind
-  rw [eval₂_eq_sum_range, hdeg, this, h0, h1, h2]
-  simp [h]
-
-#eval insert 1 (@Finset.empty Nat)
-
-#check ({0, 1, 2} : Finset Nat)
+  rw [eval₂_eq_sum_range (Rat.castHom Real), hdeg, this, h0, h1, h2]
+  clear * - h
+  simp_all

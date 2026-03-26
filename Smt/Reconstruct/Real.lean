@@ -539,12 +539,12 @@ where
   | .ARITH_COVERINGS_UNIV =>
     logInfo "ARITH_COVERINGS_UNIV"
     let ineq_pfs ← pf.getChildren.mapM reconstructProof
-    let alg := (pf.getArguments[2]!)[1]!
-    let k := alg.getKind
-    logInfo m!"k = {k}"
+    let e ← reconsCoveringsUniv ineq_pfs #[]
+    /- let alg := (pf.getArguments[2]!)[1]! -/
+    /- let k := alg.getKind -/
+    /- logInfo m!"k = {k}" -/
     /- let alg' ← reconstructTerm alg -/
     /- /1- let polys_and_roots ← pf.getArguments.mapM (fun arg => return (← reconstructTerm arg[0]!, ← reconstructTerm arg[1]!)) -1/ -/
-    let e ← reconsCoveringsUniv ineq_pfs #[]
     return none
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none
