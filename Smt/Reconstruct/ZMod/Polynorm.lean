@@ -216,9 +216,9 @@ theorem denote_neg {p : Polynomial o} :
   | nil => simp
   | cons m p ih =>
     simp only [List.foldl_cons, add_comm (0:ZMod o),
-     Monomial.foldl_assoc add_assoc,neg_add, 
-     ←ih, 
-     List.map, 
+     Monomial.foldl_assoc add_assoc,neg_add,
+     ←ih,
+     List.map,
      Monomial.denote_neg]
 
 theorem denote_add {p q : Polynomial n} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
