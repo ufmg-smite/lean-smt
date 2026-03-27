@@ -19,34 +19,34 @@ namespace Smt.Reconstruct.ZMod
 open Lean Qq
 
 
-universe u
+-- universe u
 
---variable {n : ℕ} [Fact n.Prime]
---variable {σ : Type u}
+-- --variable {n : ℕ} [Fact n.Prime]
+-- --variable {σ : Type u}
 
-abbrev R (n : ℕ) := ZMod n
-abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
+-- abbrev R (n : ℕ) := ZMod n
+-- abbrev P (n : ℕ) (σ : Type u) := MvPolynomial σ (R n)
 
-/-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
-inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
-  | var   : σ → ZModExpr n σ
-  | const : R n → ZModExpr n σ
-  | add   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
-  | mul   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
-  | neg   : ZModExpr n σ → ZModExpr n σ
-  | pow   : ZModExpr n σ → ℕ → ZModExpr n σ
+-- /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
+-- inductive ZModExpr (n : ℕ) (σ : Type u) : Type u
+--   | var   : σ → ZModExpr n σ
+--   | const : R n → ZModExpr n σ
+--   | add   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
+--   | mul   : ZModExpr n σ → ZModExpr n σ → ZModExpr n σ
+--   | neg   : ZModExpr n σ → ZModExpr n σ
+--   | pow   : ZModExpr n σ → ℕ → ZModExpr n σ
 
-namespace ZModExpr
+-- namespace ZModExpr
 
-noncomputable section
+-- noncomputable section
 
-def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
-  | .var i     => MvPolynomial.X i
-  | .const c   => MvPolynomial.C c
-  | .add a b   => toPoly a + toPoly b
-  | .mul a b   => toPoly a * toPoly b
-  | .neg a     =>  MvPolynomial.C (-1) * toPoly a
-  | .pow a k   => (toPoly a) ^ k
+-- def toPoly {n : ℕ} {σ : Type u} : ZModExpr n σ → P n σ
+--   | .var i     => MvPolynomial.X i
+--   | .const c   => MvPolynomial.C c
+--   | .add a b   => toPoly a + toPoly b
+--   | .mul a b   => toPoly a * toPoly b
+--   | .neg a     =>  MvPolynomial.C (-1) * toPoly a
+--   | .pow a k   => (toPoly a) ^ k
 
 
 --@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with

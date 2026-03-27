@@ -52,6 +52,8 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
 
 end Smt.Translate.ZMod
 
+namespace Smt.Reconstruct.ZMod
+
 /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
 inductive ZModExpr (n : Nat) where
 | var   : Nat → ZModExpr n
@@ -114,8 +116,6 @@ partial def reify (n : Nat) (e : Q(ZMod $n)) : ZModExprM n (Q(ZModExpr $n)) := d
 
 end ZModExpr
 
-namespace Smt.Reconstruct.ZMod
-
 open Lean Qq
 
 abbrev MvPolynomialM (n : Nat) := StateT (Array Q(ZMod $n)) MetaM
@@ -151,6 +151,13 @@ def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMo
 
 def variety [Fact n.Prime] (I : Ideal (MvPolynomial Nat (ZMod n))) : Set (Nat → ZMod n) :=
   MvPolynomial.zeroLocus (ZMod n) I
+
+theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) = ∅ := by
+  -- TODO(Liza): prove this or an equivalent version if you don't like maps!
+  sorry
+
+theorem ZModExpr.toZMod_eq_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) = (variety (ideal (es.map toPoly)) = ∅) :=
+  propext toZMod_iff_toPoly
 
 theorem eq_of_add_neg_eq [Fact n.Prime] {c₁ c₂ : ZMod n} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * (a₁ + -a₂) = c₂ * (b₁ + -b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
   apply propext
@@ -258,8 +265,22 @@ open Qq
 @[smt_proof_reconstruct] def reconstructFfProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
+  -- TODO: uncomment this case once its signature is fixed!
+  -- | .FF_POLY_CONVERSION =>
+  --   let ps := (((pf.getResult[1]!)[0]!)[0]!)[0]!.getChildren
+  --   logInfo m!"ps: {ps}"
+  --   let o : Nat ← pure ps[0]!.getSort.getFiniteFieldSize!
+  --   let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+  --   let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (ZModExpr $o)) × Array Q(ZMod $o)) => do
+  --     let p : Q(ZMod $o) ← reconstructTerm t
+  --     let (p, is) ← (ZModExpr.reify o p).run is
+  --     return (q($p :: $acc), is)
+  --   let ((ps : Q(List (ZModExpr $o))), is) ← ps.foldrM reconstructMVPs (q([]), #[])
+  --   let ctx : Q(ℕ → ZMod $o) ← if h : 0 < is.size
+  --     then do let is : Q(RArray (ZMod $o)) ← (RArray.ofArray is h).toExpr q(ZMod $o) id; pure q(«$is».get)
+  --     else pure q(fun _ => 0)
+  --   addThm q(andN («$ps».map fun p => p.toZMod $ctx = 0) = (variety (ideal («$ps».map ZModExpr.toPoly)) = ∅)) q(@ZModExpr.toZMod_eq_toPoly $o $ctx $ho $ps)
   | .FF_POLY_NORM =>
-    if !pf.getResult[0]!.getSort.isFiniteField then return none
     let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
     let a : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
     let b : Q(ZMod $o) ← reconstructTerm pf.getResult[1]!
@@ -285,7 +306,7 @@ open Qq
     let ps := pf.getResult[1]!.getChildren
     let [xs, zs] := ps.toList.splitOn pf.getResult[0]!
       | throwError "unexpected number of generators in ideal: {ps.size}, expected at least 1"
-    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod «$o»)) => do
+    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod $o)) => do
       let p : Q(ZMod $o) ← reconstructTerm t
       let (p, is) ← (MvPolynomialM.reify o p).run is
       return (q($p :: $acc), is)
@@ -296,7 +317,7 @@ open Qq
     let o : Nat := pf.getChildren[0]!.getResult[0]!.getSort.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let ps := pf.getChildren[0]!.getResult[1]!.getChildren
-    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod «$o»)) => do
+    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod $o)) => do
       let p : Q(ZMod $o) ← reconstructTerm t
       let (p, is) ← (MvPolynomialM.reify o p).run is
       return (q($p :: $acc), is)
