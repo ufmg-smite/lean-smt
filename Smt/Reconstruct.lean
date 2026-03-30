@@ -2,7 +2,7 @@
 Copyright (c) 2021-2023 by the authors listed in the file AUTHORS and their
 institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Abdalrhman Mohamed
+Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
 import cvc5
@@ -219,6 +219,38 @@ def traceReconstructProof (r : Except Exception (List Expr × List Expr × Expr 
   | .ok _ => m!"{checkEmoji}"
   | _     => m!"{bombEmoji}"
 
+/-- Build a proof of `andN dfnTypes` from individual proofs of each element. -/
+private def buildAndNProof (proofs : List Expr) : MetaM Expr :=
+  match proofs with
+  | []           => return .const ``True.intro []
+  | [proof]      => return proof
+  | proof :: rest => do
+    let restProof ← buildAndNProof rest
+    Meta.mkAppM ``And.intro #[proof, restProof]
+
+/-- Given a dfn (a universally quantified equation `∀ xs, f xs = rhs`), find the equation
+lemma in the environment that proves it via `Meta.isDefEq`. -/
+private def findDfnProof (dfn : Expr) : MetaM Expr := do
+  -- Strip leading foralls to find the LHS head function name.
+  let rec headFnName : Expr → Option Name
+    | .forallE _ _ b _ => headFnName b
+    | e =>
+      if let some (_, lhs, _) := e.eq? then
+        if let .const n _ := lhs.getAppFn then some n else none
+      else none
+  let some fnName := headFnName dfn
+    | throwError "Smt.Reconstruct: dfn is not a universally quantified equation: {dfn}"
+  let some eqNames ← Lean.Meta.getEqnsFor? fnName
+    | throwError "Smt.Reconstruct: no equation lemmas for function '{fnName}'"
+  let env ← getEnv
+  for eqName in eqNames do
+    let eqLvls := ((env.find? eqName).map (·.levelParams.map .param)).getD []
+    let eqExpr := .const eqName eqLvls
+    let eqType ← Meta.inferType eqExpr
+    if ← Meta.isDefEq eqType dfn then
+      return eqExpr
+  throwError "Smt.Reconstruct: no equation lemma matches function definition axiom: {dfn}"
+
 open Qq in
 partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   MetaM (List Expr × List Expr × Expr × Expr × List MVarId) :=
@@ -231,7 +263,11 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
     let h : Q(True → $p) ← pure h
     return (dfns, ps, p, q($h trivial), mvs.toList)
   else
-    return (dfns, ps, p, h, mvs.toList)
+    -- h : andN dfns → p
+    -- Find Lean proofs for each function definition equation and apply h.
+    let dfnProofs ← dfns.mapM findDfnProof
+    let andProof ← buildAndNProof dfnProofs
+    return (dfns, ps, p, .app h andProof, mvs.toList)
 
 structure cvc5Model where
   iss : Array (cvc5.Sort × Array cvc5.Term)

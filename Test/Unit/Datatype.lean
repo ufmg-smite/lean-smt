@@ -59,8 +59,8 @@ theorem mynat.add_assoc :
   ∀ m n k, mynat.add m (mynat.add n k) = mynat.add (mynat.add m n) k := by
   intros m n k
   induction k with
-  | zero => smt [mynat.add, *]
-  | succ k ih => smt [mynat.add, *]
+  | zero => grind [mynat.add]
+  | succ k ih => grind [mynat.add]
 
 -- theorem mynat.add_comm :
 --   ∀ m n, mynat.add m n = mynat.add n m := by
