@@ -243,6 +243,16 @@ def elabSmtHintElem : TSyntax ``smtHintElem → TacticM (Array (Expr × (TSyntax
         `(smtHintElem| *)
     return (hs.zip ss, hs)
   | `(smtHintElem| $h:term) => do
+    -- If the hint is a bare identifier naming a non-Prop definition, pass it as a constant
+    -- so that generateQuery can emit a define-fun-rec command for it.
+    if h.raw.isIdent then
+      let nm := h.raw.getId
+      let env ← getEnv
+      if let some info := env.find? nm then
+        if !info.type.isProp then
+          let e := mkConst nm (info.levelParams.map .param)
+          return (#[(e, ← `(smtHintElem| $h:term))], #[e])
+    -- Fall through: treat as a regular lemma (prop hypothesis or theorem).
     let h' ← Auto.Prep.elabLemma h (.leaf s!"❰{h}❱")
     return (#[(h'.proof, ← `(smtHintElem| $h:term))], #[h'.proof])
   | _ => throwUnsupportedSyntax

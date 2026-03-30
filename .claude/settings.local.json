@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lake build Test.Unit.Datatype)",
+      "Bash(lake build Smt.Reconstruct.Datatype)",
+      "Bash(grep -n \"MACRO_DT_CONS_EQ\\\\|DT_CONS_EQ\" /Users/harunkhan/Projects/lean-smt/.lake/packages/cvc5/cvc5/*.lean)",
+      "Bash(lake env:*)",
+      "Bash(lake build Smt.Datatype)",
+      "Bash(lake build Smt)",
+      "Bash(git stash -- Test/Unit/Datatype.lean)",
+      "Bash(git stash pop)"
+    ]
+  }
+}
