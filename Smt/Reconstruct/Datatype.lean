@@ -11,9 +11,12 @@ namespace Smt.Reconstruct.Datatype
 
 open Lean Meta Qq
 
--- Strip SMT-LIB2 pipe quoting (|name|) from a symbol if present.
+-- Strip SMT-LIB2 pipe quoting (e.g. "|name|" → "name").
+-- Uses Substring.drop/dropRight which consistently return Substring across Lean versions.
 private def stripSMTPipes (s : String) : String :=
-  if s.startsWith "|" && s.endsWith "|" then s.drop 1 |>.dropRight 1 else s
+  if s.startsWith "|" && s.endsWith "|" then
+    (s.toSubstring.drop 1 |>.dropRight 1).toString
+  else s
 
 private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
