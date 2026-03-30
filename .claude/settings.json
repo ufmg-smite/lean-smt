@@ -9,7 +9,9 @@
       "Read(//Users/harunkhan/.elan/toolchains/leanprover--lean4---v4.26.0/lib/lean4/library/**)",
       "Bash(grep -E \"error:|✖|✔.*Smt$\")",
       "Read(//Users/harunkhan/.elan/toolchains/leanprover--lean4---v4.26.0/lib/**)",
-      "Bash(/Users/harunkhan/Projects/lean-smt/.lake/packages/cvc5/cvc5-macOS-arm64-static/bin/cvc5 /tmp/test_add.smt2)"
+      "Bash(/Users/harunkhan/Projects/lean-smt/.lake/packages/cvc5/cvc5-macOS-arm64-static/bin/cvc5 /tmp/test_add.smt2)",
+      "Bash(lake build Smt.Reconstruct)",
+      "Bash(lake build Smt.Tactic.Smt)"
     ],
     "additionalDirectories": [
       "/private/tmp",
