@@ -2,13 +2,11 @@ import Mathlib
 import Lean
 import CompPoly
 
+import Smt.Reconstruct.Real.CAD.Utils
+
 section test
 
 open CompPoly
-
-def p1 : CPolynomial Int := CPolynomial.X
-
-def p2 : CPolynomial Int := CPolynomial.X + CPolynomial.C 1
 
 lemma eval_add (a : Int) (p q : CPolynomial Int) : (p + q).eval a = p.eval a + q.eval a := by
   rw [CPolynomial.eval_toPoly, CPolynomial.eval_toPoly, CPolynomial.eval_toPoly, CPolynomial.toPoly_add]
@@ -30,15 +28,12 @@ lemma eval_const (a c : Int) : (CPolynomial.C c).eval a = c := by
   rw [CPolynomial.eval_toPoly, CPolynomial.C_toPoly]
   norm_num
 
-instance : DecidableEq (CPolynomial Rat) := Subtype.instDecidableEq
-
 end test
 
 theorem not_lt_mp {α : Type*} [LinearOrder α] {a b : α} : ¬ (a < b) → a ≥ b := not_lt.mp
 theorem not_le_mp {α : Type*} [LinearOrder α] {a b : α} : ¬ (a ≤ b) → a > b := not_le.mp
 
 open Qq Lean Elab Tactic Meta
-
 
 syntax (name := simple_push_neg) "simple_push_neg" term : tactic
 
@@ -127,27 +122,6 @@ def ring_compute_norm (e : Expr) : MetaM (Expr × Expr) := do
     return ⟨rawResult.expr, p⟩
 
 syntax (name := meta_norm) "meta_norm" term : tactic
-
-/-- Given:
-  - `h1 : P`  (a proof of some proposition)
-  - `h2 : a = b`  (a proof of some equality)
-  Produces `h1' : P[a ↦ b]`, i.e. `h1` rewritten left-to-right by `h2` everywhere. -/
-def rewriteWithEq (h1 h2 : Expr) : MetaM Expr := do
-  let prop ← inferType h1
-  let eqType ← inferType h2
-  let some (α, a, b) := eqType.eq?
-    | throwError "rewriteWithEq: h2 is not a proof of an equality, got {eqType}"
-  let motive ← kabstract prop a
-  if motive == prop then
-    return h1
-  let newProp := motive.instantiate1 b
-  let motiveExpr := mkLambda `x .default α motive
-  let h1' ← mkAppOptM ``Eq.subst #[none, motiveExpr, a, b, h2, h1]
-  check h1'
-  let h1'Type ← inferType h1'
-  unless ← isDefEq h1'Type newProp do
-    throwError "rewriteWithEq: type mismatch, expected {newProp} but got {h1'Type}"
-  return h1'
 
 def ring_normalize (h : Expr) : MetaM Expr := do
   let t ← inferType h
