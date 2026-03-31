@@ -52,15 +52,34 @@ private def reduceZModOrder? (e : Expr) : MetaM (Option Nat) := do
 
 end Smt.Translate.ZMod
 
+def addN [AddMonoid A] : List A → A
+  | []      => 0
+  | [x]     => x
+  | x :: xs => x + addN xs
+
+@[simp] theorem addN_append [AddMonoid A] {xs ys : List A}
+  : addN (xs ++ ys) = addN xs + addN ys := by
+  match xs, ys with
+  | [], _
+  | [x], []
+  | [x], y :: ys       => simp [addN]
+  | x₁ :: x₂ :: xs, ys =>
+    rw [List.cons_append, addN, addN, addN_append, add_assoc]
+    all_goals (intro h; nomatch h)
+
+@[simp] theorem addN_cons_append [AddMonoid A] {x : A}
+  : addN (x :: xs) = x + addN xs := by
+  cases xs <;> simp only [addN, add_zero]
+
 namespace Smt.Reconstruct.ZMod
 
 /-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
 inductive ZModExpr (n : Nat) where
-| var   : Nat → ZModExpr n
-| const : ZMod n → ZModExpr n
-| add   : ZModExpr n  → ZModExpr n  → ZModExpr n
-| mul   : ZModExpr n  → ZModExpr n  → ZModExpr n
-| neg   : ZModExpr n  → ZModExpr n
+  | var   : Nat → ZModExpr n
+  | const : ZMod n → ZModExpr n
+  | add   : ZModExpr n  → ZModExpr n  → ZModExpr n
+  | mul   : ZModExpr n  → ZModExpr n  → ZModExpr n
+  | neg   : ZModExpr n  → ZModExpr n
 
 prefix:75 "-ₚ"   => ZModExpr.neg
 infixl:65 " +ₚ " => ZModExpr.add
@@ -152,7 +171,21 @@ def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMo
 def variety [Fact n.Prime] (I : Ideal (MvPolynomial Nat (ZMod n))) : Set (Nat → ZMod n) :=
   MvPolynomial.zeroLocus (ZMod n) I
 
-theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) = ∅ := by
+theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)}
+  : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) = ∅ := by
+  cases es with
+  | nil => simp [andN, variety, variety]; sorry -- impossible case
+  | cons e es => sorry
+
+-- resolves the issue in the above theorem (which is not provable).
+theorem ZModExpr.toZMod_iff_toPoly' [Fact n.Prime] {e} {es : List (ZModExpr n)}
+  : andN ((e :: es).map fun e => e.toZMod ctx = 0) ↔ variety (ideal ((e :: es).map toPoly)) = ∅ := by
+  -- TODO(Liza): prove this or an equivalent version if you don't like maps!
+  sorry
+
+theorem poly_combination (ps ms rs : List (MvPolynomial Nat (ZMod n)))
+  (h : andN (rs.map fun r => r ∈ ideal ps))
+  : addN (List.zipWith (· * ·) ms rs) ∈ ideal ps := by
   -- TODO(Liza): prove this or an equivalent version if you don't like maps!
   sorry
 
@@ -337,8 +370,12 @@ set_option trace.smt.solve true
 set_option pp.instantiateMVars false
 
 --set_option pp.all true
+-- set_option trace.smt true in
 example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
   smt
+
+example [Fact (Nat.Prime 5)] (x: ZMod 5) : x* (x-1)* (x-2) ≠ 1 := by
+  smt +model
 
 -- example (x: MvPolynomial Nat (ZMod 5)) : (3 :MvPolynomial Nat (ZMod 5)) = 3 := by
 --  smt
@@ -386,7 +423,7 @@ example [Fact p.Prime] (x: ZMod p) : -(-x) = x := by
  smt
 
 example [Fact p.Prime] (x m isz: ZMod p) : ((m * x + isz - 1 = 0) ∧ (isz * x = 0)) ->
-        (((isz = 0) ∨ (isz = 1)) ∧ (isz = 1 ↔ x = 0)):= by
+  (((isz = 0) ∨ (isz = 1)) ∧ (isz = 1 ↔ x = 0)):= by
  unfold p at *
  smt
 
