@@ -31,6 +31,8 @@ structure Reconstruct.State where
   count : Nat := 0
   currAssums : Array Expr := #[]
   skippedGoals : Array MVarId := #[]
+  /-- finite-fields polynomial context for each prime order. -/
+  ffCtx : Std.HashMap Nat (Array Expr) := {}
 
 abbrev ReconstructM := ReaderT Reconstruct.Context (StateT Reconstruct.State MetaM)
 
@@ -44,6 +46,12 @@ namespace Reconstruct
 
 def useNative : ReconstructM Bool :=
   read >>= pure ∘ (·.native)
+
+def getFFCtx (n : Nat) : ReconstructM (Array Expr) :=
+  return (← get).ffCtx.getD n #[]
+
+def setFFCtx (n : Nat) (ctx : Array Expr) : ReconstructM Unit := do
+  modify fun state => { state with ffCtx := state.ffCtx.insert n ctx }
 
 private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (List (rcons × Name)) := do
   let env ← getEnv
@@ -225,7 +233,7 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
   let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
   let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
-  let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+  let (h, ⟨_, _, _, _, _, mvs, _⟩) ← (Reconstruct.reconstructProof pf).run ctx state
   if dfns.isEmpty then
     let h : Q(True → $p) ← pure h
     return (dfns, ps, p, q($h trivial), mvs.toList)

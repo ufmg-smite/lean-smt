@@ -7,6 +7,18 @@ import Mathlib.Algebra.Field.ZMod
 import Mathlib.RingTheory.Ideal.Basic
 import Mathlib.RingTheory.Nullstellensatz
 
+open Lean in
+private def Lean.RArray.toExpr' (lvl : Level) (ty : Expr) (f : α → Expr) (a : RArray α) : Expr :=
+  let leaf := mkConst ``RArray.leaf [lvl]
+  let branch := mkConst ``RArray.branch [lvl]
+  let rec go (a : RArray α) : Expr :=
+    match a with
+    | .leaf x  =>
+      mkApp2 leaf ty (f x)
+    | .branch p l r =>
+      mkApp4 branch ty (mkRawNatLit p) (go l) (go r)
+  go a
+
 namespace Smt.Translate.ZMod
 
 open Lean Expr
@@ -109,15 +121,15 @@ noncomputable def toPoly : ZModExpr n → MvPolynomial Nat (ZMod n)
 
 open Qq Lean
 
-abbrev ZModExprM (n : Nat) := StateT (Array Q(ZMod $n)) MetaM
+abbrev ZModExprM (_n : Nat) := ReconstructM
 
 def getIndex (n : Nat) (e : Q(ZMod $n)) : ZModExprM n Nat := do
-  let is ← get
+  let is ← getFFCtx n
   if let some i := is.findIdx? (· == e) then
     return i
   else
     let size := is.size
-    set (is.push e)
+    setFFCtx n (is.push e)
     return size
 
 partial def reify (n : Nat) (e : Q(ZMod $n)) : ZModExprM n (Q(ZModExpr $n)) := do
@@ -137,17 +149,17 @@ end ZModExpr
 
 open Lean Qq
 
-abbrev MvPolynomialM (n : Nat) := StateT (Array Q(ZMod $n)) MetaM
+abbrev MvPolynomialM (_n : Nat) := ReconstructM
 
 namespace MvPolynomialM
 
 def getIndex (n : Nat) (e : Q(ZMod $n)) : MvPolynomialM n Nat := do
-  let is ← get
+  let is ← getFFCtx n
   if let some i := is.findIdx? (· == e) then
     return i
   else
     let size := is.size
-    set (is.push e)
+    setFFCtx n (is.push e)
     return size
 
 partial def reify (n : Nat) (e : Q(ZMod $n)) : MvPolynomialM n (Q(MvPolynomial Nat (ZMod $n))) := do
@@ -171,28 +183,53 @@ def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMo
 def variety [Fact n.Prime] (I : Ideal (MvPolynomial Nat (ZMod n))) : Set (Nat → ZMod n) :=
   MvPolynomial.zeroLocus (ZMod n) I
 
-theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)}
-  : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) = ∅ := by
-  cases es with
-  | nil => simp [andN, variety, variety]; sorry -- impossible case
-  | cons e es => sorry
+-- TODO(Abdal): fix! this statement is not true as is...
+theorem ZModExpr.elem_congr {e₁ e₂ : ZModExpr n} {s₁ s₂ : Ideal (MvPolynomial Nat (ZMod n))}
+  (he : e₁.toZMod ctx = e₂.toZMod ctx) (hs : s₁ = s₂) :
+  (e₁.toPoly ∈ s₁) = (e₂.toPoly ∈ s₂) := by sorry
 
--- resolves the issue in the above theorem (which is not provable).
-theorem ZModExpr.toZMod_iff_toPoly' [Fact n.Prime] {e} {es : List (ZModExpr n)}
-  : andN ((e :: es).map fun e => e.toZMod ctx = 0) ↔ variety (ideal ((e :: es).map toPoly)) = ∅ := by
-  -- TODO(Liza): prove this or an equivalent version if you don't like maps!
-  sorry
+-- TODO(Abdal): fix! this statement is not true as is...
+theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)}
+  : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) ≠ ∅ := by
+  cases es with
+  | nil => simp [andN, variety, variety, ideal]
+  | cons e es => sorry
 
 theorem poly_combination (ps ms rs : List (MvPolynomial Nat (ZMod n)))
   (h : andN (rs.map fun r => r ∈ ideal ps))
   : addN (List.zipWith (· * ·) ms rs) ∈ ideal ps := by
-  -- TODO(Liza): prove this or an equivalent version if you don't like maps!
-  sorry
+  induction ms generalizing rs with
+  | nil =>
+    simp [List.zipWith, addN, ideal]
+  | cons m ms ih =>
+    cases rs with
+    | nil =>
+      simp [List.zipWith, addN, ideal]
+    | cons r rs =>
+      simp only [List.map, andN_cons_append] at h
+      rcases h with ⟨hr, hrs⟩
+      simp [List.zipWith, addN_cons_append]
+      exact Ideal.add_mem _ (Ideal.mul_mem_left _ _ hr) (ih rs hrs)
 
-theorem ZModExpr.toZMod_eq_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) = (variety (ideal (es.map toPoly)) = ∅) :=
+theorem ZModExpr.toZMod_eq_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) = (variety (ideal (es.map toPoly)) ≠ ∅) :=
   propext toZMod_iff_toPoly
 
-theorem eq_of_add_neg_eq [Fact n.Prime] {c₁ c₂ : ZMod n} (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * (a₁ + -a₂) = c₂ * (b₁ + -b₂)) : (a₁ = a₂) = (b₁ = b₂) := by
+theorem diseq' [Fact n.Prime] {l r : ZMod n}
+  : (l ≠ r) = (∃ k, (l + -r) * k + -1 = 0) := by
+  grind
+
+theorem diseq [Fact n.Prime] {l r : ZMod n}
+  : (l ≠ r) = ((l + -r) * Classical.epsilon (fun x => (l + -r) * x + -1 = 0) + -1 = 0) := by
+  rewrite [diseq']
+  apply propext
+  constructor
+  · apply Classical.epsilon_spec_aux (p := fun x => (l + -r) * x + -1 = 0)
+  · intro h
+    exists (Classical.epsilon (fun x => (l + -r) * x + -1 = 0))
+
+theorem eq_of_add_neg_eq [Fact n.Prime] {c₁ c₂ : ZMod n}
+  (hc₁ : c₁ ≠ 0) (hc₂ : c₂ ≠ 0) (h : c₁ * (a₁ + -a₂) = c₂ * (b₁ + -b₂))
+  : (a₁ = a₂) = (b₁ = b₂) := by
   apply propext
   apply Iff.intro
   · intro ha
@@ -227,7 +264,7 @@ open Qq
     return mkZModLit o v
   | .FINITE_FIELD_ADD =>
     let w : Nat := t.getSort.getFiniteFieldSize!
-    leftAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
+    rightAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
   | .FINITE_FIELD_MULT =>
     let w : Nat := t.getSort.getFiniteFieldSize!
     leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
@@ -238,13 +275,9 @@ open Qq
   | .FINITE_FIELD_IDEAL =>
     let o :  Nat := t[0]!.getSort.getFiniteFieldSize!
     let mut ps : Q(List (MvPolynomial Nat (ZMod $o))) := q([])
-    -- TODO: we lose the `is`, which is the reification context for `MvPolynomialM`. We should
-    -- maintain it to avoid mismatches between mutliple reifications of the same term.
-    let mut is : Array Q(ZMod $o) := #[]
     for i in t.getChildren.reverse do
       let p : Q(ZMod $o) ← reconstructTerm i
-      let (p, is') ← (MvPolynomialM.reify o p).run is
-      is := is'
+      let p ← MvPolynomialM.reify o p
       ps := q($p :: $ps)
     return q(ideal $ps)
   | .FINITE_FIELD_VARIETY =>
@@ -256,9 +289,7 @@ open Qq
     if t[1]!.getKind != .FINITE_FIELD_IDEAL then return none
     let o : Nat := t[0]!.getSort.getFiniteFieldSize!
     let x : Q(ZMod $o) ← reconstructTerm t[0]!
-    -- TODO: we lose the `is`, which is the reification context for `MvPolynomialM`. We should
-    -- maintain it to avoid mismatches between mutliple reifications of the same term.
-    let (x, _) ← (MvPolynomialM.reify o x).run #[]
+    let x ← MvPolynomialM.reify o x
     let s : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm t[1]!
     return q($x ∈ $s)
   | .SET_IS_EMPTY =>
@@ -272,7 +303,7 @@ open Qq
       let t := t.getSkolemIndices![0]! -- (not (= a b))
       let a : Q(ZMod $o) ← reconstructTerm (t[0]!)[0]!
       let b : Q(ZMod $o) ← reconstructTerm (t[0]!)[1]!
-      return q(Classical.epsilon (fun x => x * ($a - $b) - 1 = 0))
+      return q(Classical.epsilon (fun x => ($a + -$b) * x + -1 = 0))
     | _ => return none
   | _ => return none
 where
@@ -288,6 +319,10 @@ where
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
+  rightAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
+    let (ts, [t]) := t.getChildren.toList.splitAt (t.getNumChildren - 1)
+      | throwError "unexpected number of children in right-associative operator: {t.getNumChildren}, expected at least 1"
+    ts.foldrM (fun t acc => return mkApp2 op (← reconstructTerm t) acc) (← reconstructTerm t)
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule! with
@@ -298,21 +333,42 @@ open Qq
 @[smt_proof_reconstruct] def reconstructFfProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
-  -- TODO: uncomment this case once its signature is fixed!
-  -- | .FF_POLY_CONVERSION =>
-  --   let ps := (((pf.getResult[1]!)[0]!)[0]!)[0]!.getChildren
-  --   logInfo m!"ps: {ps}"
-  --   let o : Nat ← pure ps[0]!.getSort.getFiniteFieldSize!
-  --   let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
-  --   let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (ZModExpr $o)) × Array Q(ZMod $o)) => do
-  --     let p : Q(ZMod $o) ← reconstructTerm t
-  --     let (p, is) ← (ZModExpr.reify o p).run is
-  --     return (q($p :: $acc), is)
-  --   let ((ps : Q(List (ZModExpr $o))), is) ← ps.foldrM reconstructMVPs (q([]), #[])
-  --   let ctx : Q(ℕ → ZMod $o) ← if h : 0 < is.size
-  --     then do let is : Q(RArray (ZMod $o)) ← (RArray.ofArray is h).toExpr q(ZMod $o) id; pure q(«$is».get)
-  --     else pure q(fun _ => 0)
-  --   addThm q(andN («$ps».map fun p => p.toZMod $ctx = 0) = (variety (ideal («$ps».map ZModExpr.toPoly)) = ∅)) q(@ZModExpr.toZMod_eq_toPoly $o $ctx $ho $ps)
+  | .REFL =>
+    if pf.getArguments[0]!.getKind != .FINITE_FIELD_IDEAL then return none
+    let o : Nat := pf.getArguments[0]!.getSort.getSetElementSort!.getFiniteFieldSize!
+    let a : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm pf.getArguments[0]!
+    addThm q($a = $a) q(Eq.refl $a)
+  | .CONG =>
+    if pf.getResult[0]!.getKind != .SET_MEMBER || (pf.getResult[0]!)[1]!.getKind != .FINITE_FIELD_IDEAL then
+      return none
+    let o : Nat ← pure (pf.getResult[0]!)[0]!.getSort.getFiniteFieldSize!
+    let e₁ : Q(ZMod $o) ← reconstructTerm (pf.getResult[0]!)[0]!
+    let e₂ : Q(ZMod $o) ← reconstructTerm (pf.getResult[1]!)[0]!
+    let e₁ ← ZModExpr.reify o e₁
+    let e₂ ← ZModExpr.reify o e₂
+    let is ← getFFCtx o
+    let ctx : Q(Nat → ZMod $o) ← pure (if h : 0 < is.size
+      then let is : Q(RArray (ZMod $o)) := (RArray.ofArray is h).toExpr' 0 q(ZMod $o) id; q(«$is».get)
+      else q(fun _ => 0))
+    let s₁ : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm (pf.getResult[0]!)[1]!
+    let s₂ : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm (pf.getResult[1]!)[1]!
+    let he : Q(«$e₁».toZMod $ctx = «$e₂».toZMod $ctx) ← reconstructProof pf.getChildren[0]!
+    let hs : Q($s₁ = $s₂) ← reconstructProof pf.getChildren[1]!
+    addThm q((«$e₁».toPoly ∈ $s₁) = («$e₂».toPoly ∈ $s₂)) q(ZModExpr.elem_congr $he $hs)
+  | .FF_POLY_CONVERSION =>
+    let ps := (((pf.getResult[1]!)[0]!)[0]!)[0]!.getChildren
+    let o : Nat ← pure ps[0]!.getSort.getFiniteFieldSize!
+    let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+    let reconstructZMEs := fun (t : cvc5.Term) (acc : Q(List (ZModExpr $o))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      let p ← ZModExpr.reify o p
+      return q($p :: $acc)
+    let ps ← ps.foldrM reconstructZMEs q([])
+    let is ← getFFCtx o
+    let ctx : Q(Nat → ZMod $o) ← pure (if h : 0 < is.size
+      then let is : Q(RArray (ZMod $o)) := (RArray.ofArray is h).toExpr' 0 q(ZMod $o) id; q(«$is».get)
+      else q(fun _ => 0))
+    addThm q(andN («$ps».map fun p => p.toZMod $ctx = 0) = (variety (ideal («$ps».map ZModExpr.toPoly)) ≠ ∅)) q(@ZModExpr.toZMod_eq_toPoly $o $ctx $ho $ps)
   | .FF_POLY_NORM =>
     let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
     let a : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
@@ -335,28 +391,56 @@ open Qq
   | .FF_IDEAL_GENERATOR =>
     let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
     let y : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
-    let (y, is) ← (MvPolynomialM.reify o y).run #[]
+    let y ← MvPolynomialM.reify o y
     let ps := pf.getResult[1]!.getChildren
     let [xs, zs] := ps.toList.splitOn pf.getResult[0]!
       | throwError "unexpected number of generators in ideal: {ps.size}, expected at least 1"
-    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod $o)) => do
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
-      let (p, is) ← (MvPolynomialM.reify o p).run is
-      return (q($p :: $acc), is)
-    let (xs, is) ← xs.foldrM reconstructMVPs (q([]), is)
-    let (zs, _) ← zs.foldrM reconstructMVPs (q([]), is)
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let xs ← xs.foldrM reconstructMVPs q([])
+    let zs ← zs.foldrM reconstructMVPs q([])
     addThm q($y ∈ ideal ($xs ++ $y :: $zs)) q(@ideal_generator $o $xs $y $zs)
   | .FF_ONE_UNSAT =>
     let o : Nat := pf.getChildren[0]!.getResult[0]!.getSort.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let ps := pf.getChildren[0]!.getResult[1]!.getChildren
-    let reconstructMVPs := fun (t : cvc5.Term) ((acc, is) : Q(List (MvPolynomial Nat (ZMod $o))) × Array Q(ZMod $o)) => do
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
-      let (p, is) ← (MvPolynomialM.reify o p).run is
-      return (q($p :: $acc), is)
-    let ((ps : Q(List (MvPolynomial Nat (ZMod $o)))), _) ← ps.foldrM reconstructMVPs (q([]), #[])
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let ps ← ps.foldrM reconstructMVPs q([])
     let h : Q(1 ∈ ideal $ps) ← reconstructProof pf.getChildren[0]!
     addThm q(variety (ideal $ps) = ∅) q(@one_unsat $o $ho $ps $h)
+  | .FF_DISEQ =>
+    let o : Nat := pf.getArguments[0]!.getSort.getFiniteFieldSize!
+    let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+    let l : Q(ZMod $o) ← reconstructTerm pf.getArguments[0]!
+    let r : Q(ZMod $o) ← reconstructTerm pf.getArguments[1]!
+    addThm q(($l ≠ $r) = (($l + -$r) * Classical.epsilon (fun x => ($l + -$r) * x + -1 = 0) + -1 = 0)) q(@diseq $o $ho $l $r)
+  | .FF_POLY_COMBINATION =>
+    let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let ps := pf.getResult[1]!.getChildren
+    let ps ← ps.foldrM reconstructMVPs q([])
+    let rs := pf.getArguments[0]!.getChildren
+    let rs ← rs.foldrM reconstructMVPs q([])
+    let ms := pf.getArguments[1]!.getChildren
+    let ms ← ms.foldrM reconstructMVPs q([])
+    let cpfs := pf.getChildren
+    let q : Q(Prop) ← reconstructTerm cpfs.back!.getResult
+    let hq : Q($q) ← reconstructProof cpfs.back!
+    let f := fun pf ⟨q, hq⟩ => do
+      let p : Q(Prop) ← reconstructTerm pf.getResult
+      let hp : Q($p) ← reconstructProof pf
+      return ⟨q($p ∧ $q), q(And.intro $hp $hq)⟩
+    let ⟨_, hq⟩ ← cpfs.pop.foldrM f (⟨q, hq⟩ : Σ q : Q(Prop), Q($q))
+    let h : Q(andN (List.map (fun r => r ∈ ideal $ps) $rs)) := hq
+    addThm q(addN (List.zipWith (· * ·) $ms $rs) ∈ ideal $ps) q(@poly_combination $o $ps $ms $rs $h)
   | _ => return none
 
 end Smt.Reconstruct.ZMod
@@ -369,17 +453,12 @@ set_option trace.smt.reconstruct.proof true
 set_option trace.smt.solve true
 set_option pp.instantiateMVars false
 
---set_option pp.all true
--- set_option trace.smt true in
 example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
   smt
 
 example [Fact (Nat.Prime 5)] (x: ZMod 5) : x* (x-1)* (x-2) ≠ 1 := by
   smt +model
 
--- example (x: MvPolynomial Nat (ZMod 5)) : (3 :MvPolynomial Nat (ZMod 5)) = 3 := by
---  smt
-set_option trace.smt.reconstruct.proof true in
 example (x: ZMod 3) : x + x = 2 * x := by
   smt
 
@@ -388,7 +467,7 @@ example (x: ZMod 3): x + x + x = 0 := by
 
 example [Fact (Nat.Prime 17)] (x m isz: ZMod 17) : (m*x + 16 + isz = 0 ∧ isz * x = 0) →
       ((isz = 0 ∨ isz = 1) ∧ (isz = 1 ↔ x = 0)) := by
-    smt
+  smt
 
 example [Fact (Nat.Prime 17)] (x: ZMod 17) : -(-x) = x := by
  smt
@@ -408,9 +487,8 @@ example [Fact p.Prime] (a b c: Prop) (ret m7 m8 m5 m6 m4 b1 c3 a2: ZMod p) :
        (b1* (b1 - 1) = 0 ∧ a2 * (a2 - 1) = 0 ∧ c3*(c3 - 1) = 0 ∧
        a2*(-a2 + c3) = m4 ∧ (m4 + a2) * (-b1 + 1) = m5 ∧ m5 * (-m4 - a2 + 1) = m6 ∧
        m6 * (-b1 + 1) = m7 ∧ (-m5 + 1)*(-m7 + 1) = m8 ∧ m8 * (-m7 + 1) = ret) := by
- unfold p at *
- smt +trust +model
- sorry
+  unfold p at *
+  smt +model
 
 end Test1
 
