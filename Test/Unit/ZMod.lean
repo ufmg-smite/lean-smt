@@ -19,6 +19,10 @@ private def Lean.RArray.toExpr' (lvl : Level) (ty : Expr) (f : α → Expr) (a :
       mkApp4 branch ty (mkRawNatLit p) (go l) (go r)
   go a
 
+def Lean.Expr.mvarId? : Expr → Option MVarId
+  | mvar n => some n
+  | _      => none
+
 namespace Smt.Translate.ZMod
 
 open Lean Expr
@@ -85,39 +89,32 @@ def addN [AddMonoid A] : List A → A
 
 namespace Smt.Reconstruct.ZMod
 
-/-- Expressions over variables `σ` with coefficients in `ZMod n`. -/
-inductive ZModExpr (n : Nat) where
-  | var   : Nat → ZModExpr n
-  | const : ZMod n → ZModExpr n
-  | add   : ZModExpr n  → ZModExpr n  → ZModExpr n
-  | mul   : ZModExpr n  → ZModExpr n  → ZModExpr n
-  | neg   : ZModExpr n  → ZModExpr n
+prefix:75 "-ₚ"   => Expr.neg
+infixl:65 " +ₚ " => Expr.add
+infixl:70 " *ₚ " => Expr.mul
 
-prefix:75 "-ₚ"   => ZModExpr.neg
-infixl:65 " +ₚ " => ZModExpr.add
-infixl:70 " *ₚ " => ZModExpr.mul
-
-@[app_unexpander ZModExpr.const]
+@[app_unexpander Expr.val]
 def unexpandZModExprConst : Lean.PrettyPrinter.Unexpander
   | `($_ $x) => ``($x)
   | _ => throw ()
 
-namespace ZModExpr
+namespace Expr
 
-def toZMod (ctx: Nat → ZMod n) (p: ZModExpr n) : ZMod n :=
-  match p with
-  | .var i     => ctx i
-  | .const c   => c
-  | .add a b   => toZMod ctx a + toZMod ctx b
-  | .mul a b   => toZMod ctx a * toZMod ctx b
-  | .neg a     =>  -(toZMod ctx a)
+noncomputable def toPoly : Expr n → MvPolynomial Nat (ZMod n)
+  | .var i => .X i
+  | .val c => .C c
+  | .add a b => toPoly a + toPoly b
+  | .sub a b => toPoly a - toPoly b
+  | .mul a b => toPoly a * toPoly b
+  | .neg a => -toPoly a
 
-noncomputable def toPoly : ZModExpr n → MvPolynomial Nat (ZMod n)
-  | var i => .X i
-  | const c => .C c
-  | add a b => toPoly a + toPoly b
-  | mul a b => toPoly a * toPoly b
-  | neg a => -toPoly a
+@[simp] theorem eval_toPoly (ctx : Nat → ZMod n) (e : Expr n) :
+  MvPolynomial.eval ctx e.toPoly = e.eval ctx := by
+  induction e <;> simp [toPoly, eval, *]
+
+@[simp] theorem aeval_toPoly (ctx : Nat → ZMod n) (e : Expr n) :
+  MvPolynomial.aeval ctx e.toPoly = e.eval ctx := by
+  simp [MvPolynomial.aeval_eq_eval]
 
 open Qq Lean
 
@@ -132,20 +129,22 @@ def getIndex (n : Nat) (e : Q(ZMod $n)) : ZModExprM n Nat := do
     setFFCtx n (is.push e)
     return size
 
-partial def reify (n : Nat) (e : Q(ZMod $n)) : ZModExprM n (Q(ZModExpr $n)) := do
+partial def reify (n : Nat) (e : Q(ZMod $n)) : ZModExprM n (Q(Expr $n)) := do
   if let some _ := e.natLitOf? q(ZMod $n) then
-    return q(.const $e)
+    return q(val $e)
   else if let some e' := e.negOf? q(ZMod $n) then
     return q(.neg $(← reify n e'))
   else if let some (x, y) := e.hAddOf? q(ZMod $n) q(ZMod $n) then
     return q(.add $(← reify n x) $(← reify n y))
+  else if let some (x, y) := e.hSubOf? q(ZMod $n) q(ZMod $n) then
+    return q(.sub $(← reify n x) $(← reify n y))
   else if let some (x, y) := e.hMulOf? q(ZMod $n) q(ZMod $n) then
     return q(.mul $(← reify n x) $(← reify n y))
   else
     let v : Nat ← getIndex n e
     return q(.var $v)
 
-end ZModExpr
+end Expr
 
 open Lean Qq
 
@@ -169,6 +168,8 @@ partial def reify (n : Nat) (e : Q(ZMod $n)) : MvPolynomialM n (Q(MvPolynomial N
     return q(-$(← reify n e'))
   else if let some (x, y) := e.hAddOf? q(ZMod $n) q(ZMod $n) then
     return q($(← reify n x) + $(← reify n y))
+  else if let some (x, y) := e.hSubOf? q(ZMod $n) q(ZMod $n) then
+    return q($(← reify n x) - $(← reify n y))
   else if let some (x, y) := e.hMulOf? q(ZMod $n) q(ZMod $n) then
     return q($(← reify n x) * $(← reify n y))
   else
@@ -183,17 +184,33 @@ def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMo
 def variety [Fact n.Prime] (I : Ideal (MvPolynomial Nat (ZMod n))) : Set (Nat → ZMod n) :=
   MvPolynomial.zeroLocus (ZMod n) I
 
--- TODO(Abdal): fix! this statement is not true as is...
-theorem ZModExpr.elem_congr {e₁ e₂ : ZModExpr n} {s₁ s₂ : Ideal (MvPolynomial Nat (ZMod n))}
-  (he : e₁.toZMod ctx = e₂.toZMod ctx) (hs : s₁ = s₂) :
+-- TODO(Liza): prove the correctness of this lemma!
+theorem Expr.elem_congr {e₁ e₂ : Expr n} {s₁ s₂ : Ideal (MvPolynomial Nat (ZMod n))}
+  (he : e₁.toPolynomial = e₂.toPolynomial) (hs : s₁ = s₂) :
   (e₁.toPoly ∈ s₁) = (e₂.toPoly ∈ s₂) := by sorry
 
--- TODO(Abdal): fix! this statement is not true as is...
-theorem ZModExpr.toZMod_iff_toPoly [Fact n.Prime] {es : List (ZModExpr n)}
-  : andN (es.map fun e => e.toZMod ctx = 0) ↔ variety (ideal (es.map toPoly)) ≠ ∅ := by
-  cases es with
-  | nil => simp [andN, variety, variety, ideal]
-  | cons e es => sorry
+theorem Expr.variety_nonempty_of_eval_eq_zero [Fact n.Prime] {es : List (Expr n)}
+  (h : andN (es.map fun e => e.eval ctx = 0)) :
+  variety (ideal (es.map toPoly)) ≠ ∅ := by
+  have hall : ∀ e ∈ es, e.eval ctx = 0 := by
+    induction es with
+    | nil =>
+        intro e he
+        cases he
+    | cons e es ih =>
+        simp only [List.map, andN_cons_append] at h
+        rcases h with ⟨he, hes⟩
+        intro e' he'
+        simp only [List.mem_cons] at he'
+        rcases he' with rfl | he'
+        · exact he
+        · exact ih hes _ he'
+  exact Set.nonempty_iff_ne_empty.mp ⟨ctx, by
+    rw [variety, ideal, MvPolynomial.zeroLocus_span]
+    intro p hp
+    rcases List.mem_map.mp (List.mem_toFinset.mp hp) with ⟨e, he, rfl⟩
+    simpa using hall e he
+  ⟩
 
 theorem poly_combination (ps ms rs : List (MvPolynomial Nat (ZMod n)))
   (h : andN (rs.map fun r => r ∈ ideal ps))
@@ -210,9 +227,6 @@ theorem poly_combination (ps ms rs : List (MvPolynomial Nat (ZMod n)))
       rcases h with ⟨hr, hrs⟩
       simp [List.zipWith, addN_cons_append]
       exact Ideal.add_mem _ (Ideal.mul_mem_left _ _ hr) (ih rs hrs)
-
-theorem ZModExpr.toZMod_eq_toPoly [Fact n.Prime] {es : List (ZModExpr n)} : andN (es.map fun e => e.toZMod ctx = 0) = (variety (ideal (es.map toPoly)) ≠ ∅) :=
-  propext toZMod_iff_toPoly
 
 theorem diseq' [Fact n.Prime] {l r : ZMod n}
   : (l ≠ r) = (∃ k, (l + -r) * k + -1 = 0) := by
@@ -314,17 +328,17 @@ where
       let h : Q(Nat.AtLeastTwo $n) := mkApp2 q(@Nat.instAtLeastTwoHAddOfNat) (toExpr (n' + 1)) q(@Nat.instNeZeroSucc $n')
       let h := mkApp3 q(@instOfNatAtLeastTwo (ZMod $o)) (mkRawNatLit n) q((ZMod.commRing $o).toAddGroupWithOne.toNatCast) h
       mkApp2 q(@OfNat.ofNat (ZMod $o)) (mkRawNatLit n) h
-  leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
+  leftAssocOp (op : Lean.Expr) (t : cvc5.Term) : ReconstructM Lean.Expr := do
     let mut curr ← reconstructTerm t[0]!
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
-  rightAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
+  rightAssocOp (op : Lean.Expr) (t : cvc5.Term) : ReconstructM Lean.Expr := do
     let (ts, [t]) := t.getChildren.toList.splitAt (t.getNumChildren - 1)
       | throwError "unexpected number of children in right-associative operator: {t.getNumChildren}, expected at least 1"
     ts.foldrM (fun t acc => return mkApp2 op (← reconstructTerm t) acc) (← reconstructTerm t)
 
-def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Lean.Expr) := do
   match pf.getRewriteRule! with
   | _ => return none
 
@@ -344,36 +358,44 @@ open Qq
     let o : Nat ← pure (pf.getResult[0]!)[0]!.getSort.getFiniteFieldSize!
     let e₁ : Q(ZMod $o) ← reconstructTerm (pf.getResult[0]!)[0]!
     let e₂ : Q(ZMod $o) ← reconstructTerm (pf.getResult[1]!)[0]!
-    let e₁ ← ZModExpr.reify o e₁
-    let e₂ ← ZModExpr.reify o e₂
+    let e₁ ← Expr.reify o e₁
+    let e₂ ← Expr.reify o e₂
     let is ← getFFCtx o
     let ctx : Q(Nat → ZMod $o) ← pure (if h : 0 < is.size
       then let is : Q(RArray (ZMod $o)) := (RArray.ofArray is h).toExpr' 0 q(ZMod $o) id; q(«$is».get)
       else q(fun _ => 0))
     let s₁ : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm (pf.getResult[0]!)[1]!
     let s₂ : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm (pf.getResult[1]!)[1]!
-    let he : Q(«$e₁».toZMod $ctx = «$e₂».toZMod $ctx) ← reconstructProof pf.getChildren[0]!
+    let he : Q(«$e₁».eval $ctx = «$e₂».eval $ctx) ← reconstructProof pf.getChildren[0]!
+    let some he ← he.mvarId?.bindM getExprMVarAssignment?
+      | throwError "unexpected proof of equality between expressions: {he}, {repr he}"
+    let (``Expr.denote_eq_from_toPolynomial_eq, #[_, _, _, _, (he :  Q(«$e₁».toPolynomial = «$e₂».toPolynomial))]) :=
+      he.getAppFnArgs | throwError "unexpected proof of equality between expressions: {he}, {repr he}"
     let hs : Q($s₁ = $s₂) ← reconstructProof pf.getChildren[1]!
-    addThm q((«$e₁».toPoly ∈ $s₁) = («$e₂».toPoly ∈ $s₂)) q(ZModExpr.elem_congr $he $hs)
+    addThm q((«$e₁».toPoly ∈ $s₁) = («$e₂».toPoly ∈ $s₂)) q(Expr.elem_congr $he $hs)
   | .FF_POLY_CONVERSION =>
-    let ps := (((pf.getResult[1]!)[0]!)[0]!)[0]!.getChildren
+    let ps := ((pf.getResult[0]!)[0]!)[0]!.getChildren
     let o : Nat ← pure ps[0]!.getSort.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
-    let reconstructZMEs := fun (t : cvc5.Term) (acc : Q(List (ZModExpr $o))) => do
+    let reconstructZMEs := fun (t : cvc5.Term) (acc : Q(List (Expr $o))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
-      let p ← ZModExpr.reify o p
+      let p ← Expr.reify o p
       return q($p :: $acc)
     let ps ← ps.foldrM reconstructZMEs q([])
     let is ← getFFCtx o
     let ctx : Q(Nat → ZMod $o) ← pure (if h : 0 < is.size
       then let is : Q(RArray (ZMod $o)) := (RArray.ofArray is h).toExpr' 0 q(ZMod $o) id; q(«$is».get)
       else q(fun _ => 0))
-    addThm q(andN («$ps».map fun p => p.toZMod $ctx = 0) = (variety (ideal («$ps».map ZModExpr.toPoly)) ≠ ∅)) q(@ZModExpr.toZMod_eq_toPoly $o $ctx $ho $ps)
+    let h : Q(andN («$ps».map fun p => p.eval $ctx = 0)) ← reconstructProof pf.getChildren[0]!
+    addThm q(variety (ideal («$ps».map Expr.toPoly)) ≠ ∅) q(@Expr.variety_nonempty_of_eval_eq_zero $o $ctx $ho $ps $h)
   | .FF_POLY_NORM =>
     let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
     let a : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
     let b : Q(ZMod $o) ← reconstructTerm pf.getResult[1]!
-    let tac := if ← useNative then ZMod.nativePolyNorm o else ZMod.polyNorm o
+    let l : Q(Expr $o) ← Expr.reify o a
+    let r : Q(Expr $o) ← Expr.reify o b
+    let is ← getFFCtx o
+    let tac := if ← useNative then ZMod.nativePolyNorm o l r is else ZMod.polyNorm o l r is
     addTac q($a = $b) tac
   | .FF_POLY_NORM_EQ =>
     let o : Nat := (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.getFiniteFieldSize!
@@ -446,12 +468,12 @@ open Qq
 end Smt.Reconstruct.ZMod
 
 open Smt.Reconstruct.ZMod
-open MvPolynomial ZModExpr
+open MvPolynomial Expr
 
-set_option trace.smt true
-set_option trace.smt.reconstruct.proof true
-set_option trace.smt.solve true
-set_option pp.instantiateMVars false
+-- set_option trace.smt true
+-- set_option trace.smt.reconstruct.proof true
+-- set_option trace.smt.solve true
+-- set_option pp.instantiateMVars false
 
 example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
   smt
@@ -470,7 +492,7 @@ example [Fact (Nat.Prime 17)] (x m isz: ZMod 17) : (m*x + 16 + isz = 0 ∧ isz *
   smt
 
 example [Fact (Nat.Prime 17)] (x: ZMod 17) : -(-x) = x := by
- smt
+  smt
 
 example [Fact (Nat.Prime 17)] (x: ZMod 17) : x * x ≠ x ∨ x = 1 ∨ x = 0 := by
   smt

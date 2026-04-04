@@ -11,21 +11,8 @@ import Mathlib.Data.ZMod.Basic
 import Mathlib.Data.Real.Basic
 
 import Smt.Recognizers
--- private theorem Int.neg_congr {x y : } (h : x = y) : -x = -y := by
-  -- sorry
 
--- private theorem Int.add_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ + y₁ = x₂ + y₂ := by
---   simp [h₁, h₂]
-
--- private theorem Int.sub_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ - y₁ = x₂ - y₂ := by
---   simp [h₁, h₂]
-
--- private theorem Int.mul_congr {x₁ x₂ y₁ y₂ : Int} (h₁ : x₁ = x₂) (h₂ : y₁ = y₂) : x₁ * y₁ = x₂ * y₂ := by
---   simp [h₁, h₂]
-
--- private theorem Eq.trans₂' (hba : b = a) (hbc : b = c) (hcd : c = d) : a = d := hba ▸ hbc ▸ hcd ▸ rfl
-
-namespace Smt.Reconstruct.ZMod.PolyNorm
+namespace Smt.Reconstruct.ZMod
 
 abbrev Var := Nat
 
@@ -297,37 +284,37 @@ def toPolynomial {o : Nat} : Expr o → Polynomial o
   | .sub a b => Polynomial.sub (toPolynomial a) (toPolynomial b)
   | .mul a b => Polynomial.mul (toPolynomial a) (toPolynomial b)
 
-def denote (ctx : Context o) : Expr o → ZMod o
+def eval (ctx : Context o) : Expr o → ZMod o
   | val v => v
   | var v => ctx v
-  | neg a => -a.denote ctx
-  | add a b => a.denote ctx + b.denote ctx
-  | sub a b => a.denote ctx - b.denote ctx
-  | mul a b => a.denote ctx * b.denote ctx
+  | neg a => -a.eval ctx
+  | add a b => a.eval ctx + b.eval ctx
+  | sub a b => a.eval ctx - b.eval ctx
+  | mul a b => a.eval ctx * b.eval ctx
 
-theorem denote_toPolynomial {e : Expr o} : denote (o:=o) ctx e  = (toPolynomial (o:=o) e).denote ctx := by
+theorem eval_toPolynomial {e : Expr o} : eval ctx e  = (toPolynomial e).denote ctx := by
   induction e with
   | val v =>
-    simp only [denote, toPolynomial]
+    simp only [eval, toPolynomial]
     split <;> rename_i hv
     · rewrite [hv];  rfl
     · simp [Polynomial.denote, Monomial.denote]
   | var v =>
-    simp [denote, toPolynomial, Polynomial.denote, Monomial.denote]
+    simp [eval, toPolynomial, Polynomial.denote, Monomial.denote]
   | neg a ih =>
-    simp only [denote, toPolynomial, Polynomial.denote_neg, ih]
+    simp only [eval, toPolynomial, Polynomial.denote_neg, ih]
   | add a b ih₁ ih₂ =>
-    simp only [denote, toPolynomial, Polynomial.denote_add, ih₁, ih₂]
+    simp only [eval, toPolynomial, Polynomial.denote_add, ih₁, ih₂]
   | sub a b ih₁ ih₂ =>
-    simp only [denote, toPolynomial, Polynomial.denote_sub, ih₁, ih₂]
+    simp only [eval, toPolynomial, Polynomial.denote_sub, ih₁, ih₂]
   | mul a b ih₁ ih₂ =>
-    simp only [denote, toPolynomial, Polynomial.denote_mul, ih₁, ih₂]
+    simp only [eval, toPolynomial, Polynomial.denote_mul, ih₁, ih₂]
 
-theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr o} (h : e₁.toPolynomial (o := o)  = e₂.toPolynomial (o := o)  ) : e₁.denote (o:=o) ctx = e₂.denote (o:=o) ctx := by
-  rw [denote_toPolynomial, denote_toPolynomial, h]
+theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr o} (h : e₁.toPolynomial = e₂.toPolynomial)
+  : e₁.eval ctx = e₂.eval ctx := by
+  rw [eval_toPolynomial, eval_toPolynomial, h]
 
-
-end PolyNorm.Expr
+end Expr
 
 open Lean Qq
 
@@ -342,9 +329,9 @@ def getIndex (n : Nat) (e : Q(ZMod $n)) : PolyM n Nat := do
     set (is.push e)
     return size
 
-partial def reify (n : Nat) (e : Q(ZMod $n)) : PolyM n (Q(PolyNorm.Expr $n)) := do
-  if let some k := e.natLitOf? q(ZMod $n) then
-    return q(.val (OfNat.ofNat $k))
+partial def reify (n : Nat) (e : Q(ZMod $n)) : PolyM n (Q(Expr $n)) := do
+  if let some _ := e.natLitOf? q(ZMod $n) then
+    return q(.val $e)
   else if let some e' := e.negOf? q(ZMod $n) then
     return q(.neg $(← reify n e'))
   else if let some (x, y) := e.hAddOf? q(ZMod $n) q(ZMod $n) then
@@ -357,50 +344,40 @@ partial def reify (n : Nat) (e : Q(ZMod $n)) : PolyM n (Q(PolyNorm.Expr $n)) := 
     let v : Nat ← getIndex n e
     return q(.var $v)
 
-def polyNorm (n:Nat) (mv : MVarId) : MetaM Unit := do
-  let some (_, (l : Q(ZMod $n)), (r : Q(ZMod $n))) := (← mv.getType).eq?
-    | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, is) ← (reify n l).run #[]
-  let (r, is) ← (reify n r).run is
-
+def polyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId) : MetaM Unit := do
   let ctx : Q(PolyNorm.Context $n) ← if h : 0 < is.size
     then do let is : Q(RArray (ZMod $n)) ← (RArray.ofArray is h).toExpr q(ZMod $n) id; pure q(«$is».get)
-    else pure q(fun _ => (0))
+    else pure q(fun _ => 0)
 
   let hp : Q(«$l».toPolynomial (o := $n) = «$r».toPolynomial (o := $n)) :=
-    (.app q(@Eq.refl (PolyNorm.Polynomial $n)) q(«$l».toPolynomial (o := $n)))
+    (.app q(@Eq.refl (Polynomial $n)) q(«$l».toPolynomial (o := $n)))
 
-  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx  $l $r $hp)
+  let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx  $l $r $hp)
   mv.assign he
 where
-  logPolynomial (n : Nat)  (e : Q(PolyNorm.Expr $n)) (es : Array Q(ZMod $n)) := do
-    let p ← unsafe Meta.evalExpr (PolyNorm.Expr n) q(PolyNorm.Expr $n) e
+  logPolynomial (n : Nat)  (e : Q(Expr $n)) (es : Array Q(ZMod $n)) := do
+    let p ← unsafe Meta.evalExpr (Expr n) q(Expr $n) e
     let ppCtx := (es.getD · q(0))
-    logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
+    logInfo m!"poly := {Polynomial.toExpr p.toPolynomial ppCtx}"
 
-
-def nativePolyNorm (n:Nat) (mv : MVarId) : MetaM Unit := do
-  let some (_, (l : Q(ZMod $n)), (r : Q(ZMod $n))) := (← mv.getType).eq?
-    | throwError "[poly_norm] expected an equality, got {← mv.getType}"
-  let (l, is) ← (reify n l).run #[]
-  let (r, is) ← (reify n r).run is
+def nativePolyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId) : MetaM Unit := do
   let ctx : Q(PolyNorm.Context $n) ← if h : 0 < is.size
     then do let is : Q(RArray (ZMod $n)) ← (RArray.ofArray is h).toExpr q(ZMod $n) id; pure q(«$is».get)
-    else pure q(fun _ => (0))
+    else pure q(fun _ => 0)
   let hp ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
-  let he := q(@PolyNorm.Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx $l $r $hp)
+  let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx $l $r $hp)
   mv.assign he
 where
-  logPolynomial (n:Nat) (e : Q(PolyNorm.Expr $n)) (es : Array Q(ZMod $n)) := do
-    let p ← unsafe Meta.evalExpr (PolyNorm.Expr n) q(PolyNorm.Expr) e
+  logPolynomial (n:Nat) (e : Q(Expr $n)) (es : Array Q(ZMod $n)) := do
+    let p ← unsafe Meta.evalExpr (Expr n) q(Expr) e
     let ppCtx := (es.getD · q(0))
-    logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
+    logInfo m!"poly := {Polynomial.toExpr p.toPolynomial ppCtx}"
   nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
     let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
     let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
     let b : Q(Bool) := .const auxDeclName []
     return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
-  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
+  mkNativeAuxDecl (baseName : Name) (type value : Lean.Expr) : MetaM Name := do
     let auxName ← Lean.mkAuxDeclName baseName
     let decl := Declaration.defnDecl {
       name := auxName, levelParams := [], type, value
@@ -429,11 +406,15 @@ open Lean.Elab Tactic in
       |  ``ZMod, #[n] => pure n
       | _, _ => throwError "[poly_norm] expected lhs type ZMod n, got {lTy}"
     let nExpr ← Lean.Meta.whnf nExpr
-    let nVal ←
+    let n ←
       match nExpr with
       | Expr.lit (Lean.Literal.natVal k) => pure k
       | _ => throwError "[poly_norm] modulus is not a numeral; got {nExpr}"
-    ZMod.polyNorm nVal mv
+    let some (_, l, r) := (← mv.getType).eq?
+      | throwError "[poly_norm] expected an equality, got {← mv.getType}"
+    let (l, is) ← (reify n l).run #[]
+    let (r, is) ← (reify n r).run is
+    ZMod.polyNorm n l r is mv
     replaceMainGoal []
 syntax (name := nativePolyNorm) "native_poly_norm" : tactic
 
@@ -452,11 +433,15 @@ open Lean.Elab Tactic in
       |  ``ZMod, #[n] => pure n
       | _, _ => throwError "[poly_norm] expected lhs type ZMod n, got {lTy}"
     let nExpr ← Lean.Meta.whnf nExpr
-    let nVal ←
+    let n ←
       match nExpr with
       | Expr.lit (Lean.Literal.natVal k) => pure k
       | _ => throwError "[poly_norm] modulus is not a numeral; got {nExpr}"
-    ZMod.nativePolyNorm nVal mv
+    let some (_, l, r) := (← mv.getType).eq?
+      | throwError "[poly_norm] expected an equality, got {← mv.getType}"
+    let (l, is) ← (reify n l).run #[]
+    let (r, is) ← (reify n r).run is
+    ZMod.nativePolyNorm n l r is mv
     replaceMainGoal []
 
 end Smt.Reconstruct.ZMod.Tactic
