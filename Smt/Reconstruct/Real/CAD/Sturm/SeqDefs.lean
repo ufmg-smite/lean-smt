@@ -442,3 +442,6 @@ lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPol
   have : (↑(Polynomial.eval x p.toPoly) : Real) = Rat.castHom Real (Polynomial.eval x p.toPoly) := by norm_num
   rw [map_cast p.toPoly x]
   congr
+
+axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
+    seqVarSturmC_ab p (p.derivative * q) a b = seqVarSturm_ab (p.toPoly.map (Rat.castHom Real)) ((p.toPoly.map (Rat.castHom Real)).derivative * (q.toPoly.map (Rat.castHom Real))) a b

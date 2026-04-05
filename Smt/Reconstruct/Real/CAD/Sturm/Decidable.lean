@@ -84,7 +84,7 @@ theorem sturmSeqC_fuel_eq (f g : CPolynomial ℚ) (n : ℕ)
             exact gtopolyzeroeq (-f % g) (by rw [h1, h2])
           omega
 
-theorem sturmSeqC_eq (f g : CPolynomial ℚ) :
+theorem sturmSeqC_equiv (f g : CPolynomial ℚ) :
     sturmSeqC' f g = sturmSeqC f g := by
   unfold sturmSeqC'
   exact sturmSeqC_fuel_eq f g (g.natDegree + 2) (le_refl _)
@@ -133,8 +133,56 @@ def seqVarLineSturmC' (p q : CPolynomial ℚ) : ℤ :=
 
 theorem seqVarLineSturmC_eq (p q : CPolynomial ℚ) : seqVarLineSturmC p q = seqVarLineSturmC' p q := by
   unfold seqVarLineSturmC seqVarLineSturmC'
-  rw [seqVarLine_eq, sturmSeqC_eq]
+  rw [seqVarLine_eq, sturmSeqC_equiv]
 
 theorem seqVarLineEquivSturm' (p q : CPolynomial ℚ) : seqVarLineSturm (p.toPoly.map (Rat.castHom Real)) (q.toPoly.map (Rat.castHom Real)) = seqVarLineSturmC' p q  := by
   rw [<- seqVarLineSturmC_eq]
   exact (seqVarLineEquivSturm p q).symm
+
+def seqVarQ_aux (prev : ℚ) : List ℚ → ℕ
+  | [] => 0
+  | b :: as =>
+    if b == 0 then seqVarQ_aux prev as
+    else if prev * b < 0 then 1 + seqVarQ_aux b as
+    else seqVarQ_aux b as
+
+/-- Kernel-reducible version of `seqVarI`. -/
+def seqVarQ' : List ℚ → ℕ
+  | [] => 0
+  | a :: rest => seqVarQ_aux a rest
+
+theorem seqVarQ_aux_eq_seqVarQ (prev : ℚ) (rest : List ℚ) :
+    seqVarQ_aux prev rest = seqVarQ (prev :: rest) := by
+  induction rest generalizing prev with
+  | nil => simp [seqVarQ_aux, seqVarQ.eq_2]
+  | cons b as ih =>
+    simp only [seqVarQ_aux]
+    rw [seqVarQ.eq_3]
+    split
+    · rw [ih]
+    · split
+      · congr 1; rw [ih]
+      · rw [ih]
+
+theorem seqVarQ_eq (l : List ℚ) : seqVarQ' l = seqVarQ l := by
+  cases l with
+  | nil => simp [seqVarQ', seqVarQ.eq_1]
+  | cons a rest =>
+    simp only [seqVarQ']
+    exact seqVarQ_aux_eq_seqVarQ a rest
+
+def seqVarQ_ab' (P: List (CPolynomial ℚ)) (a b: ℚ): ℤ :=
+  (seqVarQ' (seqEvalC a P) : Int) - seqVarQ' (seqEvalC b P)
+
+lemma seqVarQ_ab_equiv (P : List (CPolynomial ℚ)) (a b : ℚ) :
+    seqVarQ_ab P a b = seqVarQ_ab' P a b := by
+  unfold seqVarQ_ab seqVarQ_ab'
+  rw [seqVarQ_eq, seqVarQ_eq]
+
+def seqVarSturmC_ab' (p q: CPolynomial ℚ) (a b : ℚ) : ℤ :=
+  seqVarQ_ab' (sturmSeqC' p q) a b
+
+lemma seqVarSturmC_ab_equiv (p q : CPolynomial ℚ) (a b : ℚ) :
+    seqVarSturmC_ab p q a b = seqVarSturmC_ab' p q a b := by
+  unfold seqVarSturmC_ab' seqVarSturmC_ab
+  rw [seqVarQ_ab_equiv, sturmSeqC_equiv]
