@@ -40,7 +40,6 @@ example : .zero ≠ mynat'.succ .zero .zero := by
 example {p q r : U → Prop} : (∀ x, p x ∧ q x ∧ r x) = ((∀ x, p x) ∧ (∀ x, q x) ∧ (∀ x, r x)) := by
   smt
 
-set_option trace.smt true
 example (add : mynat → mynat → mynat) (sum : mynat → mynat) (div2 : mynat → mynat) (mul : mynat → mynat → mynat)
   (hadd : ∀ m, add m .zero = m) (hadd' : ∀ m n, add m (.succ n) = .succ (add m n))
   (hmul : ∀ m, mul m .zero = .zero) (hmul' : ∀ m n, mul m (.succ n) = add (mul m n) m)

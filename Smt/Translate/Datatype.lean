@@ -12,6 +12,15 @@ namespace Smt.Translate.Datatype
 
 open Translator Term Lean
 
+/-- Inductive types that have dedicated translators and should not be handled
+as generic SMT-LIB datatypes. -/
+private def builtinInductives : Std.HashSet Name :=
+  Std.HashSet.ofList [
+    ``Bool, ``True, ``False,
+    ``Or, ``And, ``Iff, ``Exists,
+    ``Nat, ``Int, ``String, ``BitVec
+  ]
+
 /-- Translate a constructor of a simple (non-parametric) inductive type.
 The inductive type itself is marked as a dependency so that the query builder will emit a
 `declare-datatypes` command for it. Constructor arguments are translated recursively.
@@ -23,8 +32,9 @@ mechanism. Only fully applied constructors are handled. -/
   let some (v, args) ← Lean.Meta.constructorApp? e | return none
   let env ← getEnv
   let inductName := v.induct
-  -- Skip types that SMT-LIB already knows about (Bool, Int, …).
+  -- Skip types that SMT-LIB already knows about or that have dedicated translators.
   if Util.smtConsts.contains inductName.toString then return none
+  if builtinInductives.contains inductName then return none
   -- Only handle simple non-parametric, non-indexed inductives.
   let some (.inductInfo iVal) := env.find? inductName | return none
   if iVal.numParams != 0 || iVal.numIndices != 0 then return none

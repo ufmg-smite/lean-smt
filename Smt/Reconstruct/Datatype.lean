@@ -11,9 +11,28 @@ namespace Smt.Reconstruct.Datatype
 
 open Lean Meta Qq
 
+/-- Names of types that already have dedicated sort/term/proof reconstructors
+and should not be handled by the generic datatype reconstructor. -/
+private def builtinTypeNames : Std.HashSet Name :=
+  Std.HashSet.ofList [
+    ``Bool, `Prop, ``True, ``False,
+    ``Or, ``And, ``Iff, ``Exists,
+    ``Nat, ``Int, `Rat, `Real,
+    ``String, ``BitVec
+  ]
+
+/-- Return `true` when the name (or its prefix for a constructor) belongs to a
+type with dedicated built-in reconstruction support. -/
+private def isBuiltinName (n : Name) : Bool :=
+  builtinTypeNames.contains n ||
+  -- Also catch constructor names like `Bool.true`, `Nat.zero`, etc.
+  match n with
+  | .str p _ => builtinTypeNames.contains p
+  | _ => false
+
 -- Strip SMT-LIB2 pipe quoting (|name|) from a symbol if present.
 private def stripSMTPipes (s : String) : String :=
-  if s.startsWith "|" && s.endsWith "|" then s.drop 1 |>.dropRight 1 else s
+  if s.startsWith "|" && s.endsWith "|" then (s.drop 1 |>.dropEnd 1).toString else s
 
 private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
   match (← read).userNames[n]? with
@@ -26,7 +45,10 @@ private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
 
 @[smt_sort_reconstruct] def reconstructDatatypeSort : SortReconstructor := fun s => do
   match s.getKind! with
-  | .DATATYPE_SORT => getFVarOrConstExpr! s.getDatatype!.getName!
+  | .DATATYPE_SORT =>
+    let name := s.getDatatype!.getName!
+    if isBuiltinName name.toName then return none
+    getFVarOrConstExpr! name
   | _ => return none
 
 @[smt_term_reconstruct] def reconstructDatatypeTerm : TermReconstructor := fun t => do
@@ -35,7 +57,9 @@ private def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     -- t[0]! is the constructor symbol. It has INTERNAL_KIND in cvc5 (even for non-zero-arity),
     -- so we look it up by name instead of calling reconstructTerm recursively.
     -- toString may include SMT-LIB pipe escaping (e.g., "|mynat'.succ|"), so strip it.
-    let mut curr ← getFVarOrConstExpr! (stripSMTPipes t[0]!.toString)
+    let ctorName := stripSMTPipes t[0]!.toString
+    if isBuiltinName ctorName.toName then return none
+    let mut curr ← getFVarOrConstExpr! ctorName
     for i in [1:t.getNumChildren] do
       curr := .app curr (← reconstructTerm t[i]!)
     return curr
@@ -68,7 +92,10 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let result := pf.getResult
     -- Only handle the "clash" case: (t = s) = false (distinct constructors)
     if result[1]!.getKind! == .CONST_BOOLEAN && !result[1]!.getBooleanValue! then
-      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort result[0]![0]!.getSort!
+      let sort := result[0]![0]!.getSort!
+      if sort.getKind! == .DATATYPE_SORT && isBuiltinName sort.getDatatype!.getName!.toName then
+        return none
+      let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort sort
       let t : Q($α) ← reconstructTerm result[0]![0]!
       let s : Q($α) ← reconstructTerm result[0]![1]!
       addTac q(($t = $s) = False) fun mv => do
@@ -95,7 +122,10 @@ private def proveDistinctValues (t s : Expr) : MetaM Expr := do
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
   | .DISTINCT_VALUES =>
-    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]!.getSort!
+    let sort := pf.getArguments[0]!.getSort!
+    if sort.getKind! == .DATATYPE_SORT && isBuiltinName sort.getDatatype!.getName!.toName then
+      return none
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort sort
     let t : Q($α) ← reconstructTerm pf.getArguments[0]!
     let s : Q($α) ← reconstructTerm pf.getArguments[1]!
     addTac q($t ≠ $s) fun mv => do
