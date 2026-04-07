@@ -1,6 +1,5 @@
 import CompPoly
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Raw
-import Smt.Reconstruct.Real.CAD.Sturm.Theorem
 
 open CompPoly
 
@@ -13,10 +12,37 @@ def AlgNum.l (a : AlgNum) : Rat := a.val.l
 def AlgNum.r (a : AlgNum) : Rat := a.val.r
 def AlgNum.p (a : AlgNum) : CPolynomial Rat := a.val.p
 
+def AlgNum.wellDefined (a : AlgNum) : Prop :=
+  ∃! x : Real, (toPolyReal a.p).eval x = 0 ∧ a.l ≤ x ∧ x ≤ a.r
+
+def AlgNum.sgnDiff (a : AlgNum) : Prop :=
+  (a.p.eval a.l) * (a.p.eval a.r) ≤ 0
+
+lemma AlgNum.isWellDefined (a : AlgNum) : a.wellDefined := by
+  unfold AlgNum.wellDefined
+  have := a.prop.1
+  simp [Raw.wellDefined] at this
+  obtain ⟨r, hr⟩ := this
+  use r
+  finiteness
+
+lemma AlgNum.hasSgnDiff (a : AlgNum) : a.sgnDiff := by
+  have := a.prop.2
+  unfold sgnDiff
+  simp [Raw.sgnDiff] at this
+  finiteness
+
 def AlgNum.refine (a : AlgNum) : AlgNum :=
   have h1 : a.val.refine.wellDefined := Raw.refine_wellDefined a.val a.prop.1 a.prop.2
   have h2 : a.val.refine.sgnDiff := Raw.refine_sgnDiff a.val a.prop.1 a.prop.2
   ⟨a.val.refine, And.intro h1 h2⟩
+
+lemma AlgNum.refine_p (a : AlgNum) : a.refine.p = a.p := Raw.refine_p a.val
+
+lemma AlgNum.refineN_p (a : AlgNum) (n : ℕ) : (AlgNum.refine^[n] a).p = a.p := by
+  induction n with
+  | zero => simp
+  | succ n ih => rw [Function.iterate_succ', Function.comp, AlgNum.refine_p, ih]
 
 lemma AlgNum.lr (a : AlgNum) : a.l ≤ a.r := Raw.lr_wellDefined a.val a.prop.1
 
@@ -100,7 +126,6 @@ theorem toSeq_cauchy : ∀ a: AlgNum, IsCauSeq abs (toSeq a) := by
   rw [abs_lt]
   constructor <;> nlinarith [hbN.1, hbN.2, hbj.1, hbj.2]
 
-@[simp]
 def AlgNum.toReal (a: AlgNum): ℝ :=
   Real.ofCauchy (CauSeq.Completion.mk ⟨toSeq a, toSeq_cauchy a⟩)
 

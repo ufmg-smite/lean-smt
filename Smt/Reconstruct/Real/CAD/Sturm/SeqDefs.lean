@@ -1,5 +1,6 @@
 import Mathlib
 import CompPoly
+import Smt.Reconstruct.Real.CAD.Utils
 
 def seqVarI : List ℤ → ℕ
 | [] => 0
@@ -128,33 +129,6 @@ open CPolynomial
 instance : DecidableEq (CPolynomial.Raw Rat) := instDecidableEqOfLawfulBEq
 
 instance : DecidableEq (CPolynomial Rat) := Subtype.instDecidableEq
-
-theorem gneg_imp_gtopoly_neg (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
-  intro abs
-  have : g = 0 := by
-    apply CPolynomial.eq_zero_iff_coeff_zero.mpr
-    have aux (x : ℚ) := CPolynomial.eval_toPoly x g
-    rw[abs] at aux
-    simp at aux
-    simp only [CPolynomial.coeff_toPoly]
-    rw[abs]
-    apply Polynomial.coeff_zero
-  exact h this
-
-theorem gtopolyzeroeq2 (g : CPolynomial ℚ) : g.toPoly ≠ 0 → g ≠ 0 := by
-  contrapose
-  intro h; rw[h]; exact toPoly_zero
-
-theorem gtopolyzeroeq (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 := by
-  contrapose
-  apply gneg_imp_gtopoly_neg
-
-theorem fg_mod_eq (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly := by
-  have aux := CPolynomial.mod_toPoly f g
-  have : (f.mod g) = f%g := by
-    exact eq_iff_coeff.mpr (congrFun rfl)
-  rw[this] at aux
-  apply aux
 
 theorem termination_sturmSeqC (f g: CPolynomial ℚ) (hf : f ≠ 0) :
    (if g = 0 then 0 else if -f % g = 0 then 1 else 2 + (-f % g).degree) <
@@ -332,26 +306,6 @@ theorem seq_sgn_neg_inf_eq (l : List (CPolynomial ℚ)) : seq_sgn_neg_inf'' l = 
   have H := seq_neg_inf_equiv
   simp_all only [List.map_map, List.map_inj_left, Function.comp_apply, implies_true]
 
-theorem gneg_imp_gtopoly_neg' (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
-  intro abs
-  have : g = 0 := by
-    apply CPolynomial.eq_zero_iff_coeff_zero.mpr
-    have aux (x : ℚ) := CPolynomial.eval_toPoly x g
-    rw[abs] at aux
-    simp at aux
-    simp only [CPolynomial.coeff_toPoly]
-    rw[abs]
-    apply Polynomial.coeff_zero
-  exact h this
-
-theorem gtopolyzeroeq2' (g : CPolynomial ℚ) : g.toPoly ≠ 0 → g ≠ 0 := by
-  contrapose
-  intro h; rw[h]; exact CPolynomial.toPoly_zero
-
-theorem gtopolyzeroeq' (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 := by
-  contrapose
-  apply gneg_imp_gtopoly_neg
-
 theorem sturm_seq_toPoly (f g : CPolynomial ℚ) :
     sturmSeq f.toPoly g.toPoly = List.map CPolynomial.toPoly (sturmSeqC f g) := by
   unfold sturmSeq sturmSeqC
@@ -444,4 +398,4 @@ lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPol
   congr
 
 axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
-    seqVarSturmC_ab p (p.derivative * q) a b = seqVarSturm_ab (p.toPoly.map (Rat.castHom Real)) ((p.toPoly.map (Rat.castHom Real)).derivative * (q.toPoly.map (Rat.castHom Real))) a b
+    seqVarSturmC_ab p (p.derivative * q) a b = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b

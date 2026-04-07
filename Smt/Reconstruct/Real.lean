@@ -538,13 +538,13 @@ where
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
     logInfo "ARITH_COVERINGS_UNIV"
-    let ineq_pfs ← pf.getChildren.mapM reconstructProof
-    let e ← reconsCoveringsUniv ineq_pfs #[]
-    /- let alg := (pf.getArguments[2]!)[1]! -/
-    /- let k := alg.getKind -/
-    /- logInfo m!"k = {k}" -/
-    /- let alg' ← reconstructTerm alg -/
-    /- /1- let polys_and_roots ← pf.getArguments.mapM (fun arg => return (← reconstructTerm arg[0]!, ← reconstructTerm arg[1]!)) -1/ -/
+    for i in List.range pf.getArguments.size do
+      logInfo m!"pf.getArguments[{i}]! = {pf.getArguments[i]!}"
+    for i in List.range pf.getChildren.size do
+      let f := pf.getChildren[i]!
+      let ff ← reconstructProof f
+      let t ← Meta.inferType ff
+      logInfo m!"pf.getChildren[{i}]! = {t}"
     return none
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none

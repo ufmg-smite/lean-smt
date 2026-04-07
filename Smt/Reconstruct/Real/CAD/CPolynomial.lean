@@ -1,5 +1,6 @@
 import Mathlib
 import CompPoly
+import Smt.Reconstruct.Real.CAD.Sturm.SeqDefs
 
 -- Some extensions to CompPoly
 
@@ -34,18 +35,17 @@ theorem eval_eq_sum_range : ∀ P : CPolynomial α, ∀ x : α, P.eval x = ∑ i
         rw [coeff_toPoly]
   rw [this]
 
-omit [BEq β] in
-theorem eval₂_eq_sum_range (f : RingHom α β) : ∀ P : CPolynomial α, ∀ x : β, P.eval₂ f x = ∑ i ∈ Finset.range (P.natDegree + 1), (f (P.coeff i)) * x ^ i := by
+theorem eval_toPolyReal_eq_sum_range : ∀ P : CPolynomial Rat, ∀ x : Real, (toPolyReal P).eval x = ∑ i ∈ Finset.range (P.natDegree + 1), (Rat.castHom Real (P.coeff i)) * x ^ i := by
   intros P x
-  rw [eval₂_toPoly, natDegree_toPoly]
-  have := Polynomial.eval₂_eq_sum_range (p := P.toPoly) f x
+  unfold toPolyReal
+  simp only [Polynomial.eval_eq_sum_range]
+  rw [natDegree_toPoly, Polynomial.natDegree_map (Rat.castHom Real)]
   conv =>
     · rhs
       congr
       · skip
       · intro i
-        rw [coeff_toPoly]
-  rw [this]
+        rw [coeff_toPoly, <- Polynomial.coeff_map]
 
 namespace t2
 
@@ -69,8 +69,8 @@ example (a : Rat) : a < 0 → P.eval a < 0 := by
 
 def Q : CPolynomial Rat := X ^ 2 - 3 * X + 1
 
-lemma r2 (a : Real) : Q.eval₂ (Rat.castHom Real) a = a ^ 2 - (3 : Real) * a + 1 := by
-  rw [eval₂_eq_sum_range]
+lemma r2 (a : Real) : (toPolyReal Q).eval a = a ^ 2 - (3 : Real) * a + 1 := by
+  rw [eval_toPolyReal_eq_sum_range]
   have h1: Q.natDegree = 2 := by native_decide
   have h2: Q.coeff 0 = 1 := by native_decide
   have h3: Q.coeff 1 = -3 := by native_decide

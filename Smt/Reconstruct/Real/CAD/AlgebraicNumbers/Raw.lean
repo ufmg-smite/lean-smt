@@ -1,5 +1,6 @@
 import CompPoly
 import Smt.Reconstruct.Real.CAD.Sturm.Theorem
+import Smt.Reconstruct.Real.CAD.Sturm.SeqDefs
 
 open CompPoly
 
@@ -28,9 +29,6 @@ lemma sgns_3 {a b c : Rat} : 0 < a * b → a * c ≤ 0 → b * c ≤ 0 := by
 lemma eval_comm_map (p : Polynomial Rat) (l : Rat) : (p.eval l) = (p.map (Rat.castHom ℝ)).eval (l : Real) := by
   simp [Polynomial.eval_eq_sum_range]
 
-lemma cpoly_eval2_poly_eval (p : CPolynomial Rat) (x : Rat) : p.eval₂ (Rat.castHom ℝ) x = p.toPoly.eval x := by
-  rw [CPolynomial.eval₂_toPoly, <- Polynomial.eval_map, <- eval_comm_map]
-
 namespace AlgebraicNumber
 
 -- The root of `p` in the interval `[l, r]`
@@ -43,7 +41,7 @@ namespace Raw
 
 def wellDefined (a: Raw) : Prop :=
   let ⟨p, l, r⟩ := a
-  ∃! x : Real, p.eval₂ (Rat.castHom ℝ) x = 0 ∧ l ≤ x ∧ x ≤ r
+  ∃! x : Real, (toPolyReal p).eval x = 0 ∧ l ≤ x ∧ x ≤ r
 
 -- This is also guaranteed by libpoly; this is necessary for `refine_wellDefined`.
 def sgnDiff (a: Raw) : Prop :=
@@ -61,6 +59,10 @@ def refine (a: Raw) : Raw :=
     ⟨p, l, m⟩
   else
     ⟨p, m, r⟩
+
+lemma refine_p (a : AlgebraicNumber.Raw) : a.refine.p = a.p := by
+  simp [AlgebraicNumber.Raw.refine]
+  split_ifs <;> rfl
 
 lemma refine_bounds_l : ∀ (a : Raw), a.wellDefined → a.l ≤ a.refine.l := by
   intros a h
@@ -92,14 +94,16 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
       have hxl : l = x := by
         apply hx_unique
         constructor
-        · rw [cpoly_eval2_poly_eval]
+        · unfold toPolyReal
+          rw [<- eval_comm_map]
           exact Rat.cast_eq_zero.mpr hpl
         · grind
       use l
       simp only [le_refl, Rat.cast_le, true_and, and_imp]
       constructor
       · constructor
-        · rw [cpoly_eval2_poly_eval]
+        · unfold toPolyReal
+          rw [<- eval_comm_map]
           exact Rat.cast_eq_zero.mpr hpl
         · linarith
       · intros y hy1 hy2 hy3
@@ -115,14 +119,16 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
         simp only [Rat.cast_le, and_imp]
         constructor
         · constructor
-          · rw [cpoly_eval2_poly_eval]
+          · unfold toPolyReal
+            rw [<- eval_comm_map]
             exact Rat.cast_eq_zero.mpr hpm
           · grind
         · intros y hy1 hy2 hy3
           have : m = x := by
             apply hx_unique
             constructor
-            · rw [cpoly_eval2_poly_eval]
+            · unfold toPolyReal
+              rw [<- eval_comm_map]
               exact Rat.cast_eq_zero.mpr hpm
             · norm_cast
               grind
@@ -136,19 +142,16 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
         replace this : ((p.toPoly.eval l * p.toPoly.eval m) : Real) < (0 : Real) := by norm_cast
         rw [eval_comm_map, eval_comm_map] at this
         have hlm : (l : Real) ≤ m := by unfold m; norm_cast; linarith
-        obtain ⟨R, hR1, hR2, hR3⟩  := exists_root_ioo_mul (p := p.toPoly.map (Rat.castHom ℝ)) hlm this
+        obtain ⟨R, hR1, hR2, hR3⟩ := exists_root_ioo_mul (p := toPolyReal p) hlm this
         have hRx : R = x := by
-          refine hx_unique R ⟨?_, ⟨le_of_lt hR1, ?_⟩⟩
-          · rw [CPolynomial.eval₂_toPoly, <- Polynomial.eval_map]
-            exact hR3
-          · unfold m at hR2
-            norm_num at hR2
-            grind
+          refine hx_unique R ⟨hR3, ⟨le_of_lt hR1, ?_⟩⟩
+          unfold m at hR2
+          norm_num at hR2
+          grind
         use R
         constructor
         · constructor
-          · rw [CPolynomial.eval₂_toPoly, <- Polynomial.eval_map]
-            exact hR3
+          · exact hR3
           · grind
         · intros y hy
           rw [hRx]
@@ -161,14 +164,16 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
       have hxr : r = x := by
         apply hx_unique
         constructor
-        · rw [cpoly_eval2_poly_eval]
+        · unfold toPolyReal
+          rw [<- eval_comm_map]
           exact Rat.cast_eq_zero.mpr hpr
         · grind
       use r
       simp only [le_refl, Rat.cast_le, and_imp]
       constructor
       · constructor
-        · rw [cpoly_eval2_poly_eval]
+        · unfold toPolyReal
+          rw [<- eval_comm_map]
           exact Rat.cast_eq_zero.mpr hpr
         · grind
       · intros y hy1 hy2 hy3
@@ -193,21 +198,21 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
           exact hm_neq0 H
         next H => exact hpr H
       have mul_lt := Rat.lt_of_le_of_ne hsgn_diff' this
-      have mul_lt_r : (p.toPoly.map (Rat.castHom ℝ)).eval (((l : Real) + r) / 2) * (p.toPoly.map (Rat.castHom ℝ)).eval (r : Real) < 0 := by
+      have mul_lt_r : (toPolyReal p).eval (((l : Real) + r) / 2) * (toPolyReal p).eval (r : Real) < 0 := by
+        unfold toPolyReal
         norm_cast
         rw [<- eval_comm_map, <- eval_comm_map]
         norm_cast
       obtain ⟨R, hR1, hR2, hR3⟩  := exists_root_ioo_mul (p := p.toPoly.map (Rat.castHom ℝ)) (by linarith) mul_lt_r
       have hRx : R = x := by
         refine hx_unique R ⟨?_, ⟨?_, ?_⟩⟩
-        · rw [CPolynomial.eval₂_toPoly, <- Polynomial.eval_map]
+        · unfold toPolyReal
           exact hR3
         · grind
         · grind
       use R
       refine ⟨⟨?_, ?_⟩, ?_⟩
-      · rw [CPolynomial.eval₂_toPoly, <- Polynomial.eval_map]
-        exact hR3
+      · exact hR3
       · norm_num
         grind
       · intros y hy

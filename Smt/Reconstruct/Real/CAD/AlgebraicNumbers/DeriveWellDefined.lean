@@ -10,11 +10,11 @@ open AlgebraicNumber
 
 /-
 This file defines a metaprogram that receives the data of an algebraic number
-(`AlgebraicNumber.Raw`) and tries to lift it into an `AlgNum`
+(`AlgebraicNumber.Raw`) and lifts it into an `AlgNum`, assuming it is well defined.
 -/
 
 theorem wellDefined_iff_rootsInInterval (a : Raw)
-    (hp : a.p.toPoly.map (Rat.castHom ℝ) ≠ 0)
+    (hp : toPolyReal a.p ≠ 0)
     (hl : a.p.eval a.l ≠ 0)
     (hr : a.p.eval a.r ≠ 0)
     (hlr : a.l < a.r) :
@@ -29,8 +29,8 @@ theorem wellDefined_iff_rootsInInterval (a : Raw)
   have hr' : Polynomial.eval (↑r : ℝ) q ≠ 0 := by
     rw [hq_def, ← eval_comm_map]; exact_mod_cast hr
   have hlr' : (l : ℝ) < r := Rat.cast_lt.mpr hlr
-  have eval_conv : ∀ x : ℝ, p.eval₂ (Rat.castHom ℝ) x = q.eval x := by
-    intro x; rw [CPolynomial.eval₂_toPoly, ← Polynomial.eval_map]
+  have eval_conv : ∀ x : ℝ, (toPolyReal p).eval x = q.eval x := by
+    intro x; unfold toPolyReal; gcongr
   constructor
   · rintro ⟨x, ⟨hxeval, hxl, hxr⟩, hx_unique⟩
     have hxl' : (↑l : ℝ) < x := by
@@ -101,6 +101,7 @@ lemma sturm_l_r_cpoly (p : CPolynomial ℚ) (l r : ℚ) (hl : p.eval l ≠ 0) (h
        = (Polynomial.derivative (Polynomial.map (Rat.castHom ℝ) p.toPoly)) := by
     rw [CPolynomial.toPoly_one, Polynomial.map_one (Rat.castHom ℝ)]
     norm_num
+  unfold toPolyReal
   rw [this, sturm_l_r]
 
 def AlgNum.mk
@@ -140,17 +141,20 @@ def Raw.lift (r : Q(Raw)) : MetaM Q(AlgNum) := do
   let pf6 : Q($g6) ← mkDecideProof g6
   return q(AlgNum.mk $r $pf1 $pf2 $pf3 $pf4 $pf5 $pf6)
 
-@[tactic lift_alg_num] def evalFoo : Tactic := fun stx => withMainContext do
+@[tactic lift_alg_num] def evalLiftAlgNum : Tactic := fun stx => withMainContext do
   let r: Q(Raw) ← elabTerm stx[1] none
   let a: Q(AlgNum) ← Raw.lift r
   closeMainGoal .anonymous a
 
+namespace tests
+
 def p : CPolynomial Rat := CPolynomial.X + CPolynomial.C 1
-def r : Raw := ⟨p, -4, 5⟩
+def r : Raw := ⟨p, -5, 5⟩
 
 def a : AlgNum := by lift_alg_num r
-
-#print axioms a
 #check a
 #eval a.l
 #eval a.p.eval 3
+#print axioms a
+
+end tests

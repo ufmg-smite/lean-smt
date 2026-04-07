@@ -1,304 +1,137 @@
 import Lean
 import Lean.Meta.Tactic.Simp
 
-import Smt.Reconstruct.Real.CAD.CPolynomial
-import Smt.Reconstruct.Real.CAD.NormalizePoly
 import Smt.Reconstruct.Real.CAD.CountRoots
+import Smt.Reconstruct.Real.CAD.CPolynomial
+import Smt.Reconstruct.Real.CAD.LiftIneq
+import Smt.Reconstruct.Real.CAD.NormalizePoly
+import Smt.Reconstruct.Real.CAD.Utils
+import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Order
+import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Sign
 
 open Qq Lean Elab Tactic Meta
 
 open CompPoly
 open CPolynomial
 
-def runGrind (mv : MVarId) : MetaM Unit := do
-  let params ← Meta.Grind.mkDefaultParams {}
-  let _ ← Meta.Grind.main mv params
+open AlgebraicNumber
 
-def get_lhs (ineq : Expr) : Expr :=
-  match ineq with
-  | .app (.app (.app (.app (.const `LT.lt ..) _) _) lhs) _ => lhs
-  | .app (.app (.app (.app (.const `LE.le ..) _) _) lhs) _ => lhs
-  | .app (.app (.app (.app (.const `GT.gt ..) _) _) lhs) _ => lhs
-  | .app (.app (.app (.app (.const `GE.ge ..) _) _) lhs) _ => lhs
-  | .app (.app (.app (.const ``Eq ..) _) lhs) _ => lhs
-  | _ => panic! "[all_to_lhs]: impossible"
+--                                   inequality proofs  roots
+syntax (name := univ_cad) "univ_cad" ("[" term,* "]")   ("[" term,* "]") : tactic
 
-partial def get_monoms (e : Q(Real)) : MetaM (List (Q(Real) × Bool)) := do
-  match e with
-  | ~q(@HAdd.hAdd Real Real Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, false) :: r
-  | ~q(@HSub.hSub Real Real Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, true) :: r
-  -- Not sure if these two are necessary
-  | ~q(@Add.add Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, false) :: r
-  | ~q(@Sub.sub Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, true) :: r
-  | _ =>
-    return [(e, false)]
+def parseUnivCad : Syntax → TacticM (List Expr × List Q(AlgNum))
+  | `(tactic| univ_cad [ $[$as],* ] [ $[$bs],* ] ) => do
+    let as' ← as.toList.mapM (elabTerm · none)
+    let bs' ← bs.toList.mapM (elabTerm · none)
+    return (as', bs')
+  | _ => throwError "[parseUnivCad]: impossible"
 
--- Checks if the real number is castable to rat. Castable reals are:
---  · ofNat n
---  · Coe.coe Int Real i
---  · Coe.coe Rat Real i
---  · Div of two castable reals
---  · Neg of castable real
--- I believe this are all the cases that need to be consider after normalizing
--- the expression with `ring_nf` and taking the coefficients
-partial def rat_of_real (r: Q(Real)) : MetaM Q(Rat) :=
-  match r with
-  | ~q(@OfNat.ofNat Real $n $i) => return q(@OfNat.ofNat Rat $n _)
-  | ~q(@Coe.coe Nat Real $i $n) => return q(@OfNat.ofNat Rat $n _)
-  | ~q(@Coe.coe Int Real $i $n) => return q(@Int.cast Rat _ $n)
-  | ~q(@Coe.coe Rat Real $i $n) => return n
-  | ~q(@Neg.neg Real $i $n) => do
-    let n' ← rat_of_real n
-    return q(@Neg.neg Rat _ $n')
-  -- TODO: do we need to consider other HDivs?
-  | ~q(@HDiv.hDiv Real Real Real $i $e1 $e2) => do
-    let e1' ← rat_of_real e1
-    let e2' ← rat_of_real e2
-    return q(@HDiv.hDiv Rat Rat Rat _ $e1' $e2')
-  | _ => throwError "[rat_of_real]: unsupported"
+def gen_root_counting_proof' (p : Q(CPolynomial Rat)) : MetaM Expr := do
+  let pf ← gen_root_counting_proof p
+  let s : Q(Finset Real) := q((toPolyReal $p).roots.toFinset)
+  let eq_pf := q(Eq.symm (Finset.length_sort (α := Real) (s := $s) (· ≤ ·)))
+  rewriteWithEq pf eq_pf
 
-def natOfExpr (e: Q(Nat)) : MetaM Nat := do
-  match e.rawNatLit? with
-  | none =>
-    match e with
-    | ~q(@OfNat.ofNat _ $n _) => return n.rawNatLit?.get!
-    | _ => panic! "natOfExpr"
-  | some n => return n
+def computeSortedRootSet (p : Q(CPolynomial Rat)) (rs : List Q(AlgNum)) (roots_card r0_root r1_root rs_sorted : Expr) : MetaM Expr := do
+  let rs_real : List Q(Real) := rs.map (fun qa: Q(AlgNum) => q(AlgNum.toReal $qa))
+  let rs_real' : Q(List Real) := toListExpr q(Real) rs_real
 
-partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat) × Nat) := do
-  let (monom, negated) := monom_neg
-  -- TODO: refactor negated branching
-  match monom with
-  | ~q(@Neg.neg Real _ $e) => get_coeff_exp (e, !negated)
-  | ~q(@HMul.hMul Real Real Real _ $lhs $rhs) =>
-    let rhs ← rat_of_real rhs
-    -- TODO could it be that lhs is an application of neg? I don't think so, but this would break
-    match lhs with
-    | ~q(@HPow.hPow Real Nat Real _ $base $exp) =>
-      if negated then
-        return (q(-$rhs), ← natOfExpr exp)
-      else
-        return (q($rhs), ← natOfExpr exp)
-    | _ =>
-      if negated then
-        return (q(-$rhs), 1)
-      else
-        return (q($rhs), 1)
-  | _ =>
-    if monom.hasFVar then
-      let exp: Q(Nat) ←
-        match monom with
-        | ~q(@HPow.hPow Real Nat Real _ $base $exp) => return exp
-        | _ => return q(1)
-      if negated then
-        return (q(-1), ← natOfExpr exp)
-      else
-        return (q(1), ← natOfExpr exp)
-    else
-      let monom ← rat_of_real monom
-      if negated then
-        return (q(-$monom), 0)
-      else
-        return (q($monom), 0)
+  let p_ne_0_goal : Q(Prop) := q($p ≠ 0)
+  let p_ne_0 ← mkDecideProof p_ne_0_goal
+  let p_polyReal_ne_0' ← mkAppM ``toPolyReal_zero #[p, p_ne_0]
+  let p_ne_0 ← mkAppM ``gneg_imp_gtopoly_neg #[p, p_ne_0]
 
-def gen_cpoly_array {α : Type*} (zero : α) (coeffs_and_exps : List (α × Nat)) : Array α :=
-  match coeffs_and_exps with
-  | [] => #[]
-  | (_, exp) :: _ =>
-    let arr : Array α := Array.replicate (exp + 1) zero
-    go arr coeffs_and_exps
-where go arr coeffs_and_exps :=
-  match coeffs_and_exps with
-  | [] => arr
-  | (coeff, exp) :: tl =>
-    let arr := arr.set! exp coeff
-    go arr tl
+  let toPolyReal_rev ← mkAppM ``toPolyReal.eq_1 #[p]
 
-def toListExpr (es : List (Q(Rat) × Nat)) : Q(List (Rat × Nat)) :=
-  match es with
-  | [] => q(@List.nil (Rat × Nat))
-  | (r, n) :: tl =>
-    let tl' : Q(List (Rat × Nat)) := toListExpr tl
-    let hd := q(($r, $n))
-    q($hd :: $tl')
+  let hyp1 : Q(Prop) := q(List.length $rs_real' = (toPolyReal $p).roots.toFinset.sort.length)
+  let mv1 ← mkFreshExprMVar hyp1
+  let hyp1_pf : Q($hyp1) := mv1
+  let mv1' ← simp' mv1.mvarId! []
+  let mv1' ← rewriteMVar mv1' roots_card
+  mv1'.refl
 
-def CPolynomial.mk_rat (p : Raw Rat) (pf : p.trim = p) : CPolynomial Rat := ⟨p, pf⟩
+  let hyp2 : Q(Prop) := q(∀ i ∈ $rs_real', i ∈ (toPolyReal $p).roots.toFinset.sort (· ≤ ·))
+  let mv2 ← mkFreshExprMVar hyp2
+  let hyp2_pf := mv2
+  let mv2' ← simp' mv2.mvarId! [p_ne_0, r0_root, r1_root]
+  mv2'.assign p_polyReal_ne_0'
 
-def get_comparison (ineq : Q(Prop)) : Expr :=
-  match ineq with
-  | .app (.app (.app (.app (.const `LT.lt l) i1) i2) _) _ => .app (.app (.const `LT.lt l) i1) i2
-  | .app (.app (.app (.app (.const `LE.le l) i1) i2) _) _ => .app (.app (.const `LE.le l) i1) i2
-  | .app (.app (.app (.app (.const `GT.gt l) i1) i2) _) _ => .app (.app (.const `GT.gt l) i1) i2
-  | .app (.app (.app (.app (.const `GE.ge l) i1) i2) _) _ => .app (.app (.const `GE.ge l) i1) i2
-  | .app (.app (.app (.const ``Eq l) i) _) _ => .app (.const ``Eq l) i
-  | _ => panic! "[get_comparison]: impossible"
+  let hyp3_pf := rs_sorted
+  let hyp4_pf := q(Finset.sortedLT_sort (toPolyReal $p).roots.toFinset)
+  mkAppM ``list_eq_of_sorted_of_length_of_mem #[rs_real', q((toPolyReal $p).roots.toFinset.sort (· ≤ ·)), hyp1_pf, hyp2_pf, hyp3_pf, hyp4_pf]
 
-partial def get_var (monoms : List (Q(Real) × Bool)) : MetaM (Option Expr) := do
-  for (monom, _) in monoms do
-    let s ← go monom
-    if s.isSome then return s
-  return none
-where go (m : Q(Real)) : MetaM (Option Expr) :=
-  match m with
-  | ~q(@Neg.neg _ _ $e) => go e
-  | ~q(@HMul.hMul _ _ _ _ $lhs _) => go lhs
-  | ~q(@HPow.hPow _ _ _ _ $base _) => go base
-  | .fvar _ => return some m
-  | _ => return none
+@[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
+  let (ineq_pfs, rs) ← parseUnivCad stx
+  let ineq_pf := ineq_pfs[0]!
+  let (P, sgn_P_pf) ← lift_ineq ineq_pf
+  let P_n_roots ← gen_root_counting_proof P
+  let r0_root ← getSignProof P rs[0]!
+  let r1_root ← getSignProof P rs[1]!
+  let rs_sorted ← genPfSortedLT rs
+  let e ← computeSortedRootSet P rs P_n_roots r0_root r1_root rs_sorted
+  closeMainGoal .anonymous e
 
-private def zero_rat : Rat := 0
+def r3 : Rat := 3 / 2
 
-def rewriteMVar (mvarId : MVarId) (eqProof : Expr) : MetaM MVarId :=
-  mvarId.withContext do
-    let tgt    ← mvarId.getType
-    let result ← mvarId.rewrite tgt eqProof
-    let newMVar ← mkFreshExprSyntheticOpaqueMVar result.eNew
-    mvarId.assign (← mkEqMPR result.eqProof newMVar)
-    return newMVar.mvarId!
+open CPolynomial in
+def p1 : CPolynomial Rat := 10 • X ^ 2 + 2 • X + -15
 
-def simp' (mvarId : MVarId) (h: Expr) : MetaM MVarId := mvarId.withContext do
-  let congrTheorems ← getSimpCongrTheorems
-  let simpTheorems ← getSimpTheorems
-  let simpTheorems ← SimpTheoremsArray.addTheorem (#[simpTheorems] : SimpTheoremsArray) (.other `h) h
-  let simprocs ← Simp.getSimprocs
-  let ctx ← Simp.mkContext (simpTheorems := simpTheorems) (congrTheorems := congrTheorems)
-  let (result?, _) ← simpTarget mvarId ctx (simprocs := #[simprocs])
-  return result?.get!
+def r1 : Raw := ⟨p1, -3/2, -5/4⟩
+def R1 : AlgNum := by lift_alg_num r1
 
--- given a proof that some expression of the form `f(var) <> 0` is true, produce a proof
--- that `P.eval var <> 0`, where `P` is the polynomial corresponding to `f`. See `p_comp_pf_ex`.
-def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List (Q(Rat) × Nat)) (ineq_pf : Expr) (P_comp : Expr) : MetaM MVarId := do
-  let (_, deg_nat) :: _ ← pure coeffs_and_exps | throwError "[prove_p_comp] impossible 1"
-  let p_deg : Q(Prop) := q(CPolynomial.natDegree $P = $deg_nat)
-  let p_deg_pf : Q($p_deg) ← mkDecideProof p_deg
+def r2 : Raw := ⟨p1, 1, 5/4⟩
+def R2 : AlgNum := by lift_alg_num r2
 
-  let finset_range_lhs : Q(Finset Nat) := q(Finset.range ($deg_nat + 1))
-  let finset_range_rhs : Q(Finset Nat) := go deg_nat
-  let finset_range_prop : Q(Prop) ← mkAppM `Eq #[finset_range_lhs, finset_range_rhs]
-  let finset_range_pf ← mkDecideProof finset_range_prop
+set_option maxRecDepth 1000000000000
+example (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : [R1.toReal, R2.toReal] = (toPolyReal (mk_rat (gen_cpoly_array 0 [(5, 2), (1, 1), (-15 / 2, 0)]) (by decide +kernel))).roots.toFinset.sort := by
+  univ_cad [h2] [R1, R2]
 
-  let mv_e ← mkFreshExprMVar P_comp
-  let mut mv := mv_e.mvarId!
-  let g := mv
-  mv ← rewriteMVar mv q(CPolynomial.eval₂_eq_sum_range (Rat.castHom Real) $P $var)
-  mv ← rewriteMVar mv p_deg_pf
-  mv ← rewriteMVar mv finset_range_pf
+namespace main_tests
 
-  let curr_goal ← mv.getType
-  let lhs := get_lhs curr_goal
-  let rhs := gen_sum deg_nat var
-  let expand_sum_prop ← mkAppM `Eq #[lhs, rhs]
-  let expand_sum_mv ← mkFreshExprMVar expand_sum_prop
-  let _ ← runGrind expand_sum_mv.mvarId!
-  mv ← rewriteMVar mv expand_sum_mv
+def r3 : Rat := 3 / 2
 
-  let mut curr: Q(Nat) := q(0)
-  let mut coeffs_and_exps_arr := gen_cpoly_array (mkConst ``zero_rat) coeffs_and_exps
-  for i in List.range (deg_nat + 1) do
-    let coeff_i ← mkAppM ``CPolynomial.coeff #[P, curr]
-    let val := coeffs_and_exps_arr.getD i (mkConst ``zero_rat)
-    let eq_p ← mkAppM `Eq #[coeff_i, val]
-    let eq_p_pf ← mkDecideProof eq_p
-    mv ← rewriteMVar mv eq_p_pf
-    curr := q($curr + 1)
+open CPolynomial in
+def p1 : CPolynomial Rat := 10 • X ^ 2 + 2 • X + -15
 
-  -- I don't understand why we need `ineq_pf` here but it doesn't work without it
-  let mv' ← simp' mv ineq_pf
-  Mathlib.Tactic.Linarith.linarith false [] (g := mv')
+def r1 : Raw := ⟨p1, -3/2, -5/4⟩
+def R1 : AlgNum := by lift_alg_num r1
 
-  return g
-where
-  go (curr : Nat) : Q(Finset Nat) :=
-    match curr with
-    | 0 => q(singleton 0)
-    | curr + 1 =>
-      let r := go curr
-      q(insert ($curr + 1) $r)
-  gen_sum (d: Nat) (var : Q(Real)) : Q(Real) :=
-    match d with
-    | 0 => q((Rat.castHom Real) (CPolynomial.coeff $P 0) * ($var ^ 0))
-    | d + 1 =>
-      let r: Q(Real) := gen_sum d var
-      let curr := q((Rat.castHom Real) (CPolynomial.coeff $P ($d + 1)))
-      let curr := q($curr * ($var ^ ($d + 1)))
-      q($curr + $r)
+def r2 : Raw := ⟨p1, 1, 5/4⟩
+def R2 : AlgNum := by lift_alg_num r2
 
-def reconsCoveringsUniv (ineq_pfs : Array Expr) (roots_and_polys : Array (Expr × Expr)) (g : MVarId) : MetaM Unit := do
-  for ineq_pf in ineq_pfs do
-    -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
-    let ineq_pf ← push_not ineq_pf
-    -- Transform expressions of the form `a < b` in `a - b < 0`
-    let ineq_pf ← all_to_lhs ineq_pf
-    -- Runs `ring_nf` at `ineq_pf`, transforming it into a sum of monomials and joining monomials of same degree
-    let ineq_pf ← ring_normalize ineq_pf
-    -- Gets the actual expression on the left-hand side of the normalized `ineq_pf`
-    let ineq ← inferType ineq_pf
-    let lhs := get_lhs ineq
-    -- Gets the list of summands (monomial) in `lhs` (with a flag if they come from a subtraction)
-    let monoms ← get_monoms lhs
-    -- Collects the coefficients and exponents in each monomial (and tries to cast the coefficients to Rat)
-    let coeffs_and_exps ← monoms.mapM get_coeff_exp
-    -- Create the `CPolynomial.Raw Rat` from the list of coefficients
-    let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[q(0: Rat), toListExpr coeffs_and_exps]
-    -- Proves that `P_raw` is lawful (equal to its `trim`) using `decide +kernel`
-    let trim_P_raw : Q(Raw Rat) ← mkAppM ``Raw.trim #[P_raw]
-    let P_raw_lawful : Q(Prop) := q($trim_P_raw = $P_raw)
-    let P_raw_lawful_pf ← mkDecideProof P_raw_lawful
-    -- Create the `CPolynomial Rat` using `P_raw` and the proof that it is lawful
-    let P: Q(CPolynomial Rat) ← mkAppM `CPolynomial.mk_rat #[P_raw, P_raw_lawful_pf]
-    -- Proves that P(var) <> 0, according to the original `ineq_pf`
-    let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
-    let some (var : Q(Real)) ← get_var monoms | throwError "get_var failed"
-    let P_eval : Q(Real) := q(CPolynomial.eval₂ (Rat.castHom Real) $var $P)
-    let P_comp : Q(Prop) := q($cmp $P_eval 0)
-    let P_comp_pf ← prove_p_comp var P coeffs_and_exps ineq_pf P_comp
-    /- let (_, g') ← MVarId.intro1P $ ← g.assert .anonymous P_comp (.mvar P_comp_pf) -/
-    /- return g' -/
-  return ()
+open CPolynomial in
+def p' : CPolynomial Rat := 5 • X^2 + X - 15 / 2
 
-def reconsCoveringsUniv' (ineq_pf : Expr) (g : MVarId) : MetaM MVarId := do
-  let ineq_pf ← push_not ineq_pf
-  let ineq_pf ← all_to_lhs ineq_pf
-  let ineq_pf ← ring_normalize ineq_pf
-  let ineq ← inferType ineq_pf
-  let lhs := get_lhs ineq
-  let monoms ← get_monoms lhs
-  let coeffs_and_exps ← monoms.mapM get_coeff_exp
-  let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[q(0: Rat), toListExpr coeffs_and_exps]
-  let trim_P_raw : Q(Raw Rat) ← mkAppM ``Raw.trim #[P_raw]
-  let P_raw_lawful : Q(Prop) := q($trim_P_raw = $P_raw)
-  let P_raw_lawful_pf ← mkDecideProof P_raw_lawful
-  let P: Q(CPolynomial Rat) ← mkAppM `CPolynomial.mk_rat #[P_raw, P_raw_lawful_pf]
-  let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
-  let some (var : Q(Real)) ← get_var monoms | throwError "get_var failed"
-  let P_eval : Q(Real) := q(CPolynomial.eval₂ (Rat.castHom Real) $var $P)
-  let P_comp : Q(Prop) := q($cmp $P_eval 0)
-  let P_comp_pf ← prove_p_comp var P coeffs_and_exps ineq_pf P_comp
-  let (_, g') ← MVarId.intro1P $ ← g.assert .anonymous P_comp (.mvar P_comp_pf)
+lemma l1 : (p'.toPoly.map (Rat.castHom Real)).eval R1.toReal = 0 := by compute_sign p' , R1
+lemma l2 : (p'.toPoly.map (Rat.castHom Real)).eval R2.toReal = 0 := by compute_sign p' , R2
 
-  let F ← gen_root_counting_proof P
-  let t ← inferType F
-  logInfo m!"t = {t}"
+lemma l3 : (toPolyReal p').roots.toFinset.card = 2 := by count_roots p'
+lemma l3_2 : ((toPolyReal p').roots.toFinset.sort (· ≤ ·)).length = 2 := by
+  have := l3
+  rw [<- Finset.length_sort (α := Real) (s := (toPolyReal p').roots.toFinset) (· ≤ ·)] at this
+  exact this
 
-  return g'
+lemma l4 : [R1.toReal, R2.toReal].SortedLT := by cmp_alg_list [R1, R2]
 
-syntax (name := foo) "foo" term : tactic
+lemma l5 : (toPolyReal p').roots.toFinset.sort = [R1.toReal, R2.toReal] := by
+  have h1' : p' ≠ 0 := by decide +kernel
+  have : p'.toPoly ≠ 0 := gneg_imp_gtopoly_neg p' h1'
+  apply Eq.symm (list_eq_of_sorted_of_length_of_mem [R1.toReal, R2.toReal] ((toPolyReal p').roots.toFinset.sort (· ≤ ·)) _ _ _ _)
+  · simp
+    rw [l3]
+  · simp [toPolyReal.eq_1, this, l1, l2]
+  · exact l4
+  · exact Finset.sortedLT_sort (toPolyReal p').roots.toFinset
 
-@[tactic foo] def evalFoo : Tactic := fun stx => withMainContext do
-  let e ← elabTerm stx[1] none
-  let g ← getMainGoal
-  let g' ← reconsCoveringsUniv' e g
-  replaceMainGoal [g']
+lemma l6 : ∀ x : Real, R1.toReal < x → x < R2.toReal → (toPolyReal p').eval x ≠ 0 := by
+  intros x h1 h2
+  have := no_roots_between_roots (toPolyReal p') (toPolyReal_zero p' (by decide +kernel)) 0 (by rw [l3_2]; decide)
+  rw [l5] at this
+  simp at this
+  have := this x h1 h2
+  exact this
 
-example (a : Real) (h : -3 / 2 + a > 0) : eval₂ (Rat.castHom ℝ) a (CPolynomial.mk_rat (gen_cpoly_array 0 [(1, 1), (-3 / 2, 0)]) (by decide +kernel)) > 0 := by
-  foo h
-  assumption
+example (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by
+  admit
 
+end  main_tests
