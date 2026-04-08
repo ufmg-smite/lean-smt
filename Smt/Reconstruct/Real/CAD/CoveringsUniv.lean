@@ -5,6 +5,7 @@ import Smt.Reconstruct.Real.CAD.CountRoots
 import Smt.Reconstruct.Real.CAD.CPolynomial
 import Smt.Reconstruct.Real.CAD.LiftIneq
 import Smt.Reconstruct.Real.CAD.NormalizePoly
+import Smt.Reconstruct.Real.CAD.Split
 import Smt.Reconstruct.Real.CAD.Utils
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Order
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Sign
@@ -17,13 +18,14 @@ open CPolynomial
 open AlgebraicNumber
 
 --                                   inequality proofs  roots
-syntax (name := univ_cad) "univ_cad" ("[" term,* "]")   ("[" term,* "]") : tactic
+syntax (name := univ_cad) "univ_cad" term "," ("[" term,* "]")   ("[" term,* "]") : tactic
 
-def parseUnivCad : Syntax → TacticM (List Expr × List Q(AlgNum))
-  | `(tactic| univ_cad [ $[$as],* ] [ $[$bs],* ] ) => do
+def parseUnivCad : Syntax → TacticM (Expr × List Expr × List Q(AlgNum))
+  | `(tactic| univ_cad $x , [ $[$as],* ] [ $[$bs],* ] ) => do
     let as' ← as.toList.mapM (elabTerm · none)
     let bs' ← bs.toList.mapM (elabTerm · none)
-    return (as', bs')
+    let x' ← elabTerm x none
+    return (x', as', bs')
   | _ => throwError "[parseUnivCad]: impossible"
 
 def gen_root_counting_proof' (p : Q(CPolynomial Rat)) : MetaM Expr := do
@@ -60,20 +62,81 @@ def computeSortedRootSet (p : Q(CPolynomial Rat)) (rs : List Q(AlgNum)) (roots_c
   let hyp4_pf := q(Finset.sortedLT_sort (toPolyReal $p).roots.toFinset)
   mkAppM ``list_eq_of_sorted_of_length_of_mem #[rs_real', q((toPolyReal $p).roots.toFinset.sort (· ≤ ·)), hyp1_pf, hyp2_pf, hyp3_pf, hyp4_pf]
 
-@[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
-  let (ineq_pfs, rs) ← parseUnivCad stx
-  let ineq_pf := ineq_pfs[0]!
-  let (P, sgn_P_pf) ← lift_ineq ineq_pf
-  let P_n_roots ← gen_root_counting_proof P
-  let r0_root ← getSignProof P rs[0]!
-  let r1_root ← getSignProof P rs[1]!
+lemma set_eq {x y : Real} : (x ∈ setOf (fun z => z = y)) -> x = y := by
+  intro h
+  finiteness
+
+def get_r (r : Expr) : MetaM Expr := do
+  match r with
+  | .app (.const ``AlgNum.toReal []) x => return x
+  | _ => panic! "impossible"
+
+-- Solves one of the intervals for univ_cad. Returns `some mv` if it is not supported yet
+def solveCase (mv : MVarId) (idx : Nat) (polys_ineqs_roots : Array (Expr × Expr × Expr)) : MetaM (Option MVarId) := do
+  if idx % 2 = 0 then -- interval
+    return mv
+  else
+    let (fv, mv') ← mv.intro1P
+    mv'.withContext do
+      let var_val ← mkAppM ``set_eq #[.fvar fv]
+      let var_val_t ← inferType var_val
+      let some (_,_,r) := var_val_t.eq? | throwError "impossible"
+      let mut grind_context : Array Expr := #[]
+      for (poly, ineq, _) in polys_ineqs_roots do
+        let ineq' ← rewriteWithEq ineq var_val
+        let (poly_sign, _) ← getSignProof poly (← get_r r)
+        grind_context := grind_context.push poly_sign
+        grind_context := grind_context.push ineq'
+      runGrind' mv' grind_context.toList
+    return none
+
+def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Q(AlgNum)) : MetaM (Expr × List MVarId) := do
   let rs_sorted ← genPfSortedLT rs
-  let e ← computeSortedRootSet P rs P_n_roots rs_sorted [r0_root, r1_root]
-  closeMainGoal .anonymous e
+  let mut polys_ineqs_roots : Array (Expr × Expr × Expr) := #[]
+  for ineq_pf in ineq_pfs do
+    let (P, ineq_pf_P) ← lift_ineq ineq_pf
+    let P_roots_card ← gen_root_counting_proof P
+    let mut root_pfs : Array Expr := #[]
+    let mut curr_roots : Array Expr := #[]
+    for r in rs do
+      let (sign_pf, sign) ← getSignProof P r
+      if sign = 0 then
+        curr_roots := curr_roots.push r
+        root_pfs := root_pfs.push sign_pf
+    let curr_roots_sorted ← genPfSortedLT curr_roots.toList
+    let roots_description ← computeSortedRootSet P curr_roots.toList P_roots_card curr_roots_sorted root_pfs.toList
+    polys_ineqs_roots := polys_ineqs_roots.push (P, ineq_pf_P, roots_description)
 
-def r3 : Rat := 3 / 2
+  let decomp_pf ← getDecompPf x rs rs_sorted
+  let mv ← mkFreshExprMVar (mkConst ``False)
+  let congrTheorems ← getSimpCongrTheorems
+  let simpTheorems ← getSimpTheorems
+  let simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
+  let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
+  let (some (decomp_pf', t'), _) ← simpStep mv.mvarId! decomp_pf (← inferType decomp_pf) ctx | throwError "impossible"
+  let disjuncts := collectDisjuncts t'
+  let disjunctsToFalse ← disjuncts.mapM (mkArrow · q(False))
+  let disjunctsToFalseMvs ← disjunctsToFalse.mapM (fun e => Meta.mkFreshExprMVar e)
+  let answer ← go disjunctsToFalseMvs decomp_pf'
 
-open CPolynomial in
+  let indexedGoals := disjunctsToFalseMvs.zipIdx
+  let unsolvedMvs ← indexedGoals.mapM (fun (e, i) => solveCase e.mvarId! i polys_ineqs_roots)
+  let unsolvedMvs := unsolvedMvs.foldr (fun o acc => match o with | some x => x :: acc | _ => acc) []
+
+  return (answer, unsolvedMvs)
+
+-- For now I'm assuming all roots are AlgNum's (but they will be either rational or AlgNum)
+@[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
+  let (x, ineq_pfs, rs) ← parseUnivCad stx
+  let e ← univCadCore x ineq_pfs rs
+  let mainMv ← getMainGoal
+  mainMv.assign e.1
+  replaceMainGoal e.2
+
+def p2 : CPolynomial Rat := X - 3/2
+def r3 : Raw := ⟨p2, 1, 2⟩
+def R3 : AlgNum := by lift_alg_num r3
+
 def p1 : CPolynomial Rat := 10 • X ^ 2 + 2 • X + -15
 
 def r1 : Raw := ⟨p1, -3/2, -5/4⟩
@@ -82,8 +145,14 @@ def R1 : AlgNum := by lift_alg_num r1
 def r2 : Raw := ⟨p1, 1, 5/4⟩
 def R2 : AlgNum := by lift_alg_num r2
 
-example (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : [R1.toReal, R2.toReal] = (toPolyReal (mk_rat (gen_cpoly_array 0 [(5, 2), (1, 1), (-15 / 2, 0)]) (by decide +kernel))).roots.toFinset.sort := by
-  univ_cad [h2] [R1, R2]
+
+example (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by
+  univ_cad a, [h1, h2] [R1, R2, R3]
+  · admit
+  · admit
+  · admit
+  · admit
+
 
 namespace main_tests
 
@@ -99,7 +168,7 @@ def parseComputeRootSet : Syntax → TacticM (Q(CPolynomial Rat) × List Q(AlgNu
   let roots_pfs ← rs.mapM (fun a => getSignProof p a)
   let rs_sorted ← genPfSortedLT rs
   let p_n_roots ← gen_root_counting_proof p
-  let e ← computeSortedRootSet p rs p_n_roots rs_sorted roots_pfs
+  let e ← computeSortedRootSet p rs p_n_roots rs_sorted (roots_pfs.map (fun x => x.1))
   closeMainGoal .anonymous e
 
 def r3 : Rat := 3 / 2
@@ -131,7 +200,5 @@ lemma l6 : ∀ x : Real, R1.toReal < x → x < R2.toReal → (toPolyReal p').eva
   simp at this
   exact this x h1 h2
 
-/- example (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by -/
-/-   admit -/
 
 end  main_tests

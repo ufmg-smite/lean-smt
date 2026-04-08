@@ -12,10 +12,6 @@ open Qq Lean Elab Tactic Meta
 open CompPoly
 open CPolynomial
 
-def runGrind (mv : MVarId) : MetaM Unit := do
-  let params ← Meta.Grind.mkDefaultParams {}
-  let _ ← Meta.Grind.main mv params
-
 def get_lhs (ineq : Expr) : Expr :=
   match ineq with
   | .app (.app (.app (.app (.const `LT.lt ..) _) _) lhs) _ => lhs

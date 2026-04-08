@@ -3,6 +3,7 @@ import Lean.Elab.Tactic.Basic
 import Qq
 
 import CompPoly
+import Smt.Reconstruct.Real.CAD.Utils
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
 
@@ -59,16 +60,6 @@ def getPfs (as : List Expr) : MetaM (List Expr) :=
     let p ← gen_toReal_lt a1 a2
     let rest ← getPfs (a2 :: as)
     return p :: rest
-
--- runGrind with a set of extra hypothesis
-def runGrind' (mv : MVarId) (pfs : List Expr) : MetaM Unit := do
-  let mut mv := mv
-  for pf in pfs do
-    let t ← inferType pf
-    let (_, mv') ← MVarId.intro1P $ ← mv.assert .anonymous t pf
-    mv := mv'
-  let params ← Meta.Grind.mkDefaultParams {}
-  let _ ← Meta.Grind.main mv params
 
 -- given a list of algebraic numbers and a list of proofs that they are well
 -- defined, tries to create a proof that the list is sorted (`List.SortedLT`)

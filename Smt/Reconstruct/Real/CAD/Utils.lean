@@ -4,6 +4,20 @@ import CompPoly
 
 open Lean Elab Tactic ToExpr Meta
 
+def runGrind (mv : MVarId) : MetaM Unit := do
+  let params ← Meta.Grind.mkDefaultParams {}
+  let _ ← Meta.Grind.main mv params
+
+-- runGrind with a set of extra hypothesis
+def runGrind' (mv : MVarId) (pfs : List Expr) : MetaM Unit := do
+  let mut mv := mv
+  for pf in pfs do
+    let t ← inferType pf
+    let (_, mv') ← MVarId.intro1P $ ← mv.assert .anonymous t pf
+    mv := mv'
+  let params ← Meta.Grind.mkDefaultParams {}
+  let _ ← Meta.Grind.main mv params
+
 def simp' (mvarId : MVarId) (hs : List Expr) : MetaM MVarId := mvarId.withContext do
   let congrTheorems ← getSimpCongrTheorems
   let simpTheorems ← getSimpTheorems

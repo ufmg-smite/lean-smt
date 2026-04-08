@@ -165,7 +165,7 @@ lemma plus_one (a : Int) : a = 1 → a > 0 := by
   intro h
   positivity
 
-def getSignProof (p : Q(CPolynomial Rat)) (a : Q(AlgNum)) : MetaM Expr := do
+def getSignProof (p : Q(CPolynomial Rat)) (a : Q(AlgNum)) : MetaM (Expr × Int) := do
   let h1 : Q(Prop) := q(«$a».p.eval «$a».l ≠ 0)
   let p1 : Q($h1) ← mkDecideProof h1
   let h2 : Q(Prop) := q(«$a».p.eval «$a».r ≠ 0)
@@ -178,19 +178,19 @@ def getSignProof (p : Q(CPolynomial Rat)) (a : Q(AlgNum)) : MetaM Expr := do
   let sign_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
   if sign = -1 then
     let sign_neg_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) < 0) ← mkAppM ``minus_one #[q(sgn ((toPolyReal $p).eval «$a».toReal)), sign_pf]
-    return q((sgn_sgn_neg ((toPolyReal $p).eval «$a».toReal)).mp $sign_neg_pf)
+    return (q((sgn_sgn_neg ((toPolyReal $p).eval «$a».toReal)).mp $sign_neg_pf), sign)
   else if sign = 0 then
     let sign_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) = 0) := sign_pf
-    return q((sgn_sgn_zero ((toPolyReal $p).eval «$a».toReal)).mp $sign_pf)
+    return (q((sgn_sgn_zero ((toPolyReal $p).eval «$a».toReal)).mp $sign_pf), sign)
   else
     let sign_pos_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) > 0) ← mkAppM ``plus_one #[q(sgn ((toPolyReal $p).eval «$a».toReal)), sign_pf]
-    return q((sgn_sgn_pos ((toPolyReal $p).eval «$a».toReal)).mp $sign_pos_pf)
+    return (q((sgn_sgn_pos ((toPolyReal $p).eval «$a».toReal)).mp $sign_pos_pf), sign)
 
 @[tactic compute_sign] def evalComputeSign : Tactic := fun stx => withMainContext do
   let p : Q(CPolynomial Rat) ← elabTerm stx[1] none
   let a : Q(AlgNum) ← elabTerm stx[3] none
   let v ← getSignProof p a
-  closeMainGoal .anonymous v
+  closeMainGoal .anonymous v.1
 
 namespace tests_sgn
 
