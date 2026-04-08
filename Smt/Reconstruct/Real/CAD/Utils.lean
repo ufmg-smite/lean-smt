@@ -59,7 +59,7 @@ lemma list_eq_of_sorted_of_length_of_mem (l1 l2 : List Real) : l1.length = l2.le
   exact hperm.eq_of_sortedLE h2.sortedLE h3.sortedLE
 
 theorem no_roots_between_roots (p : Polynomial ℝ) (hp : p ≠ 0) : ∀ i < (p.roots.toFinset.sort (· ≤ ·)).length - 1,
-  ¬∃ x : ℝ , x ∈ Set.Ioo (p.roots.toFinset.sort (· ≤ ·))[i]! (p.roots.toFinset.sort (· ≤ ·))[i+1]! ∧ p.eval x = 0 := by
+    ¬∃ x : ℝ , x ∈ Set.Ioo (p.roots.toFinset.sort (· ≤ ·))[i]! (p.roots.toFinset.sort (· ≤ ·))[i+1]! ∧ p.eval x = 0 := by
   intro i hi
   by_contra h
   obtain ⟨x, ⟨hxi, hxi1⟩, hx_root⟩ := h
@@ -69,17 +69,14 @@ theorem no_roots_between_roots (p : Polynomial ℝ) (hp : p ≠ 0) : ∀ i < (p.
   obtain ⟨j, hj⟩ : ∃ j : Fin ((p.roots.toFinset.sort (· ≤ ·)).length), x = (p.roots.toFinset.sort (· ≤ ·))[j] := by
     simp at F
     obtain ⟨i, ⟨h1, h2⟩⟩ := F
-    have : p.roots.toFinset.card = p.roots.toFinset.sort.length := Eq.symm (Finset.length_sort fun a b => a ≤ b)
     use ⟨i, by grind⟩
     grind
   have contr1 : j > i := by
     by_contra h
-    rw[hj] at hxi1
     have hmono :
       (p.roots.toFinset.sort (· ≤ ·))[i] ≥
       (p.roots.toFinset.sort (· ≤ ·))[j] := by
       simp_all only [Fin.getElem_fin]
-      have hsorted2 : (p.roots.toFinset.sort (· ≤ ·)).SortedLT := Finset.sortedLT_sort p.roots.toFinset
       apply (StrictMono.le_iff_le (Finset.sortedLT_sort p.roots.toFinset)).mpr
       grind
     have hcontra : (p.roots.toFinset.sort (· ≤ ·))[j] < (p.roots.toFinset.sort (· ≤ ·))[j] := by
@@ -88,17 +85,42 @@ theorem no_roots_between_roots (p : Polynomial ℝ) (hp : p ≠ 0) : ∀ i < (p.
     exact lt_irrefl _ hcontra
   have contr2 : j < i + 1 := by
     by_contra h
-    rw[hj] at hxi1
     have hmono :
       (p.roots.toFinset.sort (· ≤ ·))[i+1] ≤
       (p.roots.toFinset.sort (· ≤ ·))[j] := by
       simp_all only [Fin.getElem_fin]
-      have hsorted2 : (p.roots.toFinset.sort (· ≤ ·)).SortedLT := Finset.sortedLT_sort p.roots.toFinset
       apply (StrictMono.le_iff_le (Finset.sortedLT_sort p.roots.toFinset)).mpr
       grind
     have hcontra : (p.roots.toFinset.sort (· ≤ ·))[j] < (p.roots.toFinset.sort (· ≤ ·))[j] := by grind
     exact lt_irrefl _ hcontra
   linarith
+
+theorem no_roots_between_roots' (p : Polynomial ℝ) (hp : p ≠ 0) (l : List ℝ)
+    (hl : p.roots.toFinset.sort ⊆ l) (hl_sorted : l.SortedLT) :
+    ∀ i < l.length - 1,
+    ¬∃ x : ℝ , x ∈ Set.Ioo l[i]! l[i+1]! ∧ p.eval x = 0 := by
+  intro i hi
+  by_contra h
+  obtain ⟨x, ⟨hxi, hxi1⟩, hx_root⟩ := h
+  have hx_l : x ∈ l := by
+    apply hl
+    simp [Finset.mem_sort, Multiset.mem_toFinset, Polynomial.mem_roots hp, Polynomial.IsRoot]
+    exact hx_root
+  obtain ⟨j, hj_bound, hj_eq⟩ := List.getElem_of_mem hx_l
+  have hi_bound : i < l.length := by omega
+  have hi1_bound : i + 1 < l.length := by omega
+  rw [getElem!_pos l i hi_bound] at hxi
+  rw [getElem!_pos l (i + 1) hi1_bound] at hxi1
+  rw [← hj_eq] at hxi hxi1
+  have hsorted := List.pairwise_iff_getElem.mp (List.sortedLT_iff_pairwise.mp hl_sorted)
+  by_cases hij : i < j
+  · rcases Nat.eq_or_lt_of_le (Nat.succ_le_of_lt hij) with heq | hlt
+    · subst heq; linarith
+    · linarith [hsorted (i + 1) j hi1_bound hj_bound hlt]
+  · push_neg at hij
+    rcases Nat.eq_or_lt_of_le hij with heq | hlt
+    · subst heq; linarith
+    · linarith [hsorted j i hj_bound hi_bound hlt]
 
 open CompPoly
 
