@@ -184,10 +184,312 @@ def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMo
 def variety [Fact n.Prime] (I : Ideal (MvPolynomial Nat (ZMod n))) : Set (Nat → ZMod n) :=
   MvPolynomial.zeroLocus (ZMod n) I
 
--- TODO(Liza): prove the correctness of this lemma!
+noncomputable
+def Monomial.toMvPoly {n : Nat} (m : Monomial n) :
+    MvPolynomial Nat (ZMod n) :=
+  MvPolynomial.C m.coeff *
+    m.vars.foldl (fun acc v => acc * MvPolynomial.X v) 1
+
+noncomputable
+def Polynomial.toMvPoly {n : Nat} (p : Polynomial n) :
+    MvPolynomial Nat (ZMod n) :=
+  p.foldl (fun acc m => acc + m.toMvPoly) 0
+
+@[simp] lemma Monomial.toMvPoly_neg {n : Nat} (m : Monomial n) :
+    m.neg.toMvPoly = -m.toMvPoly := by
+  simp [Monomial.toMvPoly, Monomial.neg, neg_mul]
+
+@[simp] lemma Monomial.toMvPoly_add {n : Nat} {m₁ m₂ : Monomial n}
+    (h : m₁.vars = m₂.vars) :
+    (m₁.add m₂ h).toMvPoly = m₁.toMvPoly + m₂.toMvPoly := by
+  simp [Monomial.toMvPoly, Monomial.add, h, add_mul]
+
+@[simp] lemma Polynomial.toMvPoly_nil {n : Nat} :
+    Polynomial.toMvPoly ([] : Polynomial n) = 0 := by
+  simp [Polynomial.toMvPoly]
+
+@[simp] lemma Polynomial.toMvPoly_cons {n : Nat} (m : Monomial n) (p : Polynomial n) :
+    Polynomial.toMvPoly (m :: p) = m.toMvPoly + Polynomial.toMvPoly p := by
+  simp [Polynomial.toMvPoly]
+  simpa using
+    (Monomial.foldl_assoc
+      (op := (· + ·))
+      (g := fun m : Monomial n => m.toMvPoly)
+      (l := p)
+      add_assoc
+      m.toMvPoly
+      0)
+
+@[simp] theorem Polynomial.toMvPoly_neg {n : Nat} (p : Polynomial n) :
+    Polynomial.toMvPoly (Polynomial.neg p) = -Polynomial.toMvPoly p := by
+  induction p with
+  | nil =>
+      simp [Polynomial.neg, Polynomial.toMvPoly]
+  | cons m ms ih =>
+      rw [show Polynomial.neg (m :: ms) = Monomial.neg m :: Polynomial.neg ms by rfl]
+      rw [Polynomial.toMvPoly_cons, Polynomial.toMvPoly_cons, Monomial.toMvPoly_neg, ih]
+      rw [neg_add]
+
+theorem Polynomial.toMvPoly_add_insert {n : Nat} (m : Monomial n) (p : Polynomial n) :
+    Polynomial.toMvPoly (Polynomial.add.insert m p) = m.toMvPoly + Polynomial.toMvPoly p := by
+  induction p with
+  | nil =>
+      simp [Polynomial.add.insert, Polynomial.toMvPoly_cons]
+  | cons n p ih =>
+      by_cases hlt : m.vars < n.vars
+      · simp [Polynomial.add.insert, hlt, Polynomial.toMvPoly_cons]
+      · simp [Polynomial.add.insert, hlt]
+        by_cases heq : m.vars = n.vars
+        · simp [heq]
+          by_cases hzero : (m.add n heq).coeff = 0
+          · simp [hzero]
+            have hmadd0 : (m.add n heq).toMvPoly = 0 := by
+              simp [Monomial.toMvPoly, Monomial.add]
+              have hcoeff : m.coeff + n.coeff = 0 := by
+                   simpa [Monomial.add] using hzero
+              rw [← MvPolynomial.C_add]
+              rw [hcoeff]
+              simp
+            have hsum : m.toMvPoly + n.toMvPoly = 0 := by
+              simpa [Monomial.toMvPoly_add, heq] using hmadd0
+            rw [← add_assoc, hsum]
+            simp
+          · simp [hzero, Polynomial.toMvPoly_cons, Monomial.toMvPoly_add,
+                  add_assoc]
+        · simp [heq]
+          simp [ih]
+          simp [ add_left_comm]
+
+
+@[simp] theorem Polynomial.toMvPoly_add {n : Nat} (p q : Polynomial n) :
+    Polynomial.toMvPoly (Polynomial.add p q) =
+      Polynomial.toMvPoly p + Polynomial.toMvPoly q := by
+  induction p with
+  | nil =>
+      simp [Polynomial.add, Polynomial.toMvPoly]
+  | cons x ys ih =>
+      rw [show Polynomial.add (x :: ys) q = Polynomial.add.insert x (Polynomial.add ys q) by rfl]
+      rw [Polynomial.toMvPoly_add_insert]
+      rw [ih]
+      simp [Polynomial.toMvPoly_cons, add_left_comm, add_comm]
+
+
+@[simp] theorem Monomial.toMvPoly_mul {n : Nat} {m₁ m₂ : Monomial n} :
+    (m₁.mul m₂).toMvPoly = m₁.toMvPoly * m₂.toMvPoly := by
+  simp [Monomial.toMvPoly, Monomial.mul, mul_assoc, mul_left_comm]
+  apply congrArg (fun t =>
+    MvPolynomial.C m₁.coeff * (MvPolynomial.C m₂.coeff * t))
+  have hinsert :
+      ∀ (y : Var) (ys : List Var),
+        List.foldl
+            (fun (acc : MvPolynomial Nat (ZMod n)) (v : Var) => acc * MvPolynomial.X v)
+            (1 : MvPolynomial Nat (ZMod n))
+            (Monomial.mul.insert y ys)
+          =
+        (MvPolynomial.X y : MvPolynomial Nat (ZMod n)) *
+          List.foldl
+            (fun (acc : MvPolynomial Nat (ZMod n)) (v : Var) => acc * MvPolynomial.X v)
+            (1 : MvPolynomial Nat (ZMod n))
+            ys := by
+    intro y ys
+    induction ys with
+    | nil =>
+        simp [Monomial.mul.insert]
+    | cons x ys ih =>
+        by_cases h : y ≤ x
+        · simp [Monomial.mul.insert, h]
+          simpa using
+            (Monomial.foldl_assoc
+              (op := (· * ·))
+              (g := fun v : Var => (MvPolynomial.X v : MvPolynomial Nat (ZMod n)))
+              (l := ys)
+              mul_assoc
+              (MvPolynomial.X y)
+              (MvPolynomial.X x))
+        · simp [Monomial.mul.insert, h]
+          have hleft :
+              List.foldl (fun acc v => acc * MvPolynomial.X v) (MvPolynomial.X x) (Monomial.mul.insert y ys)
+                =
+              (MvPolynomial.X x : MvPolynomial Nat (ZMod n)) *
+                List.foldl (fun acc v => acc * MvPolynomial.X v) 1 (Monomial.mul.insert y ys) := by
+            simpa using
+              (Monomial.foldl_assoc
+                (op := (· * ·))
+                (g := fun v : Var => (MvPolynomial.X v : MvPolynomial Nat (ZMod n)))
+                (l := Monomial.mul.insert y ys)
+                mul_assoc
+                (MvPolynomial.X x)
+                (1 : MvPolynomial Nat (ZMod n)))
+
+          have hright :
+              List.foldl (fun acc v => acc * MvPolynomial.X v) (MvPolynomial.X x) ys
+                =
+              (MvPolynomial.X x : MvPolynomial Nat (ZMod n)) *
+                List.foldl (fun acc v => acc * MvPolynomial.X v) 1 ys := by
+            simpa using
+              (Monomial.foldl_assoc
+                (op := (· * ·))
+                (g := fun v : Var => (MvPolynomial.X v : MvPolynomial Nat (ZMod n)))
+                (l := ys)
+                mul_assoc
+                (MvPolynomial.X x)
+                (1 : MvPolynomial Nat (ZMod n)))
+          rw [hleft, ih, hright]
+          rw [<- mul_assoc]
+          rw [mul_comm (MvPolynomial.X x) (MvPolynomial.X y)]
+          rw [← mul_assoc]
+  induction m₁.vars with
+  | nil =>
+      simp
+  | cons y ys ih =>
+      have hins :
+          List.foldl
+              (fun (acc : MvPolynomial Nat (ZMod n)) (v : Var) => acc * MvPolynomial.X v)
+              (1 : MvPolynomial Nat (ZMod n))
+              (Monomial.mul.insert y (List.foldr Monomial.mul.insert m₂.vars ys))
+            =
+          (MvPolynomial.X y : MvPolynomial Nat (ZMod n)) *
+            List.foldl
+              (fun (acc : MvPolynomial Nat (ZMod n)) (v : Var) => acc * MvPolynomial.X v)
+              (1 : MvPolynomial Nat (ZMod n))
+              (List.foldr Monomial.mul.insert m₂.vars ys) := by
+        simpa using hinsert y (List.foldr Monomial.mul.insert m₂.vars ys)
+      simp [hins]
+      rw [ih]
+
+      have hfold :
+    (MvPolynomial.X y : MvPolynomial Nat (ZMod n)) *
+      List.foldl (fun acc v => acc * MvPolynomial.X v) 1 ys
+    =
+    List.foldl (fun acc v => acc * MvPolynomial.X v) (MvPolynomial.X y) ys := by
+        simpa using
+          (Monomial.foldl_assoc
+            (op := (· * ·))
+            (g := fun v : Var => (MvPolynomial.X v : MvPolynomial Nat (ZMod n)))
+            (l := ys)
+            mul_assoc
+            (MvPolynomial.X y)
+            (1 : MvPolynomial Nat (ZMod n))).symm
+      calc
+        (MvPolynomial.X y : MvPolynomial Nat (ZMod n)) *
+            (List.foldl (fun acc v => acc * MvPolynomial.X v) 1 ys *
+              List.foldl (fun acc v => acc * MvPolynomial.X v) 1 m₂.vars)
+            =
+          ((MvPolynomial.X y : MvPolynomial Nat (ZMod n)) *
+            List.foldl (fun acc v => acc * MvPolynomial.X v) 1 ys) *
+              List.foldl (fun acc v => acc * MvPolynomial.X v) 1 m₂.vars := by
+                simp [mul_assoc]
+        _ =
+          List.foldl (fun acc v => acc * MvPolynomial.X v) (MvPolynomial.X y) ys *
+            List.foldl (fun acc v => acc * MvPolynomial.X v) 1 m₂.vars := by
+              exact congrArg
+                (fun t =>
+                  t * List.foldl (fun acc v => acc * MvPolynomial.X v) 1 m₂.vars)
+                hfold
+
+
+
+@[simp] theorem Polynomial.toMvPoly_mulMonomial {n : Nat} {m : Monomial n} {p : Polynomial n} :
+  Polynomial.toMvPoly (Polynomial.mulMonomial m p) = m.toMvPoly * Polynomial.toMvPoly p := by
+  simp only [Polynomial.mulMonomial]
+  induction p with
+  | nil =>
+      simp [Polynomial.toMvPoly]
+  | cons n p ih =>
+      simp [Polynomial.toMvPoly_add, Monomial.toMvPoly_mul]
+      rw [ih]
+      simp [mul_add]
+
+@[simp] theorem Polynomial.toMvPoly_nil_add {n : Nat} {p : Polynomial n} :
+  Polynomial.toMvPoly (p.add []) = Polynomial.toMvPoly p := by
+  simp
+
+
+theorem Polynomial.toMvPoly_add_insert_foldl {o : Nat} {g : Monomial o → Polynomial o}
+    (p : Polynomial o) (n : Polynomial o) :
+  Polynomial.toMvPoly (List.foldl (fun acc m => (g m).add acc) n p) =
+    Polynomial.toMvPoly n +
+      Polynomial.toMvPoly (List.foldl (fun acc m => (g m).add acc) [] p) := by
+  revert n
+  induction p with
+  | nil =>
+      simp [Polynomial.toMvPoly]
+  | cons k p ih =>
+      intro n
+      simp only [List.foldl_cons]
+      rw [ih, @ih ((g k).add []), ← add_assoc, Polynomial.toMvPoly_nil_add,
+          Polynomial.toMvPoly_add, add_comm _ (Polynomial.toMvPoly n)]
+
+theorem Polynomial.toMvPoly_foldl {o : Nat} {g : Monomial o → Polynomial o}
+    (p : Polynomial o) :
+  Polynomial.toMvPoly (List.foldl (fun acc m => (g m).add acc) [] p) =
+    List.foldl (fun acc m => Polynomial.toMvPoly (g m) + acc) 0 p := by
+  induction p with
+  | nil =>
+      simp [Polynomial.toMvPoly]
+  | cons n p ih =>
+      simp only [List.foldl_cons, add_comm] at *
+      rw [add_comm (0 : MvPolynomial Nat (ZMod o)),
+          Monomial.foldl_assoc add_assoc, ← ih,
+          Polynomial.toMvPoly_add_insert_foldl,
+          Polynomial.toMvPoly_nil_add]
+
+@[simp] theorem Polynomial.toMvPoly_mul {n : Nat} (p q : Polynomial n) :
+    Polynomial.toMvPoly (Polynomial.mul p q) =
+      Polynomial.toMvPoly p * Polynomial.toMvPoly q := by
+  simp only [Polynomial.mul]
+  induction p with
+  | nil =>
+      simp [Polynomial.toMvPoly]
+  | cons x ys ih =>
+      simp only [List.foldl_cons, Polynomial.toMvPoly_cons, add_mul, ← ih]
+      rw [Polynomial.toMvPoly_foldl,
+          Polynomial.toMvPoly_add_insert_foldl,
+          ← Polynomial.toMvPoly_mulMonomial,
+          Polynomial.toMvPoly_nil_add,
+          Polynomial.toMvPoly_foldl]
+
+
+@[simp] theorem Polynomial.toMvPoly_sub {n : Nat} (p q : Polynomial n) :
+    Polynomial.toMvPoly (Polynomial.sub p q) =
+      Polynomial.toMvPoly p - Polynomial.toMvPoly q := by
+  simp [Polynomial.sub, sub_eq_add_neg]
+
+lemma Expr.toPoly_eq_toMvPoly_toPolynomial (e : Expr n) :
+  Polynomial.toMvPoly e.toPolynomial = e.toPoly := by
+  induction e with
+  | val v =>
+      simp [Expr.toPolynomial, Expr.toPoly, Polynomial.toMvPoly, Monomial.toMvPoly]
+      split
+      · rename_i hv
+        simp [hv]
+      · rename_i hv
+        simp
+  | var v =>
+      simp [Expr.toPolynomial, Expr.toPoly, Polynomial.toMvPoly, Monomial.toMvPoly]
+  | neg a ih =>
+      simpa [Expr.toPolynomial, Expr.toPoly] using congrArg Neg.neg ih
+  | add a b iha ihb =>
+      simp [Expr.toPolynomial, Expr.toPoly, iha, ihb]
+  | sub a b iha ihb =>
+      simp [Expr.toPolynomial, Expr.toPoly, iha, ihb]
+  | mul a b iha ihb =>
+       simp [Expr.toPolynomial, Expr.toPoly, iha, ihb]
+
+theorem Expr.toPoly_eq_of_toPolynomial_eq
+    {e₁ e₂ : Expr n}
+    (he : e₁.toPolynomial = e₂.toPolynomial) :
+    e₁.toPoly = e₂.toPoly := by
+  have h := congrArg Polynomial.toMvPoly he
+  simpa [Expr.toPoly_eq_toMvPoly_toPolynomial] using h
+
+-- -- TODO(Liza): prove the correctness of this lemma!
 theorem Expr.elem_congr {e₁ e₂ : Expr n} {s₁ s₂ : Ideal (MvPolynomial Nat (ZMod n))}
   (he : e₁.toPolynomial = e₂.toPolynomial) (hs : s₁ = s₂) :
-  (e₁.toPoly ∈ s₁) = (e₂.toPoly ∈ s₂) := by sorry
+  (e₁.toPoly ∈ s₁) = (e₂.toPoly ∈ s₂) := by
+   subst hs
+   rw [Expr.toPoly_eq_of_toPolynomial_eq he]
+
 
 theorem Expr.variety_nonempty_of_eval_eq_zero [Fact n.Prime] {es : List (Expr n)}
   (h : andN (es.map fun e => e.eval ctx = 0)) :
