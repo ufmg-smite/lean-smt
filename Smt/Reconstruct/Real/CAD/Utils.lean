@@ -43,6 +43,40 @@ def rewriteWithEq (h1 h2 : Expr) : MetaM Expr := do
     throwError "rewriteWithEq: type mismatch, expected {newProp} but got {h1'Type}"
   return h1'
 
+noncomputable def sgn (k : ℝ) : ℤ  :=
+  if k > 0 then 1
+  else if k = 0 then 0
+  else -1
+
+lemma sgn_sgn_neg : ∀ x : ℝ, sgn x < 0 ↔ x < 0 := by
+  intro x
+  unfold sgn
+  split_ifs
+  next h =>
+    simp only [Int.reduceLT, false_iff, not_lt]
+    exact le_of_lt h
+  next h1 h2 => simp [h2]
+  next h1 h2 =>
+    simp only [Int.reduceNeg, Left.neg_neg_iff, zero_lt_one, true_iff]
+    push_neg at h1 h2
+    exact lt_of_le_of_ne h1 h2
+
+lemma sgn_sgn_zero : ∀ x : ℝ, sgn x = 0 ↔ x = 0 := by
+  intro x
+  unfold sgn
+  split_ifs
+  next h => simp only [one_ne_zero, false_iff]; exact ne_of_gt h
+  next h => simp [h]
+  next h1 h2 => simp [h2]
+
+lemma sgn_sgn_pos : ∀ x : ℝ, sgn x > 0 ↔ x > 0 := by
+  intro x
+  unfold sgn
+  split_ifs
+  next h => simp [h]
+  next h1 h2 => simp [h2]
+  next h1 h2 => simp [h1]
+
 lemma list_eq_of_sorted_of_length_of_mem (l1 l2 : List Real) : l1.length = l2.length → (∀ i ∈ l1, i ∈ l2) → l1.SortedLT → l2.SortedLT → l1 = l2 := by
   intros hlen h1 h2 h3
   have nd1 := h2.nodup
@@ -121,6 +155,67 @@ theorem no_roots_between_roots' (p : Polynomial ℝ) (hp : p ≠ 0) (l : List �
     rcases Nat.eq_or_lt_of_le hij with heq | hlt
     · subst heq; linarith
     · linarith [hsorted j i hj_bound hi_bound hlt]
+
+-- Em um intervalo que o polinômio não tem raízes, se o sinal de um polinomio é positivo em um ponto do intervalo, então ele é sempre positivo
+open Polynomial in
+theorem sign_stops_pos (x : ℝ) (p : Polynomial ℝ) (a b : ℝ) (h_no_roots : ∀ k : ℝ, k ∈ Set.Ioo a b → ¬p.IsRoot k) :
+    x ∈ Set.Ioo a b → (p.eval x > 0 → ∀ y : ℝ, y ∈ Set.Ioo a b → p.eval y > 0) := by
+  intro h_interval hpos y hy
+  by_contra hneg
+  have hle : eval y p ≤ 0 := not_lt.mp hneg
+  have hx_le : x ≤ y ∨ y ≤ x := le_total x y
+  have zero_in_interval : 0 ∈ Set.Icc (eval y p) (eval x p) := ⟨hle, le_of_lt hpos⟩
+  have ⟨c, hcIoo, hc⟩ : ∃ c ∈ Set.Ioo a b, eval c p = 0 := by
+    rcases hx_le with hxy | hyx
+    · have hcont2 : ContinuousOn (fun t => p.eval t) (Set.Icc x y) := (Polynomial.continuous p).continuousOn
+      have ⟨c, hc_mem, hc_zero⟩ : 0 ∈ (fun t => eval t p) '' Set.Icc x y := by
+        apply intermediate_value_Icc' hxy hcont2
+        exact zero_in_interval
+      simp at hc_zero
+      have hcIoo : c ∈ Set.Ioo a b := by
+        simp_all only [Set.mem_Ioo, IsRoot.def, gt_iff_lt, not_lt, Set.mem_Icc, true_and]
+        apply And.intro <;> linarith
+      use c
+    · have hcont : ContinuousOn (fun t => p.eval t) (Set.Icc y x) := (Polynomial.continuous p).continuousOn
+      have ⟨c, hc_mem, hc_zero⟩ : 0 ∈ (fun t => eval t p) '' Set.Icc y x:= by
+        apply intermediate_value_Icc hyx hcont
+        exact zero_in_interval
+      simp at hc_zero
+      have hcIoo : c ∈ Set.Ioo a b := by
+        simp_all only [Set.mem_Ioo, IsRoot.def, gt_iff_lt, not_lt, Set.mem_Icc, true_and]
+        apply And.intro <;> linarith
+      use c
+  simp_all
+
+open Polynomial in
+theorem sign_stops_neg (x : ℝ) (p : Polynomial ℝ) (a b : ℝ) (h_no_roots : ∀ k : ℝ, k ∈ Set.Ioo a b → ¬p.IsRoot k) :
+    x ∈ Set.Ioo a b → (p.eval x < 0 → ∀ y : ℝ, y ∈ Set.Ioo a b → p.eval y < 0) := by
+  intro h_interval hneg y hy
+  by_contra hpos
+  have hle : eval y p ≥ 0 := not_lt.mp hpos
+  have hx_le : x ≤ y ∨ y ≤ x := le_total x y
+  have zero_in_interval : 0 ∈ Set.Icc (eval x p) (eval y p) := ⟨le_of_lt hneg, hle⟩
+  have ⟨c, hcIoo, hc⟩ : ∃ c ∈ Set.Ioo a b, eval c p = 0 := by
+    rcases hx_le with hxy | hyx
+    · have hcont2 : ContinuousOn (fun t => p.eval t) (Set.Icc x y) := (Polynomial.continuous p).continuousOn
+      have ⟨c, hc_mem, hc_zero⟩ : 0 ∈ (fun t => eval t p) '' Set.Icc x y := by
+        apply intermediate_value_Icc hxy hcont2
+        exact zero_in_interval
+      simp at hc_zero
+      have hcIoo : c ∈ Set.Ioo a b := by
+        simp_all only [Set.mem_Ioo, IsRoot.def, not_lt, Set.mem_Icc]
+        apply And.intro <;> linarith
+      use c
+    · have hcont : ContinuousOn (fun t => p.eval t) (Set.Icc y x) := (Polynomial.continuous p).continuousOn
+      have ⟨c, hc_mem, hc_zero⟩ : 0 ∈ (fun t => eval t p) '' Set.Icc y x:= by
+        apply intermediate_value_Icc' hyx hcont
+        exact zero_in_interval
+      simp at hc_zero
+      have hcIoo : c ∈ Set.Ioo a b := by
+        simp_all only [Set.mem_Ioo, IsRoot.def, not_lt, Set.mem_Icc]
+        apply And.intro <;> linarith
+      use c
+  simp_all
 
 open CompPoly
 

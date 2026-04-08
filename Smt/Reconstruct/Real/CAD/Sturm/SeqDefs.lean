@@ -53,11 +53,6 @@ noncomputable def sturmSeq {α : Type*} [Field α] (f g : Polynomial α) : List 
   termination_by if f=0 then 0 else if g=0 then 1 else 2 + degree g
   decreasing_by exact termination_sturmSeq f g (by assumption)
 
-noncomputable def sgn (k : ℝ) : ℤ  :=
-  if k > 0 then 1
-  else if k = 0 then 0
-  else -1
-
 noncomputable def sgn_pos_inf (p : Polynomial ℝ) : ℤ :=
   sgn p.leadingCoeff
 

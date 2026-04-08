@@ -21,35 +21,6 @@ lemma or_neg_of_mul_neg (a b : ℝ) : a * b < 0 → a < 0 ∨ b < 0 := by
 def rootsInInterval (f : Polynomial ℝ) (a b : ℝ) : Finset ℝ :=
   f.roots.toFinset.filter (fun x => x ∈ Ioo a b)
 
-lemma sgn_sgn_neg : ∀ x : ℝ, sgn x < 0 ↔ x < 0 := by
-  intro x
-  unfold sgn
-  split_ifs
-  next h =>
-    simp only [Int.reduceLT, false_iff, not_lt]
-    exact le_of_lt h
-  next h1 h2 => simp [h2]
-  next h1 h2 =>
-    simp only [Int.reduceNeg, Left.neg_neg_iff, zero_lt_one, true_iff]
-    push_neg at h1 h2
-    exact lt_of_le_of_ne h1 h2
-
-lemma sgn_sgn_zero : ∀ x : ℝ, sgn x = 0 ↔ x = 0 := by
-  intro x
-  unfold sgn
-  split_ifs
-  next h => simp only [one_ne_zero, false_iff]; exact ne_of_gt h
-  next h => simp [h]
-  next h1 h2 => simp [h2]
-
-lemma sgn_sgn_pos : ∀ x : ℝ, sgn x > 0 ↔ x > 0 := by
-  intro x
-  unfold sgn
-  split_ifs
-  next h => simp [h]
-  next h1 h2 => simp [h2]
-  next h1 h2 => simp [h1]
-
 def tarskiQuery (f g : Polynomial ℝ) (a b : ℝ) : ℤ :=
   ∑ x ∈ rootsInInterval f a b, sgn (g.eval x)
 
