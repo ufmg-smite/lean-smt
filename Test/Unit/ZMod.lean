@@ -308,9 +308,8 @@ def Expr.deg (p : Expr n) (i : Nat) : Nat :=
   | .mul a b => a.deg i + b.deg i
   | .neg a   => a.deg i
 
-theorem roots_complete {i : Nat} {rs : List (ZMod n)} {p : Expr n}
+theorem roots_complete [Fact n.Prime] {i : Nat} {rs : List (ZMod n)} {p : Expr n}
   (hrs : rs.eraseDups = rs)
-  (hpu : p.isUnivariateOver i)
   (hprs : andN (rs.map fun z => p.eval (fun _ => z) = 0))
   (h : (Expr.gcd p (.var i ^ n - .var i)).deg = rs.length)
   : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
