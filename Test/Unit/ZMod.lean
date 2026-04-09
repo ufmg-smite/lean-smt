@@ -220,6 +220,110 @@ def Polynomial.toMvPoly {n : Nat} (p : Polynomial n) :
       m.toMvPoly
       0)
 
+def Expr.isUnivariateOver {n : Nat} (p : Expr n) (i : Nat) : Bool :=
+  go i p
+where
+  go (i : Nat) : Expr n → Bool
+    | .var i'  => i' == i
+    | .val _   => true
+    | .add a b => go i a && go i b
+    | .sub a b => go i a && go i b
+    | .mul a b => go i a && go i b
+    | .neg a   => go i a
+
+def Expr.gcd {n : Nat} (p q : Expr n) : Expr n :=
+  let i := (findVar p <|> findVar q).getD 0
+  let pc := toCoeffs p.toPolynomial
+  let qc := toCoeffs q.toPolynomial
+  let gc := euclidGcd pc qc (pc.length + qc.length + 1)
+  toExpr i gc
+where
+  findVar : Expr n → Option Nat
+    | .var i    => some i
+    | .neg a    => findVar a
+    | .add a b  => findVar a <|> findVar b
+    | .sub a b  => findVar a <|> findVar b
+    | .mul a b  => findVar a <|> findVar b
+    | .val _    => none
+  trim (cs : List (ZMod n)) : List (ZMod n) :=
+    cs.reverse.dropWhile (· == 0) |>.reverse
+  toCoeffs (p : Polynomial n) : List (ZMod n) :=
+    let deg := p.foldl (fun d (m : Monomial n) => max d m.vars.length) 0
+    let arr := Array.replicate (deg + 1) (0 : ZMod n)
+    let arr := p.foldl (fun arr (m : Monomial n) => arr.modify m.vars.length (· + m.coeff)) arr
+    trim arr.toList
+  pseudoRem (a b : List (ZMod n)) (fuel : Nat) : List (ZMod n) :=
+    match fuel with
+    | 0 => a
+    | fuel + 1 =>
+      match b with
+      | [] => a
+      | _ =>
+        if a.length < b.length then a
+        else
+          let lca := a.getLast!
+          let lcb := b.getLast!
+          let shift := a.length - b.length
+          let a' := a.map (· * lcb)
+          let bShifted := List.replicate shift 0 ++ b.map (· * lca)
+          let r := trim (List.zipWith (· - ·) a' bShifted)
+          pseudoRem r b fuel
+  euclidGcd (a b : List (ZMod n)) (fuel : Nat) : List (ZMod n) :=
+    match fuel with
+    | 0 => a
+    | fuel + 1 =>
+      match b with
+      | [] => a
+      | _ => euclidGcd b (pseudoRem a b (a.length + 1)) fuel
+  toExpr (i : Nat) (cs : List (ZMod n)) : Expr n :=
+    match cs.reverse with
+    | []      => .val 0
+    | c :: cs => cs.foldl (fun acc coeff => .add (.val coeff) (.mul (.var i) acc)) (.val c)
+
+def Expr.pow {n : Nat} (p : Expr n) : Nat → Expr n
+  | 0     => .val 1
+  | k + 1 => p.mul (p.pow k)
+
+instance : Neg (Expr n) where
+  neg := Expr.neg
+
+instance : Add (Expr n) where
+  add := Expr.add
+
+instance : Sub (Expr n) where
+  sub := Expr.sub
+
+instance : Mul (Expr n) where
+  mul := Expr.mul
+
+instance : Pow (Expr n) Nat where
+  pow := Expr.pow
+
+def Expr.deg (p : Expr n) (i : Nat) : Nat :=
+  match p with
+  | .var i'  => if i' == i then 1 else 0
+  | .val _   => 0
+  | .add a b => max (a.deg i) (b.deg i)
+  | .sub a b => max (a.deg i) (b.deg i)
+  | .mul a b => a.deg i + b.deg i
+  | .neg a   => a.deg i
+
+theorem roots_complete {i : Nat} {rs : List (ZMod n)} {p : Expr n}
+  (hrs : rs.eraseDups = rs)
+  (hpu : p.isUnivariateOver i)
+  (hprs : andN (rs.map fun z => p.eval (fun _ => z) = 0))
+  (h : (Expr.gcd p (.var i ^ n - .var i)).deg = rs.length)
+  : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
+  sorry
+
+theorem root_branch [Fact n.Prime] {p : Expr n} {i : Nat} {rs : List (ZMod n)}
+  (hp : andN (rs.map fun z => p.eval (fun _ => z) = 0))
+  (hpu : p.isUnivariateOver i)
+  (hps : variety (ideal ps) ≠ ∅) (h : p.toPoly ∈ ideal ps)
+  (hrs : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0)
+  : orN (rs.map fun r => variety (ideal (ps ++ [.X i - .C r])) ≠ ∅) := by
+  sorry
+
 @[simp] theorem Polynomial.toMvPoly_neg {n : Nat} (p : Polynomial n) :
     Polynomial.toMvPoly (Polynomial.neg p) = -Polynomial.toMvPoly p := by
   induction p with
@@ -773,7 +877,7 @@ open Smt.Reconstruct.ZMod
 open MvPolynomial Expr
 
 -- set_option trace.smt true
--- set_option trace.smt.reconstruct.proof true
+set_option trace.smt.reconstruct.proof true
 -- set_option trace.smt.solve true
 -- set_option pp.instantiateMVars false
 
