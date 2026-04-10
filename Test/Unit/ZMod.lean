@@ -308,18 +308,20 @@ def Expr.deg (p : Expr n) (i : Nat) : Nat :=
   | .mul a b => a.deg i + b.deg i
   | .neg a   => a.deg i
 
-theorem roots_complete [Fact n.Prime] {i : Nat} {rs : List (ZMod n)} {p : Expr n}
-  (hrs : rs.eraseDups = rs)
-  (hprs : andN (rs.map fun z => p.eval (fun _ => z) = 0))
-  (h : (Expr.gcd p (.var i ^ n - .var i)).deg = rs.length)
-  : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
+-- TODO(all): simplify this definition as much as possible to make Liza's life easier!
+def Expr.completeRoots (p : Expr n) (i : Nat) (rs : List (ZMod n)) : Bool :=
+  p.isUnivariateOver i &&
+  rs.eraseDups == rs &&
+  rs.all (fun z => p.eval (fun _ => z) == 0) &&
+  (Expr.gcd p (.var i ^ n - .var i)).deg i == rs.length
+
+theorem roots_complete [Fact n.Prime] {p : Expr n}
+  (h : p.completeRoots i rs) : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
   sorry
 
-theorem root_branch [Fact n.Prime] {p : Expr n} {i : Nat} {rs : List (ZMod n)}
-  (hp : andN (rs.map fun z => p.eval (fun _ => z) = 0))
-  (hpu : p.isUnivariateOver i)
-  (hps : variety (ideal ps) ≠ ∅) (h : p.toPoly ∈ ideal ps)
-  (hrs : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0)
+theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
+  (hps : variety (ideal ps) ≠ ∅) (hp : p.toPoly ∈ ideal ps)
+  (hpirs : p.completeRoots i rs)
   : orN (rs.map fun r => variety (ideal (ps ++ [.X i - .C r])) ≠ ∅) := by
   sorry
 
@@ -868,7 +870,50 @@ open Qq
     let ⟨_, hq⟩ ← cpfs.pop.foldrM f (⟨q, hq⟩ : Σ q : Q(Prop), Q($q))
     let h : Q(andN (List.map (fun r => r ∈ ideal $ps) $rs)) := hq
     addThm q(addN (List.zipWith (· * ·) $ms $rs) ∈ ideal $ps) q(@poly_combination $o $ps $ms $rs $h)
+  | .FF_ROOT_BRANCH =>
+    let o : Nat := pf.getArguments[2]!.getSort.getFiniteFieldSize!
+    let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let reconstructZMods := fun (t : cvc5.Term) (acc : Q(List (ZMod $o))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      return q($p :: $acc)
+    let ps := (pf.getArguments[1]!).getChildren
+    let ps ← ps.foldrM reconstructMVPs q([])
+    let p : Q(ZMod $o) ← reconstructTerm pf.getArguments[4]!
+    let p ← Expr.reify o p
+    let is ← getFFCtx o
+    let x : Q(ZMod $o) ← reconstructTerm pf.getArguments[2]!
+    let i : Nat := is.findIdx (· == x)
+    let rs := pf.getArguments[3]!.getChildren
+    let rs ← rs.foldrM reconstructZMods q([])
+    let hps : Q(variety (ideal $ps) ≠ ∅) ← reconstructProof pf.getChildren[0]!
+    let hp : Q(«$p».toPoly ∈ ideal $ps) ← reconstructProof pf.getChildren[1]!
+    let tac := if ← useNative then decide else nativeDecide
+    let hpirs : Q(«$p».completeRoots $i $rs) ← tac q(«$p».completeRoots $i $rs)
+    addThm q(orN («$rs».map fun r => variety (ideal ($ps ++ [.X $i - .C r])) ≠ ∅))
+           q(@root_branch $o $ho $ps $p $i $rs $hps $hp $hpirs)
   | _ => return none
+where
+  decide (p : Q(Prop)) : MetaM (Q($p)) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    return .app q(@of_decide_eq_true $p $hp) q(Eq.refl true)
+  nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
+    let b : Q(Bool) := .const auxDeclName []
+    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
+  mkNativeAuxDecl (baseName : Name) (type value : Lean.Expr) : MetaM Name := do
+    let auxName ← Lean.mkAuxDeclName baseName
+    let decl := Declaration.defnDecl {
+      name := auxName, levelParams := [], type, value
+      hints := .abbrev
+      safety := .safe
+    }
+    addAndCompile decl
+    pure auxName
 
 end Smt.Reconstruct.ZMod
 
@@ -876,7 +921,7 @@ open Smt.Reconstruct.ZMod
 open MvPolynomial Expr
 
 -- set_option trace.smt true
-set_option trace.smt.reconstruct.proof true
+-- set_option trace.smt.reconstruct.proof true
 -- set_option trace.smt.solve true
 -- set_option pp.instantiateMVars false
 
