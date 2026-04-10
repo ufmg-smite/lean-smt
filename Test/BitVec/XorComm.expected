@@ -6,7 +6,7 @@ query:
 (declare-const x (_ BitVec 2))
 (assert (not (= (bvxor x y) (bvxor y x))))
 (check-sat)
-Test/BitVec/XorComm.lean:3:8: warning: declaration uses 'sorry'
+Test/BitVec/XorComm.lean:3:8: warning: declaration uses `sorry`
 goal: x ^^^ y = y ^^^ x
 
 query:
@@ -15,4 +15,4 @@ query:
 (declare-const y (_ BitVec 8))
 (assert (not (= (bvxor x y) (bvxor y x))))
 (check-sat)
-Test/BitVec/XorComm.lean:7:8: warning: declaration uses 'sorry'
+Test/BitVec/XorComm.lean:7:8: warning: declaration uses `sorry`

@@ -10,4 +10,4 @@ query:
 (declare-fun MyInt.add (MyInt MyInt) MyInt)
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
-Test/Int/DefineSort.lean:6:0: warning: declaration uses 'sorry'
+Test/Int/DefineSort.lean:6:0: warning: declaration uses `sorry`

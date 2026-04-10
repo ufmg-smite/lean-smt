@@ -98,7 +98,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     mv.withContext do trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
-  let options := defaultSolverOptions ++ if cfg.trust then [] else [("produce-proofs", "true")] ++ cfg.extraSolverOptions
+  let options := defaultSolverOptions ++ (if cfg.trust then [] else [("produce-proofs", "true")]) ++ cfg.extraSolverOptions
   let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (!cfg.trust) options
   -- trace[smt] "\nresult: {res}"
   match res with

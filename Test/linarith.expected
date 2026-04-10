@@ -4,7 +4,7 @@ Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/linarith.lean:34:9: warning: unused variable `e`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/linarith.lean:53:0: warning: declaration uses 'sorry'
+Test/linarith.lean:53:0: warning: declaration uses `sorry`
 Test/linarith.lean:101:9: warning: unused variable `a`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

@@ -16,8 +16,8 @@ Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Test/Unit/Normalize.lean:54:35: warning: unused variable `h2`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Unit/Normalize.lean:212:0: warning: declaration uses 'sorry'
-Test/Unit/Normalize.lean:216:0: warning: declaration uses 'sorry'
-Test/Unit/Normalize.lean:229:0: warning: declaration uses 'sorry'
-Test/Unit/Normalize.lean:233:0: warning: declaration uses 'sorry'
-Test/Unit/Normalize.lean:240:0: warning: declaration uses 'sorry'
+Test/Unit/Normalize.lean:212:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:216:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:229:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:233:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:240:0: warning: declaration uses `sorry`
