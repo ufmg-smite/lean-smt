@@ -70,7 +70,7 @@ def traceReconstructSort (s : cvc5.Sort) (r : Except Exception Expr) : Reconstru
     | .error _ => m!"{bombEmoji}"
 
 def reconstructSort : cvc5.Sort → ReconstructM Expr := withSortCache fun s => do
-  withTraceNode ((`smt.reconstruct.sort).str s.getKind.toString) (traceReconstructSort s) do
+  withTraceNode ((`smt.reconstruct.sort).str s.getKind!.toString) (traceReconstructSort s) do
     let rs ← getReconstructors ``SortReconstructor SortReconstructor
     go rs s
 where
@@ -87,7 +87,7 @@ where
       if let some e ← r s then
         trace[smt.reconstruct.sort] "{s} =({n})=> {e}"
         return e
-    throwError "Failed to reconstruct sort {s} with kind {s.getKind}"
+    throwError "Failed to reconstruct sort {s} with kind {s.getKind!}"
 
 def reconstructSortLevelAndSort (s : cvc5.Sort) : ReconstructM (Level × Expr) := do
   let t ← reconstructSort s
@@ -107,7 +107,7 @@ def traceReconstructTerm (t : cvc5.Term) (r : Except Exception Expr) : Reconstru
     | .error _ => m!"{bombEmoji}"
 
 def reconstructTerm : cvc5.Term → ReconstructM Expr := withTermCache fun t => do
-  withTraceNode ((`smt.reconstruct.term).str t.getKind.toString) (traceReconstructTerm t) do
+  withTraceNode ((`smt.reconstruct.term).str t.getKind!.toString) (traceReconstructTerm t) do
     let rs ← getReconstructors ``TermReconstructor TermReconstructor
     go rs t
 where
@@ -125,7 +125,7 @@ where
       if let some e ← r t then
         trace[smt.reconstruct.term] "{t} =({n})=> {e}"
         return e
-    throwError "Failed to reconstruct term {t} with kind {t.getKind}"
+    throwError "Failed to reconstruct term {t} with kind {t.getKind!}"
 
 open Qq in
 def reconstructTerms {u} {α : Q(Type $u)} (ts : Array cvc5.Term) : ReconstructM Q(List $α) :=
@@ -313,24 +313,149 @@ def solve (query : String) (timeout : Option Nat) (prove : Bool := true) (option
       return .unknown reason
     throwError s!"unexpected check-sat result {res}"
 
+/-- Outcome of `solveAndReconstructProof`, mirroring the three possible cvc5 verdicts after the
+    SMT-LIB query has been parsed, solved, and (if applicable) reconstructed back into Lean.
+
+    Constructors:
+    * `sat model` — the query is satisfiable. `model` is an array of `(symbol, value)` pairs,
+      where each entry is the Lean reconstruction of either a declared sort (paired with a
+      `Fin n` standing for its finite domain) or a declared function/constant (paired with the
+      value cvc5 assigned to it).
+    * `unsat hp mvs usedHints` — the query is unsatisfiable.
+        - `hp` is the reconstructed proof term, or `none` when proof reconstruction was disabled
+          (i.e. the call was made with `prove := false`). See `solveAndReconstructProof` for the
+          shape of its type.
+        - `mvs` is the list of metavariables produced by `addTrust` for proof steps that could
+          not be reconstructed natively. Each such metavariable is abstracted over the
+          assumptions in scope at the point where reconstruction gave up — its type is
+          `∀ assums, originalGoal` — and is left as a remaining goal (effectively a `sorry`) for
+          the caller to discharge. These should be **rare in practice and worth flagging** when
+          they appear: a non-empty `mvs` means part of the cvc5 proof was trusted rather than
+          checked.
+        - `usedHints` is the unsat core returned by cvc5, with each assertion reconstructed as a
+          Lean `Expr`.
+    * `unknown reason` — cvc5 returned `unknown`; `reason` is the stringified
+      `cvc5.UnknownExplanation`. -/
+inductive SolveReconstructResult where
+  | sat (model : Array (Expr × Expr))
+  | unsat (hp : Option Expr) (mvs : List MVarId) (usedHints : Array Expr)
+  | unknown (reason : String)
+
+open Qq in
+/-- Parse an SMT-LIB 2.6 `query`, hand it to cvc5, and reconstruct the verdict (and, when
+    available, the proof of unsat) back into Lean.
+
+    This function assumes that every user-declared or user-defined sort and function symbol
+    referenced from `userNames` (i.e. each `Expr` in the map) is **already available** to the
+    elaborator at the call site — either as a free variable in the current local context or as
+    a constant in the Lean environment. Reconstruction does not introduce these symbols itself;
+    it only looks them up by their SMT-LIB name and substitutes the corresponding `Expr`. If a
+    symbol is missing or out of scope, reconstruction will fail.
+
+    ### Parameters
+    * `query` — the full SMT-LIB script to feed to cvc5 (declarations, definitions, assertions,
+      and a final `(check-sat)`).
+    * `timeout` — optional per-query time limit, in **seconds**. When `some n` is supplied it is
+      forwarded to cvc5 as `tlimit-per = 1000 * n` (milliseconds). `none` disables the limit.
+    * `prove` — whether cvc5 should produce a proof on unsat **and** whether this function should
+      attempt to reconstruct it. Defaults to `true`. Setting it to `false` skips proof production
+      entirely; on unsat the result will carry `hp = none` and only the unsat core.
+    * `options` — the list of `(option, value)` pairs passed verbatim to `cvc5.Solver.setOption`.
+      Defaults to `defaultSolverOptions`, additionally augmented with `("produce-proofs", "true")`
+      when `prove` is `true`. Note that supplying a custom list **replaces** the defaults rather
+      than extending them, so callers who want the standard configuration plus extras should start
+      from `defaultSolverOptions` themselves.
+    * `userNames` — a map from SMT-LIB identifier names to the Lean expressions they should be
+      reconstructed to (typically free variables in the caller's local context). Used so that
+      symbols in the query line up with the variables already in scope. Defaults to empty.
+    * `native` — whether reconstruction is allowed to use the native (compiled) Lean code path
+      for normalization and reduction steps. Speeds things up considerably but adds the Lean
+      compiler to the trusted code base. Defaults to `false`.
+
+    ### Shape of the reconstructed proof (unsat case)
+    When the call succeeds with `prove := true` and cvc5 returns unsat with a proof, the term in
+    `SolveReconstructResult.unsat`'s `hp` field has Lean type
+
+    ```lean4
+    andN ds → ¬ andN as
+    ```
+
+    where:
+    * `andN : List Prop → Prop` is the n-ary conjunction defined in `Smt.Reconstruct.Prop.Core`.
+      It collapses a list of conjuncts into a right-associated `∧` chain with **no trailing
+      `True`**: `andN [] = True`, `andN [p] = p`, and `andN (p :: q :: ps) = p ∧ andN (q :: ps)`.
+    * `ds` is the list of user-supplied definitions from the query, in source order. Each
+      `(define-fun f (x₁ … xₙ) τ b)` contributes the conjunct `f = fun x₁ … xₙ => b`.
+    * `as` is the list of assertions from the query, in the order they appear (one entry per
+      `(assert φ)`).
+
+    Edge cases follow directly from the definition of `andN`: with no definitions the antecedent
+    degenerates to `True → ¬ andN as`; with a single assertion the conclusion is `¬ a₁`; with no
+    assertions at all it is `¬ True`. -/
+def solveAndReconstructProof (query : String)
+  (timeout : Option Nat) (prove : Bool := true)
+  (options : List (String × String) := defaultSolverOptions ++ (if prove then [("produce-proofs", "true")] else []))
+  (userNames : Std.HashMap String Expr := {}) (native : Bool := false) : MetaM SolveReconstructResult :=
+  profileitM Exception "smt" {} do
+  let res ← solve query timeout prove options
+  match res with
+  | .error e =>
+    -- Print error reason.
+    trace[smt.solve] "\nerror:\n{e}\n"
+    throwError e.toString
+  | .ok (.unknown r) =>
+    -- Print unknown reason.
+    trace[smt.solve] "\nunknown reason:\n{r}\n"
+    return .unknown r.toString
+  | .ok (.unsat pf uc) =>
+    -- Reconstruct unsat cores.
+    let ctx := { userNames := userNames, native := native }
+    let (uc, state) ← (uc.mapM Reconstruct.reconstructTerm).run ctx {}
+    if !prove then
+      -- Return unsat core without proof.
+      return .unsat none [] uc
+    -- Reconstruct proof.
+    let some pf := pf | throwError "failed to reconstruct proof for unsat result"
+    let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+    return .unsat h mvs.toList uc
+  | .ok (.sat model) =>
+    -- Return potential counter-example.
+    let (uss, es) := model.iss.unzip
+    let cs := es.map Array.size
+    let sortCard := Std.HashMap.insertMany ∅ (uss.zip cs)
+    let ctx := { userNames := userNames, sortCard := sortCard, native := native }
+    let (uss', _) ← (uss.mapM Reconstruct.reconstructSort).run ctx {}
+    let cs' := cs.map (fun n => .app (.const ``Fin []) (toExpr n))
+    let state := { sortCache := Std.HashMap.insertMany ∅ (uss.zip cs') }
+    let (ufs, vs) := model.ifs.unzip
+    let (ufs', state) ← (ufs.mapM Reconstruct.reconstructTerm).run ctx state
+    let (vs', _) ← (vs.mapM Reconstruct.reconstructTerm).run ctx state
+    return .sat (uss'.zip cs' ++ ufs'.zip vs')
+
 syntax (name := reconstruct) "reconstruct" str : tactic
 
 open Lean.Elab Tactic in
 @[tactic reconstruct] def evalReconstruct : Tactic := fun stx =>
   withMainContext do
     let some query := stx[1].isStrLit? | throwError "expected string"
-    let r ← solve query none true (defaultSolverOptions ++ [("produce-proofs", "true")])
+    let r ← solveAndReconstructProof query none true (defaultSolverOptions) (← getUserNames)
     match r with
-      | .error e => throwError e.toString
-      | .ok (.sat _) => throwError "expected unsat result"
-      | .ok (.unknown r) => logInfo (repr r)
-      | .ok (.unsat none _) => throwError "expected proof for unsat result"
-      | .ok (.unsat (some pf) _) =>
-        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), {}, false⟩
-        let mv ← Tactic.getMainGoal
-        let mv ← mv.assert (Name.num `s 0) p hp
-        let (_, mv) ← mv.intro1
-        replaceMainGoal (mv :: mvs)
+    | .unknown reason =>
+      throwError m!"solver returned unknown: {reason}"
+    | .unsat none _ uc =>
+      logInfo m!"solver returned unsat without proof, unsat core: {uc}"
+    | .unsat (some hp) mvs uc =>
+      logInfo m!"solver returned unsat with proof, unsat core: {uc}"
+      let mv ← Tactic.getMainGoal
+      let mv ← mv.assert (Name.num `s 0) (← Meta.inferType hp) hp
+      let (_, mv) ← mv.intro1
+      replaceMainGoal (mv :: mvs)
+    | .sat model =>
+      let mut md := m!"solver returned sat with model:\n"
+      for (v, t) in model do
+        md := md ++ m!"\n  {v} = {t}"
+      logInfo md
+
 where
   getUserNames : MetaM (Std.HashMap String Expr) := do
     let lCtx ← getLCtx

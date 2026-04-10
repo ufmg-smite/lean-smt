@@ -15,11 +15,11 @@ namespace Smt.Reconstruct.Prop
 
 open Lean Qq
 
-@[smt_sort_reconstruct] def reconstructPropSort : SortReconstructor := fun s => do match s.getKind with
+@[smt_sort_reconstruct] def reconstructPropSort : SortReconstructor := fun s => do match s.getKind! with
   | .BOOLEAN_SORT => return q(Prop)
   | _             => return none
 
-@[smt_term_reconstruct] def reconstructProp : TermReconstructor := fun t => do match t.getKind with
+@[smt_term_reconstruct] def reconstructProp : TermReconstructor := fun t => do match t.getKind! with
   | .CONST_BOOLEAN => return if t.getBooleanValue! then q(True) else q(False)
   | .NOT =>
     let b : Q(Prop) ← reconstructTerm t[0]!
@@ -229,7 +229,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | _ => return none
 
 def nary (k : cvc5.Kind) (c : cvc5.Term) : Array cvc5.Term := Id.run do
-  if c.getKind != k then
+  if c.getKind! != k then
     return #[c]
   let mut cs := #[]
   for cc in c do
@@ -243,7 +243,7 @@ def clausify (c l : cvc5.Term) : Array cvc5.Term :=
   reclausify (nary .OR c) l
 
 private def isNotOf (t₁ t₂ : cvc5.Term) : Bool :=
-  t₁.getKind == .NOT && t₁[0]! == t₂
+  t₁.getKind! == .NOT && t₁[0]! == t₂
 
 def getResolutionResult (c₁ c₂ : Array cvc5.Term) (pol l : cvc5.Term) : Array cvc5.Term := Id.run do
   let l₁ := if pol.getBooleanValue! then (· == l) else (isNotOf · l)
@@ -293,7 +293,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
 @[smt_proof_reconstruct] def reconstructPropProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf
   | .ITE_EQ =>
-    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]![1]!.getSort
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]![1]!.getSort!
     let c : Q(Prop) ← reconstructTerm pf.getArguments[0]![0]!
     let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let x : Q($α) ← reconstructTerm pf.getArguments[0]![1]!
