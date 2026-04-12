@@ -13,11 +13,9 @@ import Smt.Reconstruct.Real.Rewrites
 import Smt.Reconstruct.Real.TransFns
 import Smt.Reconstruct.Real.CAD
 import Smt.Reconstruct.Rewrite
-
 namespace Smt.Reconstruct.Real
 
-open Lean Qq
-
+open Lean Qq AlgebraicNumber CompPoly
 @[smt_sort_reconstruct] def reconstructRealSort : SortReconstructor := fun s => do match s.getKind with
   | .REAL_SORT => return q(Real)
   | _          => return none
@@ -125,9 +123,10 @@ open Lean Qq
     return q(Real.cot $x)
   | .PI => return q(Real.pi)
   | .REAL_ALGEBRAIC_NUMBER =>
-    let s := (cvc5.Term.getRealAgebraicNumberValue! t)
-    logInfo m!"algebraic number! {s}"
-    return none
+    let s := cvc5.Term.getRealAlgebraicNumberValue! t
+    let r : Q(AlgebraicNumber.Raw) := getRaw s
+    let a: Q(AlgNum) ← Raw.lift r
+    return a
   | _ => return none
 where
   mkRealLit (n : Nat) : Q(Real) := match n with
@@ -537,7 +536,6 @@ where
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
-    logInfo "ARITH_COVERINGS_UNIV"
     for i in List.range pf.getArguments.size do
       logInfo m!"pf.getArguments[{i}]! = {pf.getArguments[i]!}"
     for i in List.range pf.getChildren.size do

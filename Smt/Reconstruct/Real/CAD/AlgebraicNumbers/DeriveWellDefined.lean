@@ -151,7 +151,14 @@ namespace tests
 def p : CPolynomial Rat := CPolynomial.X + CPolynomial.C 1
 def r : Raw := ⟨p, -5, 5⟩
 
+-- <10*x^2 + 2*x + (-15), (-3/2, -5/4)>
+open CPolynomial
+def p' : CPolynomial Rat := (-15) + 3 * X + 10  * (X)^2
+def r': Raw := ⟨p', -3/2, -5/4⟩
+
 def a : AlgNum := by lift_alg_num r
+def a' : AlgNum := by lift_alg_num r'
+#check a'
 #check a
 #eval a.l
 #eval a.p.eval 3
