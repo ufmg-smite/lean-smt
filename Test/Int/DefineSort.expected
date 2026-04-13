@@ -3,11 +3,11 @@ goal: a.add b = b.add a
 query:
 (set-logic ALL)
 (declare-sort MyInt 0)
-(declare-fun |a✝²| (MyInt MyInt) MyInt)
-(declare-sort |a✝¹| 0)
+(declare-fun MyInt.add (MyInt MyInt) MyInt)
+(assert (forall ((a MyInt)) (forall ((b MyInt)) (= (MyInt.add a b) (+ a b)))))
+(assert (= MyInt Int))
 (declare-const b MyInt)
 (declare-const a MyInt)
-(declare-fun MyInt.add (MyInt MyInt) MyInt)
 (assert (not (= (MyInt.add a b) (MyInt.add b a))))
 (check-sat)
 Test/Int/DefineSort.lean:6:0: warning: declaration uses `sorry`

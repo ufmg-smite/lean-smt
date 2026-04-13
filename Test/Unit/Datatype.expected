@@ -1,0 +1,3 @@
+Test/Unit/Datatype.lean:43:61: warning: unused variable `div2`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
