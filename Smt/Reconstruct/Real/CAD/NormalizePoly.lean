@@ -4,32 +4,6 @@ import CompPoly
 
 import Smt.Reconstruct.Real.CAD.Utils
 
-section test
-
-open CompPoly
-
-lemma eval_add (a : Int) (p q : CPolynomial Int) : (p + q).eval a = p.eval a + q.eval a := by
-  rw [CPolynomial.eval_toPoly, CPolynomial.eval_toPoly, CPolynomial.eval_toPoly, CPolynomial.toPoly_add]
-  norm_num
-
-lemma eval_id (a : Int) : CPolynomial.X.eval a = a := by
-  rw [CPolynomial.eval_toPoly, CPolynomial.X_toPoly]
-  norm_num
-
-lemma eval_pow_r (a : Int) (r : Nat) : CPolynomial.eval a (CPolynomial.X ^ r) = a ^ r := by
-  rw [CPolynomial.eval_toPoly, CPolynomial.toPoly_pow, CPolynomial.X_toPoly]
-  norm_num
-
-lemma eval_smul (a c : Int) (p : CPolynomial Int) : (CPolynomial.C c * p).eval a = c * p.eval a := by
-  rw [CPolynomial.eval_toPoly, CPolynomial.eval_toPoly, CPolynomial.toPoly_mul, CPolynomial.C_toPoly]
-  norm_num
-
-lemma eval_const (a c : Int) : (CPolynomial.C c).eval a = c := by
-  rw [CPolynomial.eval_toPoly, CPolynomial.C_toPoly]
-  norm_num
-
-end test
-
 theorem not_lt_mp {α : Type*} [LinearOrder α] {a b : α} : ¬ (a < b) → a ≥ b := not_lt.mp
 theorem not_le_mp {α : Type*} [LinearOrder α] {a b : α} : ¬ (a ≤ b) → a > b := not_le.mp
 

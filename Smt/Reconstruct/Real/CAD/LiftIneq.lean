@@ -145,6 +145,7 @@ where go (m : Q(Real)) : MetaM (Option Expr) :=
   | .fvar _ => return some m
   | _ => return none
 
+@[simp, grind =]
 private def zero_rat : Rat := 0
 
 -- given a proof that some expression of the form `f(var) <> 0` is true, produce a proof
@@ -171,11 +172,11 @@ def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List
   let rhs := gen_sum deg_nat var
   let expand_sum_prop ← mkAppM `Eq #[lhs, rhs]
   let expand_sum_mv ← mkFreshExprMVar expand_sum_prop
-  let _ ← runGrind expand_sum_mv.mvarId!
+  normNum expand_sum_mv.mvarId!
   mv ← rewriteMVar mv expand_sum_mv
 
   let mut curr: Q(Nat) := q(0)
-  let mut coeffs_and_exps_arr := gen_cpoly_array (mkConst ``zero_rat) coeffs_and_exps
+  let mut coeffs_and_exps_arr := gen_cpoly_array q(0 : Rat) coeffs_and_exps
   for i in List.range (deg_nat + 1) do
     let coeff_i ← mkAppM ``CPolynomial.coeff #[P, curr]
     let val := coeffs_and_exps_arr.getD i (mkConst ``zero_rat)
@@ -184,9 +185,15 @@ def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List
     mv ← rewriteMVar mv eq_p_pf
     curr := q($curr + 1)
 
+
   -- I don't understand why we need `ineq_pf` here but it doesn't work without it
-  let mv' ← simp' mv [ineq_pf]
-  Mathlib.Tactic.Linarith.linarith false [] (g := mv')
+  let mv? ← simp' mv [ineq_pf]
+  match mv? with
+  | none => pure ()
+  | some mv' =>
+    let ok ← runGrind mv'
+    if !ok then
+      throwError "grind failed 7"
 
   let e ← getExprMVarAssignment? g
   return e.get!
@@ -245,7 +252,6 @@ syntax (name := lift_ineq_tac) "lift_ineq" term : tactic
   let e ← elabTerm stx[1] none
   let g ← getMainGoal
   let (P, ineq_pf) ← lift_ineq e
-  logInfo m!"extracted polynomial = {P}"
   closeMainGoal .anonymous ineq_pf
 
 namespace tests_lift_ineq
@@ -255,4 +261,3 @@ def p : CPolynomial Rat := CPolynomial.mk_rat (gen_cpoly_array 0 [(1, 1), (-3 / 
 example (a : Real) (h : ¬ -1 * a ≥ -3 / 2) : Polynomial.eval a (toPolyReal p) > 0 := by
   lift_ineq h
 
-end tests_lift_ineq

@@ -200,7 +200,8 @@ def getDecompPf (x : Q(Real)) (roots_list : List Q(AlgNum)) (roots_sorted_pf : E
   let roots := toListExpr q(Real) roots_list_real
   let roots_not_empty : Q(Prop) := q($roots ≠ [])
   let roots_not_empty_pf ← Meta.mkFreshExprMVar roots_not_empty
-  runGrind roots_not_empty_pf.mvarId!
+  let ok ← runGrind roots_not_empty_pf.mvarId!
+  if !ok then throwError "grind failed 8"
   Meta.mkAppOptM ``in_component #[x, roots, roots_sorted_pf, roots_not_empty_pf]
 
 def collectDisjuncts (e: Expr) : List Expr :=

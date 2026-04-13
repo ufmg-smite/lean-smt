@@ -69,7 +69,8 @@ def genPfSortedLT (as : List Q(AlgNum)) : MetaM Expr := do
   let as := toListExpr q(Real) as'
   let goal ← mkAppM `List.SortedLT #[as]
   let mv ← mkFreshExprMVar goal
-  runGrind' mv.mvarId! pfs
+  let ok ← runGrind' mv.mvarId! pfs
+  if !ok then throwError "grind failed 9"
   return mv
 
 syntax (name := cmp_alg_list) "cmp_alg_list" ("[" term,* "]") : tactic

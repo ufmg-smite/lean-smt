@@ -146,7 +146,7 @@ termination_by if f=0 then 0 else if g=0 then 1 else 2 + degree g
         rw[this]
         have : g.degree = g.toPoly.degree := by exact degree_toPoly g
         rw[this]; simp_all
-      refine WithBot.add_lt_add_left ?_ this; simp_all
+      refine WithBot.add_lt_add_left ?_ this; intro h; cases h
 
 def seqEval_CPolynomial (k : ℚ) : List (CPolynomial ℚ) → List ℚ
 | [] => []

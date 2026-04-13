@@ -394,3 +394,41 @@ lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPol
 
 axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
     seqVarSturmC_ab p (p.derivative * q) a b = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b
+
+
+/- theorem derivative_equiv (p q : CPolynomial ℚ) : Polynomial.derivative p.toPoly * q.toPoly = (p.derivative*q).toPoly := by -/
+/-   have : Polynomial.derivative p.toPoly = p.derivative.toPoly := by -/
+/-     have := CPolynomial.derivative_toPoly p -/
+/-     simp_all -/
+/-   rw[this]; have := CPolynomial.toPoly_mul p.derivative q -/
+/-   simp_all -/
+
+/- theorem equiv_for_sturm_tarski_interval (a b : ℚ) (p q : CPolynomial ℚ) : -/
+/-     seqVarSturmC_ab p (CPolynomial.derivative (p) * q) a b = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b := by -/
+/-   --simp_all -/
+/-   rw[seqVarSturmC_ab, seqVarQ_ab, seqEvalC.eq_def, sturmSeqC] -/
+/-   rw[seqVarSturm_ab, sturmSeq, seqVar_ab, seqEval.eq_def] -/
+/-   if h : p = 0 then -/
+/-     have : toPolyReal p = 0 := by rw [h]; unfold toPolyReal; exact (Polynomial.map_eq_zero (Rat.castHom ℝ)).mpr rfl -/
+/-     simp_all -/
+/-     rw[seqEvalC, seqEval] -/
+/-     norm_num -/
+/-   else -/
+/-     have : ¬ (toPolyReal p) = 0 := toPolyReal_zero p h -/
+/-     simp_all -/
+/-     have : CPolynomial.eval a p = Polynomial.eval a p.toPoly := by -/
+/-       apply CPolynomial.eval_toPoly -/
+/-     simp_all -/
+/-     /1- simp only [derivative_equiv] -1/ -/
+/-     /1- simp only [seq_eval_equiv] -1/ -/
+/-     have : -p.toPoly % (p.derivative * q).toPoly = (-p % (p.derivative*q)).toPoly := by -/
+/-       have : (-p % (p.derivative * q)).toPoly = (toPoly (-p)) % (toPoly (p.derivative * q))  := by -/
+/-         apply fg_mod_eq -/
+/-       simp_all -/
+/-       have : (-p).toPoly = -p.toPoly := by apply CPolynomial.toPoly_neg -/
+/-       simp_all -/
+/-     simp_all -/
+/-     simp only [sturm_seq_equiv] -/
+/-     have : toPolyList (p :: sturmSeq_CPolynomial (p.derivative * q) (-p % (p.derivative * q))) = p.toPoly::toPolyList (sturmSeq_CPolynomial (p.derivative * q) (-p % (p.derivative * q))) := by -/
+/-       rw[toPolyList] -/
+/-     simp_all -/
