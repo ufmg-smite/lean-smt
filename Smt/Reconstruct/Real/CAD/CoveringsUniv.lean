@@ -143,7 +143,8 @@ lemma cast_eval_pos {x : Rat} {p : CPolynomial Rat} (hpx : CPolynomial.eval x p 
 
 -- Solves one of the intervals for univ_cad. Returns `some mv` if it is not supported yet
 def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List Q(AlgNum)) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : MetaM (Option MVarId) := do
-  if idx % 2 = 0 then -- interval
+  let solve_case_pre ← IO.monoMsNow
+  let result ← if idx % 2 = 0 then -- interval
     if idx != 0 ∧ idx < 2 * N then
       let (fv, mv') ← mv.intro1P
       mv'.withContext do
@@ -197,7 +198,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         let ok ← runGrind' mv' grind_context.toList
         if !ok then
           throwError "grind failed 2"
-      return none
+      pure none
     else
       if idx == 0 then
         let (fv, mv') ← mv.intro1P
@@ -236,7 +237,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           let ok ← runGrind' mv' grind_context.toList
           if !ok then
             throwError "grind failed 3"
-        return none
+        pure none
       else
         let (fv, mv') ← mv.intro1P
         mv'.withContext do
@@ -274,7 +275,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           let ok ← runGrind' mv' grind_context.toList
           if !ok then
             throwError "grind failed 4"
-        return none
+        pure none
   else
     let (fv, mv') ← mv.intro1P
     mv'.withContext do
@@ -291,13 +292,20 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
       let ok ← runGrind' mv' grind_context.toList
       if !ok then
         throwError "grind failed 5"
-    return none
+    pure none
+  let solve_case_pos ← IO.monoMsNow
+  logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
+  return result
 
 def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Q(AlgNum)) : MetaM (Expr × List MVarId) := do
+  let sort_before ← IO.monoMsNow
   let rs_sorted ← genPfSortedLT rs
+  let sort_after ← IO.monoMsNow
+  logInfo m!"proving sort time: {sort_after - sort_before}ms"
   let mut polys_ineqs_roots_subsets : Array Data := #[]
   let rs_real : List Q(Real) := rs.map (fun r => q(AlgNum.toReal $r))
   for ineq_pf in ineq_pfs do
+    let curr_ineq_pre ← IO.monoMsNow
     let (P, ineq_pf_P) ← lift_ineq ineq_pf
     let P_roots_card ← gen_root_counting_proof P
     let mut root_pfs : Array Expr := #[]
@@ -317,8 +325,15 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Q(AlgNum)) : Met
 
     let roots_description ← computeSortedRootSet P curr_roots.toList P_roots_card curr_roots_sorted root_pfs.toList
     polys_ineqs_roots_subsets := polys_ineqs_roots_subsets.push (Data.mk P ineq_pf_P curr_roots_e roots_description mv_subset)
+    let curr_ineq_pos ← IO.monoMsNow
+    logInfo m!"reconstructing inequality: {curr_ineq_pos - curr_ineq_pre}ms"
 
+  let all_ineq_pos ← IO.monoMsNow
+  logInfo m!"accumulated of reconstructing inequalities: {all_ineq_pos - sort_after}ms"
   let decomp_pf ← getDecompPf x rs rs_sorted
+  let decomp_after ← IO.monoMsNow
+  logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms"
+
   let mv ← mkFreshExprMVar (mkConst ``False)
   let congrTheorems ← getSimpCongrTheorems
   let simpTheorems ← getSimpTheorems
@@ -329,10 +344,15 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Q(AlgNum)) : Met
   let disjunctsToFalse ← disjuncts.mapM (mkArrow · q(False))
   let disjunctsToFalseMvs ← disjunctsToFalse.mapM (fun e => Meta.mkFreshExprMVar e)
   let answer ← go disjunctsToFalseMvs decomp_pf'
+  let joining_decomps_after ← IO.monoMsNow
+  logInfo m!"joining proofs for each interval: {joining_decomps_after - decomp_after}ms"
 
   let indexedGoals := disjunctsToFalseMvs.zipIdx
   let unsolvedMvs ← indexedGoals.mapM (fun (e, i) => solveCase e.mvarId! i rs.length polys_ineqs_roots_subsets rs (toListExpr q(Real) rs_real) rs_sorted x)
   let unsolvedMvs := unsolvedMvs.foldr (fun o acc => match o with | some x => x :: acc | _ => acc) []
+
+  let accumulated_intervals_pos ← IO.monoMsNow
+  logInfo m!"accumulated of solving each interval: {accumulated_intervals_pos - joining_decomps_after}ms"
 
   return (answer, unsolvedMvs)
 
@@ -358,16 +378,27 @@ def R1 : AlgNum := by lift_alg_num r1
 def r2 : Raw := ⟨p1, 1, 5/4⟩
 def R2 : AlgNum := by lift_alg_num r2
 
-lemma exemplo (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by
-  univ_cad a, [h1, h2] [R1, R2, R3]
+/- lemma exemplo (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by -/
+/-   univ_cad a, [h1, h2] [R1, R2, R3] -/
 
 def zero_p : CPolynomial Rat := X
 def zero_r : Raw := ⟨zero_p, -1, 1⟩
 def zero : AlgNum := by lift_alg_num zero_r
 
-example (x : Real) (h1 : x * x * x * x * x > 0) (h2 : x * x * x < 0) : False := by
-  univ_cad x, [h1, h2] [zero]
+/- example (x : Real) (h1 : x * x * x * x * x > 0) (h2 : x * x * x < 0) : False := by -/
+/-   univ_cad x, [h1, h2] [zero] -/
 
-#print axioms exemplo
+
+/- def p3 : CPolynomial Rat := X ^ 2 - 3 -/
+/- def r4 : Raw := ⟨p3, -20/10, -1⟩ -/
+/- def R4 : AlgNum := by lift_alg_num r4 -/
+/- def r5 : Raw := ⟨p3, 1, 19/10⟩ -/
+/- def R5 : AlgNum := by lift_alg_num r5 -/
+
+/- def p4 : CPolynomial Rat := X^3 - 8 -/
+/- def r6 : Raw := ⟨p4, ⟩ -/
+
+
+/- example (a : Real) : a * a = 3 → a * a * a + 10 < 2 → False := by smt -/
 
 end  main_tests

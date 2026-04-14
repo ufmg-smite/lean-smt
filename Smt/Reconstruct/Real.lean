@@ -536,14 +536,22 @@ where
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
-    for i in List.range pf.getArguments.size do
-      logInfo m!"pf.getArguments[{i}]! = {pf.getArguments[i]!}"
+    let prep_before ← IO.monoMsNow
+    let var ← reconstructTerm pf.getArguments[0]!
+    let mut roots : Array Expr := #[]
+    for i in List.range' 1 (pf.getArguments.size - 1) do
+      let t ← reconstructTerm (pf.getArguments[i]!)[1]!
+      roots := roots.push t
+    let mut ineqs : Array Expr := #[]
     for i in List.range pf.getChildren.size do
-      let f := pf.getChildren[i]!
-      let ff ← reconstructProof f
-      let t ← Meta.inferType ff
-      logInfo m!"pf.getChildren[{i}]! = {t}"
-    return none
+      let ineq ← reconstructProof pf.getChildren[i]!
+      ineqs := ineqs.push ineq
+    let prep_after ← IO.monoNanosNow
+    logInfo m!"preparation time: {prep_after - prep_before}ms"
+    let (answer, []) ← univCadCore var ineqs.toList roots.toList | throwError "univCadCore failed"
+    let recons_after ← IO.monoMsNow
+    logInfo m!"reconstruction time: {recons_after - prep_after}ms"
+    return answer
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none
     reconstructMulSign pf
