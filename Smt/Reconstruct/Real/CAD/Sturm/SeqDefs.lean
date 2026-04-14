@@ -270,33 +270,33 @@ end RatCPoly
 
 open CompPoly
 
-lemma leadingCoeff_toReal (p : CPolynomial ℚ) : p.leadingCoeff = (p.toPoly.map (Rat.castHom Real)).leadingCoeff := by
+lemma leadingCoeff_toReal (p : CPolynomial ℚ) : p.leadingCoeff = (p.toPoly.map ratToRealHom).leadingCoeff := by
   simp only [CPolynomial.leadingCoeff_toPoly, Polynomial.leadingCoeff_map, eq_ratCast]
 
-lemma natDegree_toReal (p: CPolynomial ℚ) : p.natDegree = (p.toPoly.map (Rat.castHom Real)).natDegree := by
+lemma natDegree_toReal (p: CPolynomial ℚ) : p.natDegree = (p.toPoly.map ratToRealHom).natDegree := by
   simp only [CPolynomial.natDegree_toPoly]
   norm_num
 
-theorem seq_pos_inf_equiv (p : CPolynomial ℚ) : sgn_pos_inf'' p = sgn_pos_inf (p.toPoly.map (Rat.castHom Real)) := by
+theorem seq_pos_inf_equiv (p : CPolynomial ℚ) : sgn_pos_inf'' p = sgn_pos_inf (p.toPoly.map ratToRealHom) := by
   unfold sgn_pos_inf'' sgn_pos_inf sgn sgnC
   rw [<- leadingCoeff_toReal]
   have : (p.leadingCoeff : Real) > 0 ↔ p.leadingCoeff > 0 := by norm_num
   have : (p.leadingCoeff : Real) = 0 ↔ p.leadingCoeff = 0 := by norm_num
   grind
 
-theorem seq_neg_inf_equiv (p : CPolynomial ℚ) : sgn_neg_inf'' p = sgn_neg_inf (p.toPoly.map (Rat.castHom Real)) := by
+theorem seq_neg_inf_equiv (p : CPolynomial ℚ) : sgn_neg_inf'' p = sgn_neg_inf (p.toPoly.map ratToRealHom) := by
   unfold sgn_neg_inf'' sgn_neg_inf sgn sgnC
   rw [<- leadingCoeff_toReal, <- natDegree_toReal]
   have : (p.leadingCoeff : Real) > 0 ↔ p.leadingCoeff > 0 := by norm_num
   have : (p.leadingCoeff : Real) = 0 ↔ p.leadingCoeff = 0 := by norm_num
   grind
 
-theorem seq_sgn_pos_inf_eq (l : List (CPolynomial ℚ)) : seq_sgn_pos_inf'' l = seq_sgn_pos_inf (List.map (Polynomial.map (Rat.castHom Real)) (List.map CPolynomial.toPoly l)) := by
+theorem seq_sgn_pos_inf_eq (l : List (CPolynomial ℚ)) : seq_sgn_pos_inf'' l = seq_sgn_pos_inf (List.map (Polynomial.map ratToRealHom) (List.map CPolynomial.toPoly l)) := by
   unfold seq_sgn_pos_inf seq_sgn_pos_inf''
   have H := seq_pos_inf_equiv
   simp_all only [List.map_map, List.map_inj_left, Function.comp_apply, implies_true]
 
-theorem seq_sgn_neg_inf_eq (l : List (CPolynomial ℚ)) : seq_sgn_neg_inf'' l = seq_sgn_neg_inf (List.map (Polynomial.map (Rat.castHom Real)) (List.map CPolynomial.toPoly l)) := by
+theorem seq_sgn_neg_inf_eq (l : List (CPolynomial ℚ)) : seq_sgn_neg_inf'' l = seq_sgn_neg_inf (List.map (Polynomial.map ratToRealHom) (List.map CPolynomial.toPoly l)) := by
   unfold seq_sgn_neg_inf seq_sgn_neg_inf''
   have H := seq_neg_inf_equiv
   simp_all only [List.map_map, List.map_inj_left, Function.comp_apply, implies_true]
@@ -326,18 +326,18 @@ decreasing_by exact termination_sturmSeqC f g (by assumption)
 
 open Polynomial in
 theorem sturm_seq_toReal (f g : Polynomial ℚ) :
-    sturmSeq (f.map (Rat.castHom Real)) (g.map (Rat.castHom Real)) = List.map (Polynomial.map (Rat.castHom Real)) (sturmSeq f g) := by
+    sturmSeq (f.map ratToRealHom) (g.map ratToRealHom) = List.map (Polynomial.map ratToRealHom) (sturmSeq f g) := by
   unfold sturmSeq
   if hf : f = 0 then
     rw [hf]
     simp only [Polynomial.map_zero, ↓reduceIte, List.map_nil]
   else
-    have : f.map (Rat.castHom Real) ≠ 0 := Polynomial.map_ne_zero hf
+    have : f.map ratToRealHom ≠ 0 := Polynomial.map_ne_zero hf
     simp [this, hf]
     have IH := sturm_seq_toReal g (-f % g)
     rw [<- IH]
     congr
-    rw [map_mod (Rat.castHom ℝ)]
+    rw [map_mod ratToRealHom]
     norm_num
 termination_by if f=0 then 0 else if g=0 then 1 else 2 + Polynomial.degree g
 decreasing_by
@@ -365,7 +365,7 @@ decreasing_by
     refine WithBot.add_lt_add_left ?_ this; simp_all
 
 theorem seqVarLineEquiv (fs : List (CPolynomial ℚ)) :
-    seqVarLineC fs = seqVarLine (List.map (Polynomial.map (Rat.castHom Real)) (List.map CPolynomial.toPoly fs)) := by
+    seqVarLineC fs = seqVarLine (List.map (Polynomial.map ratToRealHom) (List.map CPolynomial.toPoly fs)) := by
   unfold seqVarLineC seqVarLine
   rw [seq_sgn_pos_inf_eq, seq_sgn_neg_inf_eq]
 
@@ -373,23 +373,24 @@ theorem seqVarLineEquiv (fs : List (CPolynomial ℚ)) :
 -- that `seqVarLineSturm f.toPoly.toReal f.derivative.toPoly.toReal` is also `k`. `sturm_R` will conclude that
 -- `f.toPoly.toReal` has `k` roots. From that point we only use with `f.toPoly.toReal`. Eventually we will need to evaluate it
 -- at a given rational point. We need a theorem saying `f.toPoly.toReal.eval (x.toReal) = f.eval x` for rational x
-theorem seqVarLineEquivSturm (f g : CPolynomial ℚ) : seqVarLineSturmC f g = seqVarLineSturm (f.toPoly.map (Rat.castHom Real)) (g.toPoly.map (Rat.castHom Real)) := by
+theorem seqVarLineEquivSturm (f g : CPolynomial ℚ) : seqVarLineSturmC f g = seqVarLineSturm (f.toPoly.map ratToRealHom) (g.toPoly.map ratToRealHom) := by
   unfold seqVarLineSturm
   rw [sturm_seq_toReal, sturm_seq_toPoly]
   unfold seqVarLineSturmC
   exact seqVarLineEquiv (sturmSeqC f g)
 
 lemma map_cast (p : Polynomial Rat) (x : Rat) :
-    (p.eval x) = (p.map (Rat.castHom Real)).eval (Rat.castHom Real x) := by
-  have := Polynomial.eval_map_apply (Rat.castHom Real) x (p := p)
+    (p.eval x) = (p.map ratToRealHom).eval (ratToRealHom x) := by
+  have := Polynomial.eval_map_apply ratToRealHom x (p := p)
   rw [this]
   norm_num
 
-lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPoly.map (Rat.castHom Real)).eval (x : Real) := by
+lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPoly.map ratToRealHom).eval (x : Real) := by
   have := CPolynomial.eval_toPoly x p
   rw [this]
-  have : (↑(Polynomial.eval x p.toPoly) : Real) = Rat.castHom Real (Polynomial.eval x p.toPoly) := by norm_num
+  have : (↑(Polynomial.eval x p.toPoly) : Real) = ratToRealHom (Polynomial.eval x p.toPoly) := by norm_num
   rw [map_cast p.toPoly x]
+  unfold ratToRealHom
   congr
 
 axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
@@ -409,7 +410,7 @@ axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
 /-   rw[seqVarSturmC_ab, seqVarQ_ab, seqEvalC.eq_def, sturmSeqC] -/
 /-   rw[seqVarSturm_ab, sturmSeq, seqVar_ab, seqEval.eq_def] -/
 /-   if h : p = 0 then -/
-/-     have : toPolyReal p = 0 := by rw [h]; unfold toPolyReal; exact (Polynomial.map_eq_zero (Rat.castHom ℝ)).mpr rfl -/
+/-     have : toPolyReal p = 0 := by rw [h]; unfold toPolyReal; exact (Polynomial.map_eq_zero ratToRealHom).mpr rfl -/
 /-     simp_all -/
 /-     rw[seqEvalC, seqEval] -/
 /-     norm_num -/

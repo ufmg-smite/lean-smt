@@ -135,7 +135,7 @@ theorem seqVarLineSturmC_eq (p q : CPolynomial ℚ) : seqVarLineSturmC p q = seq
   unfold seqVarLineSturmC seqVarLineSturmC'
   rw [seqVarLine_eq, sturmSeqC_equiv]
 
-theorem seqVarLineEquivSturm' (p q : CPolynomial ℚ) : seqVarLineSturm (p.toPoly.map (Rat.castHom Real)) (q.toPoly.map (Rat.castHom Real)) = seqVarLineSturmC' p q  := by
+theorem seqVarLineEquivSturm' (p q : CPolynomial ℚ) : seqVarLineSturm (p.toPoly.map ratToRealHom) (q.toPoly.map ratToRealHom) = seqVarLineSturmC' p q  := by
   rw [<- seqVarLineSturmC_eq]
   exact (seqVarLineEquivSturm p q).symm
 

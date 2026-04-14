@@ -13,18 +13,80 @@ open CompPoly
 
 syntax (name := cmp_alg) "cmp_alg" term "," term : tactic
 
-partial def gen_toReal_lt (a b : Q(AlgNum)) : MetaM Expr := do
-  let goal ← mkAppM `LT.lt #[a, b]
+lemma cmp_rat_alg_ra (a : Rat) (b : AlgNum) : a < b.l → ratToRealHom a < b.toReal := by
+  intro h
+  have h1 := (toReal_bounds b).1
+  have h2 : ratToRealHom a < b.l := by simp_all only [eq_ratCast, Rat.cast_lt]
+  exact Std.lt_of_lt_of_le h2 h1
+
+lemma cmp_rat_alg_refine_ra (a : Rat) (b : AlgNum) : ratToRealHom a < b.refine.toReal → ratToRealHom a < b.toReal := by
+  intro h
+  rw [refine_toReal]
+  exact h
+
+lemma cmp_rat_alg_ar (a : AlgNum) (b : Rat) : a.r < b → a.toReal < ratToRealHom b := by
+  intro h
+  have h1 := (toReal_bounds a).2
+  have h2 : a.r < ratToRealHom b := by simp_all only [eq_ratCast, Rat.cast_lt]
+  exact Std.lt_of_le_of_lt h1 h2
+
+lemma cmp_rat_alg_refine_ar (a : AlgNum) (b : Rat) : a.refine.toReal < ratToRealHom b → a.toReal < ratToRealHom b := by
+  intro h
+  rw [refine_toReal]
+  exact h
+
+def gen_toReal_lt_rr (a b : Q(Rat)) : MetaM Expr := do
+  let goal ← mkAppM `LT.lt #[a,b]
+  mkDecideProof goal
+
+partial def gen_toReal_lt_ra (a : Q(Rat)) (b : Q(AlgNum)) : MetaM Expr := do
+  let a' : Rat ← unsafe evalExpr Rat q(Rat) a
+  let bl : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.l $b)
+  if a' < bl then
+    let goal ← mkAppM `LT.lt #[a, ← mkAppM ``AlgNum.l #[b]]
+    let h ← mkDecideProof goal
+    mkAppM ``cmp_rat_alg_ra #[a, b, h]
+  else
+    let b' := mkApp (.const ``AlgNum.refine []) b
+    let sub ← gen_toReal_lt_ra a b' -- ratToRealHom a < b.refine.toReal
+    mkAppM ``cmp_rat_alg_refine_ra #[a, b, sub]
+
+partial def gen_toReal_lt_ar (a : Q(AlgNum)) (b : Q(Rat)) : MetaM Expr := do
+  let b' : Rat ← unsafe evalExpr Rat q(Rat) b
+  let ar : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.r $a)
+  if ar < b' then
+    let goal ← mkAppM `LT.lt #[q(AlgNum.r $a), b]
+    let h ← mkDecideProof goal
+    mkAppM ``cmp_rat_alg_ar #[a, b, h]
+  else
+    let a' := mkApp (.const ``AlgNum.refine []) a
+    let sub ← gen_toReal_lt_ar a' b
+    mkAppM ``cmp_rat_alg_refine_ar #[a, b, sub]
+
+partial def gen_toReal_lt_aa (a b : Q(AlgNum)) : MetaM Expr := do
   let ar : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.r $a)
   let bl : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.l $b)
   if ar < bl then
+    let goal ← mkAppM `LT.lt #[a, b]
     let h ← mkDecideProof goal
     mkAppM ``AlgebraicNumber.lt_toReal #[a,b,h]
   else
     let a' := mkApp (.const ``AlgNum.refine []) a
     let b' := mkApp (.const ``AlgNum.refine []) b
-    let sub ← gen_toReal_lt a' b'
+    let sub ← gen_toReal_lt_aa a' b'
     mkAppM ``refine_lt_toReal #[a,b,sub]
+
+partial def gen_toReal_lt (a b : Expr) : MetaM Expr := do
+  let ta ← inferType a
+  let tb ← inferType b
+  if ta == .const ``AlgNum [] && tb == .const ``AlgNum [] then
+    gen_toReal_lt_aa a b
+  else if ta == .const ``Rat [] && tb == .const ``Rat [] then
+    gen_toReal_lt_rr a b
+  else if ta == .const ``Rat [] && tb == .const ``AlgNum [] then
+    gen_toReal_lt_ra a b
+  else -- ta = AlgNum, tb = Rat
+    gen_toReal_lt_ar a b
 
 @[tactic cmp_alg] def evalCmp_alg : Tactic := fun stx => withMainContext do
   let a : Q(AlgNum) ← elabTerm stx[1] none
@@ -38,8 +100,10 @@ def c : Raw := ⟨CPolynomial.X - CPolynomial.C 3, -500, 500⟩ -- 3
 def d : Raw := ⟨CPolynomial.X - CPolynomial.C 10, -500, 500⟩ -- 10
 
 def A : AlgNum := by lift_alg_num a
+def A2 : Rat := 2 / 3
 def B : AlgNum := by lift_alg_num b
 def C : AlgNum := by lift_alg_num c
+def C2 : Rat := 7 / 2
 def D : AlgNum := by lift_alg_num d
 
 example : A.toReal < B.toReal := by
@@ -61,11 +125,18 @@ def getPfs (as : List Expr) : MetaM (List Expr) :=
     let rest ← getPfs (a2 :: as)
     return p :: rest
 
+def toReal (x : Expr) : MetaM Expr := do
+  let t ← inferType x
+  if t == .const ``Rat [] then
+    let q : Q(Rat) := x
+    return q(ratToRealHom $q)
+  else mkAppM ``AlgNum.toReal #[x]
+
 -- given a list of algebraic numbers and a list of proofs that they are well
 -- defined, tries to create a proof that the list is sorted (`List.SortedLT`)
-def genPfSortedLT (as : List Q(AlgNum)) : MetaM Expr := do
+def genPfSortedLT (as : List Expr) : MetaM Expr := do
   let pfs ← getPfs as -- each pair is sorted
-  let as' ← as.mapM (fun a => mkAppM ``AlgNum.toReal #[a])
+  let as' ← as.mapM toReal
   let as := toListExpr q(Real) as'
   let goal ← mkAppM `List.SortedLT #[as]
   let mv ← mkFreshExprMVar goal
@@ -84,5 +155,5 @@ def parse_cmp_alg_list : Syntax → TacticM (List Expr)
   let e ← genPfSortedLT as
   closeMainGoal .anonymous e
 
-example : [A.toReal, B.toReal, C.toReal, D.toReal].SortedLT := by
-  cmp_alg_list [A, B, C, D]
+example : [A.toReal, ratToRealHom A2, B.toReal, C.toReal, ratToRealHom C2, D.toReal].SortedLT := by
+  cmp_alg_list [A, A2, B, C, C2, D]

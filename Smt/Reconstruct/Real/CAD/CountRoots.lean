@@ -8,7 +8,7 @@ open CompPoly
 open Theorem
 
 lemma der_toPoly_toReal (P : CPolynomial Rat) :
-    P.derivative.toPoly.map (Rat.castHom Real) = (P.toPoly.map (Rat.castHom Real)).derivative := by
+    P.derivative.toPoly.map ratToRealHom = (P.toPoly.map ratToRealHom).derivative := by
   rw [CPolynomial.derivative_toPoly, Polynomial.derivative_map]
 
 instance : ToString (CPolynomial.Raw Rat) where

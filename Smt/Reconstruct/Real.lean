@@ -458,6 +458,20 @@ where
     else if k == .GT && il == true && ir == false && sign == false then pure ``Real.gt_of_sub_eq_neg_int_left
     else throwError "[arith_poly_norm_rel]: invalid combination of kind, integer operands, and sign: {k}, {il}, {ir}, {sign}"
 
+def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
+  let r : Rat := t.getRationalValue!
+  return q($r)
+  /- let den_expr : Q(Nat) := Expr.lit (Literal.natVal r.den) -/
+  /- if r.num ≥ 0 then -/
+  /-   let num_nat := Int.toNat r.num -/
+  /-   let num_expr : Q(Nat) := Expr.lit (Literal.natVal num_nat) -/
+  /-   return q(($num_expr : Rat) / $den_expr) -/
+  /- else -/
+  /-   let neg_num_nat := Int.toNat (-r.num) -/
+  /-   let neg_num_nat_expr : Q(Nat) := Expr.lit (Literal.natVal neg_num_nat) -/
+  /-   let num_expr : Q(Int) := q(-$neg_num_nat_expr) -/
+  /-   return q(($num_expr : Rat) / $den_expr) -/
+
 @[smt_proof_reconstruct] def reconstructRealProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .EVALUATE =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
@@ -540,13 +554,16 @@ where
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array Expr := #[]
     for i in List.range' 1 (pf.getArguments.size - 1) do
-      let t ← reconstructTerm (pf.getArguments[i]!)[1]!
+      let curr := (pf.getArguments[i]!)[1]!
+      let t ←
+        if curr.getKind == .CONST_RATIONAL then reconsRational curr
+        else reconstructTerm curr
       roots := roots.push t
     let mut ineqs : Array Expr := #[]
     for i in List.range pf.getChildren.size do
       let ineq ← reconstructProof pf.getChildren[i]!
       ineqs := ineqs.push ineq
-    let prep_after ← IO.monoNanosNow
+    let prep_after ← IO.monoMsNow
     logInfo m!"preparation time: {prep_after - prep_before}ms"
     let (answer, []) ← univCadCore var ineqs.toList roots.toList | throwError "univCadCore failed"
     let recons_after ← IO.monoMsNow

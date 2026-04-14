@@ -12,7 +12,6 @@ def normNum (mv : MVarId) : MetaM Unit := do
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()
 
-
 def runGrind (mv : MVarId) : MetaM Bool := do
   let params ← Meta.Grind.mkDefaultParams {}
   let r ← Meta.Grind.main mv params
@@ -29,9 +28,11 @@ def runGrind' (mv : MVarId) (pfs : List Expr) : MetaM Bool := do
   let r ← Meta.Grind.main mv params
   return !r.hasFailed
 
-def simp' (mvarId : MVarId) (hs : List Expr) : MetaM (Option MVarId) := mvarId.withContext do
+def simp' (mvarId : MVarId) (hs : List Expr) (to_erase: List Name := []) : MetaM (Option MVarId) := mvarId.withContext do
   let congrTheorems ← getSimpCongrTheorems
-  let simpTheorems ← getSimpTheorems
+  let mut simpTheorems ← getSimpTheorems
+  for h in to_erase do
+    simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl h)
   let mut simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
   for h in hs do
     simpTheoremsArray ← SimpTheoremsArray.addTheorem simpTheoremsArray (.other `h) h
@@ -389,7 +390,6 @@ theorem sign_stops_neg_pos (x : ℝ) (p : Polynomial ℝ) (b : ℝ) (h_no_roots 
       use c
   simp_all
 
-
 open CompPoly
 
 theorem gneg_imp_gtopoly_neg (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
@@ -418,8 +418,11 @@ theorem fg_mod_eq (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly
   rw[this] at aux
   apply aux
 
+@[irreducible]
+noncomputable def ratToRealHom : RingHom Rat Real := Rat.castHom Real
+
 @[grind =]
-noncomputable def toPolyReal (p : CPolynomial Rat) : Polynomial Real := p.toPoly.map (Rat.castHom Real)
+noncomputable def toPolyReal (p : CPolynomial Rat) : Polynomial Real := p.toPoly.map ratToRealHom
 
 open CompPoly in
 lemma toPolyReal_zero (p : CPolynomial Rat) : p ≠ 0 → toPolyReal p ≠ 0 := by

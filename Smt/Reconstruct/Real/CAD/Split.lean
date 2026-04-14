@@ -195,9 +195,7 @@ theorem in_component_prop {P : ℝ → Prop} (l : List ℝ) (sl : l.SortedLT) (h
 -- given the list of roots and a proof that `P x` produces a proof
 -- that `∃ p ∈ decomp roots, x ∈ p ∧ P x`, where `decomp roots` is the decomposition
 -- of the real line into intervals separated at the roots.
-def getDecompPf (x : Q(Real)) (roots_list : List Q(AlgNum)) (roots_sorted_pf : Expr) : MetaM Expr := do
-  let roots_list_real ← roots_list.mapM (fun a => Meta.mkAppM ``AlgebraicNumber.AlgNum.toReal #[a])
-  let roots := toListExpr q(Real) roots_list_real
+def getDecompPf (x : Q(Real)) (roots: Q(List Real)) (roots_sorted_pf : Expr) : MetaM Expr := do
   let roots_not_empty : Q(Prop) := q($roots ≠ [])
   let roots_not_empty_pf ← Meta.mkFreshExprMVar roots_not_empty
   let ok ← runGrind roots_not_empty_pf.mvarId!

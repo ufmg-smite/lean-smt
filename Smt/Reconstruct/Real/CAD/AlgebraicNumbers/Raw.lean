@@ -26,7 +26,7 @@ lemma sgns_3 {a b c : Rat} : 0 < a * b → a * c ≤ 0 → b * c ≤ 0 := by
       have hc : 0 ≤ c := nonneg_of_mul_nonpos_right h2 ha
       nlinarith
 
-lemma eval_comm_map (p : Polynomial Rat) (l : Rat) : (p.eval l) = (p.map (Rat.castHom ℝ)).eval (l : Real) := by
+lemma eval_comm_map (p : Polynomial Rat) (l : Rat) : (p.eval l) = (p.map ratToRealHom).eval (l : Real) := by
   simp [Polynomial.eval_eq_sum_range]
 
 namespace AlgebraicNumber
@@ -203,7 +203,7 @@ lemma refine_wellDefined : ∀ a: Raw, a.wellDefined → a.sgnDiff → a.refine.
         norm_cast
         rw [<- eval_comm_map, <- eval_comm_map]
         norm_cast
-      obtain ⟨R, hR1, hR2, hR3⟩  := exists_root_ioo_mul (p := p.toPoly.map (Rat.castHom ℝ)) (by linarith) mul_lt_r
+      obtain ⟨R, hR1, hR2, hR3⟩  := exists_root_ioo_mul (p := p.toPoly.map ratToRealHom) (by linarith) mul_lt_r
       have hRx : R = x := by
         refine hx_unique R ⟨?_, ⟨?_, ?_⟩⟩
         · unfold toPolyReal

@@ -206,10 +206,10 @@ where
       q(insert ($curr + 1) $r)
   gen_sum (d: Nat) (var : Q(Real)) : Q(Real) :=
     match d with
-    | 0 => q((Rat.castHom Real) (CPolynomial.coeff $P 0) * ($var ^ 0))
+    | 0 => q(ratToRealHom (CPolynomial.coeff $P 0) * ($var ^ 0))
     | d + 1 =>
       let r: Q(Real) := gen_sum d var
-      let curr := q((Rat.castHom Real) (CPolynomial.coeff $P ($d + 1)))
+      let curr := q(ratToRealHom (CPolynomial.coeff $P ($d + 1)))
       let curr := q($curr * ($var ^ ($d + 1)))
       q($curr + $r)
 

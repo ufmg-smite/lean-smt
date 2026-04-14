@@ -1,9 +1,58 @@
 import CompPoly
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Raw
+import Smt.Reconstruct.Real.CAD.CPolynomial
 
 open CompPoly
 
 namespace AlgebraicNumber
+
+/- inductive AlgNum' where -/
+/-   | ofRaw : (a : Raw) → a.wellDefined → a.sgnDiff → AlgNum' -/
+/-   | ofRat : Rat → AlgNum' -/
+
+/- def AlgNum'.l (a : AlgNum') : Rat := -/
+/-   match a with -/
+/-   | ofRaw a _ _ => a.l -/
+/-   | ofRat r => r -/
+/- def AlgNum'.r (a : AlgNum') : Rat := -/
+/-   match a with -/
+/-   | ofRaw a _ _ => a.r -/
+/-   | ofRat r => r -/
+/- def AlgNum'.p (a : AlgNum') : CPolynomial Rat := -/
+/-   match a with -/
+/-   | ofRaw a _ _ => a.p -/
+/-   | ofRat r => CPolynomial.X - CPolynomial.C r -/
+
+
+/- def AlgNum'.wellDefined (a : AlgNum') : Prop := -/
+/-   ∃! x : Real, (toPolyReal a.p).eval x = 0 ∧ a.l ≤ x ∧ x ≤ a.r -/
+
+/- def AlgNum'.sgnDiff (a : AlgNum') : Prop := -/
+/-   (a.p.eval a.l) * (a.p.eval a.r) ≤ 0 -/
+
+/- lemma AlgNum'.isWellDefined (a : AlgNum') : a.wellDefined := by -/
+/-   unfold AlgNum'.wellDefined -/
+/-   cases a -/
+/-   next a h1 h2 => -/
+/-     simp [Raw.wellDefined] at h1 -/
+/-     obtain ⟨r, hr⟩ := h1 -/
+/-     use r -/
+/-     finiteness -/
+/-   next r => -/
+/-     unfold AlgNum'.p AlgNum'.l AlgNum'.r -/
+/-     use r -/
+/-     simp -/
+/-     constructor -/
+/-     · rw [CPolynomial.eval_toPolyReal_eq_sum_range] -/
+/-       have : (CPolynomial.C r).natDegree = 0 := by -/
+/-         unfold CPolynomial.natDegree CPolynomial.Raw.natDegree CPolynomial.Raw.lastNonzero -/
+/-         admit -/
+/-       have : ((CPolynomial.X - CPolynomial.C r).natDegree + 1) = 2 := by -/
+/-         simp -/
+/-       admit -/
+/-     · admit -/
+
+
 
 def AlgNum : Type :=
   { a : Raw | a.wellDefined ∧ a.sgnDiff }

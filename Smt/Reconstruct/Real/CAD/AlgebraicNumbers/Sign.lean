@@ -165,14 +165,56 @@ lemma plus_one (a : Int) : a = 1 → a > 0 := by
   intro h
   positivity
 
+lemma eval_neg (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a < 0) : (toPolyReal p).eval (ratToRealHom a) < 0 := by
+  unfold toPolyReal
+  rw [CPolynomial.eval_toPoly] at h_eval
+  have : (↑(p.toPoly.eval a) : Real) < 0 := by simp_all only [Rat.cast_lt_zero]
+  rw [eval_comm_map] at this
+  unfold ratToRealHom at this ⊢
+  finiteness
+
+lemma eval_zero (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a = 0) : (toPolyReal p).eval (ratToRealHom a) = 0 := by
+  unfold toPolyReal
+  rw [CPolynomial.eval_toPoly] at h_eval
+  have : (↑(p.toPoly.eval a) : Real) = 0 := by simp_all only [Rat.cast_zero]
+  rw [eval_comm_map] at this
+  unfold ratToRealHom at this ⊢
+  finiteness
+
+lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPolyReal p).eval (ratToRealHom a) > 0 := by
+  unfold toPolyReal
+  rw [CPolynomial.eval_toPoly] at h_eval
+  have : (↑(p.toPoly.eval a) : Real) > 0 := by positivity
+  rw [eval_comm_map] at this
+  unfold ratToRealHom at this ⊢
+  finiteness
+
 def getSignProof (p : Q(CPolynomial Rat)) (a : Q(AlgNum)) : MetaM (Expr × Int) := do
+  let ta ← inferType a
+  if ta == .const ``Rat [] then
+    let a : Q(Rat) := a
+    let val : Int ← unsafe Meta.evalExpr Int q(Int) q(sgnC (CPolynomial.eval $a $p))
+    let pf: Expr ← do
+      if val < 0 then
+        let goal := q(CPolynomial.eval $a $p < 0)
+        let pf_rat ← mkDecideProof goal
+        mkAppM ``eval_neg #[a, p, pf_rat]
+      else if val = 0 then
+        let goal := q(CPolynomial.eval $a $p = 0)
+        let pf_rat ← mkDecideProof goal
+        mkAppM ``eval_zero #[a, p, pf_rat]
+      else
+        let goal := q(CPolynomial.eval $a $p > 0)
+        let pf_rat ← mkDecideProof goal
+        mkAppM ``eval_pos #[a, p, pf_rat]
+    return (pf, val)
   let h1 : Q(Prop) := q(«$a».p.eval «$a».l ≠ 0)
   let p1 : Q($h1) ← mkDecideProof h1
   let h2 : Q(Prop) := q(«$a».p.eval «$a».r ≠ 0)
   let p2 : Q($h2) ← mkDecideProof h2
   let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $a $p1 $p2)
   let seqVar : Q(Int) := q(seqVarSturmC_ab' «$a».p («$a».p.derivative * $p) «$a».l «$a».r)
-  let sign : Int ← unsafe Meta.evalExpr Int (q(Int)) seqVar
+  let sign : Int ← unsafe Meta.evalExpr Int q(Int) seqVar
   let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$a».p («$a».p.derivative * $p) «$a».l «$a».r = $sign)
   let sign_reflection ← mkDecideProof sign_eq
   let sign_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
@@ -213,5 +255,15 @@ example : (toPolyReal P2).eval α.toReal > 0 := by
 
 example : (toPolyReal Q).eval α.toReal = 0 := by
   compute_sign Q , α
+
+def r1 : Rat := 27 / 3
+example : (toPolyReal Q).eval (ratToRealHom r1) > 0 := by
+  compute_sign Q , r1
+
+def Pr : CPolynomial Rat := 2 * CPolynomial.X - 3
+def r2 : Rat := 3 / 2
+
+example : (toPolyReal Pr).eval (ratToRealHom r2) = 0 := by
+  compute_sign Pr , r2
 
 end tests_sgn

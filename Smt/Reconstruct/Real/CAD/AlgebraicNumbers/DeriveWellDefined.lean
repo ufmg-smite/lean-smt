@@ -19,8 +19,8 @@ theorem wellDefined_iff_rootsInInterval (a : Raw)
     (hr : a.p.eval a.r ≠ 0)
     (hlr : a.l < a.r) :
     a.wellDefined ↔
-      Finset.card (rootsInInterval (a.p.toPoly.map (Rat.castHom ℝ)) ↑a.l ↑a.r) = 1 := by
-  set q := a.p.toPoly.map (Rat.castHom ℝ) with hq_def
+      Finset.card (rootsInInterval (a.p.toPoly.map ratToRealHom) ↑a.l ↑a.r) = 1 := by
+  set q := a.p.toPoly.map ratToRealHom with hq_def
   obtain ⟨p, l, r⟩ := a
   simp only at *
   rw [CPolynomial.eval_toPoly] at hl hr
@@ -86,20 +86,20 @@ theorem wellDefined_iff_rootsInInterval (a : Raw)
     exact Finset.mem_singleton.mp hy_mem
 
 lemma sturm_l_r_cpoly (p : CPolynomial ℚ) (l r : ℚ) (hl : p.eval l ≠ 0) (hr : p.eval r ≠ 0) (hlr : l < r) :
-    seqVarSturmC_ab' p p.derivative l r = (rootsInInterval (p.toPoly.map (Rat.castHom Real)) l r).card := by
+    seqVarSturmC_ab' p p.derivative l r = (rootsInInterval (p.toPoly.map ratToRealHom) l r).card := by
   rw [<- seqVarSturmC_ab_equiv]
   have : p.derivative = p.derivative * 1 := by norm_num
   rw [this, seqVarABEquivSturm p 1]
-  have hl0 : Polynomial.eval (↑l) (Polynomial.map (Rat.castHom ℝ) p.toPoly) ≠ 0 := by
+  have hl0 : Polynomial.eval (↑l) (Polynomial.map ratToRealHom p.toPoly) ≠ 0 := by
     rw [<- cpolynomial_map_cast l p]
     finiteness
-  have hr0 : Polynomial.eval (↑r) (Polynomial.map (Rat.castHom ℝ) p.toPoly) ≠ 0 := by
+  have hr0 : Polynomial.eval (↑r) (Polynomial.map ratToRealHom p.toPoly) ≠ 0 := by
     rw [<- cpolynomial_map_cast r p]
     finiteness
-  have sturm_l_r := Theorem.sturm_interval l r (p.toPoly.map (Rat.castHom Real)) (Real.ratCast_lt.mpr hlr) hl0 hr0
-  have : (Polynomial.derivative (Polynomial.map (Rat.castHom ℝ) p.toPoly) * Polynomial.map (Rat.castHom ℝ) (CPolynomial.toPoly 1))
-       = (Polynomial.derivative (Polynomial.map (Rat.castHom ℝ) p.toPoly)) := by
-    rw [CPolynomial.toPoly_one, Polynomial.map_one (Rat.castHom ℝ)]
+  have sturm_l_r := Theorem.sturm_interval l r (p.toPoly.map ratToRealHom) (Real.ratCast_lt.mpr hlr) hl0 hr0
+  have : (Polynomial.derivative (Polynomial.map ratToRealHom p.toPoly) * Polynomial.map ratToRealHom (CPolynomial.toPoly 1))
+       = (Polynomial.derivative (Polynomial.map ratToRealHom p.toPoly)) := by
+    rw [CPolynomial.toPoly_one, Polynomial.map_one ratToRealHom]
     norm_num
   unfold toPolyReal
   rw [this, sturm_l_r]
@@ -112,8 +112,8 @@ def AlgNum.mk
     (hlr : a.l < a.r)
     (hsgn : a.sgnDiff)
     (h_int : seqVarSturmC_ab' a.p a.p.derivative a.l a.r = 1) : AlgNum :=
-  have h0 : a.p.toPoly.map (Rat.castHom Real) ≠ 0 := Polynomial.map_ne_zero (gneg_imp_gtopoly_neg a.p hp)
-  have h_roots : Finset.card (rootsInInterval (a.p.toPoly.map (Rat.castHom ℝ)) ↑a.l ↑a.r) = 1 := by
+  have h0 : a.p.toPoly.map ratToRealHom ≠ 0 := Polynomial.map_ne_zero (gneg_imp_gtopoly_neg a.p hp)
+  have h_roots : Finset.card (rootsInInterval (a.p.toPoly.map ratToRealHom) ↑a.l ↑a.r) = 1 := by
     zify
     rw [<- sturm_l_r_cpoly a.p a.l a.r hl hr hlr]
     exact h_int
