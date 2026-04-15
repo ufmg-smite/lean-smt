@@ -565,6 +565,57 @@ theorem one_unsat [Fact n.Prime] {ps : List (MvPolynomial Nat (ZMod n))} (h : 1 
   have htop : ideal ps = ⊤ := Ideal.eq_top_of_isUnit_mem _ h isUnit_one
   simp [variety, htop]
 
+theorem variety_split_zmod [Fact n.Prime]
+    (G : List (MvPolynomial Nat (ZMod n))) (x : Nat) :
+    (∃ v : ZMod n, variety (ideal ((MvPolynomial.X x - MvPolynomial.C v) :: G)) ≠ ∅) ↔
+      variety (ideal G) ≠ ∅ := by
+  constructor
+  · intro h
+    rcases h with ⟨v, hv⟩
+    apply Set.nonempty_iff_ne_empty.mp
+    rcases Set.nonempty_iff_ne_empty.mpr hv with ⟨ctx, hctx⟩
+    refine ⟨ctx, ?_⟩
+
+    rw [variety, ideal, MvPolynomial.zeroLocus_span] at hctx ⊢
+    intro p hp
+
+    have hp' : p ∈ G := by
+      exact List.mem_toFinset.mp hp
+
+    have hctx' : ∀ q ∈ ↑((MvPolynomial.X x - MvPolynomial.C v) :: G).toFinset,
+    (MvPolynomial.aeval ctx) q = 0 := by
+        simpa using hctx
+    have hp' : p ∈ ↑(((MvPolynomial.X x - MvPolynomial.C v) :: G).toFinset) := by
+        apply List.mem_toFinset.mpr
+        exact List.mem_cons_of_mem _ (List.mem_toFinset.mp hp)
+    exact hctx' p hp'
+  · intro h
+    rcases Set.nonempty_iff_ne_empty.mpr h with ⟨ctx, hctx⟩
+    refine ⟨ctx x, ?_⟩
+    apply Set.nonempty_iff_ne_empty.mp
+    refine ⟨ctx, ?_⟩
+    rw [variety, ideal, MvPolynomial.zeroLocus_span] at hctx ⊢
+    have hctx' : ∀ q ∈ ↑(G.toFinset), (MvPolynomial.aeval ctx) q = 0 := by
+      simpa using hctx
+
+    intro p hp
+    have hp' : p = (MvPolynomial.X x - MvPolynomial.C (ctx x)) ∨ p ∈ G := by
+      have hmem : p ∈ (MvPolynomial.X x - MvPolynomial.C (ctx x)) :: G := by
+        exact List.mem_toFinset.mp hp
+      simpa [List.mem_cons] using hmem
+
+    rcases hp' with rfl | hpG
+    · simp
+    · exact hctx' p (List.mem_toFinset.mpr hpG)
+
+
+theorem variety_split_zmod_of_mem [Fact n.Prime]
+    (G : List (MvPolynomial Nat (ZMod n))) (x : Nat) (r : ZMod n)
+    (hxr : MvPolynomial.X x - MvPolynomial.C r ∈ ideal G) :
+    (∃ v : ZMod n, variety (ideal ((MvPolynomial.X x - MvPolynomial.C v) :: G)) ≠ ∅) ↔
+      variety (ideal G) ≠ ∅ := by
+  simpa using variety_split_zmod (n := n) G x
+
 open Lean
 open Qq
 @[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
