@@ -220,6 +220,111 @@ def Polynomial.toMvPoly {n : Nat} (p : Polynomial n) :
       m.toMvPoly
       0)
 
+def Expr.isUnivariateOver {n : Nat} (p : Expr n) (i : Nat) : Bool :=
+  go i p
+where
+  go (i : Nat) : Expr n → Bool
+    | .var i'  => i' == i
+    | .val _   => true
+    | .add a b => go i a && go i b
+    | .sub a b => go i a && go i b
+    | .mul a b => go i a && go i b
+    | .neg a   => go i a
+
+def Expr.gcd {n : Nat} (p q : Expr n) : Expr n :=
+  let i := (findVar p <|> findVar q).getD 0
+  let pc := toCoeffs p.toPolynomial
+  let qc := toCoeffs q.toPolynomial
+  let gc := euclidGcd pc qc (pc.length + qc.length + 1)
+  toExpr i gc
+where
+  findVar : Expr n → Option Nat
+    | .var i    => some i
+    | .neg a    => findVar a
+    | .add a b  => findVar a <|> findVar b
+    | .sub a b  => findVar a <|> findVar b
+    | .mul a b  => findVar a <|> findVar b
+    | .val _    => none
+  trim (cs : List (ZMod n)) : List (ZMod n) :=
+    cs.reverse.dropWhile (· == 0) |>.reverse
+  toCoeffs (p : Polynomial n) : List (ZMod n) :=
+    let deg := p.foldl (fun d (m : Monomial n) => max d m.vars.length) 0
+    let arr := Array.replicate (deg + 1) (0 : ZMod n)
+    let arr := p.foldl (fun arr (m : Monomial n) => arr.modify m.vars.length (· + m.coeff)) arr
+    trim arr.toList
+  pseudoRem (a b : List (ZMod n)) (fuel : Nat) : List (ZMod n) :=
+    match fuel with
+    | 0 => a
+    | fuel + 1 =>
+      match b with
+      | [] => a
+      | _ =>
+        if a.length < b.length then a
+        else
+          let lca := a.getLast!
+          let lcb := b.getLast!
+          let shift := a.length - b.length
+          let a' := a.map (· * lcb)
+          let bShifted := List.replicate shift 0 ++ b.map (· * lca)
+          let r := trim (List.zipWith (· - ·) a' bShifted)
+          pseudoRem r b fuel
+  euclidGcd (a b : List (ZMod n)) (fuel : Nat) : List (ZMod n) :=
+    match fuel with
+    | 0 => a
+    | fuel + 1 =>
+      match b with
+      | [] => a
+      | _ => euclidGcd b (pseudoRem a b (a.length + 1)) fuel
+  toExpr (i : Nat) (cs : List (ZMod n)) : Expr n :=
+    match cs.reverse with
+    | []      => .val 0
+    | c :: cs => cs.foldl (fun acc coeff => .add (.val coeff) (.mul (.var i) acc)) (.val c)
+
+def Expr.pow {n : Nat} (p : Expr n) : Nat → Expr n
+  | 0     => .val 1
+  | k + 1 => p.mul (p.pow k)
+
+instance : Neg (Expr n) where
+  neg := Expr.neg
+
+instance : Add (Expr n) where
+  add := Expr.add
+
+instance : Sub (Expr n) where
+  sub := Expr.sub
+
+instance : Mul (Expr n) where
+  mul := Expr.mul
+
+instance : Pow (Expr n) Nat where
+  pow := Expr.pow
+
+def Expr.deg (p : Expr n) (i : Nat) : Nat :=
+  match p with
+  | .var i'  => if i' == i then 1 else 0
+  | .val _   => 0
+  | .add a b => max (a.deg i) (b.deg i)
+  | .sub a b => max (a.deg i) (b.deg i)
+  | .mul a b => a.deg i + b.deg i
+  | .neg a   => a.deg i
+
+-- TODO(all): simplify this definition as much as possible to make Liza's life easier!
+def Expr.completeRoots (p : Expr n) (i : Nat) (rs : List (ZMod n)) : Bool :=
+  p.isUnivariateOver i &&
+  rs.eraseDups == rs &&
+  rs.all (fun z => p.eval (fun _ => z) == 0) &&
+  (Expr.gcd p (.var i ^ n - .var i)).deg i == rs.length
+
+theorem roots_complete [Fact n.Prime] {p : Expr n}
+  (h : p.completeRoots i rs) : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
+  sorry
+
+theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
+  (hps : variety (ideal ps) ≠ ∅) (hp : p.toPoly ∈ ideal ps)
+  (hpirs : p.completeRoots i rs)
+  : orN (rs.map fun r => variety (ideal (ps ++ [.X i - .C r])) ≠ ∅) := by
+  sorry
+
 @[simp] theorem Polynomial.toMvPoly_neg {n : Nat} (p : Polynomial n) :
     Polynomial.toMvPoly (Polynomial.neg p) = -Polynomial.toMvPoly p := by
   induction p with
@@ -816,7 +921,50 @@ open Qq
     let ⟨_, hq⟩ ← cpfs.pop.foldrM f (⟨q, hq⟩ : Σ q : Q(Prop), Q($q))
     let h : Q(andN (List.map (fun r => r ∈ ideal $ps) $rs)) := hq
     addThm q(addN (List.zipWith (· * ·) $ms $rs) ∈ ideal $ps) q(@poly_combination $o $ps $ms $rs $h)
+  | .FF_ROOT_BRANCH =>
+    let o : Nat := pf.getArguments[2]!.getSort.getFiniteFieldSize!
+    let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let reconstructZMods := fun (t : cvc5.Term) (acc : Q(List (ZMod $o))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      return q($p :: $acc)
+    let ps := (pf.getArguments[1]!).getChildren
+    let ps ← ps.foldrM reconstructMVPs q([])
+    let p : Q(ZMod $o) ← reconstructTerm pf.getArguments[4]!
+    let p ← Expr.reify o p
+    let is ← getFFCtx o
+    let x : Q(ZMod $o) ← reconstructTerm pf.getArguments[2]!
+    let i : Nat := is.findIdx (· == x)
+    let rs := pf.getArguments[3]!.getChildren
+    let rs ← rs.foldrM reconstructZMods q([])
+    let hps : Q(variety (ideal $ps) ≠ ∅) ← reconstructProof pf.getChildren[0]!
+    let hp : Q(«$p».toPoly ∈ ideal $ps) ← reconstructProof pf.getChildren[1]!
+    let tac := if ← useNative then decide else nativeDecide
+    let hpirs : Q(«$p».completeRoots $i $rs) ← tac q(«$p».completeRoots $i $rs)
+    addThm q(orN («$rs».map fun r => variety (ideal ($ps ++ [.X $i - .C r])) ≠ ∅))
+           q(@root_branch $o $ho $ps $p $i $rs $hps $hp $hpirs)
   | _ => return none
+where
+  decide (p : Q(Prop)) : MetaM (Q($p)) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    return .app q(@of_decide_eq_true $p $hp) q(Eq.refl true)
+  nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
+    let b : Q(Bool) := .const auxDeclName []
+    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
+  mkNativeAuxDecl (baseName : Name) (type value : Lean.Expr) : MetaM Name := do
+    let auxName ← Lean.mkAuxDeclName baseName
+    let decl := Declaration.defnDecl {
+      name := auxName, levelParams := [], type, value
+      hints := .abbrev
+      safety := .safe
+    }
+    addAndCompile decl
+    pure auxName
 
 end Smt.Reconstruct.ZMod
 
