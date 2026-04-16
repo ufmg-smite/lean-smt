@@ -421,6 +421,10 @@ theorem fg_mod_eq (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly
 @[irreducible]
 noncomputable def ratToRealHom : RingHom Rat Real := Rat.castHom Real
 
+@[irreducible]
+noncomputable def ratToReal : Rat → Real := ratToRealHom
+
+
 @[grind =]
 noncomputable def toPolyReal (p : CPolynomial Rat) : Polynomial Real := p.toPoly.map ratToRealHom
 

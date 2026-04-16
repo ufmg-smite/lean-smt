@@ -53,7 +53,7 @@ def computeSortedRootSet (p : Q(CPolynomial Rat)) (rs_real : Q(List Real)) (root
   let hyp2 : Q(Prop) := q(∀ i ∈ $rs_real, i ∈ (toPolyReal $p).roots.toFinset.sort (· ≤ ·))
   let mv2 ← mkFreshExprMVar hyp2
   let hyp2_pf := mv2
-  let mv2? ← simp' mv2.mvarId! (p_ne_0 :: p_polyReal_ne_0' :: roots_pfs) (``eq_ratCast :: ``Rat.cast_neg :: ``map_div₀ :: [])
+  let mv2? ← simp' mv2.mvarId! (p_ne_0 :: p_polyReal_ne_0' :: roots_pfs) []
   match mv2? with
   | none => pure ()
   | some mv2' => mv2'.assign p_polyReal_ne_0'
@@ -81,7 +81,7 @@ lemma set_after {x y : Real} : (x ∈ setOf (fun w => y < w)) -> y < x := by
 def get_r (r : Q(Real)) : MetaM Expr := do
   match r with
   | ~q(AlgNum.toReal $x) => return x
-  | ~q(ratToRealHom $x) => return x
+  | ~q(ratToReal $x) => return x
   | ~q(Rat.cast $x) => return x
   | f => throwError m!"nomatch: {repr f}"
 
@@ -105,63 +105,75 @@ lemma sgn_sgn_posQ : ∀ x : Rat, sgnQ x > 0 ↔ x > 0 := by
   unfold sgnQ
   split_ifs <;> grind
 
-lemma alg_midpoint_rr (R1 R2 : Rat) (h12 : R1 < R2) : ratToRealHom ((R1 + R2) / 2) ∈ Set.Ioo (ratToRealHom R1) (ratToRealHom R2) := by
+lemma alg_midpoint_rr (R1 R2 : Rat) (h12 : R1 < R2) : ratToReal ((R1 + R2) / 2) ∈ Set.Ioo (ratToReal R1) (ratToReal R2) := by
+  unfold ratToReal
   simp only [eq_ratCast, map_div₀, Rat.cast_add, Rat.cast_ofNat, Set.mem_Ioo]
   have : (↑R1 : Real) < R2 := by simp_all only [Rat.cast_lt]
   grind
 
-lemma alg_midpoint_ra (R1 : Rat) (R2 : AlgNum) (h12 : R1 < R2.l) : ratToRealHom ((R1 + R2.l) / 2) ∈ Set.Ioo (ratToRealHom R1) R2.toReal := by
+lemma alg_midpoint_ra (R1 : Rat) (R2 : AlgNum) (h12 : R1 < R2.l) : ratToReal ((R1 + R2.l) / 2) ∈ Set.Ioo (ratToReal R1) R2.toReal := by
+  unfold ratToReal
   simp
   have : (↑R1 : Real) < R2.l := by simp_all only [Rat.cast_lt]
   have : R2.l ≤ R2.toReal := (toReal_bounds R2).1
   grind
 
-lemma alg_midpoint_ar (R1 : AlgNum) (R2 : Rat) (h12 : R1.r < R2) : ratToRealHom ((R1.r + R2) / 2) ∈ Set.Ioo R1.toReal (ratToRealHom R2) := by
+lemma alg_midpoint_ar (R1 : AlgNum) (R2 : Rat) (h12 : R1.r < R2) : ratToReal ((R1.r + R2) / 2) ∈ Set.Ioo R1.toReal (ratToReal R2) := by
+  unfold ratToReal
   simp
   have : (↑R1.r : Real) < R2 := by simp_all only [Rat.cast_lt]
   have : R1.toReal ≤ R1.r := (toReal_bounds R1).2
   grind
 
-lemma alg_midpoint_aa (R1 R2 : AlgNum) (h12 : R1.r < R2.l) : ratToRealHom ((R1.r + R2.l) / 2) ∈ Set.Ioo R1.toReal R2.toReal := by
+lemma alg_midpoint_aa (R1 R2 : AlgNum) (h12 : R1.r < R2.l) : ratToReal ((R1.r + R2.l) / 2) ∈ Set.Ioo R1.toReal R2.toReal := by
+  unfold ratToReal
   simp only [map_div₀, eq_ratCast, Rat.cast_add, Rat.cast_ofNat, Set.mem_Ioo]
   have : (R1.r : Real) < R2.l := by gcongr
   have : R1.toReal ≤ R1.r := (toReal_bounds R1).2
   have : R2.l ≤ R2.toReal := (toReal_bounds R2).1
   grind
 
-lemma alg_pre (R : AlgNum) : ratToRealHom (R.l - 1) < R.toReal := by
-  have : ratToRealHom R.l ≤ R.toReal := by
-    unfold ratToRealHom
+lemma alg_pre (R : AlgNum) : ratToReal (R.l - 1) < R.toReal := by
+  have : ratToReal R.l ≤ R.toReal := by
+    unfold ratToReal ratToRealHom
     exact (toReal_bounds R).1
-  have : ratToRealHom (R.l - 1) = ratToRealHom R.l - 1 := by norm_num
+  have : ratToReal (R.l - 1) = ratToReal R.l - 1 := by
+    unfold ratToReal
+    norm_num
   rw [this]
   grind
 
-lemma alg_pre' (R : Rat) :  ratToRealHom (R - 1) < ratToRealHom R := by norm_num
+lemma alg_pre' (R : Rat) :  ratToReal (R - 1) < ratToReal R := by
+  unfold ratToReal
+  norm_num
 
-lemma alg_pos (R : AlgNum) : R.toReal < ratToRealHom (R.r + 1) := by
-  have : R.toReal ≤ ratToRealHom R.r := by
-    unfold ratToRealHom
+lemma alg_pos (R : AlgNum) : R.toReal < ratToReal (R.r + 1) := by
+  have : R.toReal ≤ ratToReal R.r := by
+    unfold ratToReal ratToRealHom
     exact (toReal_bounds R).2
-  have : ratToRealHom (R.r + 1) = ratToRealHom R.r + 1 := by norm_num
+  have : ratToReal (R.r + 1) = ratToReal R.r + 1 := by
+    unfold ratToReal
+    norm_num
   rw [this]
   grind
 
-lemma alg_pos' (R : Rat) : ratToRealHom R < ratToRealHom (R + 1) := by norm_num
+lemma alg_pos' (R : Rat) : ratToReal R < ratToReal (R + 1) := by
+  unfold ratToReal
+  norm_num
 
 lemma cast_eval_neg {x : Rat} {p : CPolynomial Rat} (hpx : CPolynomial.eval x p < 0)
-    : Polynomial.eval (ratToRealHom x) (toPolyReal p) < 0 := by
-  unfold toPolyReal
+    : Polynomial.eval (ratToReal x) (toPolyReal p) < 0 := by
+  unfold toPolyReal ratToReal ratToRealHom
   rw [eval_toPoly] at hpx
-  have : (ratToRealHom (Polynomial.eval x p.toPoly)) < 0 := by
+  have : (Rat.castHom Real (Polynomial.eval x p.toPoly)) < 0 := by
     simp_all only [eq_ratCast, Rat.cast_lt_zero]
   rwa [Polynomial.eval_map_apply]
 
 lemma cast_eval_pos {x : Rat} {p : CPolynomial Rat} (hpx : CPolynomial.eval x p > 0)
-    : Polynomial.eval (ratToRealHom x) (toPolyReal p) > 0 := by
-  unfold toPolyReal
+    : Polynomial.eval (ratToReal x) (toPolyReal p) > 0 := by
+  unfold toPolyReal ratToReal ratToRealHom
   rw [eval_toPoly] at hpx
-  have : (ratToRealHom (Polynomial.eval x p.toPoly)) > 0 := by
+  have : (Rat.castHom Real (Polynomial.eval x p.toPoly)) > 0 := by
     simp_all only [gt_iff_lt, eq_ratCast, Rat.cast_pos]
   rwa [Polynomial.eval_map_apply]
 
@@ -215,7 +227,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
 
             let key ← mkAppM ``sign_stops_neg
-              #[q(ratToRealHom $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
+              #[q(ratToReal $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
             -- TODO: Could be just check if they are proving different signs and apply custom lemma
             grind_context := grind_context.push key
             grind_context := grind_context.push ineq_pf
@@ -225,7 +237,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
 
             let key ← mkAppM ``sign_stops_pos
-              #[q(ratToRealHom $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
+              #[q(ratToReal $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
             -- TODO: Could be just check if they are proving different signs and apply custom lemma
             grind_context := grind_context.push key
             grind_context := grind_context.push ineq_pf
@@ -262,14 +274,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pre $poly < 0)
               let eval_neg ← mkDecideProof eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pre #[q(ratToRealHom $pre), poly', ← toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
+              let key ← mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pre $poly > 0)
               let eval_pos ← mkDecideProof eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pre #[q(ratToRealHom $pre), poly', ← toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
+              let key ← mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
           let ok ← runGrind' mv' grind_context.toList
@@ -304,14 +316,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pos $poly < 0)
               let eval_neg ← mkDecideProof eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pos #[q(ratToRealHom $pos), poly', ← toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
+              let key ← mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pos $poly > 0)
               let eval_pos ← mkDecideProof eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pos #[q(ratToRealHom $pos), poly', ← toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
+              let key ← mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
           let ok ← runGrind' mv' grind_context.toList
@@ -329,8 +341,12 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         let ineq' ← rewriteWithEq ineq var_val
         let (poly_sign, _) ← getSignProof poly (← get_r r)
         -- TODO: Could be just check if they are proving different signs and apply custom lemma
+        logInfo m!"poly_sign = {← inferType poly_sign}"
+        logInfo m!"ineq' = {← inferType ineq'}"
         grind_context := grind_context.push poly_sign
         grind_context := grind_context.push ineq'
+      for h in grind_context do
+        logInfo m!"h = {← inferType h}"
       let ok ← runGrind' mv' grind_context.toList
       if !ok then
         throwError "grind failed 5"
@@ -385,9 +401,6 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   let mv ← mkFreshExprMVar (mkConst ``False)
   let congrTheorems ← getSimpCongrTheorems
   let simpTheorems ← getSimpTheorems
-  let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``eq_ratCast)
-  let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``Rat.cast_neg)
-  let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``map_div₀)
   let simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
   let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
   let (some (decomp_pf', t'), _) ← simpStep mv.mvarId! decomp_pf (← inferType decomp_pf) ctx | throwError "impossible"
@@ -424,17 +437,15 @@ def c : Rat := 10
 
 set_option maxHeartbeats 1000000
 
-/- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
-/-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
+lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by
+  univ_cad x , [h1,h2,h3,h4] [a,b,c]
 
 
-#check CPolynomial.eval_sub
 #eval gen_cpoly_array (0 : Rat) [(3,3)]
 
 def P' : CPolynomial.Raw Rat := gen_cpoly_array (0 : Rat) [(3,3)]
 def PP : CPolynomial Rat := ⟨P', by decide +kernel⟩
 
-example (q : Rat) : (X ^ 3 : CPolynomial Rat).eval q = q ^ 3 := by simp [CPolynomial.eval_sub, CPolynomial.eval_add, CPolynomial.eval_pow]
 
 def p2 : CPolynomial Rat := X - 3/2
 def r3 : Raw := ⟨p2, 7/5, 2⟩

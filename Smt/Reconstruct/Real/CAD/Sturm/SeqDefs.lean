@@ -388,7 +388,7 @@ lemma map_cast (p : Polynomial Rat) (x : Rat) :
 lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPoly.map ratToRealHom).eval (x : Real) := by
   have := CPolynomial.eval_toPoly x p
   rw [this]
-  have : (↑(Polynomial.eval x p.toPoly) : Real) = ratToRealHom (Polynomial.eval x p.toPoly) := by norm_num
+  have : (↑(Polynomial.eval x p.toPoly) : Real) = ratToRealHom (Polynomial.eval x p.toPoly) := by unfold ratToRealHom; norm_num
   rw [map_cast p.toPoly x]
   unfold ratToRealHom
   congr

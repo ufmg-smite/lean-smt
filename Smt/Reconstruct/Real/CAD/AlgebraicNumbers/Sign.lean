@@ -165,24 +165,24 @@ lemma plus_one (a : Int) : a = 1 → a > 0 := by
   intro h
   positivity
 
-lemma eval_neg (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a < 0) : (toPolyReal p).eval (ratToRealHom a) < 0 := by
-  unfold toPolyReal
+lemma eval_neg (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a < 0) : (toPolyReal p).eval (ratToReal a) < 0 := by
+  unfold toPolyReal ratToReal
   rw [CPolynomial.eval_toPoly] at h_eval
   have : (↑(p.toPoly.eval a) : Real) < 0 := by simp_all only [Rat.cast_lt_zero]
   rw [eval_comm_map] at this
   unfold ratToRealHom at this ⊢
   finiteness
 
-lemma eval_zero (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a = 0) : (toPolyReal p).eval (ratToRealHom a) = 0 := by
-  unfold toPolyReal
+lemma eval_zero (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a = 0) : (toPolyReal p).eval (ratToReal a) = 0 := by
+  unfold toPolyReal ratToReal
   rw [CPolynomial.eval_toPoly] at h_eval
   have : (↑(p.toPoly.eval a) : Real) = 0 := by simp_all only [Rat.cast_zero]
   rw [eval_comm_map] at this
   unfold ratToRealHom at this ⊢
   finiteness
 
-lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPolyReal p).eval (ratToRealHom a) > 0 := by
-  unfold toPolyReal
+lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPolyReal p).eval (ratToReal a) > 0 := by
+  unfold toPolyReal ratToReal
   rw [CPolynomial.eval_toPoly] at h_eval
   have : (↑(p.toPoly.eval a) : Real) > 0 := by positivity
   rw [eval_comm_map] at this
@@ -257,13 +257,13 @@ example : (toPolyReal Q).eval α.toReal = 0 := by
   compute_sign Q , α
 
 def r1 : Rat := 27 / 3
-example : (toPolyReal Q).eval (ratToRealHom r1) > 0 := by
+example : (toPolyReal Q).eval (ratToReal r1) > 0 := by
   compute_sign Q , r1
 
 def Pr : CPolynomial Rat := 2 * CPolynomial.X - 3
 def r2 : Rat := 3 / 2
 
-example : (toPolyReal Pr).eval (ratToRealHom r2) = 0 := by
+example : (toPolyReal Pr).eval (ratToReal r2) = 0 := by
   compute_sign Pr , r2
 
 end tests_sgn

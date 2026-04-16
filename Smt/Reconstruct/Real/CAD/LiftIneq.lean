@@ -135,14 +135,6 @@ def get_comparison (ineq : Q(Prop)) : Expr :=
 @[simp, grind =]
 private def zero_rat : Rat := 0
 
-def gen_poly (coeffs_and_exps : List (Q(Rat) × Nat)) : Q(CPolynomial Rat) :=
-  match coeffs_and_exps with
-  | [] => q(C 0)
-  | [(c, e)] => q(C $c • ((X : CPolynomial Rat) ^ $e))
-  | (c, e) :: tl =>
-    let p' : Q(CPolynomial Rat) := gen_poly tl
-    q(C $c • ((X : CPolynomial Rat) ^ $e) + $p')
-
 -- given a proof that some expression of the form `f(var) <> 0` is true, produce a proof
 -- that `P.eval var <> 0`, where `P` is the polynomial corresponding to `f`. See `p_comp_pf_ex`.
 def prove_p_comp (var : Q(Real)) (P: Q(CPolynomial Rat)) (coeffs_and_exps : List (Q(Rat) × Nat)) (ineq_pf : Expr) (P_comp : Expr) : MetaM Expr := do
@@ -218,12 +210,32 @@ where
       q(insert ($curr + 1) $r)
   gen_sum (d: Nat) (var : Q(Real)) : Q(Real) :=
     match d with
-    | 0 => q(ratToRealHom (CPolynomial.coeff $P 0) * ($var ^ 0))
+    | 0 => q(ratToReal (CPolynomial.coeff $P 0) * ($var ^ 0))
     | d + 1 =>
       let r: Q(Real) := gen_sum d var
-      let curr := q(ratToRealHom (CPolynomial.coeff $P ($d + 1)))
+      let curr := q(ratToReal (CPolynomial.coeff $P ($d + 1)))
       let curr := q($curr * ($var ^ ($d + 1)))
       q($curr + $r)
+
+
+def gen_poly (coeffs_and_exps : List (Q(Rat) × Nat)) : Q(CPolynomial Rat) :=
+  match coeffs_and_exps with
+  | [] => q(C 0)
+  | [(c, e)] =>
+    if e == 0 then
+      q(CPolynomial.C $c)
+    else if e == 1 then
+      q((CPolynomial.C $c) * (X : CPolynomial Rat))
+    else
+      q((CPolynomial.C $c) * ((X : CPolynomial Rat) ^ $e))
+  | (c, e) :: tl =>
+    let p' : Q(CPolynomial Rat) := gen_poly tl
+    if e == 0 then
+      q(CPolynomial.C $c + $p')
+    else if e == 1 then
+      q((CPolynomial.C $c) * (X : CPolynomial Rat) + $p')
+    else
+      q((CPolynomial.C $c) * ((X : CPolynomial Rat) ^ $e) + $p')
 
 -- retrieves a polynomial and a proof of inequality involving it,
 -- given a proof of an inequality involving a free variable
@@ -243,7 +255,7 @@ def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × Expr) := do
   logInfo m!"ring normalize took {t4 - t3}ms"
   -- Gets the expression on the left-hand side of the normalized `ineq_pf`
   let ineq ← inferType ineq_pf
-  let lhs := get_lhs ineq
+  let lhs: Q(Real) := get_lhs ineq
   -- Gets the list of summands (monomial) in `lhs` (with a flag if they come from a subtraction)
   let monoms ← get_monoms lhs
   let t5 ← IO.monoMsNow
@@ -251,24 +263,50 @@ def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × Expr) := do
   -- Collects the coefficients and exponents in each monomial (and tries to cast the coefficients to Rat)
   let coeffs_and_exps ← monoms.mapM get_coeff_exp
   let t6 ← IO.monoMsNow
-  logInfo m!"get coeff exp took {t6 - t5}ms"
-  -- Create the `CPolynomial.Raw Rat` from the list of coefficients
-  let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[q(0: Rat), toListExpr' coeffs_and_exps]
-  let trim_P_raw : Q(Raw Rat) ← mkAppM ``Raw.trim #[P_raw]
-  let P_raw_lawful : Q(Prop) := q($trim_P_raw = $P_raw)
-  let P_raw_lawful_pf ← mkDecideProof P_raw_lawful
-  let t7 ← IO.monoMsNow
-  logInfo m!"lawful proof took {t7 - t6}ms"
-  -- Create the `CPolynomial Rat` using `P_raw` and the proof that it is lawful
-  let P: Q(CPolynomial Rat) ← mkAppM `CPolynomial.mk_rat #[P_raw, P_raw_lawful_pf]
-  let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
+  logInfo m!"coeffs and exps took {t6 - t5}ms"
+
+  let P := gen_poly coeffs_and_exps
   let P_eval : Q(Real) := q((toPolyReal $P).eval $var)
+  let P_eval_eq : Q(Prop) := q($P_eval = $lhs)
+  let P_eval_eq_pf ← mkFreshExprMVar P_eval_eq
+  let remaining_goal? ← simp' P_eval_eq_pf.mvarId!
+    (List.map mkConst [``toPolyReal.eq_1, ``ratToRealHom.eq_1, ``toPoly_add, ``toPoly_sub, ``toPoly_mul, ``toPoly_pow, ``C_toPoly, ``X_toPoly])
+  match remaining_goal? with
+  | some mv =>
+    let ok ← runGrind mv
+    if !ok then throwError "grind failed 7"
+  | none => pure ()
+  let t7 ← IO.monoMsNow
+  logInfo m!"eval = lhs took {t7 - t6}ms"
+  let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
   let P_comp : Q(Prop) := q($cmp $P_eval 0)
-  -- Proves that P(var) <> 0, according to the original `ineq_pf`
-  let P_comp_pf ← prove_p_comp var P coeffs_and_exps ineq_pf P_comp
-  let t8 ← IO.monoMsNow
-  logInfo m!"prove comparison took {t8 - t7}ms"
-  return (P, P_comp_pf)
+  let P_comp_mv ← mkFreshExprMVar P_comp
+  let P_comp_pf ← rewriteMVar P_comp_mv.mvarId! P_eval_eq_pf
+  P_comp_pf.assign ineq_pf
+
+  return (P, P_comp_mv)
+
+
+
+
+  /- logInfo m!"get coeff exp took {t6 - t5}ms" -/
+  /- -- Create the `CPolynomial.Raw Rat` from the list of coefficients -/
+  /- let P_raw : Q(Raw Rat) ← mkAppM ``gen_cpoly_array #[q(0: Rat), toListExpr' coeffs_and_exps] -/
+  /- let trim_P_raw : Q(Raw Rat) ← mkAppM ``Raw.trim #[P_raw] -/
+  /- let P_raw_lawful : Q(Prop) := q($trim_P_raw = $P_raw) -/
+  /- let P_raw_lawful_pf ← mkDecideProof P_raw_lawful -/
+  /- let t7 ← IO.monoMsNow -/
+  /- logInfo m!"lawful proof took {t7 - t6}ms" -/
+  /- -- Create the `CPolynomial Rat` using `P_raw` and the proof that it is lawful -/
+  /- let P: Q(CPolynomial Rat) ← mkAppM `CPolynomial.mk_rat #[P_raw, P_raw_lawful_pf] -/
+  /- let cmp: Q(Real -> Real -> Prop) := get_comparison ineq -/
+  /- let P_eval : Q(Real) := q((toPolyReal $P).eval $var) -/
+  /- let P_comp : Q(Prop) := q($cmp $P_eval 0) -/
+  /- -- Proves that P(var) <> 0, according to the original `ineq_pf` -/
+  /- let P_comp_pf ← prove_p_comp var P coeffs_and_exps ineq_pf P_comp -/
+  /- let t8 ← IO.monoMsNow -/
+  /- logInfo m!"prove comparison took {t8 - t7}ms" -/
+  /- return (P, P_comp_pf) -/
 
 open AlgebraicNumber
 
