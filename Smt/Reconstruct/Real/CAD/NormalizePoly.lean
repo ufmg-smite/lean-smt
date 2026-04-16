@@ -69,7 +69,7 @@ def all_to_lhs (h : Expr) : MetaM Expr := do
   | .app (.app (.app (.app (.const `LT.lt ..) _) _) _) _ => mkAppM ``sub_neg_mpr #[h]
   | .app (.app (.app (.app (.const `LE.le ..) _) _) _) _ => mkAppM ``tsub_nonpos_mpr #[h]
   | .app (.app (.app (.app (.const `GT.gt ..) _) _) _) _ => mkAppM ``sub_pos_mpr #[h]
-  | .app (.app (.app (.app (.const `GE.ge ..) _) _) _) _ => mkAppM ``sub_nonneg_of_le #[h]
+  | .app (.app (.app (.app (.const `GE.ge ..) _) _) _) _ => mkAppM ``sub_nonpos_of_le #[h]
   | .app (.app (.app (.const ``Eq ..) _) _) _ => mkAppM ``sub_eq_zero_of_eq #[h]
   | _ => throwError "[all_to_lhs]: impossible"
 
@@ -87,20 +87,22 @@ example (a b : Rat) : (a ^ 2 + 3 * a - 24 = b * 23 + a) → True := by
   exact True.intro
 
 open Mathlib.Tactic.RingNF in
-def ring_compute_norm (e : Expr) : MetaM (Expr × Expr) := do
+def ring_compute_norm (e : Expr) : MetaM (Option (Expr × Expr)) := do
   let rawResult ← Mathlib.Tactic.AtomM.recurse (← IO.mkRef {}) default (wellBehavedDischarge := true) evalExpr (cleanup default) e
   match rawResult.proof? with
   | none =>
-    throwError "ring nf failed"
+    return none
   | some p =>
-    return ⟨rawResult.expr, p⟩
+    return some ⟨rawResult.expr, p⟩
 
 syntax (name := meta_norm) "meta_norm" term : tactic
 
 def ring_normalize (h : Expr) : MetaM Expr := do
   let t ← inferType h
-  let ⟨_, eq_pf⟩ ← ring_compute_norm t
-  rewriteWithEq h eq_pf
+  let res ← ring_compute_norm t
+  match res with
+  | some ⟨_, eq_pf⟩ => rewriteWithEq h eq_pf
+  | _ => return h
 
 @[tactic meta_norm] def evalMetaNorm : Tactic := fun stx => withMainContext do
   let h ← elabTerm stx[1] none

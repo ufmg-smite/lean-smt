@@ -53,7 +53,7 @@ def computeSortedRootSet (p : Q(CPolynomial Rat)) (rs_real : Q(List Real)) (root
   let hyp2 : Q(Prop) := q(∀ i ∈ $rs_real, i ∈ (toPolyReal $p).roots.toFinset.sort (· ≤ ·))
   let mv2 ← mkFreshExprMVar hyp2
   let hyp2_pf := mv2
-  let mv2? ← simp' mv2.mvarId! (p_ne_0 :: p_polyReal_ne_0' :: roots_pfs) (``eq_ratCast :: ``map_div₀ :: [])
+  let mv2? ← simp' mv2.mvarId! (p_ne_0 :: p_polyReal_ne_0' :: roots_pfs) (``eq_ratCast :: ``Rat.cast_neg :: ``map_div₀ :: [])
   match mv2? with
   | none => pure ()
   | some mv2' => mv2'.assign p_polyReal_ne_0'
@@ -350,8 +350,11 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   let rs_real : List Q(Real) ← rs.mapM toReal
   let rs_e := toListExpr q(Real) rs_real
   for ineq_pf in ineq_pfs do
+    logInfo m!"ineq_pf = {← inferType ineq_pf}"
     let curr_ineq_pre ← IO.monoMsNow
-    let (P, ineq_pf_P) ← lift_ineq ineq_pf
+    let (P, ineq_pf_P) ← lift_ineq ineq_pf x
+    logInfo m!"P = {P}"
+    logInfo m!"ineq_pf_P = {← inferType ineq_pf_P}"
     let P_roots_card ← gen_root_counting_proof P
     let mut root_pfs : Array Expr := #[]
     let mut curr_roots : Array Expr := #[]
@@ -378,14 +381,17 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   let decomp_after ← IO.monoMsNow
   logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms"
 
+  logInfo m!"decomp before : {← inferType decomp_pf}"
   let mv ← mkFreshExprMVar (mkConst ``False)
   let congrTheorems ← getSimpCongrTheorems
   let simpTheorems ← getSimpTheorems
   let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``eq_ratCast)
+  let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``Rat.cast_neg)
   let simpTheorems := SimpTheorems.eraseCore simpTheorems (.decl ``map_div₀)
   let simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
   let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
   let (some (decomp_pf', t'), _) ← simpStep mv.mvarId! decomp_pf (← inferType decomp_pf) ctx | throwError "impossible"
+  logInfo m!"decomp after: {t'}"
   let disjuncts := collectDisjuncts t'
   let disjunctsToFalse ← disjuncts.mapM (mkArrow · q(False))
   let disjunctsToFalseMvs ← disjunctsToFalse.mapM (fun e => Meta.mkFreshExprMVar e)
@@ -412,6 +418,24 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
 
 namespace main_tests
 
+def a : Rat := -9
+def b : Rat := 0
+def c : Rat := 10
+
+set_option maxHeartbeats 1000000
+
+/- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
+/-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
+
+
+#check CPolynomial.eval_sub
+#eval gen_cpoly_array (0 : Rat) [(3,3)]
+
+def P' : CPolynomial.Raw Rat := gen_cpoly_array (0 : Rat) [(3,3)]
+def PP : CPolynomial Rat := ⟨P', by decide +kernel⟩
+
+example (q : Rat) : (X ^ 3 : CPolynomial Rat).eval q = q ^ 3 := by simp [CPolynomial.eval_sub, CPolynomial.eval_add, CPolynomial.eval_pow]
+
 def p2 : CPolynomial Rat := X - 3/2
 def r3 : Raw := ⟨p2, 7/5, 2⟩
 def R3 : AlgNum := by lift_alg_num r3
@@ -426,13 +450,10 @@ def R1 : AlgNum := by lift_alg_num r1
 def r2 : Raw := ⟨p1, 1, 5/4⟩
 def R2 : AlgNum := by lift_alg_num r2
 
-example (q : Rat) : ratToRealHom q = Rat.castHom Real q := by
-  simp only [eq_ratCast]
+/- lemma exemplo (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by -/
+/-   univ_cad a, [h1, h2] [R1, R2, R3'] -/
 
-lemma exemplo (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by
-  univ_cad a, [h1, h2] [R1, R2, R3']
-
-#print axioms exemplo
+/- #print axioms exemplo -/
 
 def zero_p : CPolynomial Rat := X
 def zero_r : Raw := ⟨zero_p, -1, 1⟩

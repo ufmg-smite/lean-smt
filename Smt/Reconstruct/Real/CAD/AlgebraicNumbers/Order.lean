@@ -35,9 +35,15 @@ lemma cmp_rat_alg_refine_ar (a : AlgNum) (b : Rat) : a.refine.toReal < ratToReal
   rw [refine_toReal]
   exact h
 
+lemma ratToRealHom_lt (a b : Rat) : a < b → ratToRealHom a < ratToRealHom b := by
+  intro h
+  unfold ratToRealHom
+  simp_all only [eq_ratCast, Rat.cast_lt]
+
 def gen_toReal_lt_rr (a b : Q(Rat)) : MetaM Expr := do
   let goal ← mkAppM `LT.lt #[a,b]
-  mkDecideProof goal
+  let pf ← mkDecideProof goal
+  mkAppM ``ratToRealHom_lt #[a, b, pf]
 
 partial def gen_toReal_lt_ra (a : Q(Rat)) (b : Q(AlgNum)) : MetaM Expr := do
   let a' : Rat ← unsafe evalExpr Rat q(Rat) a
@@ -157,3 +163,6 @@ def parse_cmp_alg_list : Syntax → TacticM (List Expr)
 
 example : [A.toReal, ratToRealHom A2, B.toReal, C.toReal, ratToRealHom C2, D.toReal].SortedLT := by
   cmp_alg_list [A, A2, B, C, C2, D]
+
+example : [ratToRealHom A2, ratToRealHom C2].SortedLT := by
+  cmp_alg_list [A2, C2]
