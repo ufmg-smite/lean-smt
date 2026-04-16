@@ -25,38 +25,6 @@ def push_not (h : Expr) : MetaM Expr := do
       throwError "[simple_push_neg]: impossible"
   | _ => return h
 
-@[tactic simple_push_neg] def evalSimplePushNeg : Tactic := fun stx => withMainContext do
-  let h ← elabTerm stx[1] none
-  let h' ← push_not h
-  let t ← inferType h'
-  let mv ← getMainGoal
-  let (_, mv) ← MVarId.intro1P $ ← mv.assert .anonymous t h'
-  replaceMainGoal [mv]
-
-example (a b : Real) : ¬ (32 * a - 4 < 45 * b^2 + b) → 32 * a -4 ≥ 45 * b ^ 2 + b := by
-  intro h
-  simple_push_neg h
-  assumption
-
-example (a b : Real) : ¬ (32 * a - 4 ≤ 45 * b^2 + b) → 32 * a -4 > 45 * b ^ 2 + b := by
-  intro h
-  simple_push_neg h
-  assumption
-
-example (a b : Real) : ¬ (32 * a - 4 > 45 * b^2 + b) → 32 * a -4 ≤ 45 * b ^ 2 + b := by
-  intro h
-  simple_push_neg h
-  assumption
-
-example (a b : Real) : ¬ (32 * a - 4 ≥ 45 * b^2 + b) → 32 * a -4 < 45 * b ^ 2 + b := by
-  intro h
-  simple_push_neg h
-  assumption
-
-example (a b : Real) : ¬ (32 * a - 4 = 45 * b^2 + b) → 32 * a -4 ≠ 45 * b ^ 2 + b := by
-  intro h
-  exact h
-
 syntax (name := normalize_rel) "normalize_rel" term : tactic
 
 lemma sub_neg_mpr {α : Type*} [CommRing α] [LinearOrder α] [AddRightStrictMono α] {a b : α} : a < b → a - b < 0 := sub_neg.mpr

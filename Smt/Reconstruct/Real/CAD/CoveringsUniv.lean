@@ -2,7 +2,6 @@ import Lean
 import Lean.Meta.Tactic.Simp
 
 import Smt.Reconstruct.Real.CAD.CountRoots
-import Smt.Reconstruct.Real.CAD.CPolynomial
 import Smt.Reconstruct.Real.CAD.LiftIneq
 import Smt.Reconstruct.Real.CAD.NormalizePoly
 import Smt.Reconstruct.Real.CAD.Split
@@ -355,8 +354,6 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
   logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
   return result
 
--- TODO: Modify `solveCase` to accept a list of mixed algnums and rats (medium?)
-
 def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (Expr × List MVarId) := do
   let sort_before ← IO.monoMsNow
   let rs_sorted ← genPfSortedLT rs
@@ -397,14 +394,12 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   let decomp_after ← IO.monoMsNow
   logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms"
 
-  logInfo m!"decomp before : {← inferType decomp_pf}"
   let mv ← mkFreshExprMVar (mkConst ``False)
   let congrTheorems ← getSimpCongrTheorems
   let simpTheorems ← getSimpTheorems
   let simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
   let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
   let (some (decomp_pf', t'), _) ← simpStep mv.mvarId! decomp_pf (← inferType decomp_pf) ctx | throwError "impossible"
-  logInfo m!"decomp after: {t'}"
   let disjuncts := collectDisjuncts t'
   let disjunctsToFalse ← disjuncts.mapM (mkArrow · q(False))
   let disjunctsToFalseMvs ← disjunctsToFalse.mapM (fun e => Meta.mkFreshExprMVar e)
@@ -421,7 +416,6 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
 
   return (answer, unsolvedMvs)
 
--- For now I'm assuming all roots are AlgNum's (but they will be either rational or AlgNum)
 @[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
   let (x, ineq_pfs, rs) ← parseUnivCad stx
   let e ← univCadCore x ineq_pfs rs
@@ -435,17 +429,10 @@ def a : Rat := -9
 def b : Rat := 0
 def c : Rat := 10
 
-set_option maxHeartbeats 1000000
+/- set_option maxHeartbeats 1000000 -/
 
-lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by
-  univ_cad x , [h1,h2,h3,h4] [a,b,c]
-
-
-#eval gen_cpoly_array (0 : Rat) [(3,3)]
-
-def P' : CPolynomial.Raw Rat := gen_cpoly_array (0 : Rat) [(3,3)]
-def PP : CPolynomial Rat := ⟨P', by decide +kernel⟩
-
+/- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
+/-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
 
 def p2 : CPolynomial Rat := X - 3/2
 def r3 : Raw := ⟨p2, 7/5, 2⟩
@@ -470,21 +457,7 @@ def zero_p : CPolynomial Rat := X
 def zero_r : Raw := ⟨zero_p, -1, 1⟩
 def zero : AlgNum := by lift_alg_num zero_r
 
-
 /- example (x : Real) (h1 : x * x * x * x * x > 0) (h2 : x * x * x < 0) : False := by -/
 /-   univ_cad x, [h1, h2] [zero] -/
-
-
-/- def p3 : CPolynomial Rat := X ^ 2 - 3 -/
-/- def r4 : Raw := ⟨p3, -20/10, -1⟩ -/
-/- def R4 : AlgNum := by lift_alg_num r4 -/
-/- def r5 : Raw := ⟨p3, 1, 19/10⟩ -/
-/- def R5 : AlgNum := by lift_alg_num r5 -/
-
-/- def p4 : CPolynomial Rat := X^3 - 8 -/
-/- def r6 : Raw := ⟨p4, ⟩ -/
-
-
-/- example (a : Real) : a * a = 3 → a * a * a + 10 < 2 → False := by smt -/
 
 end main_tests
