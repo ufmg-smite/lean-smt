@@ -6,6 +6,7 @@ import Mathlib.Algebra.MvPolynomial.Basic
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.RingTheory.Ideal.Basic
 import Mathlib.RingTheory.Nullstellensatz
+import Mathlib.FieldTheory.Finite.Basic
 
 open Lean in
 private def Lean.RArray.toExpr' (lvl : Level) (ty : Expr) (f : α → Expr) (a : RArray α) : Expr :=
@@ -309,21 +310,155 @@ def Expr.deg (p : Expr n) (i : Nat) : Nat :=
   | .neg a   => a.deg i
 
 -- TODO(all): simplify this definition as much as possible to make Liza's life easier!
-def Expr.completeRoots (p : Expr n) (i : Nat) (rs : List (ZMod n)) : Bool :=
+def Expr.completeRoots' (p : Expr n) (i : Nat) (rs : List (ZMod n)) : Bool :=
   p.isUnivariateOver i &&
   rs.eraseDups == rs &&
   rs.all (fun z => p.eval (fun _ => z) == 0) &&
   (Expr.gcd p (.var i ^ n - .var i)).deg i == rs.length
 
+def Expr.completeRoots [Fact n.Prime] (p : Expr n) (i : Nat) (rs : List (ZMod n)) : Bool :=
+  p.isUnivariateOver i &&
+  ∀ r, p.eval (fun _ => r) = 0 ↔ r ∈ rs
+
+theorem Expr.eval_univariateOver_go {n : Nat} {p : Expr n} {i : Nat}
+  (h : Expr.isUnivariateOver.go i p = true) (ctx : Nat → ZMod n)
+  : p.eval ctx = p.eval (fun _ => ctx i) := by
+  induction p with
+  | var i' =>
+    simp only [Expr.isUnivariateOver.go, beq_iff_eq] at h
+    subst h; rfl
+  | val c => rfl
+  | add a b iha ihb =>
+    simp only [Expr.isUnivariateOver.go, Bool.and_eq_true] at h
+    simp only [Expr.eval, iha h.1, ihb h.2]
+  | sub a b iha ihb =>
+    simp only [Expr.isUnivariateOver.go, Bool.and_eq_true] at h
+    simp only [Expr.eval, iha h.1, ihb h.2]
+  | mul a b iha ihb =>
+    simp only [Expr.isUnivariateOver.go, Bool.and_eq_true] at h
+    simp only [Expr.eval, iha h.1, ihb h.2]
+  | neg a ih =>
+    simp only [Expr.isUnivariateOver.go] at h
+    simp only [Expr.eval, ih h]
+
+theorem orN_map_of_mem {α : Type _} {P : α → Prop} {l : List α} {x : α}
+  (hmem : x ∈ l) (hp : P x) : orN (l.map P) := by
+  induction l with
+  | nil => cases hmem
+  | cons y ys ih =>
+    simp only [List.map, orN_cons_append]
+    cases List.mem_cons.mp hmem with
+    | inl h => subst h; exact Or.inl hp
+    | inr h => exact Or.inr (ih h)
+
 theorem roots_complete [Fact n.Prime] {p : Expr n}
   (h : p.completeRoots i rs) : ∀ r ∉ rs, p.eval (fun _ => r) ≠ 0 := by
-  sorry
+  intro r hr heval
+  simp only [Expr.completeRoots, Bool.and_eq_true, decide_eq_true_eq] at h
+  exact hr ((h.2 r).mp heval)
 
 theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
   (hps : variety (ideal ps) ≠ ∅) (hp : p.toPoly ∈ ideal ps)
   (hpirs : p.completeRoots i rs)
   : orN (rs.map fun r => variety (ideal (ps ++ [.X i - .C r])) ≠ ∅) := by
-  sorry
+  rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
+  have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
+    MvPolynomial.mem_zeroLocus_iff.mp hctx
+  have hpeval : p.eval ctx = 0 := by
+    have h := hctx' p.toPoly hp
+    simpa using h
+  simp only [Expr.completeRoots, Bool.and_eq_true, decide_eq_true_eq] at hpirs
+  obtain ⟨huniv, hiff⟩ := hpirs
+  have huniv' : Expr.isUnivariateOver.go i p = true := huniv
+  have hevalr : p.eval (fun _ => ctx i) = 0 := by
+    rw [← Expr.eval_univariateOver_go huniv' ctx]
+    exact hpeval
+  have hmem : ctx i ∈ rs := (hiff (ctx i)).mp hevalr
+  refine orN_map_of_mem hmem ?_
+  apply Set.nonempty_iff_ne_empty.mp
+  refine ⟨ctx, ?_⟩
+  rw [variety, ideal, MvPolynomial.zeroLocus_span]
+  intro q hq
+  have hq2 : q ∈ ps ++ [MvPolynomial.X i - MvPolynomial.C (ctx i)] :=
+    List.mem_toFinset.mp hq
+  rcases List.mem_append.mp hq2 with hq | hq
+  · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
+  · rcases List.mem_singleton.mp hq with rfl
+    simp
+
+theorem exhaust_branch [Fact n.Prime] {ps} {is : List Nat}
+  (hps : variety (ideal ps) ≠ ∅) (his : is ≠ [])
+  : orN (is.map fun i => ∃ (v : ZMod n), variety (ideal (ps ++ [.X i - .C v])) ≠ ∅) := by
+  rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
+  have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
+    MvPolynomial.mem_zeroLocus_iff.mp hctx
+  match is, his with
+  | i :: is, _ =>
+    simp only [List.map, orN_cons_append]
+    refine Or.inl ⟨ctx i, ?_⟩
+    apply Set.nonempty_iff_ne_empty.mp
+    refine ⟨ctx, ?_⟩
+    rw [variety, ideal, MvPolynomial.zeroLocus_span]
+    intro q hq
+    have hq2 : q ∈ ps ++ [MvPolynomial.X i - MvPolynomial.C (ctx i)] :=
+      List.mem_toFinset.mp hq
+    rcases List.mem_append.mp hq2 with hq | hq
+    · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
+    · rcases List.mem_singleton.mp hq with rfl
+      simp
+
+def Expr.isFieldPoly (e : Expr n) : Bool :=
+  match e with
+  | .add xn (.mul (.val nm1) (.var i)) =>
+    nm1 == n - 1 && xn == (Expr.var i) ^ n
+  | _ => false
+
+theorem Expr.eval_pow_var {n : Nat} (i : Nat) (ctx : Nat → ZMod n) (k : Nat) :
+  ((Expr.var i : Expr n) ^ k).eval ctx = (ctx i) ^ k := by
+  induction k with
+  | zero =>
+    rw [pow_zero]
+    rfl
+  | succ k ih =>
+    show ((Expr.var i : Expr n).mul ((Expr.var i) ^ k)).eval ctx = (ctx i) ^ (k + 1)
+    simp only [Expr.eval, ih]
+    ring
+
+theorem Expr.isFieldPoly_eval_zero [Fact n.Prime] {e : Expr n}
+  (h : e.isFieldPoly = true) (ctx : Nat → ZMod n) : e.eval ctx = 0 := by
+  unfold Expr.isFieldPoly at h
+  split at h
+  · rename_i xn nm1 i
+    simp only [Bool.and_eq_true] at h
+    obtain ⟨h1, h2⟩ := h
+    have hnm1 : nm1 = (n : ZMod n) - 1 := of_decide_eq_true h1
+    have hxn : xn = (Expr.var i) ^ n := of_decide_eq_true h2
+    subst hxn
+    subst hnm1
+    simp only [Expr.eval]
+    rw [Expr.eval_pow_var, ZMod.pow_card]
+    have hn : (n : ZMod n) = 0 := ZMod.natCast_self n
+    linear_combination (ctx i) * hn
+  · contradiction
+
+theorem field_polys [Fact n.Prime] {fs : List (Expr n)} (hps : variety (ideal ps) ≠ ∅)
+  (hfs : fs.all Expr.isFieldPoly)
+  : variety (ideal (ps ++ fs.map Expr.toPoly)) ≠ ∅ := by
+  rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
+  have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
+    MvPolynomial.mem_zeroLocus_iff.mp hctx
+  have hfs' : ∀ e ∈ fs, Expr.isFieldPoly e = true := by
+    simpa [List.all_eq_true] using hfs
+  apply Set.nonempty_iff_ne_empty.mp
+  refine ⟨ctx, ?_⟩
+  rw [variety, ideal, MvPolynomial.zeroLocus_span]
+  intro q hq
+  have hq2 : q ∈ ps ++ fs.map Expr.toPoly := List.mem_toFinset.mp hq
+  rcases List.mem_append.mp hq2 with hq | hq
+  · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
+  · rcases List.mem_map.mp hq with ⟨e, he, rfl⟩
+    rw [Expr.aeval_toPoly]
+    exact Expr.isFieldPoly_eval_zero (hfs' e he) ctx
 
 @[simp] theorem Polynomial.toMvPoly_neg {n : Nat} (p : Polynomial n) :
     Polynomial.toMvPoly (Polynomial.neg p) = -Polynomial.toMvPoly p := by

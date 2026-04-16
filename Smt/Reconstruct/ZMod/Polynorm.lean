@@ -271,7 +271,7 @@ inductive Expr (o : Nat) where
   | add (a b : Expr o)
   | sub (a b : Expr o)
   | mul (a b : Expr o)
-deriving Inhabited, Repr
+deriving DecidableEq, Inhabited, Repr
 
 namespace Expr
 
