@@ -33,7 +33,7 @@ theorem sineApproxAboveNeg (x : Real) (d k : Nat) (hd : d =2*k + 1) (hx : x ≤ 
     rw [sub_zero, mul_div_assoc, ← sub_one_mul]
     apply mul_nonpos_of_nonpos_of_nonneg _ _
     · rw [tsub_nonpos]; apply iteratedDeriv_sin_le_one
-    · apply mul_nonneg (le_of_lt (Even.pow_pos (by rw [hd]; norm_num) (by linarith))) (by simp)
+    · apply mul_nonneg (le_of_lt (Even.pow_pos (by simp [hd, Nat.even_iff]) (by linarith))) (by simp)
   · simp [hx]
 
 theorem arithTransSineApproxAboveNeg (d k : Nat) (l u t : ℝ) (hd : d = 2*k + 1) (hu : u ≤ 0) (hl : -π ≤ l) :

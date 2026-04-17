@@ -401,21 +401,21 @@ def canUnfoldAtMatcher
   if let some prevUnfoldAt := prevUnfoldAt? then
     prevUnfoldAt cfg info
   else match cfg.transparency with
-  | TransparencyMode.all     => return true
-  | TransparencyMode.default => return true
+  | .all     => return true
+  | .default => return !(← isIrreducible info.name)
   | _ =>
-    if (← isReducible info.name) || isGlobalInstance (← getEnv) info.name then
+    let status ← getReducibilityStatus info.name
+    if status matches .reducible | .implicitReducible then
       return true
     else if hasMatchPatternAttribute (← getEnv) info.name then
       return true
     else
-      return info.name == ``ite
-       || info.name == ``dite
-       || info.name == ``decEq
+      return info.name == ``decEq
        || info.name == ``Nat.decEq
        || info.name == ``Char.ofNat   || info.name == ``Char.ofNatAux
        || info.name == ``String.decEq || info.name == ``List.hasDecEq
        || info.name == ``Fin.ofNat
+       || info.name == ``Fin.ofNat -- It is used to define `BitVec` literals
        || info.name == ``UInt8.ofNat  || info.name == ``UInt8.decEq
        || info.name == ``UInt16.ofNat || info.name == ``UInt16.decEq
        || info.name == ``UInt32.ofNat || info.name == ``UInt32.decEq

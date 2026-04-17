@@ -20,7 +20,7 @@ namespace Smt.Reconstruct.Real.TransFns
 theorem arithTransSineApproxAbovePos' (d k : ℕ) (x : ℝ) (hd : d = 2*k + 1)
                                      (hx1 : 0 ≤ x) :
     Real.sin x ≤ taylorWithinEval Real.sin d Set.univ 0 x + x ^ (d + 1) / (d + 1).factorial := by
-  rw [← neg_neg x, sin_neg, taylorSin_neg, neg_add_eq_sub, ←neg_sub, neg_le_neg_iff, Even.neg_pow (by rw [hd]; norm_num)]
+  rw [← neg_neg x, sin_neg, taylorSin_neg, neg_add_eq_sub, ←neg_sub, neg_le_neg_iff, Even.neg_pow (by simp [hd, Nat.even_iff])]
   apply arithTransSineApproxBelowNeg_self d k (-x) hd (by linarith)
 
 theorem arithTransSineApproxAbovePos (d k : ℕ) (lb ub x c : ℝ) (hd : d = 2*k + 1)

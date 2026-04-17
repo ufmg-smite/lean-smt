@@ -2,8 +2,8 @@ goal: x < z → ∃ y, x < y ∧ y < z
 
 query:
 (set-logic ALL)
-(declare-const x Real)
 (declare-const z Real)
+(declare-const x Real)
 (assert (< x z))
 (assert (not (exists ((y Real)) (and (< x y) (< y z)))))
 (check-sat)

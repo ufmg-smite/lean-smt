@@ -321,7 +321,7 @@ def solve (query : String) (timeout : Option Nat) (prove : Bool := true) (option
       where each entry is the Lean reconstruction of either a declared sort (paired with a
       `Fin n` standing for its finite domain) or a declared function/constant (paired with the
       value cvc5 assigned to it).
-    * `unsat hp mvs usedHints` — the query is unsatisfiable.
+    * `unsat hp mvs uc` — the query is unsatisfiable.
         - `hp` is the reconstructed proof term, or `none` when proof reconstruction was disabled
           (i.e. the call was made with `prove := false`). See `solveAndReconstructProof` for the
           shape of its type.
@@ -332,13 +332,13 @@ def solve (query : String) (timeout : Option Nat) (prove : Bool := true) (option
           the caller to discharge. These should be **rare in practice and worth flagging** when
           they appear: a non-empty `mvs` means part of the cvc5 proof was trusted rather than
           checked.
-        - `usedHints` is the unsat core returned by cvc5, with each assertion reconstructed as a
+        - `uc` is the unsat core returned by cvc5, with each assertion reconstructed as a
           Lean `Expr`.
     * `unknown reason` — cvc5 returned `unknown`; `reason` is the stringified
       `cvc5.UnknownExplanation`. -/
 inductive SolveReconstructResult where
   | sat (model : Array (Expr × Expr))
-  | unsat (hp : Option Expr) (mvs : List MVarId) (usedHints : Array Expr)
+  | unsat (hp : Option Expr) (mvs : List MVarId) (uc : Array Expr)
   | unknown (reason : String)
 
 open Qq in
@@ -393,7 +393,7 @@ open Qq in
     degenerates to `True → ¬ andN as`; with a single assertion the conclusion is `¬ a₁`; with no
     assertions at all it is `¬ True`. -/
 def solveAndReconstructProof (query : String)
-  (timeout : Option Nat) (prove : Bool := true)
+  (timeout : Option Nat := none) (prove : Bool := true)
   (options : List (String × String) := defaultSolverOptions ++ (if prove then [("produce-proofs", "true")] else []))
   (userNames : Std.HashMap String Expr := {}) (native : Bool := false) : MetaM SolveReconstructResult :=
   profileitM Exception "smt" {} do
@@ -438,7 +438,7 @@ open Lean.Elab Tactic in
 @[tactic reconstruct] def evalReconstruct : Tactic := fun stx =>
   withMainContext do
     let some query := stx[1].isStrLit? | throwError "expected string"
-    let r ← solveAndReconstructProof query none true (defaultSolverOptions) (← getUserNames)
+    let r ← solveAndReconstructProof query (userNames := ← getUserNames)
     match r with
     | .unknown reason =>
       throwError m!"solver returned unknown: {reason}"
@@ -455,7 +455,6 @@ open Lean.Elab Tactic in
       for (v, t) in model do
         md := md ++ m!"\n  {v} = {t}"
       logInfo md
-
 where
   getUserNames : MetaM (Std.HashMap String Expr) := do
     let lCtx ← getLCtx

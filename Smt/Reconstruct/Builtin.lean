@@ -266,17 +266,13 @@ where
   decide (p : Q(Prop)) (hp : Q(Decidable $p)) : MetaM Q($p) := do
     return .app q(@of_decide_eq_true $p $hp) q(Eq.refl true)
   nativeDecide (p : Q(Prop)) (hp : Q(Decidable $p)) : MetaM Q($p) := do
-    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
-    let b : Q(Bool) := .const auxDeclName []
-    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
-  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxDeclName baseName
-    let decl := Declaration.defnDecl {
-      name := auxName, levelParams := [], type, value
-      hints := .abbrev
-      safety := .safe
-    }
-    addAndCompile decl
-    pure auxName
+    match ← Meta.nativeEqTrue `Smt.eval q(decide $p) with
+    | .notTrue =>
+      throwError m!"[smt_eval] evaluated that the proposition
+        {indentExpr q(decide $p)}\n\
+        is false"
+    | .success hdp =>
+      -- get instance from `d`
+      return .app q(@of_decide_eq_true $p $hp) hdp
 
 end Smt.Reconstruct.Builtin

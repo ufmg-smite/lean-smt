@@ -112,7 +112,7 @@ theorem taylorWithin_mono : ∀ (d : Nat), Odd d → Monotone (taylorWithinEval 
       rw [taylor_exp_eq]
       positivity
     else
-      push_neg at hx
+      push Not at hx
       have h1 := expApproxAbove (2 * m') m' rfl hx
       have h2 : 0 ≤ Real.exp x := exp_nonneg x
       exact Preorder.le_trans 0 (rexp x) (taylorWithinEval rexp (2 * m') univ 0 x) h2 h1
@@ -126,7 +126,7 @@ theorem arithTransExpApproxBelow (t c : ℝ) (d n : ℕ) (h : d = 2 * n + 1 := b
     else if hx2 : t = 0 then by
       exact arithTransExpApproxBelow₃ t d n h hx2
     else by
-      have : 0 < t := by push_neg at *; exact lt_of_le_of_ne hx (Ne.symm hx2)
+      have : 0 < t := by push Not at hx; exact lt_of_le_of_ne hx (Ne.symm hx2)
       exact arithTransExpApproxBelow₁ t d n h this
   have : taylorWithinEval Real.exp d Set.univ 0 t ≥ taylorWithinEval Real.exp d Set.univ 0 c := taylorWithin_mono d (by exists n) ht
   exact Preorder.le_trans (taylorWithinEval rexp d univ 0 c) (taylorWithinEval rexp d univ 0 t) (rexp t) this foo

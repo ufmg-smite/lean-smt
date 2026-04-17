@@ -33,12 +33,12 @@ theorem geq_norm1 : (t ≥ s) = (t - s ≥ 0) := by
 theorem eq_elim : (t = s) = (t ≥ s ∧ t ≤ s) := by
   apply propext
   rw [←elim_leq, And.comm]
-  exact Rat.le_antisymm_iff _ _
+  exact Rat.le_antisymm_iff
 
 theorem eq_conflict {t : Int} {c : Rat} (hcc : (↑c.floor = c) = False) : (t = c) = False := by
   simp only [eq_iff_iff, iff_false]
   intro htc
-  have hcc : c.floor < c := ((Rat.le_iff_eq_or_lt c.floor c).mp (Rat.floor_le_self c)).resolve_left hcc.mp
+  have hcc : c.floor < c := (Rat.le_iff_eq_or_lt.mp (Rat.floor_le_self c)).resolve_right hcc.mp
   cases Int.lt_trichotomy t c.floor <;> rename_i htcf
   · have hntc : ↑t ≠ c := (Rat.lt_iff_le_and_ne.mp (Rat.lt_trans (Rat.cast_lt2 htcf) hcc)).right
     contradiction
@@ -55,7 +55,7 @@ theorem geq_tighten {t : Int} {c : Rat} {cc : Int} (hc : (↑c.floor = c) = Fals
   simp only [hcc, Int.addN, ge_iff_le, eq_iff_iff, Rat.le_iff_eq_or_lt, ← Int.floor_lt]
   have h : ↑t ≠ c := by simpa [Eq.symm] using eq_conflict hc
   apply Iff.intro <;> intro hct
-  · have h := hct.resolve_left h.symm
+  · have h := hct.resolve_right h.symm
     omega
   · omega
 
@@ -65,7 +65,7 @@ theorem abs_eq : (x.abs = y.abs) = (x = y ∨ x = -y) := by
   cases hx : decide (x < 0) <;> cases hy : decide (y < 0) <;> simp_all [Rat.abs] <;> sorry
 
 theorem abs_gt : (x.abs > y.abs) = ite (x ≥ 0) (ite (y ≥ 0) (x > y) (x > -y)) (ite (y ≥ 0) (-x > y) (-x > -y)) := by
-  simp only [Rat.abs, gt_iff_lt, ge_iff_le, eq_iff_iff] <;> split <;> split <;> split <;> split <;> sorry
+  simp only [Rat.abs, gt_iff_lt, ge_iff_le, eq_iff_iff] <;> split <;> split <;> sorry
 
 -- ITE lifting
 
@@ -81,12 +81,12 @@ theorem min_lt1 : (ite (t < s) t s ≤ t) = True := by
   cases h : decide (t < s) <;> simp_all [Rat.not_lt.mp]
 
 theorem min_lt2 : (ite (t < s) t s ≤ s) = True := by
-  cases h : decide (t < s) <;> simp_all [Rat.le_of_lt, Rat.le_refl]
+  cases h : decide (t < s) <;> simp_all [Rat.le_of_lt]
 
 theorem max_geq1 : (ite (t ≥ s) t s ≥ t) = True := by
-  cases h : decide (t ≥ s) <;> simp_all [Rat.le_of_not_le, Rat.le_refl]
+  cases h : decide (t ≥ s) <;> simp_all [Rat.le_of_not_le]
 
 theorem max_geq2 : (ite (t ≥ s) t s ≥ s) = True := by
-  cases h : decide (t ≥ s) <;> simp_all [Rat.le_refl]
+  cases h : decide (t ≥ s) <;> simp_all
 
 end Smt.Reconstruct.Rat.Rewrite
