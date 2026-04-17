@@ -360,7 +360,7 @@ theorem roots_complete [Fact n.Prime] {p : Expr n}
 theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
   (hps : variety (ideal ps) ≠ ∅) (hp : p.toPoly ∈ ideal ps)
   (hpirs : p.completeRoots i rs)
-  : orN (rs.map fun r => variety (ideal (ps ++ [.X i - .C r])) ≠ ∅) := by
+  : orN (rs.map fun r => variety (ideal (ps ++ [.X i + -.C r])) ≠ ∅) := by
   rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
   have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
     MvPolynomial.mem_zeroLocus_iff.mp hctx
@@ -379,7 +379,7 @@ theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
   refine ⟨ctx, ?_⟩
   rw [variety, ideal, MvPolynomial.zeroLocus_span]
   intro q hq
-  have hq2 : q ∈ ps ++ [MvPolynomial.X i - MvPolynomial.C (ctx i)] :=
+  have hq2 : q ∈ ps ++ [.X i + -.C (ctx i)] :=
     List.mem_toFinset.mp hq
   rcases List.mem_append.mp hq2 with hq | hq
   · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
@@ -388,7 +388,7 @@ theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
 
 theorem exhaust_branch [Fact n.Prime] {ps} {is : List Nat}
   (hps : variety (ideal ps) ≠ ∅) (his : is ≠ [])
-  : orN (is.map fun i => ∃ (v : ZMod n), variety (ideal (ps ++ [.X i - .C v])) ≠ ∅) := by
+  : orN (is.map fun i => ∃ (v : ZMod n), variety (ideal (ps ++ [.X i + -.C v])) ≠ ∅) := by
   rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
   have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
     MvPolynomial.mem_zeroLocus_iff.mp hctx
@@ -400,7 +400,7 @@ theorem exhaust_branch [Fact n.Prime] {ps} {is : List Nat}
     refine ⟨ctx, ?_⟩
     rw [variety, ideal, MvPolynomial.zeroLocus_span]
     intro q hq
-    have hq2 : q ∈ ps ++ [MvPolynomial.X i - MvPolynomial.C (ctx i)] :=
+    have hq2 : q ∈ ps ++ [.X i + -.C (ctx i)] :=
       List.mem_toFinset.mp hq
     rcases List.mem_append.mp hq2 with hq | hq
     · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
@@ -459,6 +459,28 @@ theorem field_polys [Fact n.Prime] {fs : List (Expr n)} (hps : variety (ideal ps
   · rcases List.mem_map.mp hq with ⟨e, he, rfl⟩
     rw [Expr.aeval_toPoly]
     exact Expr.isFieldPoly_eval_zero (hfs' e he) ctx
+
+-- TODO: switch to this theorem once cvc5 adds support for `pow` operator
+theorem field_polys' [Fact n.Prime] {ps : List (MvPolynomial Nat (ZMod n))} {is : List Nat}
+  (hps : variety (ideal ps) ≠ ∅)
+  : variety (ideal (ps ++ is.map fun i => .X i ^ n + .C (n - 1) * .X i)) ≠ ∅ := by
+  rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
+  have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
+    MvPolynomial.mem_zeroLocus_iff.mp hctx
+  apply Set.nonempty_iff_ne_empty.mp
+  refine ⟨ctx, ?_⟩
+  rw [variety, ideal, MvPolynomial.zeroLocus_span]
+  intro q hq
+  have hq2 : q ∈ ps ++ is.map (fun i => .X i ^ n + .C (n - 1) * .X i) :=
+    List.mem_toFinset.mp hq
+  rcases List.mem_append.mp hq2 with hq | hq
+  · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
+  · rcases List.mem_map.mp hq with ⟨i, _, rfl⟩
+    simp only [map_add, map_mul, map_pow, MvPolynomial.aeval_X, MvPolynomial.aeval_C,
+      Algebra.algebraMap_self_apply]
+    rw [ZMod.pow_card]
+    have hn : (n : ZMod n) = 0 := ZMod.natCast_self n
+    linear_combination (ctx i) * hn
 
 @[simp] theorem Polynomial.toMvPoly_neg {n : Nat} (p : Polynomial n) :
     Polynomial.toMvPoly (Polynomial.neg p) = -Polynomial.toMvPoly p := by
