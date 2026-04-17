@@ -11,8 +11,6 @@ namespace Rat
 
 variable (x y a b c q : Rat)
 
-protected def abs (x : Rat) := if x < 0 then -x else x
-
 instance : NatPow Rat where
   pow := Rat.pow
 
@@ -58,14 +56,6 @@ theorem mk'_zero (d) (h : d ≠ 0) (w) : mk' 0 d h w = 0 := by
   congr
   apply Nat.coprime_zero_left d |>.mp w
 
-theorem eq_iff_mul_eq_mul {p q : Rat} : p = q ↔ p.num * q.den = q.num * p.den := by
-  conv =>
-    lhs
-    rw [← num_divInt_den p, ← num_divInt_den q]
-  apply Rat.divInt_eq_divInt_iff <;>
-    · rw [← Int.natCast_zero, Ne, Int.ofNat_inj]
-      apply den_nz
-
 protected theorem lt_iff_blt {x y : Rat} : x < y ↔ x.blt y := by
   simp only [LT.lt]
 
@@ -102,11 +92,6 @@ protected theorem mul_eq_zero_iff : a * b = 0 ↔ a = 0 ∨ b = 0 := by
 
 protected theorem mul_ne_zero_iff : a * b ≠ 0 ↔ a ≠ 0 ∧ b ≠ 0 := by
   simp only [not_congr (Rat.mul_eq_zero_iff a b), not_or, ne_eq]
-
-@[simp]
-theorem neg_neg : - -q = q := by
-  rewrite [← Rat.mkRat_self q, Rat.neg_mkRat, Rat.neg_mkRat]
-  simp
 
 theorem num_ne_zero : q.num ≠ 0 ↔ q ≠ 0 := not_congr num_eq_zero
 
@@ -158,14 +143,8 @@ theorem num_neg : q.num < 0 ↔ q < 0 := by
 theorem num_neg_eq_neg_num (q : Rat) : (-q).num = -q.num :=
   rfl
 
-@[simp]
-protected theorem sub_self : x - x = 0 :=
-  numDenCasesOn' x fun nx dx h_dx => by
-    rw [Rat.divInt_sub_divInt _ _ (Int.natCast_ne_zero.mpr h_dx) (Int.natCast_ne_zero.mpr h_dx)]
-    simp
-
 protected theorem add_neg_self : x + -x = 0 :=
-  Rat.sub_eq_add_neg x x ▸ Rat.sub_self x
+  Rat.sub_eq_add_neg x x ▸ Rat.sub_self
 
 protected theorem eq_neg_of_add_eq_zero_left : x + y = 0 → x = - y :=
   numDenCasesOn'' x fun nx dx h_dx h_dx_red =>
@@ -205,7 +184,7 @@ protected theorem divInt_le_divInt
 
 theorem cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
   intro h
-  simp [Rat.instLT, Rat.ofInt] at h
+  simp [Rat.lt_iff_blt, Rat.ofInt] at h
   simp [Rat.blt] at h
   cases h with
   | inl h =>
@@ -220,7 +199,7 @@ theorem cast_lt1 {a b : Int} : Rat.ofInt a < Rat.ofInt b -> a < b := by
 
 theorem cast_lt2 {a b : Int} : a < b → Rat.ofInt a < Rat.ofInt b := by
   intro h
-  simp only [instLT, ofInt, mk_den_one]
+  simp only [Rat.lt_iff_blt, ofInt, mk_den_one]
   simp [Rat.blt]
   cases Classical.em (a = 0) with
   | inl ha => simp [ha]; rw [ha] at h; exact h
@@ -236,7 +215,7 @@ theorem cast_lt' {a b : Int} : a < b ↔ Rat.ofInt a < Rat.ofInt b :=
 
 theorem cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
   intro h
-  simp only [instLE, ofInt, mk_den_one] at h
+  simp only [Rat.le_iff_blt, ofInt, mk_den_one] at h
   simp [Rat.blt] at h
   cases Classical.em (b = 0) with
   | inl hb =>
@@ -260,7 +239,7 @@ theorem cast_le1 {a b : Int} : Rat.ofInt a ≤ Rat.ofInt b -> a ≤ b := by
 
 theorem cast_le2 {a b : Int} : a ≤ b → Rat.ofInt a ≤ Rat.ofInt b := by
   intro h
-  simp [Rat.instLE, Rat.ofInt]
+  simp [Rat.le_iff_blt, Rat.ofInt]
   simp [Rat.blt]
   cases Classical.em (b = 0) with
   | inl hb =>
@@ -302,13 +281,6 @@ theorem le_floor {z : Int} : ∀ {r : Rat}, z ≤ Rat.floor r ↔ (z : Rat) ≤ 
       rhs
       rw [Rat.intCast_eq_divInt, Rat.divInt_le_divInt Int.zero_lt_one h', Int.mul_one]
     exact Int.le_ediv_iff_mul_le h'
-
-@[simp]
-protected theorem neg_zero : -(0:Rat) = 0 := rfl
-
-protected theorem neg_add (a b : Rat) : -(a + b) = -a + -b := by
-  rw [←Rat.sub_eq_add_neg, ←Rat.neg_neg b, ←Rat.sub_eq_add_neg, Rat.neg_sub]
-  simp [Rat.sub_eq_add_neg, Rat.add_comm, Rat.neg_neg]
 
 theorem neg_eq_neg_one_mul (a : Rat) : -a = -1 * a :=
   numDenCasesOn a fun n d h h1 => by

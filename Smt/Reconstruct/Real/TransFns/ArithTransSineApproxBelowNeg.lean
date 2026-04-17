@@ -26,7 +26,7 @@ theorem arithTransSineApproxBelowNeg_self (d k : Nat) (x : ℝ) (hd : d = 2*k + 
     rw [sub_zero, mul_div_assoc, ← add_one_mul]
     apply mul_nonneg _ _
     · rw [←neg_le_iff_add_nonneg', neg_le]; apply neg_one_le_iteratedDeriv_sin
-    · apply mul_nonneg (le_of_lt (Even.pow_pos (by rw [hd]; norm_num) (by linarith))) (by simp)
+    · apply mul_nonneg (le_of_lt (Even.pow_pos (by simp [hd, Nat.even_iff]) (by linarith))) (by simp)
   · simp [hx]
 
 theorem arithTransSineApproxBelowNeg (d k : ℕ) (lb ub x c : ℝ) (hd : d = 2*k + 1)

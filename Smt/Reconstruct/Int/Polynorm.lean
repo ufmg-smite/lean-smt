@@ -366,18 +366,14 @@ where
     logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
   nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
     let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
-    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
-    let b : Q(Bool) := .const auxDeclName []
-    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
-  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxDeclName baseName
-    let decl := Declaration.defnDecl {
-      name := auxName, levelParams := [], type, value
-      hints := .abbrev
-      safety := .safe
-    }
-    addAndCompile decl
-    pure auxName
+    match ← Meta.nativeEqTrue `Smt.polynorm q(decide $p) with
+    | .notTrue =>
+      throwError m!"[poly_norm] evaluated that the proposition
+        {indentExpr q(decide $p)}\n\
+        is false"
+    | .success hdp =>
+      -- get instance from `d`
+      return .app q(@of_decide_eq_true $p $hp) hdp
 
 namespace Tactic
 

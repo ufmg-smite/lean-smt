@@ -135,6 +135,26 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   | .NARY_CONG =>
     let mut assums ← pf.getChildren.mapM reconstructProof
     addTac (← reconstructTerm pf.getResult) (smtCongr · assums)
+  | .HO_CONG =>
+    let f ← reconstructTerm pf.getChildren[0]!.getResult[0]!
+    let g ← reconstructTerm pf.getChildren[0]!.getResult[0]!
+    let hfg ← reconstructProof pf.getChildren[0]!
+    let hs := pf.getChildren[1:]
+    let buildProof := fun (f₁, f₂, h₁) cpf => do
+      let some (α, β) := (← Meta.inferType f₁).arrow? | throwError "[ho_congr]: expected function type"
+      let .sort u ← Meta.inferType α | throwError "[ho_congr]: expected the type of {α} to be a sort"
+      let .sort v ← Meta.inferType β | throwError "[ho_congr]: expected the type of {β} to be a sort"
+      let α : Q(Sort u) ← pure α
+      let β : Q(Sort v) ← pure β
+      let a₁ : Q($α) ← reconstructTerm cpf.getResult[0]!
+      let a₂ : Q($α) ← reconstructTerm cpf.getResult[1]!
+      let f₁ : Q($α → $β) ← pure f₁
+      let f₂ : Q($α → $β) ← pure f₂
+      let h₁ : Q($f₁ = $f₂) ← pure h₁
+      let h₂ : Q($a₁ = $a₂) ← reconstructProof cpf
+      return (q($f₁ $a₁), q($f₂ $a₂), q(congr $h₁ $h₂))
+    let (_, _, h) ← hs.foldlM buildProof (f, g, hfg)
+    addThm (← reconstructTerm pf.getResult) h
   | _ => return none
 
 end Smt.Reconstruct.UF
