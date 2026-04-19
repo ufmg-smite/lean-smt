@@ -19,6 +19,18 @@ open AlgebraicNumber
 --                                   inequality proofs  roots
 syntax (name := univ_cad) "univ_cad" term "," ("[" term,* "]")   ("[" term,* "]") : tactic
 
+def hoistExpr (baseName : Name) (e : Expr) : MetaM Expr := do
+  if e.isConst || e.isFVar then return e
+  let t ← inferType e
+  let auxName ← Lean.mkAuxDeclName baseName
+  let decl := Declaration.defnDecl {
+    name := auxName, levelParams := [], type := t, value := e
+    hints := .abbrev
+    safety := .safe
+  }
+  addAndCompile decl
+  return .const auxName []
+
 def parseUnivCad : Syntax → TacticM (Expr × List Expr × List Q(AlgNum))
   | `(tactic| univ_cad $x , [ $[$as],* ] [ $[$bs],* ] ) => do
     let as' ← as.toList.mapM (elabTerm · none)
@@ -355,6 +367,10 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
   return result
 
 def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (Expr × List MVarId) := do
+  let hoist_before ← IO.monoMsNow
+  let rs ← rs.mapM (hoistExpr `_univCadRoot)
+  let hoist_after ← IO.monoMsNow
+  logInfo m!"hoisting roots: {hoist_after - hoist_before}ms"
   let sort_before ← IO.monoMsNow
   let rs_sorted ← genPfSortedLT rs
   let sort_after ← IO.monoMsNow
@@ -365,9 +381,17 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   for ineq_pf in ineq_pfs do
     logInfo m!"ineq_pf = {← inferType ineq_pf}"
     let curr_ineq_pre ← IO.monoMsNow
-    let (P, ineq_pf_P) ← lift_ineq ineq_pf x
-    logInfo m!"P = {P}"
-    logInfo m!"ineq_pf_P = {← inferType ineq_pf_P}"
+    let (P_inline, ineq_pf_P) ← lift_ineq ineq_pf x
+    let P ← hoistExpr `_univCadPoly P_inline
+    let P : Q(CPolynomial Rat) := P
+    -- Retype `ineq_pf_P` so its type mentions the hoisted `P` instead of the
+    -- original inline polynomial. Since the aux decl is `.abbrev`, the two are
+    -- definitionally equal, but rewriting the type explicitly keeps downstream
+    -- tactics (notably `grind`) from having to unfold on the fly.
+    let ineq_pf_P_t ← inferType ineq_pf_P
+    let ineq_pf_P_t' := ineq_pf_P_t.replace fun e => if e == P_inline then some P else none
+    let ineq_pf_P ← mkExpectedTypeHint ineq_pf_P ineq_pf_P_t'
+
     let P_roots_card ← gen_root_counting_proof P
     let mut root_pfs : Array Expr := #[]
     let mut curr_roots : Array Expr := #[]
