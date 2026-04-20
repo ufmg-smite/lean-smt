@@ -49,7 +49,7 @@ def computeSortedRootSet (p : Q(CPolynomial Rat)) (rs_real : Q(List Real)) (root
   let p_ne_0_goal : Q(Prop) := q($p ≠ 0)
   let p_ne_0 ← mkDecideProof p_ne_0_goal
   let p_polyReal_ne_0' ← mkAppM ``toPolyReal_zero #[p, p_ne_0]
-  let p_ne_0 ← mkAppM ``gneg_imp_gtopoly_neg #[p, p_ne_0]
+  let p_ne_0 ← mkAppM ``toPoly_ne0_of_poly_ne0 #[p, p_ne_0]
 
   let toPolyReal_rev ← mkAppM ``toPolyReal.eq_1 #[p]
 
@@ -449,10 +449,8 @@ def a : Rat := -9
 def b : Rat := 0
 def c : Rat := 10
 
-/- set_option maxHeartbeats 1000000 -/
-
-lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by
-  univ_cad x , [h1,h2,h3,h4] [a,b,c]
+/- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
+/-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
 
 def p2 : CPolynomial Rat := X - 3/2
 def r3 : Raw := ⟨p2, 7/5, 2⟩

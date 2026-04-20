@@ -64,12 +64,12 @@ theorem sturmSeqC_fuel_eq (f g : CPolynomial ℚ) (n : ℕ)
         · apply ih m (by omega)
           have hdeg : (-f % g).natDegree < g.natDegree := by
             rw [CPolynomial.natDegree_toPoly (-f % g), CPolynomial.natDegree_toPoly g]
-            have htp : (-f % g).toPoly = (-f).toPoly % g.toPoly := fg_mod_eq (-f) g
+            have htp : (-f % g).toPoly = (-f).toPoly % g.toPoly := toPoly_mod (-f) g
             rw [htp, CPolynomial.toPoly_neg]
             apply Polynomial.natDegree_mod_lt
             intro h0
             apply hmod
-            have hgp : g.toPoly ≠ 0 := gneg_imp_gtopoly_neg g hg
+            have hgp : g.toPoly ≠ 0 := toPoly_ne0_of_poly_ne0 g hg
             have hnd : g.toPoly.natDegree = 0 := h0
             obtain ⟨c, hc⟩ : ∃ c : ℚ, Polynomial.C c = g.toPoly :=
               Polynomial.natDegree_eq_zero.mp hnd
@@ -77,11 +77,11 @@ theorem sturmSeqC_fuel_eq (f g : CPolynomial ℚ) (n : ℕ)
             have hdvd : g.toPoly ∣ f.toPoly := by
               rw [← hc]
               exact IsUnit.dvd (Polynomial.isUnit_C.mpr (Ne.isUnit hc0))
-            have h1 : (-f % g).toPoly = (-f).toPoly % g.toPoly := fg_mod_eq (-f) g
+            have h1 : (-f % g).toPoly = (-f).toPoly % g.toPoly := toPoly_mod (-f) g
             rw [CPolynomial.toPoly_neg] at h1
             have h2 : -f.toPoly % g.toPoly = 0 := by
               rw [EuclideanDomain.mod_eq_zero]; exact dvd_neg.mpr hdvd
-            exact gtopolyzeroeq (-f % g) (by rw [h1, h2])
+            exact poly_eq0_of_toPoly_eq0 (-f % g) (by rw [h1, h2])
           omega
 
 theorem sturmSeqC_equiv (f g : CPolynomial ℚ) :

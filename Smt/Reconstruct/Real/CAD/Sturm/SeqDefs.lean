@@ -149,12 +149,12 @@ theorem termination_sturmSeqC (f g: CPolynomial ℚ) (hf : f ≠ 0) :
     have : -f % g = 0 := by
       have fgtopoly : (f % g).toPoly = 0 := by rw[h]; exact toPoly_zero
       have : ∃ k , f.toPoly = g.toPoly * k := by
-        have : (f % g).toPoly = f.toPoly % g.toPoly := by apply fg_mod_eq
+        have : (f % g).toPoly = f.toPoly % g.toPoly := by apply toPoly_mod
         rw[this] at fgtopoly; simp_all only [ge_iff_le, EuclideanDomain.mod_eq_zero]
         exact fgtopoly
       rcases this with ⟨k, hk⟩
       have : (-f % g).toPoly = 0 := by
-        have : (-f % g).toPoly = (-f).toPoly % g.toPoly := by apply fg_mod_eq
+        have : (-f % g).toPoly = (-f).toPoly % g.toPoly := by apply toPoly_mod
         rw[this]
         have : (-f).toPoly = -f.toPoly := by exact toPoly_neg f
         rw[this, hk]
@@ -163,20 +163,20 @@ theorem termination_sturmSeqC (f g: CPolynomial ℚ) (hf : f ≠ 0) :
         refine CanonicalEuclideanDomain.mul_mod_eq_zero_of_mod_dvd g.toPoly (-k) g.toPoly this_1 ?_
         have : g.toPoly ∣ g.toPoly := by apply dvd_refl
         exact EuclideanDomain.mod_eq_zero.mpr this
-      apply gtopolyzeroeq; exact this
+      apply poly_eq0_of_toPoly_eq0; exact this
     simp_all
     refine lt_add_of_lt_of_nonneg ?_ gnatdeg; simp
   else
     simp_all only [↓reduceIte]
     have : ¬ -f % g = 0 := by
-      have k1 : ¬ (f % g).toPoly = 0 := by apply gneg_imp_gtopoly_neg; simp; exact h
-      have : (f % g).toPoly = f.toPoly % g.toPoly := by exact fg_mod_eq f g
+      have k1 : ¬ (f % g).toPoly = 0 := by apply toPoly_ne0_of_poly_ne0; simp; exact h
+      have : (f % g).toPoly = f.toPoly % g.toPoly := by exact toPoly_mod f g
       rw[this] at k1
-      have k2 : (-f % g).toPoly = (-f).toPoly % g.toPoly := by apply fg_mod_eq
+      have k2 : (-f % g).toPoly = (-f).toPoly % g.toPoly := by apply toPoly_mod
       have k3 : (-f).toPoly = -f.toPoly := by exact toPoly_neg f
       have k4 : ¬ (-f % g).toPoly = 0 := by
         rw[k2, k3]; simp_all only [EuclideanDomain.mod_eq_zero, dvd_neg, not_false_eq_true]
-      apply gtopolyzeroeq2; simp; exact k4
+      apply poly_ne0_of_toPoly_ne0; simp; exact k4
     simp_all
     have : (-f.toPoly % g.toPoly).degree < g.toPoly.degree := by
       refine Polynomial.degree_lt_degree ?_; refine Polynomial.natDegree_mod_lt (-f.toPoly) ?_
@@ -191,7 +191,7 @@ theorem termination_sturmSeqC (f g: CPolynomial ℚ) (hf : f ≠ 0) :
             rw[this]; aesop
           rw[this] at rf
           have : ¬ g.toPoly = 0 := by
-            have : g.toPoly ≠ 0 := by apply gneg_imp_gtopoly_neg; simp; exact g1
+            have : g.toPoly ≠ 0 := by apply toPoly_ne0_of_poly_ne0; simp; exact g1
             simp at this; exact this
           simp_all
         ext x
@@ -206,11 +206,11 @@ theorem termination_sturmSeqC (f g: CPolynomial ℚ) (hf : f ≠ 0) :
         contrapose; exact this
       simp; apply this
       by_contra
-      have : ¬ (f % g).toPoly = 0 := by apply gneg_imp_gtopoly_neg; simp; exact h
-      have contr2 : (f % g).toPoly = f.toPoly % g.toPoly := by apply fg_mod_eq
+      have : ¬ (f % g).toPoly = 0 := by apply toPoly_ne0_of_poly_ne0; simp; exact h
+      have contr2 : (f % g).toPoly = f.toPoly % g.toPoly := by apply toPoly_mod
       simp_all
     have : (-f % g).toPoly.degree < g.toPoly.degree := by
-      rw[fg_mod_eq, toPoly_neg]
+      rw[toPoly_mod, toPoly_neg]
       simp_all
     have : (-f % g).degree < g.degree := by
       have : (-f%g).degree = (-f%g).toPoly.degree := by exact degree_toPoly (-f%g)
@@ -307,17 +307,17 @@ theorem sturm_seq_toPoly (f g : CPolynomial ℚ) :
   split_ifs
   next => simp only [List.map_nil]
   next H1 H2 =>
-    have := gneg_imp_gtopoly_neg' f H2
+    have := toPoly_ne0_of_poly_ne0 f H2
     contradiction
   next H1 H2 =>
-    have := gtopolyzeroeq2' f H1
+    have := poly_ne0_of_toPoly_ne0 f H1
     contradiction
   next =>
     simp only [List.map_cons, List.cons.injEq, true_and]
     have IH := sturm_seq_toPoly g (-f%g)
     rw [<- IH]
     congr
-    have h_mod := fg_mod_eq (-f) g
+    have h_mod := toPoly_mod (-f) g
     rw [h_mod]
     congr
     exact Eq.symm (CPolynomial.toPoly_neg f)
@@ -393,43 +393,69 @@ lemma cpolynomial_map_cast (x : Rat) (p : CPolynomial Rat) : p.eval x = (p.toPol
   unfold ratToRealHom
   congr
 
-axiom seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
-    seqVarSturmC_ab p (p.derivative * q) a b = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b
+private lemma seqVarR_cast_list (l : List ℚ) :
+    seqVarR (l.map ((↑) : ℚ → ℝ)) = seqVarQ l := by
+  match l with
+  | [] => simp [seqVarR, seqVarQ]
+  | [_] => simp [seqVarR, seqVarQ]
+  | a :: b :: as =>
+    show seqVarR (((a : ℝ) :: (b : ℝ) :: as.map ((↑) : ℚ → ℝ))) = seqVarQ (a :: b :: as)
+    rw [seqVarR, seqVarQ]
+    have hb : ((b : ℝ) == (0 : ℝ)) = (b == (0 : ℚ)) := by
+      by_cases h : b = 0
+      · subst h; simp
+      · have hR : (b : ℝ) ≠ 0 := Rat.cast_ne_zero.mpr h
+        simp [h, hR]
+    have hab : ((a : ℝ) * (b : ℝ) < 0) ↔ (a * b < 0) := by
+      rw [← Rat.cast_mul]; exact_mod_cast Iff.rfl
+    rw [hb]
+    by_cases h1 : b == 0
+    · simp only [h1, ↓reduceIte]
+      have := seqVarR_cast_list (a :: as)
+      simp only [List.map_cons] at this
+      exact this
+    · simp only [h1, Bool.false_eq_true, ↓reduceIte]
+      by_cases h2 : a * b < 0
+      · simp only [hab.mpr h2, h2, ↓reduceIte]
+        have := seqVarR_cast_list (b :: as)
+        simp only [List.map_cons] at this
+        omega
+      · have h2' : ¬ ((a : ℝ) * (b : ℝ) < 0) := fun h => h2 (hab.mp h)
+        simp only [h2', h2, ↓reduceIte]
+        have := seqVarR_cast_list (b :: as)
+        simp only [List.map_cons] at this
+        exact this
+termination_by l.length
 
+private lemma seqEval_cast (a : ℚ) (L : List (CPolynomial ℚ)) :
+    seqEval ((a : ℝ)) (List.map (Polynomial.map ratToRealHom) (List.map CPolynomial.toPoly L))
+      = (seqEvalC a L).map ((↑) : ℚ → ℝ) := by
+  unfold seqEval seqEvalC
+  simp only [List.map_map]
+  apply List.map_congr_left
+  intro p _
+  simp only [Function.comp_apply]
+  rw [← cpolynomial_map_cast]
 
-/- theorem derivative_equiv (p q : CPolynomial ℚ) : Polynomial.derivative p.toPoly * q.toPoly = (p.derivative*q).toPoly := by -/
-/-   have : Polynomial.derivative p.toPoly = p.derivative.toPoly := by -/
-/-     have := CPolynomial.derivative_toPoly p -/
-/-     simp_all -/
-/-   rw[this]; have := CPolynomial.toPoly_mul p.derivative q -/
-/-   simp_all -/
+private lemma toPolyReal_mul (p q : CPolynomial ℚ) :
+    toPolyReal (p * q) = toPolyReal p * toPolyReal q := by
+  unfold toPolyReal
+  rw [CPolynomial.toPoly_mul, Polynomial.map_mul]
 
-/- theorem equiv_for_sturm_tarski_interval (a b : ℚ) (p q : CPolynomial ℚ) : -/
-/-     seqVarSturmC_ab p (CPolynomial.derivative (p) * q) a b = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b := by -/
-/-   --simp_all -/
-/-   rw[seqVarSturmC_ab, seqVarQ_ab, seqEvalC.eq_def, sturmSeqC] -/
-/-   rw[seqVarSturm_ab, sturmSeq, seqVar_ab, seqEval.eq_def] -/
-/-   if h : p = 0 then -/
-/-     have : toPolyReal p = 0 := by rw [h]; unfold toPolyReal; exact (Polynomial.map_eq_zero ratToRealHom).mpr rfl -/
-/-     simp_all -/
-/-     rw[seqEvalC, seqEval] -/
-/-     norm_num -/
-/-   else -/
-/-     have : ¬ (toPolyReal p) = 0 := toPolyReal_zero p h -/
-/-     simp_all -/
-/-     have : CPolynomial.eval a p = Polynomial.eval a p.toPoly := by -/
-/-       apply CPolynomial.eval_toPoly -/
-/-     simp_all -/
-/-     /1- simp only [derivative_equiv] -1/ -/
-/-     /1- simp only [seq_eval_equiv] -1/ -/
-/-     have : -p.toPoly % (p.derivative * q).toPoly = (-p % (p.derivative*q)).toPoly := by -/
-/-       have : (-p % (p.derivative * q)).toPoly = (toPoly (-p)) % (toPoly (p.derivative * q))  := by -/
-/-         apply fg_mod_eq -/
-/-       simp_all -/
-/-       have : (-p).toPoly = -p.toPoly := by apply CPolynomial.toPoly_neg -/
-/-       simp_all -/
-/-     simp_all -/
-/-     simp only [sturm_seq_equiv] -/
-/-     have : toPolyList (p :: sturmSeq_CPolynomial (p.derivative * q) (-p % (p.derivative * q))) = p.toPoly::toPolyList (sturmSeq_CPolynomial (p.derivative * q) (-p % (p.derivative * q))) := by -/
-/-       rw[toPolyList] -/
-/-     simp_all -/
+private lemma toPolyReal_derivative (p : CPolynomial ℚ) :
+    (toPolyReal p).derivative = toPolyReal p.derivative := by
+  unfold toPolyReal
+  rw [Polynomial.derivative_map, ← CPolynomial.derivative_toPoly]
+
+private lemma sturmSeq_toPolyReal (f g : CPolynomial ℚ) :
+    sturmSeq (toPolyReal f) (toPolyReal g)
+      = List.map (Polynomial.map ratToRealHom) (List.map CPolynomial.toPoly (sturmSeqC f g)) := by
+  unfold toPolyReal
+  rw [sturm_seq_toReal, sturm_seq_toPoly]
+
+theorem seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
+    seqVarSturmC_ab p (p.derivative * q) a b
+      = seqVarSturm_ab (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a b := by
+  unfold seqVarSturmC_ab seqVarSturm_ab seqVarQ_ab seqVar_ab
+  rw [toPolyReal_derivative, ← toPolyReal_mul, sturmSeq_toPolyReal,
+      seqEval_cast, seqEval_cast, seqVarR_cast_list, seqVarR_cast_list]

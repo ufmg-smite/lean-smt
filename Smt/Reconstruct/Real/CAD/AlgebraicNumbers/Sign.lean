@@ -85,7 +85,7 @@ lemma toReal_in_rootsInInterval (α : AlgNum) (hpl : α.p.eval α.l ≠ 0) (hpr 
   simp [toPolyReal, rootsInInterval]
   refine And.intro (And.intro ?_ ?_) (And.intro ?_ ?_)
   · intro abs
-    have : α.p = 0 := gtopolyzeroeq' α.p abs
+    have : α.p = 0 := poly_eq0_of_toPoly_eq0 α.p abs
     rw [this] at hpl
     exact false_of_ne hpl
   · exact toReal_root α

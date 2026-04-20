@@ -112,7 +112,7 @@ def AlgNum.mk
     (hlr : a.l < a.r)
     (hsgn : a.sgnDiff)
     (h_int : seqVarSturmC_ab' a.p a.p.derivative a.l a.r = 1) : AlgNum :=
-  have h0 : a.p.toPoly.map ratToRealHom ≠ 0 := Polynomial.map_ne_zero (gneg_imp_gtopoly_neg a.p hp)
+  have h0 : a.p.toPoly.map ratToRealHom ≠ 0 := Polynomial.map_ne_zero (toPoly_ne0_of_poly_ne0 a.p hp)
   have h_roots : Finset.card (rootsInInterval (a.p.toPoly.map ratToRealHom) ↑a.l ↑a.r) = 1 := by
     zify
     rw [<- sturm_l_r_cpoly a.p a.l a.r hl hr hlr]

@@ -392,7 +392,7 @@ theorem sign_stops_neg_pos (x : ℝ) (p : Polynomial ℝ) (b : ℝ) (h_no_roots 
 
 open CompPoly
 
-theorem gneg_imp_gtopoly_neg (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
+theorem toPoly_ne0_of_poly_ne0 (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
   intro abs
   have : g = 0 := by
     apply CPolynomial.eq_zero_iff_coeff_zero.mpr
@@ -404,15 +404,15 @@ theorem gneg_imp_gtopoly_neg (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 
     apply Polynomial.coeff_zero
   exact h this
 
-theorem gtopolyzeroeq2 (g : CPolynomial ℚ) : g.toPoly ≠ 0 → g ≠ 0 := by
+theorem poly_ne0_of_toPoly_ne0 (g : CPolynomial ℚ) : g.toPoly ≠ 0 → g ≠ 0 := by
   contrapose
   intro h; rw[h]; exact CPolynomial.toPoly_zero
 
-theorem gtopolyzeroeq (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 := by
+theorem poly_eq0_of_toPoly_eq0 (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 := by
   contrapose
-  apply gneg_imp_gtopoly_neg
+  apply toPoly_ne0_of_poly_ne0
 
-theorem fg_mod_eq (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly := by
+theorem toPoly_mod (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly := by
   have aux := CPolynomial.mod_toPoly f g
   have : (f.mod g) = f%g := CPolynomial.eq_iff_coeff.mpr (congrFun rfl)
   rw[this] at aux
@@ -424,32 +424,10 @@ noncomputable def ratToRealHom : RingHom Rat Real := Rat.castHom Real
 @[irreducible]
 noncomputable def ratToReal : Rat → Real := ratToRealHom
 
-
 @[grind =]
 noncomputable def toPolyReal (p : CPolynomial Rat) : Polynomial Real := p.toPoly.map ratToRealHom
 
 open CompPoly in
 lemma toPolyReal_zero (p : CPolynomial Rat) : p ≠ 0 → toPolyReal p ≠ 0 := by
   intros h
-  exact Polynomial.map_ne_zero (gneg_imp_gtopoly_neg p h)
-
-theorem gneg_imp_gtopoly_neg' (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
-  intro abs
-  have : g = 0 := by
-    apply CPolynomial.eq_zero_iff_coeff_zero.mpr
-    have aux (x : ℚ) := CPolynomial.eval_toPoly x g
-    rw[abs] at aux
-    simp at aux
-    simp only [CPolynomial.coeff_toPoly]
-    rw[abs]
-    apply Polynomial.coeff_zero
-  exact h this
-
-theorem gtopolyzeroeq2' (g : CPolynomial ℚ) : g.toPoly ≠ 0 → g ≠ 0 := by
-  contrapose
-  intro h; rw[h]; exact CPolynomial.toPoly_zero
-
-theorem gtopolyzeroeq' (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 := by
-  contrapose
-  apply gneg_imp_gtopoly_neg
-
+  exact Polynomial.map_ne_zero (toPoly_ne0_of_poly_ne0 p h)
