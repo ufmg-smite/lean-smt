@@ -1,10 +1,9 @@
-import Std
-import Init.Data.String.Basic
 import Mathlib
-import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Raw
 import CompPoly
 
-open Std CompPoly Lean
+import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Raw
+
+open CompPoly Lean
 
 def matchStrWithRat (num : String) : ℚ :=
   let (isNegative, cleanNum) := if num.startsWith "-" then (true, num.drop 1) else (false, num)
@@ -42,6 +41,7 @@ def removeParentheses (s : String) : String :=
   else s
 
 open CPolynomial Qq Lean
+
 def getMonom (s: String) : Q(CPolynomial Rat) :=
   let l := (removeParentheses (s.trimAscii.toString)).splitOn "*"
   let coef : Rat := matchStrWithRat l[0]!
@@ -70,3 +70,41 @@ def getRaw (s:String) : Q(AlgebraicNumber.Raw) :=
   let l : Rat := matchStrWithRat (t[1]!.trimAscii.drop 1).toString
   let r : Rat := matchStrWithRat (((t[2]!.dropEnd 1).trimAscii.toString))
   q(@AlgebraicNumber.Raw.mk $p $l $r)
+
+def getMonomNative (s: String) : CPolynomial Rat :=
+  let l := (removeParentheses (s.trimAscii.toString)).splitOn "*"
+  let coef : Rat := matchStrWithRat l[0]!
+  let exp : Nat := if  !(s.contains "^") then if (l.length = 1) then 0 else 1 else ((s.splitOn "^").getLast!.trimAscii).toNat!
+  let c := CPolynomial.C coef
+  if exp = 0 ∨ coef = 0 then c else
+    let pp: CPolynomial Rat := if exp = 1 then CPolynomial.X else
+      CPolynomial.X ^ exp
+    if coef = 1 then pp else
+      let c := CPolynomial.C coef
+      c * pp
+
+def getPolyNative (p: String): CPolynomial Rat := Id.run do
+  let k : List String := p.splitOn "+"
+  match k with
+  | [] => return 0
+  | h :: t =>
+    let mut poly : CPolynomial Rat := getMonomNative h
+    for monom in t do
+      let monom := getMonomNative monom
+      poly := poly + monom
+    return poly
+
+def getRawNative (s:String) : AlgebraicNumber.Raw :=
+  let t := ((s.drop 1).dropEnd 1).toString.splitOn ","
+  let p: CPolynomial Rat := getPolyNative t[0]!
+  let l : Rat := matchStrWithRat (t[1]!.trimAscii.drop 1).toString
+  let r : Rat := matchStrWithRat (((t[2]!.dropEnd 1).trimAscii.toString))
+  @AlgebraicNumber.Raw.mk p l r
+
+def getRawWithNative (s : String) : Q(AlgebraicNumber.Raw) × AlgebraicNumber.Raw :=
+  let t := ((s.drop 1).dropEnd 1).toString.splitOn ","
+  let pE := getPoly t[0]!
+  let p := getPolyNative t[0]!
+  let l : Rat := matchStrWithRat (t[1]!.trimAscii.drop 1).toString
+  let r : Rat := matchStrWithRat (((t[2]!.dropEnd 1).trimAscii.toString))
+  (q(AlgebraicNumber.Raw.mk $pE $l $r), ⟨p, l, r⟩)

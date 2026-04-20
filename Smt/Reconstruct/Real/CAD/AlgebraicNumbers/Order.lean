@@ -3,6 +3,7 @@ import Lean.Elab.Tactic.Basic
 import Qq
 
 import CompPoly
+import Smt.Reconstruct.Real.CAD.RootVal
 import Smt.Reconstruct.Real.CAD.Utils
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
@@ -40,64 +41,63 @@ lemma ratToReal_lt (a b : Rat) : a < b → ratToReal a < ratToReal b := by
   unfold ratToReal
   simp_all only [eq_ratCast, Rat.cast_lt]
 
-def gen_toReal_lt_rr (a b : Q(Rat)) : MetaM Expr := do
-  let goal ← mkAppM `LT.lt #[a,b]
+def gen_toReal_lt_rr (aE bE : Q(Rat)) : MetaM Expr := do
+  let goal ← mkAppM `LT.lt #[aE,bE]
   let pf ← mkDecideProof goal
-  mkAppM ``ratToReal_lt #[a, b, pf]
+  mkAppM ``ratToReal_lt #[aE, bE, pf]
 
-partial def gen_toReal_lt_ra (a : Q(Rat)) (b : Q(AlgNum)) : MetaM Expr := do
-  let a' : Rat ← unsafe evalExpr Rat q(Rat) a
-  let bl : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.l $b)
-  if a' < bl then
-    let goal ← mkAppM `LT.lt #[a, ← mkAppM ``AlgNum.l #[b]]
+partial def gen_toReal_lt_ra (aE bE : Expr) (av : Rat) (bV : Raw) : MetaM Expr := do
+  if av < bV.l then
+    let goal ← mkAppM `LT.lt #[aE, ← mkAppM ``AlgNum.l #[bE]]
     let h ← mkDecideProof goal
-    mkAppM ``cmp_rat_alg_ra #[a, b, h]
+    mkAppM ``cmp_rat_alg_ra #[aE, bE, h]
   else
-    let b' := mkApp (.const ``AlgNum.refine []) b
-    let sub ← gen_toReal_lt_ra a b' -- ratToReal a < b.refine.toReal
-    mkAppM ``cmp_rat_alg_refine_ra #[a, b, sub]
+    let bE' := mkApp (mkConst ``AlgNum.refine) bE
+    let bV' := bV.refine
+    let sub ← gen_toReal_lt_ra aE bE' av bV' -- ratToReal a < b.refine.toReal
+    mkAppM ``cmp_rat_alg_refine_ra #[aE, bE, sub]
 
-partial def gen_toReal_lt_ar (a : Q(AlgNum)) (b : Q(Rat)) : MetaM Expr := do
-  let b' : Rat ← unsafe evalExpr Rat q(Rat) b
-  let ar : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.r $a)
-  if ar < b' then
-    let goal ← mkAppM `LT.lt #[q(AlgNum.r $a), b]
+partial def gen_toReal_lt_ar (aE bE : Expr) (aV : Raw) (bv : Rat) : MetaM Expr := do
+  let aE : Q(AlgNum) := aE
+  if aV.r < bv then
+    let goal ← mkAppM `LT.lt #[q(AlgNum.r $aE), bE]
     let h ← mkDecideProof goal
-    mkAppM ``cmp_rat_alg_ar #[a, b, h]
+    mkAppM ``cmp_rat_alg_ar #[aE, bE, h]
   else
-    let a' := mkApp (.const ``AlgNum.refine []) a
-    let sub ← gen_toReal_lt_ar a' b
-    mkAppM ``cmp_rat_alg_refine_ar #[a, b, sub]
+    let aE' := mkApp (mkConst ``AlgNum.refine) aE
+    let aV' := aV.refine
+    let sub ← gen_toReal_lt_ar aE' bE aV' bv
+    mkAppM ``cmp_rat_alg_refine_ar #[aE, bE, sub]
 
-partial def gen_toReal_lt_aa (a b : Q(AlgNum)) : MetaM Expr := do
-  let ar : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.r $a)
-  let bl : Rat ← unsafe evalExpr Rat q(Rat) q(AlgNum.l $b)
-  if ar < bl then
-    let goal ← mkAppM `LT.lt #[a, b]
+partial def gen_toReal_lt_aa (aE bE : Expr) (aV bV : Raw) : MetaM Expr := do
+  if aV.r < bV.l then
+    let t3 ← IO.monoMsNow
+    let goal ← mkAppM `LT.lt #[aE, bE]
     let h ← mkDecideProof goal
-    mkAppM ``AlgebraicNumber.lt_toReal #[a,b,h]
+    let t4 ← IO.monoMsNow
+    logInfo m!"deciding that a < b took {t4 - t3}ms"
+    mkAppM ``AlgebraicNumber.lt_toReal #[aE, bE, h]
   else
-    let a' := mkApp (.const ``AlgNum.refine []) a
-    let b' := mkApp (.const ``AlgNum.refine []) b
-    let sub ← gen_toReal_lt_aa a' b'
-    mkAppM ``refine_lt_toReal #[a,b,sub]
+    let aE' := mkApp (mkConst ``AlgNum.refine) aE
+    let aV' := aV.refine
+    let bE' := mkApp (mkConst ``AlgNum.refine) bE
+    let bV' := bV.refine
+    let sub ← gen_toReal_lt_aa aE' bE' aV' bV'
+    mkAppM ``refine_lt_toReal #[aE, bE, sub]
 
-partial def gen_toReal_lt (a b : Expr) : MetaM Expr := do
-  let ta ← inferType a
-  let tb ← inferType b
-  if ta == .const ``AlgNum [] && tb == .const ``AlgNum [] then
-    gen_toReal_lt_aa a b
-  else if ta == .const ``Rat [] && tb == .const ``Rat [] then
-    gen_toReal_lt_rr a b
-  else if ta == .const ``Rat [] && tb == .const ``AlgNum [] then
-    gen_toReal_lt_ra a b
-  else -- ta = AlgNum, tb = Rat
-    gen_toReal_lt_ar a b
+partial def gen_toReal_lt (a b : RootVal) : MetaM Expr := do
+  match a, b with
+  | .alg aE aV, .alg bE bV => gen_toReal_lt_aa aE bE aV bV
+  | .rat aE _, .rat bE _ => gen_toReal_lt_rr aE bE
+  | .rat aE aV, .alg bE bV => gen_toReal_lt_ra aE bE aV bV
+  | .alg aE aV, .rat bE bv => gen_toReal_lt_ar aE bE aV bv
 
 @[tactic cmp_alg] def evalCmp_alg : Tactic := fun stx => withMainContext do
-  let a : Q(AlgNum) ← elabTerm stx[1] none
-  let b : Q(AlgNum) ← elabTerm stx[3] none
-  let e ← gen_toReal_lt a b
+  let a ← elabTerm stx[1] none
+  let b ← elabTerm stx[3] none
+  let aE ← RootVal.ofExpr a
+  let bE ← RootVal.ofExpr b
+  let e ← gen_toReal_lt aE bE
   closeMainGoal .anonymous e
 
 def a : Raw := ⟨CPolynomial.X, -500, 500⟩ -- 0
@@ -122,7 +122,7 @@ def toListExpr (α : Q(Type*)) (es : List Q($α)) : Q(List $α) :=
     let tl' : Q(List $α) := toListExpr α tl
     q($hd :: $tl')
 
-def getPfs (as : List Expr) : MetaM (List Expr) :=
+def getPfs (as : List RootVal) : MetaM (List Expr) :=
   match as with
   | [] => return []
   | _ :: [] => return []
@@ -131,23 +131,19 @@ def getPfs (as : List Expr) : MetaM (List Expr) :=
     let rest ← getPfs (a2 :: as)
     return p :: rest
 
-def toReal (x : Expr) : MetaM Expr := do
-  let t ← inferType x
-  if t == .const ``Rat [] then
-    let q : Q(Rat) := x
-    return q(ratToReal $q)
-  else mkAppM ``AlgNum.toReal #[x]
-
 -- given a list of algebraic numbers and a list of proofs that they are well
 -- defined, tries to create a proof that the list is sorted (`List.SortedLT`)
-def genPfSortedLT (as : List Expr) : MetaM Expr := do
+def genPfSortedLT (as : List RootVal) : MetaM Expr := do
   let pfs ← getPfs as -- each pair is sorted
-  let as' ← as.mapM toReal
+  let as' : List Q(Real) ← as.mapM RootVal.toReal
   let as := toListExpr q(Real) as'
   let goal ← mkAppM `List.SortedLT #[as]
   let mv ← mkFreshExprMVar goal
+  let t1 ← IO.monoMsNow
   let ok ← runGrind' mv.mvarId! pfs
   if !ok then throwError "grind failed 9"
+  let t2 ← IO.monoMsNow
+  logInfo m!"proving list is SortedLT took {t2 - t1}ms"
   return mv
 
 syntax (name := cmp_alg_list) "cmp_alg_list" ("[" term,* "]") : tactic
@@ -158,7 +154,8 @@ def parse_cmp_alg_list : Syntax → TacticM (List Expr)
 
 @[tactic cmp_alg_list] def evalCmp_alg_list : Tactic := fun stx => withMainContext do
   let as ← parse_cmp_alg_list stx
-  let e ← genPfSortedLT as
+  let rvs ← as.mapM (fun e => RootVal.ofExpr e)
+  let e ← genPfSortedLT rvs
   closeMainGoal .anonymous e
 
 namespace order_tests

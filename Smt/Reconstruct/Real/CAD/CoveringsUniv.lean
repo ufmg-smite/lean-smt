@@ -189,29 +189,27 @@ lemma cast_eval_pos {x : Rat} {p : CPolynomial Rat} (hpx : CPolynomial.eval x p 
   rwa [Polynomial.eval_map_apply]
 
 -- Solves one of the intervals for univ_cad. Returns `some mv` if it is not supported yet
-def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List Expr) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : MetaM (Option MVarId) := do
+def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List RootVal) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : MetaM (Option MVarId) := do
   let solve_case_pre ← IO.monoMsNow
   let result ← if idx % 2 = 0 then -- interval
     if idx != 0 ∧ idx < 2 * N then
       let (fv, mv') ← mv.intro1P
       mv'.withContext do
         let var_inter ← mkAppM ``set_between #[.fvar fv]
-        let L := all_roots_alg.getD ((idx - 2) / 2) (mkConst `Nat)
-        let R := all_roots_alg.getD ((idx - 2) / 2 + 1) (mkConst `Nat)
-        let tL ← inferType L
+        let L := all_roots_alg.getD ((idx - 2) / 2) default
+        let R := all_roots_alg.getD ((idx - 2) / 2 + 1) default
         let Lr: Q(Rat) :=
-          if tL == .const ``Rat [] then L else mkApp (mkConst ``AlgNum.r) L
-        let tR ← inferType R
+          if L.isAlgNum then mkApp (mkConst ``AlgNum.r) L.expr else L.expr
         let Rl: Q(Rat) :=
-          if tR == .const ``Rat [] then R else mkApp (mkConst ``AlgNum.l) R
+          if R.isAlgNum then mkApp (mkConst ``AlgNum.l) R.expr else R.expr
         let mid: Q(Rat) := q(($Lr + $Rl) / 2)
         let lr_ord_prop : Q(Prop) := q($Lr < $Rl)
         let lr_ord ← mkDecideProof lr_ord_prop
         let mid_mem ←
-          if tL == .const ``AlgNum [] && tR == .const ``AlgNum [] then mkAppM ``alg_midpoint_aa #[L, R, lr_ord]
-          else if tL == .const ``AlgNum [] && tR == .const ``Rat [] then mkAppM ``alg_midpoint_ar #[L, R, lr_ord]
-          else if tL == .const ``Rat [] && tR == .const ``AlgNum [] then mkAppM ``alg_midpoint_ra #[L, R, lr_ord]
-          else mkAppM ``alg_midpoint_rr #[L, R, lr_ord]
+          if L.isAlgNum && R.isAlgNum then mkAppM ``alg_midpoint_aa #[L.expr, R.expr, lr_ord]
+          else if L.isAlgNum && !R.isAlgNum then mkAppM ``alg_midpoint_ar #[L.expr, R.expr, lr_ord]
+          else if !L.isAlgNum && R.isAlgNum then mkAppM ``alg_midpoint_ra #[L.expr, R.expr, lr_ord]
+          else mkAppM ``alg_midpoint_rr #[L.expr, R.expr, lr_ord]
 
         let mut grind_context : Array Expr := #[]
         for ⟨poly, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
@@ -238,7 +236,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
 
             let key ← mkAppM ``sign_stops_neg
-              #[q(ratToReal $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
+              #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
             -- TODO: Could be just check if they are proving different signs and apply custom lemma
             grind_context := grind_context.push key
             grind_context := grind_context.push ineq_pf
@@ -248,7 +246,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
 
             let key ← mkAppM ``sign_stops_pos
-              #[q(ratToReal $mid), poly', ← toReal L, ← toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
+              #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
             -- TODO: Could be just check if they are proving different signs and apply custom lemma
             grind_context := grind_context.push key
             grind_context := grind_context.push ineq_pf
@@ -261,13 +259,12 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         let (fv, mv') ← mv.intro1P
         mv'.withContext do
           let var_pre ← mkAppM ``set_before #[.fvar fv]
-          let R := all_roots_alg.getD 0 (mkConst `Nat)
-          let tR ← inferType R
-          let Rl: Q(Rat) := if tR == .const ``Rat [] then R else mkApp (mkConst ``AlgNum.l) R
+          let R := all_roots_alg.getD 0 default
+          let Rl: Q(Rat) := if R.isAlgNum then (mkApp (mkConst ``AlgNum.l) R.expr) else R.expr
           let pre: Q(Rat) := q($Rl - 1)
           let pre_mem ←
-            if tR == .const ``AlgNum [] then mkAppM ``alg_pre #[R]
-            else mkAppM ``alg_pre' #[R]
+            if R.isAlgNum then mkAppM ``alg_pre #[R.expr]
+            else mkAppM ``alg_pre' #[R.expr]
 
           let mut grind_context : Array Expr := #[]
           for ⟨poly, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
@@ -285,14 +282,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pre $poly < 0)
               let eval_neg ← mkDecideProof eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
+              let key ← mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pre $poly > 0)
               let eval_pos ← mkDecideProof eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
+              let key ← mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
           let ok ← runGrind' mv' grind_context.toList
@@ -304,12 +301,11 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         mv'.withContext do
           let var_pos ← mkAppM ``set_after #[.fvar fv]
           let L := all_roots_alg.getLast!
-          let tL ← inferType L
-          let Lr : Q(Rat) := if tL == .const ``Rat [] then L else mkApp (mkConst ``AlgNum.r) L
+          let Lr : Q(Rat) := if L.isAlgNum then mkApp (mkConst ``AlgNum.r) L.expr else L.expr
           let pos: Q(Rat) := q($Lr + 1)
           let pos_mem ←
-            if tL == .const ``AlgNum [] then mkAppM ``alg_pos #[L]
-            else mkAppM ``alg_pos' #[L]
+            if L.isAlgNum then mkAppM ``alg_pos #[L.expr]
+            else mkAppM ``alg_pos' #[L.expr]
 
           let mut grind_context : Array Expr := #[]
           for ⟨poly, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
@@ -327,14 +323,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pos $poly < 0)
               let eval_neg ← mkDecideProof eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
+              let key ← mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pos $poly > 0)
               let eval_pos ← mkDecideProof eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
+              let key ← mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
           let ok ← runGrind' mv' grind_context.toList
@@ -352,12 +348,8 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         let ineq' ← rewriteWithEq ineq var_val
         let (poly_sign, _) ← getSignProof poly (← get_r r)
         -- TODO: Could be just check if they are proving different signs and apply custom lemma
-        logInfo m!"poly_sign = {← inferType poly_sign}"
-        logInfo m!"ineq' = {← inferType ineq'}"
         grind_context := grind_context.push poly_sign
         grind_context := grind_context.push ineq'
-      for h in grind_context do
-        logInfo m!"h = {← inferType h}"
       let ok ← runGrind' mv' grind_context.toList
       if !ok then
         throwError "grind failed 5"
@@ -366,9 +358,13 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
   logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
   return result
 
-def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (Expr × List MVarId) := do
+def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM (Expr × List MVarId) := do
   let hoist_before ← IO.monoMsNow
-  let rs ← rs.mapM (hoistExpr `_univCadRoot)
+  let rs ← rs.mapM fun rv => do
+    let e' ← hoistExpr `_univCadRoot rv.expr
+    match rv with
+    | .rat _ v => return RootVal.rat e' v
+    | .alg _ raw => return RootVal.alg e' raw
   let hoist_after ← IO.monoMsNow
   logInfo m!"hoisting roots: {hoist_after - hoist_before}ms"
   let sort_before ← IO.monoMsNow
@@ -376,10 +372,9 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
   let sort_after ← IO.monoMsNow
   logInfo m!"proving sort time: {sort_after - sort_before}ms"
   let mut polys_ineqs_roots_subsets : Array Data := #[]
-  let rs_real : List Q(Real) ← rs.mapM toReal
+  let rs_real : List Q(Real) ← rs.mapM RootVal.toReal
   let rs_e := toListExpr q(Real) rs_real
   for ineq_pf in ineq_pfs do
-    logInfo m!"ineq_pf = {← inferType ineq_pf}"
     let curr_ineq_pre ← IO.monoMsNow
     let (P_inline, ineq_pf_P) ← lift_ineq ineq_pf x
     let P ← hoistExpr `_univCadPoly P_inline
@@ -394,15 +389,15 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
 
     let P_roots_card ← gen_root_counting_proof P
     let mut root_pfs : Array Expr := #[]
-    let mut curr_roots : Array Expr := #[]
+    let mut curr_roots : Array RootVal := #[]
     for r in rs do
-      let (sign_pf, sign) ← getSignProof P r
+      let (sign_pf, sign) ← getSignProof P r.expr
       if sign = 0 then
         curr_roots := curr_roots.push r
         root_pfs := root_pfs.push sign_pf
     let curr_roots_sorted ← genPfSortedLT curr_roots.toList
 
-    let curr_roots_e := toListExpr q(Real) (← curr_roots.toList.mapM toReal)
+    let curr_roots_e := toListExpr q(Real) (← curr_roots.toList.mapM RootVal.toReal)
     let curr_roots_subset_prop : Q(Prop) := q($curr_roots_e ⊆ $rs_e)
     let mv_subset ← mkFreshExprMVar curr_roots_subset_prop
     normNum mv_subset.mvarId!
@@ -442,7 +437,8 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List Expr) : MetaM (E
 
 @[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
   let (x, ineq_pfs, rs) ← parseUnivCad stx
-  let e ← univCadCore x ineq_pfs rs
+  let rvs ← (rs.mapM RootVal.ofExpr : MetaM (List RootVal))
+  let e ← univCadCore x ineq_pfs rvs
   let mainMv ← getMainGoal
   mainMv.assign e.1
   replaceMainGoal e.2
@@ -455,8 +451,8 @@ def c : Rat := 10
 
 /- set_option maxHeartbeats 1000000 -/
 
-/- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
-/-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
+lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by
+  univ_cad x , [h1,h2,h3,h4] [a,b,c]
 
 def p2 : CPolynomial Rat := X - 3/2
 def r3 : Raw := ⟨p2, 7/5, 2⟩

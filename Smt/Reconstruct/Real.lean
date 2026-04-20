@@ -552,13 +552,20 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
   | .ARITH_COVERINGS_UNIV =>
     let prep_before ← IO.monoMsNow
     let var ← reconstructTerm pf.getArguments[0]!
-    let mut roots : Array Expr := #[]
+    let mut roots : Array RootVal := #[]
     for i in List.range' 1 (pf.getArguments.size - 1) do
       let curr := (pf.getArguments[i]!)[1]!
-      let t ←
-        if curr.getKind == .CONST_RATIONAL then reconsRational curr
-        else reconstructTerm curr
-      roots := roots.push t
+      let rv ←
+        if curr.getKind == .CONST_RATIONAL then do
+          let v : Rat := curr.getRationalValue!
+          let e ← reconsRational curr
+          pure (RootVal.rat e v)
+        else do
+          let s := cvc5.Term.getRealAlgebraicNumberValue! curr
+          let (rawE, raw) := getRawWithNative s
+          let aE : Q(AlgNum) ← Raw.lift rawE
+          pure (RootVal.alg aE raw)
+      roots := roots.push rv
     let mut ineqs : Array Expr := #[]
     for i in List.range pf.getChildren.size do
       let ineq ← reconstructProof pf.getChildren[i]!
