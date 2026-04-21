@@ -86,9 +86,9 @@ always succeed.
 def manySexps : Parser (List Sexp) := do
   let mut stack : List (List Sexp) := []
   let mut curr := []
-  let mut next ← misc *> peek?
-  while h : next.isSome do
-    match next.get h with
+  let mut nextChar ← misc *> peek?
+  while h : nextChar.isSome do
+    match nextChar.get h with
     | '(' =>
       skipChar '('
       stack := curr :: stack
@@ -103,7 +103,7 @@ def manySexps : Parser (List Sexp) := do
         curr := .expr curr.reverse :: sexp
     | _ =>
       curr := (← atom) :: curr
-    next ← misc *> peek?
+    nextChar ← misc *> peek?
   if !stack.isEmpty then
     fail "expected ')'"
   return curr.reverse
