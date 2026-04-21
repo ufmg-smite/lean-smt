@@ -1136,6 +1136,35 @@ open MvPolynomial Expr
 example (x: ZMod 3) : x* (x-1)* (x-2) ≠ 1 := by
   smt
 
+-- example (a b : ZMod 3) : a*(a-1)*(a-2) + b*(b-1)*(b-2) ≠ 1 := by
+--  smt
+
+-- This ends up killing my editor instance.
+-- example [Fact (Nat.Prime 394357)] (x1 x2 x3 x4 x5 : ZMod 394357) :
+--    ¬ (x1 + x2 + x3 + x4 + x5 = 0 ∧
+--     x1*x2 + x2*x3 + x3*x4 + x4*x5 + x5*x1 = 0 ∧
+--     x1*x2*x3 + x2*x3*x4 + x3*x4*x5 + x4*x5*x1 + x5*x1*x2 = 0 ∧
+--     x1*x2*x3*x4 + x2*x3*x4*x5 + x3*x4*x5*x1 + x4*x5*x1*x2 + x5*x1*x2*x3 = 0 ∧
+--      x1*x2*x3*x4*x5 = 1) := by
+--  smt
+
+-- This also ends up killing my editor instance...
+-- example [Fact (Nat.Prime 7)] (x1 x2 x3 x4 x5 : ZMod 7) :
+--    ¬ (x1 + x2 + x3 + x4 + x5 = 0 ∧
+--     x1*x2 + x2*x3 + x3*x4 + x4*x5 + x5*x1 = 0 ∧
+--     x1*x2*x3 + x2*x3*x4 + x3*x4*x5 + x4*x5*x1 + x5*x1*x2 = 0 ∧
+--     x1*x2*x3*x4 + x2*x3*x4*x5 + x3*x4*x5*x1 + x4*x5*x1*x2 + x5*x1*x2*x3 = 0 ∧
+--      x1*x2*x3*x4*x5 = 1) := by
+--  smt
+
+-- Fails without +native
+example [Fact (Nat.Prime 5)] (x y : ZMod 5) : ¬ (x * x = 1 ∧ y * y = 2) := by
+  smt +native
+
+-- Takes too long...
+example [Fact (Nat.Prime 5)] (x y : ZMod 5) : ¬ ( y * y = 2 ∧ x * x = 1) := by
+  smt +native
+
 example [Fact (Nat.Prime 5)] (x: ZMod 5) : x* (x-1)* (x-2) ≠ 1 := by
   smt +model
 
