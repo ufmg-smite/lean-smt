@@ -1088,7 +1088,7 @@ open Qq
     let rs ← rs.foldrM reconstructZMods q([])
     let hps : Q(variety (ideal $ps) ≠ ∅) ← reconstructProof pf.getChildren[0]!
     let hp : Q(«$p».toPoly ∈ ideal $ps) ← reconstructProof pf.getChildren[1]!
-    let tac := if ← useNative then decide else nativeDecide
+    let tac := if ← useNative then nativeDecide else decide
     let hpirs : Q(«$p».completeRoots $i $rs) ← tac q(«$p».completeRoots $i $rs)
     addThm q(orN («$rs».map fun r => variety (ideal ($ps ++ [.X $i - .C r])) ≠ ∅))
            q(@root_branch $o $ho $ps $p $i $rs $hps $hp $hpirs)
