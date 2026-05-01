@@ -32,10 +32,10 @@ def Lean.Expr.mvarId? : Expr → Option MVarId
   | mvar n => some n
   | _      => none
 
+def List.zmodRange (n : Nat) : List (ZMod n) :=
+  List.range n
 
 namespace Smt.Reconstruct.ZMod
-
-
 
 open Lean Expr
 open Qq
@@ -350,7 +350,7 @@ theorem roots_complete [Fact n.Prime] {p : Expr n}
 theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
   (hps : variety (ideal ps) ≠ ∅) (hp : p.toPoly ∈ ideal ps)
   (hpirs : p.completeRoots i rs)
-  : orN (rs.map fun r => variety (ideal (ps ++ [.X i + -.C r])) ≠ ∅) := by
+  : orN (rs.map fun r => variety (ideal (ps ++ [.X i + .C (-r)])) ≠ ∅) := by
   rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
   have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
     MvPolynomial.mem_zeroLocus_iff.mp hctx
@@ -369,33 +369,60 @@ theorem root_branch [Fact n.Prime] {ps} {p : Expr n} {i rs}
   refine ⟨ctx, ?_⟩
   rw [variety, ideal, MvPolynomial.zeroLocus_span]
   intro q hq
-  have hq2 : q ∈ ps ++ [.X i + -.C (ctx i)] :=
+  have hq2 : q ∈ ps ++ [.X i + .C (-ctx i)] :=
     List.mem_toFinset.mp hq
   rcases List.mem_append.mp hq2 with hq | hq
   · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
   · rcases List.mem_singleton.mp hq with rfl
     simp
 
-theorem exhaust_branch [Fact n.Prime] {ps} {is : List Nat}
-  (hps : variety (ideal ps) ≠ ∅) (his : is ≠ [])
-  : orN (is.map fun i => ∃ (v : ZMod n), variety (ideal (ps ++ [.X i + -.C v])) ≠ ∅) := by
+theorem exhaust_branch' [Fact n.Prime] {i} {ps}
+  (hps : variety (ideal ps) ≠ ∅)
+  : ∃ (v : ZMod n), variety (ideal (ps ++ [.X i + .C (-v)])) ≠ ∅ := by
   rcases Set.nonempty_iff_ne_empty.mpr hps with ⟨ctx, hctx⟩
   have hctx' : ∀ q ∈ ideal ps, MvPolynomial.aeval ctx q = 0 :=
     MvPolynomial.mem_zeroLocus_iff.mp hctx
-  match is, his with
-  | i :: is, _ =>
-    simp only [List.map, orN_cons_append]
-    refine Or.inl ⟨ctx i, ?_⟩
-    apply Set.nonempty_iff_ne_empty.mp
-    refine ⟨ctx, ?_⟩
-    rw [variety, ideal, MvPolynomial.zeroLocus_span]
-    intro q hq
-    have hq2 : q ∈ ps ++ [.X i + -.C (ctx i)] :=
-      List.mem_toFinset.mp hq
-    rcases List.mem_append.mp hq2 with hq | hq
-    · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
-    · rcases List.mem_singleton.mp hq with rfl
-      simp
+  refine ⟨ctx i, ?_⟩
+  apply Set.nonempty_iff_ne_empty.mp
+  refine ⟨ctx, ?_⟩
+  rw [variety, ideal, MvPolynomial.zeroLocus_span]
+  intro q hq
+  have hq2 : q ∈ ps ++ [.X i + .C (-ctx i)] :=
+    List.mem_toFinset.mp hq
+  rcases List.mem_append.mp hq2 with hq | hq
+  · exact hctx' q (Ideal.subset_span (List.mem_toFinset.mpr hq))
+  · rcases List.mem_singleton.mp hq with rfl
+    simp
+
+theorem exhaust_branch [Fact n.Prime] {i} {ps}
+  (hps : variety (ideal ps) ≠ ∅)
+  : orN ((List.zmodRange n).map fun v => variety (ideal (ps ++ [.X i + .C (-v)])) ≠ ∅) := by
+  obtain ⟨v, hv⟩ := exhaust_branch' (i := i) hps
+  refine orN_map_of_mem (x := v) ?_ hv
+  unfold List.zmodRange
+  refine List.mem_flatMap.mpr ⟨v.val, List.mem_range.mpr (ZMod.val_lt v), ?_⟩
+  simp [ZMod.natCast_zmod_val v]
+
+-- TODO: remove the need for this theorem.
+theorem exhaust_branch'' [Fact n.Prime] {i} {ps}
+  (hps : variety (ideal ps) ≠ ∅)
+  : variety (ideal (ps ++ [.X i])) ≠ ∅ ∨
+    orN ((List.zmodRange n).tail.map fun v => variety (ideal (ps ++ [.X i + .C (-v)])) ≠ ∅) := by
+  have h := exhaust_branch (i := i) hps
+  have hpos : 0 < n := (Fact.out : n.Prime).pos
+  obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, (Nat.succ_pred_eq_of_pos hpos).symm⟩
+  have hrange : List.zmodRange (m + 1) = (0 : ZMod (m + 1)) :: (List.zmodRange (m + 1)).tail := by
+    have hu : List.zmodRange (m + 1) =
+        (0 : ZMod (m + 1)) :: ((List.range m).map Nat.succ : List Nat) := by
+      show (List.range (m + 1) : List (ZMod (m + 1))) = _
+      rw [List.range_succ_eq_map]
+      rfl
+    rewrite [hu]
+    rfl
+  rw [hrange, List.map_cons, orN_cons_append] at h
+  cases h with
+  | inl h => left; simpa using h
+  | inr h => exact Or.inr h
 
 def Expr.isFieldPoly (e : Expr n) : Bool :=
   match e with
@@ -979,6 +1006,7 @@ open Qq
     let hs : Q($s₁ = $s₂) ← reconstructProof pf.getChildren[1]!
     addThm q((«$e₁».toPoly ∈ $s₁) = («$e₂».toPoly ∈ $s₂)) q(Expr.elem_congr $he $hs)
   | .FF_POLY_CONVERSION =>
+    -- TODO: fix the signature of `FF_POLY_CONVERSION` (arg 1 should be an ideal according to docstring)
     let ps := ((pf.getResult[0]!)[0]!)[0]!.getChildren
     let o : Nat ← pure ps[0]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
@@ -1078,7 +1106,7 @@ open Qq
     let reconstructZMods := fun (t : cvc5.Term) (acc : Q(List (ZMod $o))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
       return q($p :: $acc)
-    let ps := (pf.getArguments[1]!).getChildren
+    let ps := pf.getArguments[1]!.getChildren
     let ps ← ps.foldrM reconstructMVPs q([])
     let p : Q(ZMod $o) ← reconstructTerm pf.getArguments[4]!
     let p ← Expr.reify o p
@@ -1091,8 +1119,23 @@ open Qq
     let hp : Q(«$p».toPoly ∈ ideal $ps) ← reconstructProof pf.getChildren[1]!
     let tac := if ← useNative then nativeDecide else decide
     let hpirs : Q(«$p».completeRoots $i $rs) ← tac q(«$p».completeRoots $i $rs)
-    addThm q(orN («$rs».map fun r => variety (ideal ($ps ++ [.X $i - .C r])) ≠ ∅))
+    addThm q(orN («$rs».map fun r => variety (ideal ($ps ++ [.X $i + .C (-r)])) ≠ ∅))
            q(@root_branch $o $ho $ps $p $i $rs $hps $hp $hpirs)
+  | .FF_EXHAUST_BRANCH =>
+    let o : Nat := pf.getArguments[0]!.getSort!.getFiniteFieldSize!
+    let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
+    let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
+      let p : Q(ZMod $o) ← reconstructTerm t
+      let p ← MvPolynomialM.reify o p
+      return q($p :: $acc)
+    let is ← getFFCtx o
+    let x : Q(ZMod $o) ← reconstructTerm pf.getArguments[0]!
+    let i : Nat := is.findIdx (· == x)
+    let ps := pf.getArguments[1]!.getChildren
+    let ps ← ps.foldrM reconstructMVPs q([])
+    let hps : Q(variety (ideal $ps) ≠ ∅) ← reconstructProof pf.getChildren[0]!
+    addThm q(orN ((List.zmodRange $o).map fun v => variety (ideal ($ps ++ [.X $i + .C (-v)])) ≠ ∅))
+           q(@exhaust_branch'' $o $ho $i $ps $hps)
   | _ => return none
 where
   decide (p : Q(Prop)) : MetaM (Q($p)) := do

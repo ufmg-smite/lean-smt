@@ -262,7 +262,7 @@ def traceSolve (r : Except Exception (Except Error cvc5Result)) : MetaM MessageD
   | _           => m!"{bombEmoji}"
 
 def defaultSolverOptions : List (String × String) := [
-  ("dag-thresh", "0"),
+  -- ("dag-thresh", "0"),
   ("simplification", "none"),
   ("enum-inst", "true"),
   ("enum-inst-interleave", "true"),
