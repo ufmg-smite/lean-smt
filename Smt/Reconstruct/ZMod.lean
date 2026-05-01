@@ -168,6 +168,7 @@ partial def reify (n : Nat) (e : Q(ZMod $n)) : MvPolynomialM n (Q(MvPolynomial N
 
 end MvPolynomialM
 
+noncomputable
 def ideal (ps : List (MvPolynomial Nat (ZMod n))) : Ideal (MvPolynomial Nat (ZMod n)) :=
   Ideal.span ps.toFinset
 
@@ -869,29 +870,29 @@ theorem variety_split_zmod_of_mem [Fact n.Prime]
 
 open Lean
 open Qq
-@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind with
+@[smt_sort_reconstruct] def reconstructZModSort : SortReconstructor := fun s => do match s.getKind! with
   | .FINITE_FIELD_SORT =>
     let o : Nat := s.getFiniteFieldSize!
     return q(ZMod  $o)
   | _             => return none
 
-@[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind with
+@[smt_term_reconstruct] def reconstructZMod : TermReconstructor := fun t => do match t.getKind! with
   | .CONST_FINITE_FIELD =>
-    let o : Nat := t.getSort.getFiniteFieldSize!
-    let v : Nat := (t.getFiniteFieldValue!.toInt! % o).toNat
+    let o : Nat := t.getSort!.getFiniteFieldSize!
+    let v : Nat := (t.getFiniteFieldValue! % o).toNat
     return mkZModLit o v
   | .FINITE_FIELD_ADD =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
+    let w : Nat := t.getSort!.getFiniteFieldSize!
     rightAssocOp q(@HAdd.hAdd (ZMod $w) (ZMod $w) (ZMod $w) _) t
   | .FINITE_FIELD_MULT =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
+    let w : Nat := t.getSort!.getFiniteFieldSize!
     leftAssocOp q(@HMul.hMul (ZMod $w) (ZMod $w) (ZMod $w) _) t
   | .FINITE_FIELD_NEG =>
-    let w : Nat := t.getSort.getFiniteFieldSize!
+    let w : Nat := t.getSort!.getFiniteFieldSize!
     let x : Q(ZMod $w) ← reconstructTerm t[0]!
     return q(-$x)
   | .FINITE_FIELD_IDEAL =>
-    let o :  Nat := t[0]!.getSort.getFiniteFieldSize!
+    let o :  Nat := t[0]!.getSort!.getFiniteFieldSize!
     let mut ps : Q(List (MvPolynomial Nat (ZMod $o))) := q([])
     for i in t.getChildren.reverse do
       let p : Q(ZMod $o) ← reconstructTerm i
@@ -899,25 +900,25 @@ open Qq
       ps := q($p :: $ps)
     return q(ideal $ps)
   | .FINITE_FIELD_VARIETY =>
-    let o:  Nat := t.getSort.getSetElementSort!.getFiniteFieldSize!
+    let o:  Nat := t.getSort!.getSetElementSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let s : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm t[0]!
     return q(@variety $o $ho $s)
   | .SET_MEMBER =>
-    if t[1]!.getKind != .FINITE_FIELD_IDEAL then return none
-    let o : Nat := t[0]!.getSort.getFiniteFieldSize!
+    if t[1]!.getKind! != .FINITE_FIELD_IDEAL then return none
+    let o : Nat := t[0]!.getSort!.getFiniteFieldSize!
     let x : Q(ZMod $o) ← reconstructTerm t[0]!
     let x ← MvPolynomialM.reify o x
     let s : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm t[1]!
     return q($x ∈ $s)
   | .SET_IS_EMPTY =>
-    if t[0]!.getKind != .FINITE_FIELD_VARIETY then return none
-    let o : Nat := t[0]!.getSort.getSetElementSort!.getFiniteFieldSize!
+    if t[0]!.getKind! != .FINITE_FIELD_VARIETY then return none
+    let o : Nat := t[0]!.getSort!.getSetElementSort!.getFiniteFieldSize!
     let s : Q(Set (Nat → ZMod $o)) ← reconstructTerm t[0]!
     return q($s = ∅)
   | .SKOLEM => match t.getSkolemId! with
     | .FF_DISEQ =>
-      let o : Nat := t.getSort.getFiniteFieldSize!
+      let o : Nat := t.getSort!.getFiniteFieldSize!
       let t := t.getSkolemIndices![0]! -- (not (= a b))
       let a : Q(ZMod $o) ← reconstructTerm (t[0]!)[0]!
       let b : Q(ZMod $o) ← reconstructTerm (t[0]!)[1]!
@@ -952,14 +953,14 @@ open Qq
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
   | .REFL =>
-    if pf.getArguments[0]!.getKind != .FINITE_FIELD_IDEAL then return none
-    let o : Nat := pf.getArguments[0]!.getSort.getSetElementSort!.getFiniteFieldSize!
+    if pf.getArguments[0]!.getKind! != .FINITE_FIELD_IDEAL then return none
+    let o : Nat := pf.getArguments[0]!.getSort!.getSetElementSort!.getFiniteFieldSize!
     let a : Q(Ideal (MvPolynomial Nat (ZMod $o))) ← reconstructTerm pf.getArguments[0]!
     addThm q($a = $a) q(Eq.refl $a)
   | .CONG =>
-    if pf.getResult[0]!.getKind != .SET_MEMBER || (pf.getResult[0]!)[1]!.getKind != .FINITE_FIELD_IDEAL then
+    if pf.getResult[0]!.getKind! != .SET_MEMBER || (pf.getResult[0]!)[1]!.getKind! != .FINITE_FIELD_IDEAL then
       return none
-    let o : Nat ← pure (pf.getResult[0]!)[0]!.getSort.getFiniteFieldSize!
+    let o : Nat ← pure (pf.getResult[0]!)[0]!.getSort!.getFiniteFieldSize!
     let e₁ : Q(ZMod $o) ← reconstructTerm (pf.getResult[0]!)[0]!
     let e₂ : Q(ZMod $o) ← reconstructTerm (pf.getResult[1]!)[0]!
     let e₁ ← Expr.reify o e₁
@@ -979,7 +980,7 @@ open Qq
     addThm q((«$e₁».toPoly ∈ $s₁) = («$e₂».toPoly ∈ $s₂)) q(Expr.elem_congr $he $hs)
   | .FF_POLY_CONVERSION =>
     let ps := ((pf.getResult[0]!)[0]!)[0]!.getChildren
-    let o : Nat ← pure ps[0]!.getSort.getFiniteFieldSize!
+    let o : Nat ← pure ps[0]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let reconstructZMEs := fun (t : cvc5.Term) (acc : Q(List (Expr $o))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
@@ -993,7 +994,7 @@ open Qq
     let h : Q(andN («$ps».map fun p => p.eval $ctx = 0)) ← reconstructProof pf.getChildren[0]!
     addThm q(variety (ideal («$ps».map Expr.toPoly)) ≠ ∅) q(@Expr.variety_nonempty_of_eval_eq_zero $o $ctx $ho $ps $h)
   | .FF_POLY_NORM =>
-    let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getResult[0]!.getSort!.getFiniteFieldSize!
     let a : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
     let b : Q(ZMod $o) ← reconstructTerm pf.getResult[1]!
     let l : Q(Expr $o) ← Expr.reify o a
@@ -1002,7 +1003,7 @@ open Qq
     let tac := if ← useNative then ZMod.nativePolyNorm o l r is else ZMod.polyNorm o l r is
     addTac q($a = $b) tac
   | .FF_POLY_NORM_EQ =>
-    let o : Nat := (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := (pf.getChildren[0]!.getResult[0]!)[0]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let cx : Q(ZMod $o) ← reconstructTerm (pf.getChildren[0]!.getResult[0]!)[0]!
     let cy : Q(ZMod $o) ← reconstructTerm (pf.getChildren[0]!.getResult[1]!)[0]!
@@ -1015,7 +1016,7 @@ open Qq
     let h : Q($cx * ($x₁ + -$x₂) = $cy * ($y₁ + -$y₂)) ← reconstructProof pf.getChildren[0]!
     addThm q(($x₁ = $x₂) = ($y₁ = $y₂)) q(@eq_of_add_neg_eq $o $x₁ $x₂ $y₁ $y₂ $ho $cx $cy $hcx $hcy $h)
   | .FF_IDEAL_GENERATOR =>
-    let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getResult[0]!.getSort!.getFiniteFieldSize!
     let y : Q(ZMod $o) ← reconstructTerm pf.getResult[0]!
     let y ← MvPolynomialM.reify o y
     let ps := pf.getResult[1]!.getChildren
@@ -1029,7 +1030,7 @@ open Qq
     let zs ← zs.foldrM reconstructMVPs q([])
     addThm q($y ∈ ideal ($xs ++ $y :: $zs)) q(@ideal_generator $o $xs $y $zs)
   | .FF_ONE_UNSAT =>
-    let o : Nat := pf.getChildren[0]!.getResult[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getChildren[0]!.getResult[0]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let ps := pf.getChildren[0]!.getResult[1]!.getChildren
     let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
@@ -1040,13 +1041,13 @@ open Qq
     let h : Q(1 ∈ ideal $ps) ← reconstructProof pf.getChildren[0]!
     addThm q(variety (ideal $ps) = ∅) q(@one_unsat $o $ho $ps $h)
   | .FF_DISEQ =>
-    let o : Nat := pf.getArguments[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getArguments[0]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let l : Q(ZMod $o) ← reconstructTerm pf.getArguments[0]!
     let r : Q(ZMod $o) ← reconstructTerm pf.getArguments[1]!
     addThm q(($l ≠ $r) = (($l + -$r) * Classical.epsilon (fun x => ($l + -$r) * x + -1 = 0) + -1 = 0)) q(@diseq $o $ho $l $r)
   | .FF_POLY_COMBINATION =>
-    let o : Nat := pf.getResult[0]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getResult[0]!.getSort!.getFiniteFieldSize!
     let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
       let p ← MvPolynomialM.reify o p
@@ -1068,7 +1069,7 @@ open Qq
     let h : Q(andN (List.map (fun r => r ∈ ideal $ps) $rs)) := hq
     addThm q(addN (List.zipWith (· * ·) $ms $rs) ∈ ideal $ps) q(@poly_combination $o $ps $ms $rs $h)
   | .FF_ROOT_BRANCH =>
-    let o : Nat := pf.getArguments[2]!.getSort.getFiniteFieldSize!
+    let o : Nat := pf.getArguments[2]!.getSort!.getFiniteFieldSize!
     let ho : Q(Fact «$o».Prime) ← Meta.synthInstance q(Fact «$o».Prime)
     let reconstructMVPs := fun (t : cvc5.Term) (acc : Q(List (MvPolynomial Nat (ZMod $o)))) => do
       let p : Q(ZMod $o) ← reconstructTerm t
@@ -1099,15 +1100,11 @@ where
     return .app q(@of_decide_eq_true $p $hp) q(Eq.refl true)
   nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
     let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
-    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
-    let b : Q(Bool) := .const auxDeclName []
-    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
-  mkNativeAuxDecl (baseName : Name) (type value : Lean.Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxDeclName baseName
-    let decl := Declaration.defnDecl {
-      name := auxName, levelParams := [], type, value
-      hints := .abbrev
-      safety := .safe
-    }
-    addAndCompile decl
-    pure auxName
+    match ← Meta.nativeEqTrue `Smt.rootBranch q(decide $p) with
+    | .notTrue =>
+      throwError m!"[ff_root_branch] evaluated that the proposition
+        {indentExpr q(decide $p)}\n\
+        is false"
+    | .success hdp =>
+      -- get instance from `d`
+      return .app q(@of_decide_eq_true $p $hp) hdp

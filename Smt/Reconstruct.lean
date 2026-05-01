@@ -36,9 +36,9 @@ structure Reconstruct.State where
   proofCache : Std.HashMap cvc5.Proof Expr := {}
   count : Nat := 0
   currAssums : Array Expr := #[]
-  skippedGoals : Array MVarId := #[]
   /-- finite-fields polynomial context for each prime order. -/
   ffCtx : Std.HashMap Nat (Array Expr) := {}
+  skippedGoals : Array MVarId := #[]
 
 abbrev ReconstructM := ReaderT Reconstruct.Context (StateT Reconstruct.State MetaM)
 
@@ -239,7 +239,7 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
   let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
   let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
-  let (h, ⟨_, _, _, _, _, mvs, _⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+  let (h, ⟨_, _, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
   if dfns.isEmpty then
     let h : Q(True → $p) ← pure h
     return (dfns, ps, p, q($h trivial), mvs.toList)
@@ -424,7 +424,7 @@ def solveAndReconstructProof (query : String)
       return .unsat none [] uc
     -- Reconstruct proof.
     let some pf := pf | throwError "failed to reconstruct proof for unsat result"
-    let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+    let (h, ⟨_, _, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
     return .unsat h mvs.toList uc
   | .ok (.sat model) =>
     -- Return potential counter-example.
