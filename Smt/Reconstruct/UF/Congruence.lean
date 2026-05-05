@@ -97,10 +97,10 @@ def smtCongr (mv : MVarId) (hs : Array Expr) : MetaM Unit := mv.withContext do
   else
     smtCongrUF mv l r hs
 where
-  isLeftAssocOp (n : Name) : Bool :=
-    n == ``HAdd.hAdd || n == ``HSub.hSub || n == ``HMul.hMul || n == ``HDiv.hDiv || n == ``HMod.hMod
+  isLeftAssocOp (_n : Name) : Bool :=
+    false
   isRightAssocOp (n : Name) : Bool :=
-    n == ``And || n == ``Or || n == ``Iff || n == ``XOr
+    n == ``HAdd.hAdd || n == ``HSub.hSub || n == ``HMul.hMul || n == ``HDiv.hDiv || n == ``HMod.hMod || n == ``And || n == ``Or || n == ``Iff || n == ``XOr
 
 namespace Tactic
 
@@ -122,7 +122,7 @@ example (a b c d : Int) : a = b → c = d → a + c = b + d := by
   intros h₁ h₂
   smtCongr [h₁, h₂]
 
-example (a b c d e f : Int) : a = b → c = d → e = f → a + c + e = b + d + f := by
+example (a b c d e f : Int) : a = b → c = d → e = f → a + (c + e) = b + (d + f) := by
   intros h₁ h₂ h₃
   smtCongr [h₁, h₂, h₃]
 

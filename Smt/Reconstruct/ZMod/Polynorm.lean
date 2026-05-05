@@ -20,25 +20,10 @@ def Context (n : Nat) := Var → ZMod n
 
 structure Monomial (n : Nat) where
   coeff : ZMod n
-  vars : List Var
+  vars : List (Var × Nat) -- variable index and multiplicity
 deriving Inhabited, Repr, DecidableEq
 
 namespace Monomial
-
-open Qq in
-def toExpr {n : Nat} (m : Monomial n) (ppCtx : Var → Q(ZMod $n)) : Q(ZMod $n) :=
-  if h : m.vars = [] then
-    toExprCoeff m.coeff
-  else
-    if m.coeff = 1 then
-      (m.vars.drop 1).foldl (fun acc v => q($acc * $(ppCtx v))) (ppCtx (m.vars.head h))
-    else
-      m.vars.foldl (fun acc v => q($acc * $(ppCtx v))) (toExprCoeff m.coeff)
-where
-  toExprCoeff (c : ZMod n) : Q(ZMod $n) :=
-    let l : Q(Nat) := Lean.mkRawNatLit c.val
-    q(OfNat.ofNat $l : ZMod $n)
-
 
 def neg (m : Monomial n) : Monomial n :=
   { m with coeff := -m.coeff }
@@ -52,12 +37,16 @@ def mul (m₁ m₂ : Monomial n) : Monomial n :=
   let vars := m₁.vars.foldr insert m₂.vars
   { coeff, vars }
 where
-  insert (x : Var) : List Var → List Var
-    | [] => [x]
-    | y :: ys => if x ≤ y then x :: y :: ys else y :: insert x ys
+  insert : Var × Nat → List (Var × Nat) → List (Var × Nat) := fun (x, xn) ys =>
+    match ys with
+    | [] => [(x, xn)]
+    | (y, yn) :: ys =>
+      if x < y then (x, xn) :: (y, yn) :: ys
+      else if y = x then (x, xn + yn) :: ys
+      else (y, yn) :: insert (x, xn) ys
 
 def denote (ctx : Context n) (m : Monomial n) : ZMod n :=
-  m.coeff * m.vars.foldl (fun acc v => acc * ctx v) 1
+  m.coeff * m.vars.foldl (fun acc (v, vn) => acc * (ctx v) ^ vn) 1
 
 theorem denote_neg {m : Monomial n} : m.neg.denote ctx = -m.denote ctx := by
   simp only [neg, denote, neg_mul_eq_neg_mul]
@@ -87,19 +76,32 @@ theorem foldr_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op
 
 end
 
+theorem foldl_mul_factor {ctx : Context n} (l : List (Var × Nat)) (z : ZMod n) :
+  List.foldl (fun acc (v, k) => acc * (ctx v) ^ k) z l =
+  z * List.foldl (fun acc (v, k) => acc * (ctx v) ^ k) 1 l := by
+  conv_lhs => rw [show z = z * 1 from (mul_one z).symm]
+  exact foldl_assoc mul_assoc z 1
+
 -- Can be generalized.
 theorem foldl_mul_insert {ctx : Context n} :
-  List.foldl (fun z a => z * (ctx a)) 1 (mul.insert y ys) =
-  (ctx y) * List.foldl (fun z a => z * (ctx a)) 1 ys := by
+  List.foldl (fun z (a, k) => z * (ctx a) ^ k) 1 (mul.insert (y, yn) ys) =
+  (ctx y) ^ yn * List.foldl (fun z (a, k) => z * (ctx a) ^ k) 1 ys := by
   induction ys with
   | nil => simp [mul.insert]
   | cons x ys ih =>
-    by_cases h : y ≤ x
-    --simp [mul.insert, h, foldl_assoc,]
-    · simp [mul.insert, h, foldl_assoc mul_assoc (ctx y) (ctx x)]
-    · simp only [mul.insert, h, List.foldl_cons, ite_false, mul_comm,
-                 foldl_assoc mul_assoc, ih]
-      rw [←mul_assoc, mul_comm (ctx x) (ctx y), mul_assoc]
+    obtain ⟨x, xn⟩ := x
+    by_cases h : y < x
+    · simp [mul.insert, h, foldl_assoc mul_assoc ((ctx y) ^ yn) ((ctx x) ^ xn)]
+    · simp only [mul.insert, h, if_false]
+      by_cases heq : x = y
+      · rw [if_pos heq, heq]
+        simp only [List.foldl_cons, one_mul, pow_add]
+        rw [foldl_assoc mul_assoc ((ctx y) ^ yn) ((ctx y) ^ xn)]
+      · rw [if_neg heq]
+        simp only [List.foldl_cons, one_mul]
+        rw [foldl_mul_factor _ ((ctx x) ^ xn), ih,
+            foldl_mul_factor ys ((ctx x) ^ xn),
+            ← mul_assoc, mul_comm ((ctx x) ^ xn) ((ctx y) ^ yn), mul_assoc]
 
 theorem denote_add {ctx: Context o} {m n : Monomial o} (h : m.vars = n.vars) :
   (m.add n h).denote ctx = m.denote ctx + n.denote ctx := by
@@ -111,7 +113,9 @@ theorem denote_mul{ctx: Context o}  {m₁ m₂ : Monomial o} : (m₁.mul m₂).d
   induction m₁.vars with
   | nil => simp
   | cons y ys ih =>
-    simp [foldl_mul_insert, ←foldl_assoc mul_assoc, ih]
+    obtain ⟨y, yn⟩ := y
+    rw [List.foldr_cons, foldl_mul_insert, ih, List.foldl_cons, one_mul,
+        foldl_mul_factor ys ((ctx y) ^ yn), mul_assoc]
 
 end Monomial
 
@@ -119,32 +123,16 @@ abbrev Polynomial n := List (Monomial n)
 
 namespace Polynomial
 
-
--- open Qq in
--- def toExpr {n : Nat} (m : Monomial n) (ppCtx : Var → Q(ZMod $n)) : Q(ZMod $n) :=
---   if h : m.vars = [] then
---     toExprCoeff m.coeff
---   else
---     if m.coeff = 1 then
---       (m.vars.drop 1).foldl (fun acc v => q($acc * $(ppCtx v))) (ppCtx (m.vars.head h))
---     else
---       m.vars.foldl (fun acc v => q($acc * $(ppCtx v))) (toExprCoeff m.coeff)
--- where
---   toExprCoeff (c : ZMod n) : Q(ZMod $n) :=
---     let l : Q(Nat) := Lean.mkRawNatLit c.val
---     q(OfNat.ofNat $l : ZMod $n)
-
-open Qq in
-def toExpr {n : Nat} (p : Polynomial n) (ppCtx : Var → Q(ZMod $n)) : Q(ZMod $n) :=
-  go p
-where
-  go : Polynomial n → Q(ZMod $n)
-    | [] => q(0)
-    | [m] => m.toExpr ppCtx
-    | m :: ms =>q($(m.toExpr ppCtx) + $(go ms))
-
 def neg (p : Polynomial n) : Polynomial n :=
   p.map Monomial.neg
+
+scoped instance [LT α] [LT β] : LT (α × β) where
+  lt := fun (x₁, y₁) (x₂, y₂) => x₁ < x₂ ∨ (x₁ = x₂ ∧ y₁ < y₂)
+
+scoped instance [LT α] [LT β] [DecidableLT α] [DecidableEq α] [DecidableLT β]
+  : DecidableLT (α × β) := fun (x₁, y₁) (x₂, y₂) =>
+  show Decidable (x₁ < x₂ ∨ x₁ = x₂ ∧ y₁ < y₂) from
+  inferInstance
 
 -- NOTE: implementation merges monomials with same variables.
 -- Invariant: monomials remain sorted.
@@ -172,6 +160,9 @@ def mulMonomial (m : Monomial n) (p : Polynomial n) : Polynomial n :=
 -- Invariant: monomials remain sorted.
 def mul (p q : Polynomial n) : Polynomial n :=
   p.foldl (fun acc m => (q.mulMonomial m).add acc) []
+
+def pow (p : Polynomial n) (k : Nat) : Polynomial n :=
+  k.repeat p.mul [{ coeff := 1, vars := [] }]
 
 def denote (ctx : Context n) (p : Polynomial n) : ZMod n :=
   p.foldl (fun acc m => acc + m.denote ctx) 0
@@ -262,6 +253,14 @@ theorem denote_mul {p q : Polynomial n} : (p.mul q).denote ctx = p.denote ctx * 
     simp only [List.foldl_cons, denote_cons, add_mul, ← ih]
     rw [denote_foldl, denote_add_insert, ←denote_mulMonomial, denote_nil_add, denote_foldl]
 
+theorem denote_pow {p : Polynomial n} {k : Nat} : (p.pow k).denote ctx = p.denote ctx ^ k := by
+  induction k with
+  | zero =>
+    simp [pow, Nat.repeat, denote, Monomial.denote]
+  | succ k ih =>
+    show (p.mul (p.pow k)).denote ctx = p.denote ctx ^ (k + 1)
+    rw [denote_mul, ih, pow_succ, mul_comm]
+
 end Polynomial
 
 inductive Expr (o : Nat) where
@@ -271,6 +270,7 @@ inductive Expr (o : Nat) where
   | add (a b : Expr o)
   | sub (a b : Expr o)
   | mul (a b : Expr o)
+  | pow (a : Expr o) (n : Nat)
 deriving DecidableEq, Inhabited, Repr
 
 namespace Expr
@@ -278,19 +278,21 @@ namespace Expr
 -- o is the modulus (a Nat), not a ZMod o element.
 def toPolynomial {o : Nat} : Expr o → Polynomial o
   | .val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
-  | .var v => [{ coeff := (1 : ZMod o), vars := [v] }]
+  | .var v => [{ coeff := (1 : ZMod o), vars := [(v, 1)] }]
   | .neg a => Polynomial.neg (toPolynomial a)
   | .add a b => Polynomial.add (toPolynomial a) (toPolynomial b)
   | .sub a b => Polynomial.sub (toPolynomial a) (toPolynomial b)
   | .mul a b => Polynomial.mul (toPolynomial a) (toPolynomial b)
+  | .pow a n => Polynomial.pow (toPolynomial a) n
 
 def eval (ctx : Context o) : Expr o → ZMod o
-  | val v => v
-  | var v => ctx v
-  | neg a => -a.eval ctx
-  | add a b => a.eval ctx + b.eval ctx
-  | sub a b => a.eval ctx - b.eval ctx
-  | mul a b => a.eval ctx * b.eval ctx
+  | .val v => v
+  | .var v => ctx v
+  | .neg a => -a.eval ctx
+  | .add a b => a.eval ctx + b.eval ctx
+  | .sub a b => a.eval ctx - b.eval ctx
+  | .mul a b => a.eval ctx * b.eval ctx
+  | .pow a n => a.eval ctx ^ n
 
 theorem eval_toPolynomial {e : Expr o} : eval ctx e  = (toPolynomial e).denote ctx := by
   induction e with
@@ -309,6 +311,8 @@ theorem eval_toPolynomial {e : Expr o} : eval ctx e  = (toPolynomial e).denote c
     simp only [eval, toPolynomial, Polynomial.denote_sub, ih₁, ih₂]
   | mul a b ih₁ ih₂ =>
     simp only [eval, toPolynomial, Polynomial.denote_mul, ih₁, ih₂]
+  | pow a n ih =>
+    simp only [eval, toPolynomial, Polynomial.denote_pow, ih]
 
 theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr o} (h : e₁.toPolynomial = e₂.toPolynomial)
   : e₁.eval ctx = e₂.eval ctx := by
@@ -354,11 +358,6 @@ def polyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId
 
   let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx  $l $r $hp)
   mv.assign he
-where
-  logPolynomial (n : Nat)  (e : Q(Expr $n)) (es : Array Q(ZMod $n)) := do
-    let p ← unsafe Meta.evalExpr (Expr n) q(Expr $n) e
-    let ppCtx := (es.getD · q(0))
-    logInfo m!"poly := {Polynomial.toExpr p.toPolynomial ppCtx}"
 
 def nativePolyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId) : MetaM Unit := do
   let ctx : Q(PolyNorm.Context $n) ← if h : 0 < is.size
@@ -368,24 +367,16 @@ def nativePolyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : 
   let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx $l $r $hp)
   mv.assign he
 where
-  logPolynomial (n:Nat) (e : Q(Expr $n)) (es : Array Q(ZMod $n)) := do
-    let p ← unsafe Meta.evalExpr (Expr n) q(Expr) e
-    let ppCtx := (es.getD · q(0))
-    logInfo m!"poly := {Polynomial.toExpr p.toPolynomial ppCtx}"
   nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
     let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
-    let auxDeclName ← mkNativeAuxDecl `_nativePolynorm q(Bool) q(decide $p)
-    let b : Q(Bool) := .const auxDeclName []
-    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
-  mkNativeAuxDecl (baseName : Name) (type value : Lean.Expr) : MetaM Name := do
-    let auxName ← Lean.mkAuxDeclName baseName
-    let decl := Declaration.defnDecl {
-      name := auxName, levelParams := [], type, value
-      hints := .abbrev
-      safety := .safe
-    }
-    addAndCompile decl
-    pure auxName
+    match ← Meta.nativeEqTrue `Smt.polynorm q(decide $p) with
+    | .notTrue =>
+      throwError m!"[poly_norm] evaluated that the proposition
+        {indentExpr q(decide $p)}\n\
+        is false"
+    | .success hdp =>
+      -- get instance from `d`
+      return .app q(@of_decide_eq_true $p $hp) hdp
 
 namespace Tactic
 
