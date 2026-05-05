@@ -1,0 +1,2 @@
+Test/Fin.lean:3:67: error: unable to prove goal, either it is false or you need to provide more facts. Try adding '+model' config option to display a potential counter-example (experimental).
+Test/Fin.lean:5:71: error: unable to prove goal, either it is false or you need to provide more facts. Try adding '+model' config option to display a potential counter-example (experimental).

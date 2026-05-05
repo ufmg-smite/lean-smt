@@ -9,6 +9,7 @@ import Smt.BitVec
 import Smt.Bool
 import Smt.Builtin
 import Smt.Datatype
+import Smt.Fin
 import Smt.Int
 import Smt.Nat
 import Smt.Options

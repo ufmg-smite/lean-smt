@@ -16,6 +16,22 @@ namespace Smt.Preprocess
 
 open Lean
 
+private def isFinType (e : Expr) : Bool :=
+  match e.consumeMData with
+  | .app (.const ``Fin []) _ => true
+  | _                        => false
+
+private def isEmbeddingType (includeRat : Bool) (e : Expr) : Bool :=
+  e.consumeMData.isConstOf ``Nat ||
+  e.consumeMData.isConstOf ``Bool ||
+  (includeRat && e.consumeMData.isConstOf ``Rat) ||
+  isFinType e
+
+private def isEmbeddingAssumptionType (includeRat : Bool) (e : Expr) : Bool :=
+  e.consumeMData.isConstOf ``Nat ||
+  (includeRat && e.consumeMData.isConstOf ``Rat) ||
+  isFinType e
+
 def hasType (e : Expr) (p : Expr → Bool) : Bool :=
   match e with
   | .forallE _ t b _ => p t || hasType b p
@@ -32,9 +48,9 @@ def embedding (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
   let ⟨_, _, fvs⟩ := (ts.push (← mv.getType)).foldl Lean.collectFVars {}
   let fvs ← Meta.sortFVarIds fvs
   -- Check if we need to do anything.
-  let bts := if (← getEnv).contains `Real then  #[``Nat, ``Rat, ``Bool] else #[``Nat, ``Bool]
+  let includeRat := (← getEnv).contains `Real
   let fvts ← fvs.mapM FVarId.getType
-  if !(fvts ++ ts.push (← mv.getType)).any (·.contains ((bts.map (.const · [])).contains ·)) then
+  if !(fvts ++ ts.push (← mv.getType)).any (·.contains (isEmbeddingType includeRat)) then
     return ⟨{}, hs, mv⟩
   -- Find the embedding simp theorems.
   let some thmsExt ← Meta.getSimpExtension? `embedding | throwError "embedding simp extension not found"
@@ -59,12 +75,11 @@ def embedding (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
   let ctx ← Meta.Simp.mkContext { zeta := false, singlePass := true } simpTheorems congrTheorems
   let (some mv, _) ← Meta.simpTarget mv ctx simpProcs (mayCloseGoal := false) | throwError "[embedding] simplification failed"
   -- Extend `fvs` to account for `nonneg` assumptions.
-  let bts := bts.pop -- Do not consider `Bool` for assumptions.
   let mut fvs' : Array (Option FVarId) := #[]
   for fv in fvs do
     fvs' := fvs'.push (some fv)
     let t ← fv.getType
-    if hasReturnType t ((bts.map (.const · [])).contains ·) then
+    if hasReturnType t (isEmbeddingAssumptionType includeRat) then
       fvs' := fvs'.push none
   -- Re-introduce all free vars (and their `nonneg` assumptions).
   let (fvs'', mv) ← mv.introNP fvs'.size
