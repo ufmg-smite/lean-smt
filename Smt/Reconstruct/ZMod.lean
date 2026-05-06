@@ -929,6 +929,13 @@ open Qq
 @[smt_proof_reconstruct] def reconstructFfProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
+  | .DISTINCT_VALUES =>
+    if !pf.getArguments[0]!.getSort!.isFiniteField then return none
+    let o : Nat := pf.getArguments[0]!.getSort!.getFiniteFieldSize!
+    let t : Q(ZMod $o) ← reconstructTerm pf.getArguments[0]!
+    let s : Q(ZMod $o) ← reconstructTerm pf.getArguments[1]!
+    let tac := if ← useNative then nativeDecide else decide
+    addThm q($t ≠ $s) (← tac q($t ≠ $s))
   | .REFL =>
     if pf.getArguments[0]!.getKind! != .FINITE_FIELD_IDEAL then return none
     let o : Nat := pf.getArguments[0]!.getSort!.getSetElementSort!.getFiniteFieldSize!

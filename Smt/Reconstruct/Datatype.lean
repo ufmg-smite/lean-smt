@@ -122,10 +122,8 @@ private def proveDistinctValues (t s : Expr) : MetaM Expr := do
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
   | .DISTINCT_VALUES =>
-    let sort := pf.getArguments[0]!.getSort!
-    if sort.getKind! == .DATATYPE_SORT && isBuiltinName sort.getDatatype!.getName!.toName then
-      return none
-    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort sort
+    if !pf.getArguments[0]!.getSort!.isDatatype then return none
+    let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]!.getSort!
     let t : Q($α) ← reconstructTerm pf.getArguments[0]!
     let s : Q($α) ← reconstructTerm pf.getArguments[1]!
     addTac q($t ≠ $s) fun mv => do
