@@ -76,7 +76,11 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
   let goalType : Q(Prop) ← mv.getType
   let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 1. Cleanup goal.
-  let mv₀ ← mv₀.cleanup (← hs.foldlM (fun s h => return (← (Expr.collectFVars h).run s).snd) {}).fvarIds
+  let lis ← Meta.getLocalInstances
+  let lis := lis.filterMap (Expr.fvarId? ∘ LocalInstance.fvar)
+  let lhs ← hs.foldlM (fun s h => return (← (Expr.collectFVars h).run s).snd) {}
+  let lhs := lhs.fvarIds
+  let mv₀ ← mv₀.cleanup (lis ++ lhs)
   trace[smt.preprocess] "after cleanup: {mv₀}"
   mv₀.withContext do
   -- 2. Preprocess the hints and goal.
