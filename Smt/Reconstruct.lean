@@ -10,11 +10,23 @@ import Qq
 
 import Smt.Attribute
 
+open Lean in
+/--
+`classical t` runs `t` in a scope where `Classical.propDecidable` is a low priority
+local instance.
+-/
+private def Lean.Meta.withClassical [Monad m] [MonadEnv m] [MonadFinally m] [MonadLiftT MetaM m] (t : m α) :
+    m α := do
+  modifyEnv Meta.instanceExtension.pushScope
+  Meta.addInstance ``Classical.propDecidable .local 100
+  try
+    t
+  finally
+    modifyEnv Meta.instanceExtension.popScope
+
 open Qq in
 def Lean.Meta.synthDecidableInstance (e : Q(Prop)) : MetaM Expr := do
-  let oh : Option Q(Decidable $e) ← Meta.synthInstance? q(Decidable $e)
-  let h : Q(Decidable $e) := oh.getD q(Classical.propDecidable $e)
-  return h
+  Meta.withClassical (Meta.synthInstance q(Decidable $e))
 
 namespace Smt
 
