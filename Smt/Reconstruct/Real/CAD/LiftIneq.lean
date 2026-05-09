@@ -38,30 +38,6 @@ partial def get_monoms (e : Q(Real)) : MetaM (List (Q(Real) × Bool)) := do
   | _ =>
     return [(e, false)]
 
--- Checks if the real number is castable to rat. Castable reals are:
---  · ofNat n
---  · Coe.coe Int Real i
---  · Coe.coe Rat Real i
---  · Div of two castable reals
---  · Neg of castable real
--- I believe these are all the cases that need to be consider after normalizing
--- the expression with `ring_nf` and taking the coefficients
-partial def rat_of_real (r: Q(Real)) : MetaM Q(Rat) :=
-  match r with
-  | ~q(@OfNat.ofNat Real $n $i) => return q(@OfNat.ofNat Rat $n _)
-  | ~q(@Coe.coe Nat Real $i $n) => return q(@OfNat.ofNat Rat $n _)
-  | ~q(@Coe.coe Int Real $i $n) => return q(@Int.cast Rat _ $n)
-  | ~q(@Coe.coe Rat Real $i $n) => return n
-  | ~q(@Neg.neg Real $i $n) => do
-    let n' ← rat_of_real n
-    return q(@Neg.neg Rat _ $n')
-  -- TODO: do we need to consider other HDivs?
-  | ~q(@HDiv.hDiv Real Real Real $i $e1 $e2) => do
-    let e1' ← rat_of_real e1
-    let e2' ← rat_of_real e2
-    return q(@HDiv.hDiv Rat Rat Rat _ $e1' $e2')
-  | _ => throwError "[rat_of_real]: unsupported"
-
 def natOfExpr (e: Q(Nat)) : MetaM Nat := do
   match e.rawNatLit? with
   | none =>
@@ -70,7 +46,35 @@ def natOfExpr (e: Q(Nat)) : MetaM Nat := do
     | _ => panic! "natOfExpr"
   | some n => return n
 
-partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat) × Nat) := do
+-- Checks if the real number is castable to rat. Castable reals are:
+--  · ofNat n
+--  · Coe.coe Int Real i
+--  · Coe.coe Rat Real i
+--  · Div of two castable reals
+--  · Neg of castable real
+-- I believe these are all the cases that need to be consider after normalizing
+-- the expression with `ring_nf` and taking the coefficients
+partial def rat_of_real (r: Q(Real)) : MetaM Rat :=
+  match r with
+  | ~q(@OfNat.ofNat Real $n $i) => return @OfNat.ofNat Rat (← natOfExpr n) _
+  | ~q(@Coe.coe Nat Real $i $n) => return @OfNat.ofNat Rat (← natOfExpr n) _
+  | ~q(@Coe.coe Int Real $i $n) => do
+    let n' ← unsafe evalExpr Int q(Int) n
+    return @Int.cast Rat _ n'
+  | ~q(@Coe.coe Rat Real $i $n) => do
+    let n' ← unsafe evalExpr Rat q(Rat) n
+    return n'
+  | ~q(@Neg.neg Real $i $n) => do
+    let n' ← rat_of_real n
+    return @Neg.neg Rat _ n'
+  -- TODO: do we need to consider other HDivs?
+  | ~q(@HDiv.hDiv Real Real Real $i $e1 $e2) => do
+    let e1' ← rat_of_real e1
+    let e2' ← rat_of_real e2
+    return @HDiv.hDiv Rat Rat Rat _ e1' e2'
+  | _ => throwError "[rat_of_real]: unsupported"
+
+partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Rat × Nat) := do
   let (monom, negated) := monom_neg
   -- TODO: refactor negated branching
   match monom with
@@ -80,23 +84,23 @@ partial def get_coeff_exp (monom_neg : Q(Real) × Bool) : MetaM (Q(Rat) × Nat) 
     -- TODO could it be that lhs is an application of neg? I don't think so, but this would break
     match lhs with
     | ~q(@HPow.hPow Real Nat Real _ $base $exp) =>
-      if negated then return (q(-$rhs), ← natOfExpr exp)
-      else return (q($rhs), ← natOfExpr exp)
+      if negated then return (-rhs, ← natOfExpr exp)
+      else return (rhs, ← natOfExpr exp)
     | _ =>
-      if negated then return (q(-$rhs), 1)
-      else return (q($rhs), 1)
+      if negated then return (-rhs, 1)
+      else return (rhs, 1)
   | _ =>
     if monom.hasFVar then
-      let exp: Q(Nat) ←
+      let exp: Nat ←
         match monom with
-        | ~q(@HPow.hPow Real Nat Real _ $base $exp) => return exp
-        | _ => return q(1)
-      if negated then return (q(-1), ← natOfExpr exp)
-      else return (q(1), ← natOfExpr exp)
+        | ~q(@HPow.hPow Real Nat Real _ $base $exp) => natOfExpr exp
+        | _ => return 1
+      if negated then return (-1, exp)
+      else return (1, exp)
     else
       let monom ← rat_of_real monom
-      if negated then return (q(-$monom), 0)
-      else return (q($monom), 0)
+      if negated then return (-monom, 0)
+      else return (monom, 0)
 
 -- sligthly different from toListExpr, but can't be implemented as a specialization of that
 def toListExpr' (es : List (Q(Rat) × Nat)) : Q(List (Rat × Nat)) :=
@@ -121,7 +125,7 @@ def get_comparison (ineq : Q(Prop)) : Expr :=
 @[simp, grind =]
 private def zero_rat : Rat := 0
 
-def gen_poly (coeffs_and_exps : List (Q(Rat) × Nat)) : Q(CPolynomial Rat) :=
+def gen_poly (coeffs_and_exps : List (Rat × Nat)) : Q(CPolynomial Rat) :=
   match coeffs_and_exps with
   | [] => q(C 0)
   | [(c, e)] =>
@@ -140,9 +144,28 @@ def gen_poly (coeffs_and_exps : List (Q(Rat) × Nat)) : Q(CPolynomial Rat) :=
     else
       q((CPolynomial.C $c) * ((X : CPolynomial Rat) ^ $e) + $p')
 
+def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
+  match coeffs_and_exps with
+  | [] => C 0
+  | [(c, e)] =>
+    if e == 0 then
+      C c
+    else if e == 1 then
+      C c * X
+    else
+      C c * X ^ e
+  | (c, e) :: tl =>
+    let p' : CPolynomial Rat := gen_poly' tl
+    if e == 0 then
+      C c + p'
+    else if e == 1 then
+      C c * X + p'
+    else
+      C c * X ^ e + p'
+
 -- retrieves a polynomial and a proof of inequality involving it,
 -- given a proof of an inequality involving a free variable
-def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × Expr) := do
+def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat × Expr) := do
   let t1 ← IO.monoMsNow
   -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
   let ineq_pf ← push_not ineq_pf
@@ -169,6 +192,7 @@ def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × Expr) := do
   logInfo m!"coeffs and exps took {t6 - t5}ms"
 
   let P := gen_poly coeffs_and_exps
+  let P_native := gen_poly' coeffs_and_exps
   let P_eval : Q(Real) := q((toPolyReal $P).eval $var)
   let P_eval_eq : Q(Prop) := q($P_eval = $lhs)
   let P_eval_eq_pf ← mkFreshExprMVar P_eval_eq
@@ -187,7 +211,7 @@ def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × Expr) := do
   let P_comp_pf ← rewriteMVar P_comp_mv.mvarId! P_eval_eq_pf
   P_comp_pf.assign ineq_pf
 
-  return (P, P_comp_mv)
+  return (P, P_native, P_comp_mv)
 
 open AlgebraicNumber
 
@@ -197,7 +221,7 @@ syntax (name := lift_ineq_tac) "lift_ineq" term "," term : tactic
   let e ← elabTerm stx[1] none
   let var ← elabTerm stx[3] none
   let g ← getMainGoal
-  let (P, ineq_pf) ← lift_ineq e var
+  let (P, _, ineq_pf) ← lift_ineq e var
   closeMainGoal .anonymous ineq_pf
 
 namespace tests_lift_ineq

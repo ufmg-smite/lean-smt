@@ -2,6 +2,7 @@ import Lean
 import Mathlib
 import CompPoly
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
+import Smt.Reconstruct.Real.CAD.RootVal
 import Smt.Reconstruct.Real.CAD.Sturm.Decidable
 
 open AlgebraicNumber
@@ -189,49 +190,57 @@ lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPoly
   unfold ratToRealHom at this ⊢
   finiteness
 
-def getSignProof (p : Q(CPolynomial Rat)) (a : Q(AlgNum)) : MetaM (Expr × Int) := do
-  let ta ← inferType a
-  if ta == .const ``Rat [] then
-    let a : Q(Rat) := a
-    let val : Int ← unsafe Meta.evalExpr Int q(Int) q(sgnC (CPolynomial.eval $a $p))
-    let pf: Expr ← do
+def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal) : MetaM (Expr × Int) := do
+  match a with
+  | .rat ea va =>
+    let ea : Q(Rat) := ea
+    let val := sgnC (p_native.eval va)
+    let pf ← do
       if val < 0 then
-        let goal := q(CPolynomial.eval $a $p < 0)
+        let goal := q(CPolynomial.eval $ea $p < 0)
         let pf_rat ← mkDecideProof goal
-        mkAppM ``eval_neg #[a, p, pf_rat]
+        mkAppM ``eval_neg #[ea, p, pf_rat]
       else if val = 0 then
-        let goal := q(CPolynomial.eval $a $p = 0)
+        let goal := q(CPolynomial.eval $ea $p = 0)
         let pf_rat ← mkDecideProof goal
-        mkAppM ``eval_zero #[a, p, pf_rat]
+        mkAppM ``eval_zero #[ea, p, pf_rat]
       else
-        let goal := q(CPolynomial.eval $a $p > 0)
+        let goal := q(CPolynomial.eval $ea $p > 0)
         let pf_rat ← mkDecideProof goal
-        mkAppM ``eval_pos #[a, p, pf_rat]
+        mkAppM ``eval_pos #[ea, p, pf_rat]
     return (pf, val)
-  let h1 : Q(Prop) := q(«$a».p.eval «$a».l ≠ 0)
-  let p1 : Q($h1) ← mkDecideProof h1
-  let h2 : Q(Prop) := q(«$a».p.eval «$a».r ≠ 0)
-  let p2 : Q($h2) ← mkDecideProof h2
-  let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $a $p1 $p2)
-  let seqVar : Q(Int) := q(seqVarSturmC_ab' «$a».p («$a».p.derivative * $p) «$a».l «$a».r)
-  let sign : Int ← unsafe Meta.evalExpr Int q(Int) seqVar
-  let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$a».p («$a».p.derivative * $p) «$a».l «$a».r = $sign)
-  let sign_reflection ← mkDecideProof sign_eq
-  let sign_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
-  if sign = -1 then
-    let sign_neg_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) < 0) ← mkAppM ``minus_one #[q(sgn ((toPolyReal $p).eval «$a».toReal)), sign_pf]
-    return (q((sgn_sgn_neg ((toPolyReal $p).eval «$a».toReal)).mp $sign_neg_pf), sign)
-  else if sign = 0 then
-    let sign_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) = 0) := sign_pf
-    return (q((sgn_sgn_zero ((toPolyReal $p).eval «$a».toReal)).mp $sign_pf), sign)
-  else
-    let sign_pos_pf : Q(sgn ((toPolyReal $p).eval «$a».toReal) > 0) ← mkAppM ``plus_one #[q(sgn ((toPolyReal $p).eval «$a».toReal)), sign_pf]
-    return (q((sgn_sgn_pos ((toPolyReal $p).eval «$a».toReal)).mp $sign_pos_pf), sign)
+  | .alg (ea : Q(AlgNum)) _ =>
+    let h1 : Q(Prop) := q(«$ea».p.eval «$ea».l ≠ 0)
+    let p1 : Q($h1) ← mkDecideProof h1
+    let h2 : Q(Prop) := q(«$ea».p.eval «$ea».r ≠ 0)
+    let p2 : Q($h2) ← mkDecideProof h2
+    let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $ea $p1 $p2)
+    let seqVar : Q(Int) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r)
+    let sign : Int ← unsafe Meta.evalExpr Int q(Int) seqVar
+    let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r = $sign)
+    let sign_reflection ← mkDecideProof sign_eq
+    let sign_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
+    if sign = -1 then
+      let sign_neg_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) < 0) ← mkAppM ``minus_one #[q(sgn ((toPolyReal $p).eval «$ea».toReal)), sign_pf]
+      return (q((sgn_sgn_neg ((toPolyReal $p).eval «$ea».toReal)).mp $sign_neg_pf), sign)
+    else if sign = 0 then
+      let sign_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) = 0) := sign_pf
+      return (q((sgn_sgn_zero ((toPolyReal $p).eval «$ea».toReal)).mp $sign_pf), sign)
+    else
+      let sign_pos_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) > 0) ← mkAppM ``plus_one #[q(sgn ((toPolyReal $p).eval «$ea».toReal)), sign_pf]
+      return (q((sgn_sgn_pos ((toPolyReal $p).eval «$ea».toReal)).mp $sign_pos_pf), sign)
 
 @[tactic compute_sign] def evalComputeSign : Tactic := fun stx => withMainContext do
   let p : Q(CPolynomial Rat) ← elabTerm stx[1] none
-  let a : Q(AlgNum) ← elabTerm stx[3] none
-  let v ← getSignProof p a
+  let p_native ← unsafe evalExpr (CPolynomial Rat) q(CPolynomial Rat) p
+  let a ← elabTerm stx[3] none
+  let ta ← inferType a
+  let v ← if ta == .const ``AlgNum [] then
+    let a : Q(AlgNum) := a
+    getSignProof p p_native (.alg a (← unsafe evalExpr Raw q(Raw) q(Subtype.val $a)))
+  else
+    let a : Q(Rat) := a
+    getSignProof p p_native (.rat a (← unsafe evalExpr Rat q(Rat) a))
   closeMainGoal .anonymous v.1
 
 namespace tests_sgn
