@@ -30,7 +30,7 @@ theorem Bool.xor_eq_true {x y : Bool} : (x ^^ y : Bool) ↔ (XOr (x : Prop) (y :
 theorem Bool.eq_eq_true {x y : Bool} : (x = y) ↔ ((x : Prop) = (y : Prop)) := by
   simp
 
-@[embedding ↓ low]
+/-- See `boolNeSimproc` for why we don't add this to the simp set directly. -/
 theorem Bool.ne_eq_true {x y : Bool} : (x ≠ y) ↔ ((x : Prop) ≠ (y : Prop)) := by
   simp
 
@@ -41,6 +41,10 @@ attribute [embedding ↓] cond_eq_ite
 @[embedding ↓]
 theorem ite_eq_true [Decidable c] : (if c then t else e) = true ↔ if c then (t = true) else (e = true) := by
   simp only [Bool.ite_eq_true_distrib]
+
+@[embedding ↓]
+theorem cond_eq_true : (bif c then t else e) = true ↔ bif c then (t = true) else (e = true) := by
+  simp only [Bool.cond_eq_true_distrib, Bool.cond_prop]
 
 private theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
   congr
@@ -90,6 +94,23 @@ simproc ↓ [embedding] boolEqSimproc (_ = _) := fun e => do
   let yAsProp ← mkEq y (mkConst ``true)
   let newExpr ← mkEq xAsProp yAsProp
   let iffPrf := mkApp2 (mkConst ``Bool.eq_eq_true) x y
+  let proof ← mkAppM ``propext #[iffPrf]
+  return .continue (some { expr := newExpr, proof? := some proof })
+
+open Lean Meta Simp in
+/-- This is a `simproc` rather than a plain simp lemma so we can skip the
+`¬(b = true)` case. Without this guard, `Bool.ne_eq_true` would re-expand
+the `¬(b = true)` produced by `Bool.not_eq_true''` into
+`(b = true) ≠ (true = true)`, which then collapses to `(b = true) ≠ True`,
+leaving spurious `≠ True` artifacts in the output. -/
+simproc ↓ [embedding] boolNeSimproc (_ ≠ _) := fun e => do
+  let_expr Ne α x y := e | return .continue
+  if !(α.isConstOf ``Bool) then return .continue
+  -- (x : Prop) is `x = true` by the Bool → Prop coercion
+  let xAsProp ← mkEq x (mkConst ``true)
+  let yAsProp ← mkEq y (mkConst ``true)
+  let newExpr ← mkAppM ``Ne #[xAsProp, yAsProp]
+  let iffPrf := mkApp2 (mkConst ``Bool.ne_eq_true) x y
   let proof ← mkAppM ``propext #[iffPrf]
   return .continue (some { expr := newExpr, proof? := some proof })
 
