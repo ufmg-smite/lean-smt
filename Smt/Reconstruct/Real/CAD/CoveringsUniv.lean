@@ -377,7 +377,7 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM
     | .alg _ raw => return RootVal.alg e' raw
   let hoist_after ← IO.monoMsNow
   logInfo m!"hoisting roots: {hoist_after - hoist_before}ms"
-  let rs_sorted ← genPfSortedLT rs
+  let (rs_sorted, rs) ← genPfSortedLT rs
   let sort_after ← IO.monoMsNow
   logInfo m!"proving sort time: {sort_after - hoist_after}ms"
   let mut polys_ineqs_roots_subsets : Array Data := #[]
@@ -403,7 +403,7 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM
       if sign = 0 then
         curr_roots := curr_roots.push r
         root_pfs := root_pfs.push sign_pf
-    let curr_roots_sorted ← genPfSortedLT curr_roots.toList
+    let (curr_roots_sorted, _) ← genPfSortedLT curr_roots.toList
 
     let curr_roots_e := toListExpr q(Real) (← curr_roots.toList.mapM RootVal.toReal)
     let curr_roots_subset_prop : Q(Prop) := q($curr_roots_e ⊆ $rs_e)
@@ -451,39 +451,39 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM
   mainMv.assign e.1
   replaceMainGoal e.2
 
-namespace main_tests
+/- namespace main_tests -/
 
-def a : Rat := -9
-def b : Rat := 0
-def c : Rat := 10
+/- def a : Rat := -9 -/
+/- def b : Rat := 0 -/
+/- def c : Rat := 10 -/
 
 /- lemma ex1 (x : Real) (h1 : x ≥ -9) (h2 : x < 10) (h3 : x * x * x * x > 0) (h4: (x * x * x * x * x * x * x * x ≤ 0)) : False := by -/
 /-   univ_cad x , [h1,h2,h3,h4] [a,b,c] -/
 
-def p2 : CPolynomial Rat := X - 3/2
-def r3 : Raw := ⟨p2, 7/5, 2⟩
-def R3 : AlgNum := by lift_alg_num r3
+/- def p2 : CPolynomial Rat := X - 3/2 -/
+/- def r3 : Raw := ⟨p2, 7/5, 2⟩ -/
+/- def R3 : AlgNum := by lift_alg_num r3 -/
 
-abbrev R3' : Rat := 3 / 2
+/- abbrev R3' : Rat := 3 / 2 -/
 
-def p1 : CPolynomial Rat := 10 • X ^ 2 + 2 • X + -15
+/- def p1 : CPolynomial Rat := 10 • X ^ 2 + 2 • X + -15 -/
 
-def r1 : Raw := ⟨p1, -3/2, -5/4⟩
-def R1 : AlgNum := by lift_alg_num r1
+/- def r1 : Raw := ⟨p1, -4/2, -6/4⟩ -/
+/- def R1 : AlgNum := by lift_alg_num r1 -/
 
-def r2 : Raw := ⟨p1, 1, 5/4⟩
-def R2 : AlgNum := by lift_alg_num r2
+/- def r2 : Raw := ⟨p1, 1, 5/4⟩ -/
+/- def R2 : AlgNum := by lift_alg_num r2 -/
 
 /- lemma exemplo (a : Real) (h1 : ¬ -1 * a ≥ -3 / 2) (h2 : a = 15 / 2 + -5 * (a * a)) : False := by -/
 /-   univ_cad a, [h1, h2] [R1, R2, R3'] -/
 
 /- #print axioms exemplo -/
 
-def zero_p : CPolynomial Rat := X
-def zero_r : Raw := ⟨zero_p, -1, 1⟩
-def zero : AlgNum := by lift_alg_num zero_r
+/- def zero_p : CPolynomial Rat := X -/
+/- def zero_r : Raw := ⟨zero_p, -1, 1⟩ -/
+/- def zero : AlgNum := by lift_alg_num zero_r -/
 
 /- example (x : Real) (h1 : x * x * x * x * x > 0) (h2 : x * x * x < 0) : False := by -/
 /-   univ_cad x, [h1, h2] [zero] -/
 
-end main_tests
+/- end main_tests -/

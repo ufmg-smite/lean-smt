@@ -41,3 +41,9 @@ def RootVal.ofExpr (e : Expr) : MetaM RootVal := do
 def RootVal.toReal : RootVal → MetaM Expr
   | .rat e _ => let q : Q(Rat) := e; return q(ratToReal $q)
   | .alg e _ => Meta.mkAppM ``AlgNum.toReal #[e]
+
+instance : ToString RootVal where
+  toString rv :=
+    match rv with
+    | .rat _ r => "Rat < " ++ toString r ++ " >"
+    | .alg _ a => "Alg < " ++ toString a ++ " >"

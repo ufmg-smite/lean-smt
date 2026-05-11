@@ -37,6 +37,12 @@ structure Raw where
   l: Rat
   r: Rat
 
+instance : ToString Raw where
+  toString r :=
+    let ⟨p, l, r⟩ := r
+    let p' : Array Rat := p
+    "( " ++ toString p' ++ ", " ++ toString l ++ ", " ++ toString r ++ " )"
+
 namespace Raw
 
 def wellDefined (a: Raw) : Prop :=
