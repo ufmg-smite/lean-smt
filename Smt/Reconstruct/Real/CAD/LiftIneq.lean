@@ -163,54 +163,50 @@ def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
     else
       C c * X ^ e + p'
 
+
 -- retrieves a polynomial and a proof of inequality involving it,
 -- given a proof of an inequality involving a free variable
 def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat × Expr) := do
-  let t1 ← IO.monoMsNow
   -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
   let ineq_pf ← push_not ineq_pf
-  let t2 ← IO.monoMsNow
-  logInfo m!"push neg took {t2 - t1}ms"
   -- Transform expressions of the form `a < b` in `a - b < 0`
   let ineq_pf ← all_to_lhs ineq_pf
-  let t3 ← IO.monoMsNow
-  logInfo m!"all_to_lhs took {t3 - t2}ms"
   -- Runs `ring_nf` at `ineq_pf`, transforming it into a sum of monomials and joining monomials of same degree
   let ineq_pf ← ring_normalize ineq_pf
-  let t4 ← IO.monoMsNow
-  logInfo m!"ring normalize took {t4 - t3}ms"
   -- Gets the expression on the left-hand side of the normalized `ineq_pf`
   let ineq ← inferType ineq_pf
   let lhs: Q(Real) := get_lhs ineq
   -- Gets the list of summands (monomial) in `lhs` (with a flag if they come from a subtraction)
   let monoms ← get_monoms lhs
-  let t5 ← IO.monoMsNow
-  logInfo m!"get_monoms took {t5 - t4}ms"
   -- Collects the coefficients and exponents in each monomial (and tries to cast the coefficients to Rat)
   let coeffs_and_exps ← monoms.mapM get_coeff_exp
-  let t6 ← IO.monoMsNow
-  logInfo m!"coeffs and exps took {t6 - t5}ms"
 
   let P := gen_poly coeffs_and_exps
   let P_native := gen_poly' coeffs_and_exps
   let P_eval : Q(Real) := q((toPolyReal $P).eval $var)
   let P_eval_eq : Q(Prop) := q($P_eval = $lhs)
   let P_eval_eq_pf ← mkFreshExprMVar P_eval_eq
-  let remaining_goal? ← simp' P_eval_eq_pf.mvarId!
-    (List.map mkConst [``toPolyReal.eq_1, ``ratToRealHom.eq_1, ``toPoly_add, ``toPoly_sub, ``toPoly_mul, ``toPoly_pow, ``C_toPoly, ``X_toPoly])
-  match remaining_goal? with
-  | some mv =>
-    let ok ← runGrind mv
-    if !ok then throwError "grind failed 7"
-  | none => pure ()
-  let t7 ← IO.monoMsNow
-  logInfo m!"eval = lhs took {t7 - t6}ms"
+  let some g1 ← simp_only P_eval_eq_pf.mvarId! (List.map mkConst [
+    ``toPolyReal.eq_1, ``ratToRealHom.eq_1,
+    ``CPolynomial.toPoly_add, ``CPolynomial.toPoly_sub, ``CPolynomial.toPoly_mul,
+    ``CPolynomial.toPoly_neg, ``CPolynomial.toPoly_pow, ``CPolynomial.X_toPoly,
+    ``CPolynomial.C_toPoly,
+  ]) | throwError "unreachable"
+  let some g2 ← simp_only g1 (List.map mkConst [
+      ``Polynomial.map_add, ``Polynomial.map_sub, ``Polynomial.map_mul, ``Polynomial.map_neg,
+      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C,
+  ]) | throwError "unreachable"
+  let some g3 ← simp_only g2 (List.map mkConst [
+      ``Polynomial.eval_add, ``Polynomial.eval_sub, ``Polynomial.eval_mul, ``Polynomial.eval_neg,
+      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``eq_ratCast
+  ]) | throwError "unreachable"
+  let some g4 ← push_cast g3 | throwError "unreachable"
+  Mathlib.Tactic.AtomM.run .reducible (Mathlib.Tactic.Ring.proveEq g4)
   let cmp: Q(Real -> Real -> Prop) := get_comparison ineq
   let P_comp : Q(Prop) := q($cmp $P_eval 0)
   let P_comp_mv ← mkFreshExprMVar P_comp
   let P_comp_pf ← rewriteMVar P_comp_mv.mvarId! P_eval_eq_pf
   P_comp_pf.assign ineq_pf
-
   return (P, P_native, P_comp_mv)
 
 open AlgebraicNumber
@@ -225,6 +221,21 @@ syntax (name := lift_ineq_tac) "lift_ineq" term "," term : tactic
   closeMainGoal .anonymous ineq_pf
 
 namespace tests_lift_ineq
+
+example (a : Real) : Polynomial.eval a (toPolyReal (CPolynomial.X ^ 5 + CPolynomial.C 10 * CPolynomial.X ^ 2 + (-CPolynomial.X) - CPolynomial.C (3/2))) = a ^ 5 + 10 * a ^ 2 - a - (3/2) := by
+    simp only [ toPolyReal, ratToRealHom,
+      -- toPoly pushes through the CPolynomial syntax
+      CPolynomial.toPoly_add, CPolynomial.toPoly_sub, CPolynomial.toPoly_mul,
+      CPolynomial.toPoly_neg, CPolynomial.toPoly_pow, CPolynomial.X_toPoly,
+      CPolynomial.C_toPoly,
+      -- map pushes through Polynomial syntax
+      Polynomial.map_add, Polynomial.map_sub, Polynomial.map_mul, Polynomial.map_neg,
+      Polynomial.map_pow, Polynomial.map_X, Polynomial.map_C,
+      -- eval pushes through Polynomial syntax
+      Polynomial.eval_add, Polynomial.eval_sub, Polynomial.eval_mul, Polynomial.eval_neg,
+      Polynomial.eval_pow, Polynomial.eval_X, Polynomial.eval_C, eq_ratCast]
+    push_cast
+    ring
 
 def p : CPolynomial Rat := -3/2 + X
 

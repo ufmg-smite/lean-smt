@@ -571,7 +571,6 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
       let ineq ← reconstructProof pf.getChildren[i]!
       ineqs := ineqs.push ineq
     let prep_after ← IO.monoMsNow
-    logInfo m!"preparation time: {prep_after - prep_before}ms"
     let (answer, []) ← univCadCore var ineqs.toList roots.toList | throwError "univCadCore failed"
     let recons_after ← IO.monoMsNow
     logInfo m!"reconstruction time: {recons_after - prep_after}ms"

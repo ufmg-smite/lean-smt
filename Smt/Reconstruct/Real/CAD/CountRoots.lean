@@ -21,25 +21,26 @@ lemma cast_int_eq {a b : Nat} : (a : Int) = (b : Int) → a = b := by
   intro h
   exact Int.ofNat_inj.mp h
 
-def gen_root_counting_proof (p : Q(CPolynomial ℚ)) : MetaM Expr := do
+def gen_root_counting_proof (p : Q(CPolynomial ℚ)) (p_native : CPolynomial Rat) : MetaM Expr := do
   let p_der : Q(CPolynomial ℚ) ← mkAppM ``CPolynomial.derivative #[p]
-  let seqVar ← mkAppM ``seqVarLineSturmC' #[p, p_der]
-  let seqVarVal : Int ← unsafe Meta.evalExpr Int (q(Int)) seqVar
-  let cpoly_seq : Q(Prop) := q(seqVarLineSturmC' $p $p_der = $seqVarVal)
+  let p_native_der := p_native.derivative
+  let seqVar_native : Int := seqVarLineSturmC' p_native p_native_der
+  let cpoly_seq : Q(Prop) := q(seqVarLineSturmC' $p $p_der = $seqVar_native)
   let cpoly_seq_pf ← mkDecideProof cpoly_seq
   let cpoly_poly ← mkAppM ``seqVarLineEquivSturm' #[p, p_der]
   let poly_roots_pf ← mkAppM ``Eq.trans #[cpoly_poly, cpoly_seq_pf]
   let poly_roots_pf' ← rewriteWithEq poly_roots_pf (← mkAppM ``der_toPoly_toReal #[p])
   let p_real : Q(Polynomial ℝ) := q(toPolyReal $p)
   let sturm_R_p ← mkAppM ``sturm_R #[p_real]
-  let intPf : Q((2 : Int) = 3) ← mkAppM ``Eq.trans #[sturm_R_p, poly_roots_pf']
+  let intPf ← mkAppM ``Eq.trans #[sturm_R_p, poly_roots_pf']
   mkAppM ``cast_int_eq #[intPf]
 
 syntax (name := count_roots) "count_roots" term : tactic
 
 @[tactic count_roots] def evalCountRoots : Tactic := fun stx => withMainContext do
   let p : Q(CPolynomial ℚ) ← elabTerm stx[1] none
-  let p_roots_pf ← gen_root_counting_proof p
+  let p_native ← unsafe evalExpr (CPolynomial Rat) q(CPolynomial Rat) p
+  let p_roots_pf ← gen_root_counting_proof p p_native
   closeMainGoal (.anonymous) p_roots_pf
 
 section Tests

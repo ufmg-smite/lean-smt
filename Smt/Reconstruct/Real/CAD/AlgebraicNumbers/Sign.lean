@@ -209,14 +209,13 @@ def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : Root
         let pf_rat ← mkDecideProof goal
         mkAppM ``eval_pos #[ea, p, pf_rat]
     return (pf, val)
-  | .alg (ea : Q(AlgNum)) _ =>
+  | .alg (ea : Q(AlgNum)) va =>
     let h1 : Q(Prop) := q(«$ea».p.eval «$ea».l ≠ 0)
     let p1 : Q($h1) ← mkDecideProof h1
     let h2 : Q(Prop) := q(«$ea».p.eval «$ea».r ≠ 0)
     let p2 : Q($h2) ← mkDecideProof h2
     let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $ea $p1 $p2)
-    let seqVar : Q(Int) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r)
-    let sign : Int ← unsafe Meta.evalExpr Int q(Int) seqVar
+    let sign : Int := seqVarSturmC_ab' va.p (va.p.derivative * p_native) va.l va.r
     let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r = $sign)
     let sign_reflection ← mkDecideProof sign_eq
     let sign_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]

@@ -125,7 +125,7 @@ where
 -- and produces a proof that the resulting list is sorted. Also returns the
 -- updated list.
 def genPfSortedLT (as : List RootVal) : MetaM (Expr × List RootVal) := do
-  let as_refined ← unsafe separateIntervals as
+  let as_refined ← separateIntervals as
   let pfs ← getPfs as_refined -- each pair is sorted
   let as_refined' : List Q(Real) ← as_refined.mapM RootVal.toReal
   let as_refined'' := toListExpr q(Real) as_refined'

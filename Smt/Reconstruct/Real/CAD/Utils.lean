@@ -41,6 +41,24 @@ def simp' (mvarId : MVarId) (hs : List Expr) (to_erase: List Name := []) : MetaM
   let (result?, _) ← simpTarget mvarId ctx (simprocs := #[simprocs])
   return result?
 
+def simp_only (mvarId : MVarId) (hs : List Expr) : MetaM (Option MVarId) := mvarId.withContext do
+  let congrTheorems ← getSimpCongrTheorems
+  let mut simpTheoremsArray : SimpTheoremsArray := #[]
+  for h in hs do
+    simpTheoremsArray ← SimpTheoremsArray.addTheorem simpTheoremsArray (.other `h) h
+  let simprocs ← Simp.getSimprocs
+  let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
+  let (result?, _) ← simpTarget mvarId ctx (simprocs := #[simprocs])
+  return result?
+
+def push_cast (mvarId : MVarId) : MetaM (Option MVarId) := mvarId.withContext do
+  let congrTheorems ← getSimpCongrTheorems
+  let simprocs ← Simp.getSimprocs
+  let thms ← Meta.NormCast.pushCastExt.getTheorems
+  let ctx ← Simp.mkContext (simpTheorems := #[thms]) (congrTheorems := congrTheorems)
+  let (result?, _) ← simpTarget mvarId ctx (simprocs := #[simprocs])
+  return result?
+
 def rewriteMVar (mvarId : MVarId) (eqProof : Expr) : MetaM MVarId :=
   mvarId.withContext do
     let tgt    ← mvarId.getType
