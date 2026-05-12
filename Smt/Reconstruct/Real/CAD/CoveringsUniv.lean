@@ -219,9 +219,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           let i:Q(Nat) := q(($idx - 2) / 2)
           let i_bound_prop : Q(Prop) := q($i < List.length $all_roots - 1)
           let mv_i_bound ← mkFreshExprMVar i_bound_prop
-          let ok ← runGrind mv_i_bound.mvarId!
-          if !ok then
-            throwError m!"grind failed 1"
+          normNum mv_i_bound.mvarId!
           let pf ← mkAppM ``no_roots_between_roots''
             #[poly', p_polyReal_ne_0, all_roots, roots, roots_pf, subset, all_roots_sorted, i, mv_i_bound]
 
