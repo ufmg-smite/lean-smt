@@ -15,6 +15,13 @@ import Smt.Translate.Query
 import Smt.Preprocess
 import Smt.Util
 
+initialize realStdout : IO.FS.Stream ← IO.getStdout
+initialize realStderr : IO.FS.Stream ← IO.getStderr
+
+def IO.printlnAndFlush {α} [ToString α] (a : α) : IO Unit := do
+  realStdout.putStrLn (toString a)
+  realStdout.flush
+
 namespace Smt
 
 open Lean hiding Command
@@ -73,6 +80,7 @@ def prepareSmtQuery (hs : List Expr) (fvNames : Std.HashMap FVarId String) : Met
 
 def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext do
   -- 0. Create a duplicate goal to preserve the original goal.
+  let t1 ← IO.monoMsNow
   let goalType : Q(Prop) ← mv.getType
   let mv₀ := (← Meta.mkFreshExprMVar (← mv.getType)).mvarId!
   -- 1. Cleanup goal.
@@ -89,7 +97,10 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
   let steps := if cfg.normalize then steps.push Preprocess.normalize else steps
   let steps := if cfg.embeddings then steps.push Preprocess.embedding else steps
   let ⟨map, hs₁, mv₁⟩ ← Preprocess.applySteps mv₀ hs steps
+  let t2 ← IO.monoMsNow
+  IO.printlnAndFlush s!"[preprocess] time = {t2 - t1}ms"
   mv₁.withContext do
+  let t1 ← IO.monoMsNow
   -- 3. Generate the SMT query.
   let (fvNames₁, fvNames₂) ← genUniqueFVarNames
   let cmds ← prepareSmtQuery hs₁.toList fvNames₁
@@ -102,8 +113,13 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     mv.withContext do trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
+  let t2 ← IO.monoMsNow
+  IO.printlnAndFlush s!"[translate] time = {t2 - t1}ms"
   let options := defaultSolverOptions ++ (if cfg.trust then [] else [("produce-proofs", "true")]) ++ cfg.extraSolverOptions
+  let t1 ← IO.monoMsNow
   let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (!cfg.trust) options
+  let t2 ← IO.monoMsNow
+  IO.printlnAndFlush s!"[solve] time = {t2 - t1}ms"
   -- trace[smt] "\nresult: {res}"
   match res with
   | .error e =>
@@ -116,6 +132,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     return .unknown r.toString
   | .ok (.unsat pf uc) =>
     -- 5.c Reconstruct unsat core proofs.
+    let t1 ← IO.monoMsNow
     let ctx := { userNames := fvNames₂, native := cfg.native }
     let (uc, _) ← (uc.mapM Reconstruct.reconstructTerm).run ctx {}
     trace[smt] "unsat core: {uc}"
@@ -136,6 +153,8 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let gs ← mv₃.apply (← Meta.mkAppOptM ``Prop.implies_false_of_not_and #[listExpr ps q(Prop)])
     mv₃.withContext (gs.forM (·.assumption))
     mv.assign (.mvar mv₀)
+    let t2 ← IO.monoMsNow
+    IO.printlnAndFlush s!"[reconstruct] time = {t2 - t1}ms"
     return .unsat mvs uc
   | .ok (.sat model) =>
     -- 5d. Return potential counter-example.
@@ -315,6 +334,7 @@ def evalSmtCore (cfg : TSyntax ``Parser.Tactic.optConfig) (hs : TSyntax ``smtHin
 @[tactic smt] def evalSmt : Tactic := fun stx => match stx with
   | `(tactic| smt $cfg:optConfig $hs:smtHints) => do
     _ ← evalSmtCore cfg hs
+    IO.printlnAndFlush s!"[check] start = {← IO.monoMsNow}ms"
   | _ => throwUnsupportedSyntax
 
 @[tactic smtTrace] def evalSmtTrace : Tactic := fun stx => withMainContext do
