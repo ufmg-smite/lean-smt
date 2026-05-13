@@ -9,7 +9,6 @@ open Lean Elab Tactic ToExpr Meta
 open Qq in
 def mkDecideProof' (p : Q(Prop)) : Smt.ReconstructM Expr := do
   if (← Smt.Reconstruct.useNative) then
-    logInfo m!"deciding with native!"
     let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
     let auxDeclName ← mkNativeAuxDecl `_nativeMkDecide q(Bool) q(decide $p)
     let b : Q(Bool) := .const auxDeclName []
