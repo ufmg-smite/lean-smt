@@ -1,4 +1,5 @@
 import Lean
+import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
 
@@ -38,7 +39,7 @@ def RootVal.ofExpr (e : Expr) : MetaM RootVal := do
   else
     throwError "[RootVal.ofExpr]: expected Rat or AlgNum, got {t}"
 
-def RootVal.toReal : RootVal → MetaM Expr
+def RootVal.toReal : RootVal → Smt.ReconstructM Expr
   | .rat e _ => let q : Q(Rat) := e; return q(ratToReal $q)
   | .alg e _ => Meta.mkAppM ``AlgNum.toReal #[e]
 

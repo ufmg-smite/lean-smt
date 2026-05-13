@@ -190,7 +190,7 @@ lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPoly
   unfold ratToRealHom at this ⊢
   finiteness
 
-def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal) : MetaM (Expr × Int) := do
+def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal) : Smt.ReconstructM (Expr × Int) := do
   match a with
   | .rat ea va =>
     let ea : Q(Rat) := ea
@@ -198,26 +198,26 @@ def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : Root
     let pf ← do
       if val < 0 then
         let goal := q(CPolynomial.eval $ea $p < 0)
-        let pf_rat ← mkDecideProof goal
+        let pf_rat ← mkDecideProof' goal
         mkAppM ``eval_neg #[ea, p, pf_rat]
       else if val = 0 then
         let goal := q(CPolynomial.eval $ea $p = 0)
-        let pf_rat ← mkDecideProof goal
+        let pf_rat ← mkDecideProof' goal
         mkAppM ``eval_zero #[ea, p, pf_rat]
       else
         let goal := q(CPolynomial.eval $ea $p > 0)
-        let pf_rat ← mkDecideProof goal
+        let pf_rat ← mkDecideProof' goal
         mkAppM ``eval_pos #[ea, p, pf_rat]
     return (pf, val)
   | .alg (ea : Q(AlgNum)) va =>
     let h1 : Q(Prop) := q(«$ea».p.eval «$ea».l ≠ 0)
-    let p1 : Q($h1) ← mkDecideProof h1
+    let p1 : Q($h1) ← mkDecideProof' h1
     let h2 : Q(Prop) := q(«$ea».p.eval «$ea».r ≠ 0)
-    let p2 : Q($h2) ← mkDecideProof h2
+    let p2 : Q($h2) ← mkDecideProof' h2
     let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $ea $p1 $p2)
     let sign : Int := seqVarSturmC_ab' va.p (va.p.derivative * p_native) va.l va.r
     let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r = $sign)
-    let sign_reflection ← mkDecideProof sign_eq
+    let sign_reflection ← mkDecideProof' sign_eq
     let sign_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
     if sign = -1 then
       let sign_neg_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) < 0) ← mkAppM ``minus_one #[q(sgn ((toPolyReal $p).eval «$ea».toReal)), sign_pf]
@@ -236,10 +236,10 @@ def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : Root
   let ta ← inferType a
   let v ← if ta == .const ``AlgNum [] then
     let a : Q(AlgNum) := a
-    getSignProof p p_native (.alg a (← unsafe evalExpr Raw q(Raw) q(Subtype.val $a)))
+    ((getSignProof p p_native (.alg a (← unsafe evalExpr Raw q(Raw) q(Subtype.val $a)))).run {}).run' {}
   else
     let a : Q(Rat) := a
-    getSignProof p p_native (.rat a (← unsafe evalExpr Rat q(Rat) a))
+    ((getSignProof p p_native (.rat a (← unsafe evalExpr Rat q(Rat) a))).run {}).run' {}
   closeMainGoal .anonymous v.1
 
 namespace tests_sgn

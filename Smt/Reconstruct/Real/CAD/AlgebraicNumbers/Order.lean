@@ -3,6 +3,7 @@ import Lean.Elab.Tactic.Basic
 import Qq
 
 import CompPoly
+import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.RootVal
 import Smt.Reconstruct.Real.CAD.Utils
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
@@ -39,32 +40,28 @@ lemma ratToReal_lt (a b : Rat) : a < b → ratToReal a < ratToReal b := by
   unfold ratToReal
   simp_all only [eq_ratCast, Rat.cast_lt]
 
-def gen_toReal_lt_rr (aE bE : Q(Rat)) : MetaM Expr := do
+def gen_toReal_lt_rr (aE bE : Q(Rat)) : Smt.ReconstructM Expr := do
   let goal ← mkAppM `LT.lt #[aE,bE]
-  let pf ← mkDecideProof goal
+  let pf ← mkDecideProof' goal
   mkAppM ``ratToReal_lt #[aE, bE, pf]
 
-partial def gen_toReal_lt_ra (aE bE : Expr) : MetaM Expr := do
+partial def gen_toReal_lt_ra (aE bE : Expr) : Smt.ReconstructM Expr := do
   let goal ← mkAppM `LT.lt #[aE, ← mkAppM ``AlgNum.l #[bE]]
-  let h ← mkDecideProof goal
+  let h ← mkDecideProof' goal
   mkAppM ``cmp_rat_alg_ra #[aE, bE, h]
 
-partial def gen_toReal_lt_ar (aE bE : Expr) : MetaM Expr := do
-  let aE : Q(AlgNum) := aE
-  let goal ← mkAppM `LT.lt #[q(AlgNum.r $aE), bE]
-  let h ← mkDecideProof goal
+partial def gen_toReal_lt_ar (aE bE : Expr) : Smt.ReconstructM Expr := do
+  let goal ← mkAppM `LT.lt #[← mkAppM ``AlgNum.r #[aE], bE]
+  let h ← mkDecideProof' goal
   mkAppM ``cmp_rat_alg_ar #[aE, bE, h]
 
-partial def gen_toReal_lt_aa (aE bE : Expr) : MetaM Expr := do
-  let t3 ← IO.monoMsNow
+partial def gen_toReal_lt_aa (aE bE : Expr) : Smt.ReconstructM Expr := do
   let goal ← mkAppM `LT.lt #[aE, bE]
-  let h ← mkDecideProof goal
-  let t4 ← IO.monoMsNow
-  logInfo m!"deciding that a < b took {t4 - t3}ms"
+  let h ← mkDecideProof' goal
   let pf ← mkAppM ``AlgebraicNumber.lt_toReal #[aE, bE, h]
   return pf
 
-partial def gen_toReal_lt (a b : RootVal) : MetaM Expr := do
+partial def gen_toReal_lt (a b : RootVal) : Smt.ReconstructM Expr := do
   match a, b with
   | .alg aE _, .alg bE _ => gen_toReal_lt_aa aE bE
   | .rat aE _, .rat bE _ => gen_toReal_lt_rr aE bE
@@ -78,7 +75,7 @@ def toListExpr (α : Q(Type*)) (es : List Q($α)) : Q(List $α) :=
     let tl' : Q(List $α) := toListExpr α tl
     q($hd :: $tl')
 
-def getPfs (as : List RootVal) : MetaM (List Expr) :=
+def getPfs (as : List RootVal) : Smt.ReconstructM (List Expr) :=
   match as with
   | [] => return []
   | _ :: [] => return []
@@ -87,7 +84,7 @@ def getPfs (as : List RootVal) : MetaM (List Expr) :=
     let pfs ← getPfs (a2 :: as)
     return pf :: pfs
 
-partial def separateIntervals (rs : List RootVal) : MetaM (List RootVal) :=
+partial def separateIntervals (rs : List RootVal) : Smt.ReconstructM (List RootVal) :=
   match rs with
   | [] => return []
   | [r] => return [r]
@@ -124,7 +121,7 @@ where
 -- given a list of RootVal, refines the intervals of the algebraic numbers
 -- and produces a proof that the resulting list is sorted. Also returns the
 -- updated list.
-def genPfSortedLT (as : List RootVal) : MetaM (Expr × List RootVal) := do
+def genPfSortedLT (as : List RootVal) : Smt.ReconstructM (Expr × List RootVal) := do
   let as_refined ← separateIntervals as
   let pfs ← getPfs as_refined -- each pair is sorted
   let as_refined' : List Q(Real) ← as_refined.mapM RootVal.toReal
@@ -147,6 +144,6 @@ def parse_cmp_alg_list : Syntax → TacticM (List Expr)
 @[tactic cmp_alg_list] def evalCmp_alg_list : Tactic := fun stx => withMainContext do
   let as ← parse_cmp_alg_list stx
   let rvs ← as.mapM (fun e => RootVal.ofExpr e)
-  let (e, rvs') ← genPfSortedLT rvs
+  let (e, rvs') ← ((genPfSortedLT rvs).run {}).run' {}
   logInfo m!"refined root list: {rvs'}"
   logInfo m!"got proof of: {← inferType e}"

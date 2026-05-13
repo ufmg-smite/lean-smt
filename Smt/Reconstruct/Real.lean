@@ -461,16 +461,6 @@ where
 def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
   let r : Rat := t.getRationalValue!
   return q($r)
-  /- let den_expr : Q(Nat) := Expr.lit (Literal.natVal r.den) -/
-  /- if r.num ≥ 0 then -/
-  /-   let num_nat := Int.toNat r.num -/
-  /-   let num_expr : Q(Nat) := Expr.lit (Literal.natVal num_nat) -/
-  /-   return q(($num_expr : Rat) / $den_expr) -/
-  /- else -/
-  /-   let neg_num_nat := Int.toNat (-r.num) -/
-  /-   let neg_num_nat_expr : Q(Nat) := Expr.lit (Literal.natVal neg_num_nat) -/
-  /-   let num_expr : Q(Int) := q(-$neg_num_nat_expr) -/
-  /-   return q(($num_expr : Rat) / $den_expr) -/
 
 @[smt_proof_reconstruct] def reconstructRealProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .EVALUATE =>
@@ -550,7 +540,6 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .ARITH_COVERINGS_UNIV =>
-    let prep_before ← IO.monoMsNow
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array RootVal := #[]
     for i in List.range' 1 (pf.getArguments.size - 1) do

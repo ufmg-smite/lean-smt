@@ -1,6 +1,7 @@
 import Lean
 import Lean.Meta.Tactic.Simp
 
+import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.CountRoots
 import Smt.Reconstruct.Real.CAD.LiftIneq
 import Smt.Reconstruct.Real.CAD.NormalizePoly
@@ -180,7 +181,7 @@ lemma sublist_sorted (l1 l2 : List Real) : l1.SortedLT → List.Sublist l2 l1 �
   grind
 
 -- Solves one of the intervals for univ_cad. Returns `some mv` if it is not supported yet
-def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List RootVal) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : MetaM (Option MVarId) := do
+def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List RootVal) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : Smt.ReconstructM (Option MVarId) := do
   let solve_case_pre ← IO.monoMsNow
   let result ← if idx % 2 = 0 then -- interval
     if idx != 0 ∧ idx < 2 * N then
@@ -204,7 +205,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         let mid: Q(Rat) := q(($Lr + $Rl) / 2)
         let mid_native : Rat := (Lr_native + Rl_native) / 2
         let lr_ord_prop : Q(Prop) := q($Lr < $Rl)
-        let lr_ord ← mkDecideProof lr_ord_prop
+        let lr_ord ← mkDecideProof' lr_ord_prop
         let mid_mem ←
           if L.isAlgNum && R.isAlgNum then mkAppM ``alg_midpoint_aa #[L.expr, R.expr, lr_ord]
           else if L.isAlgNum && !R.isAlgNum then mkAppM ``alg_midpoint_ar #[L.expr, R.expr, lr_ord]
@@ -226,7 +227,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           let s := sgnQ (CPolynomial.eval mid_native poly_native)
           if s < 0 then
             let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $mid $poly < 0)
-            let eval_neg ← mkDecideProof eval_neg_prop
+            let eval_neg ← mkDecideProof' eval_neg_prop
             let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
 
             let key ← mkAppM ``sign_stops_neg
@@ -236,7 +237,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             grind_context := grind_context.push ineq_pf
           else
             let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $mid $poly > 0)
-            let eval_pos ← mkDecideProof eval_pos_prop
+            let eval_pos ← mkDecideProof' eval_pos_prop
             let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
 
             let key ← mkAppM ``sign_stops_pos
@@ -275,14 +276,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let s := sgnQ (CPolynomial.eval pre_native poly_native)
             if s < 0 then
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pre $poly < 0)
-              let eval_neg ← mkDecideProof eval_neg_prop
+              let eval_neg ← mkDecideProof' eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
               let key ← mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pre $poly > 0)
-              let eval_pos ← mkDecideProof eval_pos_prop
+              let eval_pos ← mkDecideProof' eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
               let key ← mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
               grind_context := grind_context.push key
@@ -317,14 +318,14 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             let s := sgnQ (CPolynomial.eval pos_native poly_native)
             if s < 0 then
               let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pos $poly < 0)
-              let eval_neg ← mkDecideProof eval_neg_prop
+              let eval_neg ← mkDecideProof' eval_neg_prop
               let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
               let key ← mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
               grind_context := grind_context.push key
               grind_context := grind_context.push ineq_pf
             else
               let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pos $poly > 0)
-              let eval_pos ← mkDecideProof eval_pos_prop
+              let eval_pos ← mkDecideProof' eval_pos_prop
               let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
               let key ← mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
               grind_context := grind_context.push key
@@ -353,7 +354,7 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
   logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
   return result
 
-def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM (Expr × List MVarId) := do
+def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.ReconstructM (Expr × List MVarId) := do
   let rs ← rs.mapM fun rv => do
     let e' ← hoistExpr `_univCadRoot rv.expr
     match rv with
@@ -393,7 +394,7 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM
     let curr_roots_sorted ← mkAppM ``sublist_sorted #[rs_e, curr_roots_e, rs_sorted, mv_sublist]
 
     let P_ne_0_goal := q($P ≠ 0)
-    let P_ne_0 ← mkDecideProof P_ne_0_goal
+    let P_ne_0 ← mkDecideProof' P_ne_0_goal
     let roots_description ← computeSortedRootSet P P_ne_0 curr_roots_e P_roots_card curr_roots_sorted root_pfs.toList
     polys_ineqs_roots_subsets := polys_ineqs_roots_subsets.push (Data.mk P P_native P_ne_0 ineq_pf_P curr_roots_e roots_description pf_subset)
     let curr_ineq_pos ← IO.monoMsNow
@@ -427,13 +428,13 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : MetaM
 
   return (answer, unsolvedMvs)
 
-@[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do
-  let (x, ineq_pfs, rs) ← parseUnivCad stx
-  let rvs ← (rs.mapM RootVal.ofExpr : MetaM (List RootVal))
-  let e ← univCadCore x ineq_pfs rvs
-  let mainMv ← getMainGoal
-  mainMv.assign e.1
-  replaceMainGoal e.2
+/- @[tactic univ_cad] def evalUnivCad : Tactic := fun stx => withMainContext do -/
+/-   let (x, ineq_pfs, rs) ← parseUnivCad stx -/
+/-   let rvs ← (rs.mapM RootVal.ofExpr : MetaM (List RootVal)) -/
+/-   let e ← univCadCore false x ineq_pfs rvs -/
+/-   let mainMv ← getMainGoal -/
+/-   mainMv.assign e.1 -/
+/-   replaceMainGoal e.2 -/
 
 /- namespace main_tests -/
 

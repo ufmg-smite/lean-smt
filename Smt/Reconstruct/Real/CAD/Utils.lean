@@ -2,7 +2,29 @@ import Mathlib
 import Lean
 import CompPoly
 
+import Smt.Reconstruct
+
 open Lean Elab Tactic ToExpr Meta
+
+open Qq in
+def mkDecideProof' (p : Q(Prop)) : Smt.ReconstructM Expr := do
+  if (← Smt.Reconstruct.useNative) then
+    logInfo m!"deciding with native!"
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    let auxDeclName ← mkNativeAuxDecl `_nativeMkDecide q(Bool) q(decide $p)
+    let b : Q(Bool) := .const auxDeclName []
+    return .app q(@of_decide_eq_true $p $hp) (.app q(Lean.ofReduceBool $b true) q(Eq.refl true))
+  else mkDecideProof p
+where
+  mkNativeAuxDecl (baseName : Name) (type value : Expr) : MetaM Name := do
+    let auxName ← Lean.mkAuxDeclName baseName
+    let decl := Declaration.defnDecl {
+      name := auxName, levelParams := [], type, value
+      hints := .abbrev
+      safety := .safe
+    }
+    addAndCompile decl
+    pure auxName
 
 def normNum (mv : MVarId) : MetaM Unit := do
   let simpTheorems : Meta.SimpTheorems ← Meta.getSimpTheorems

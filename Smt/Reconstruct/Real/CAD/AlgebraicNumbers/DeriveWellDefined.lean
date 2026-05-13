@@ -1,6 +1,7 @@
 import Lean
 import Mathlib
 import CompPoly
+import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
 import Smt.Reconstruct.Real.CAD.Sturm.Decidable
 
@@ -126,24 +127,24 @@ instance (a : Raw) : Decidable a.sgnDiff := by
 
 syntax (name := lift_alg_num) "lift_alg_num" term : tactic
 
-def Raw.lift (r : Q(Raw)) : MetaM Q(AlgNum) := do
+def Raw.lift (r : Q(Raw)) : Smt.ReconstructM Q(AlgNum) := do
   let g1 : Q(Prop) := q(Raw.p $r ≠ 0)
-  let pf1 : Q($g1) ← mkDecideProof g1
+  let pf1 : Q($g1) ← mkDecideProof' g1
   let g2 : Q(Prop) := q((Raw.p $r).eval (Raw.l $r) ≠ 0)
-  let pf2 : Q($g2) ← mkDecideProof g2
+  let pf2 : Q($g2) ← mkDecideProof' g2
   let g3 : Q(Prop) := q((Raw.p $r).eval (Raw.r $r) ≠ 0)
-  let pf3 : Q($g3) ← mkDecideProof g3
+  let pf3 : Q($g3) ← mkDecideProof' g3
   let g4 : Q(Prop) := q((Raw.l $r) < (Raw.r $r))
-  let pf4 : Q($g4) ← mkDecideProof g4
+  let pf4 : Q($g4) ← mkDecideProof' g4
   let g5 : Q(Prop) := q(Raw.sgnDiff $r)
-  let pf5 : Q($g5) ← mkDecideProof g5
+  let pf5 : Q($g5) ← mkDecideProof' g5
   let g6 : Q(Prop) := q(seqVarSturmC_ab' (Raw.p $r) (Raw.p $r).derivative (Raw.l $r) (Raw.r $r) = 1)
-  let pf6 : Q($g6) ← mkDecideProof g6
+  let pf6 : Q($g6) ← mkDecideProof' g6
   return q(AlgNum.mk $r $pf1 $pf2 $pf3 $pf4 $pf5 $pf6)
 
 @[tactic lift_alg_num] def evalLiftAlgNum : Tactic := fun stx => withMainContext do
   let r: Q(Raw) ← elabTerm stx[1] none
-  let a: Q(AlgNum) ← Raw.lift r
+  let a: Q(AlgNum) ← ((Raw.lift r).run {}).run' {}
   closeMainGoal .anonymous a
 
 namespace tests
