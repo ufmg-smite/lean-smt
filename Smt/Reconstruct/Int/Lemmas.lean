@@ -62,11 +62,12 @@ theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
 theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by
   rw [Int.abs_mul x₁ x₂, Int.abs_mul y₁ y₂, h₁, h₂]
 
-theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂ ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
   rewrite [Int.abs_mul, Int.abs_mul]
   apply Int.mul_lt_mul h₁ (Int.le_of_eq h₂.left.symm) _ (Int.abs_nonneg x₁)
   rewrite [← h₂.left]
-  exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂) h₂.right.symm
+  exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂)
+    (fun h => h₂.right (Int.abs_eq_zero.mp h.symm))
 
 theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
   rw [Int.abs_mul, Int.abs_mul]

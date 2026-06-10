@@ -284,18 +284,25 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 
 def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
-    let l : Q(Int) ← reconstructTerm p.getResult[0]![0]!
-    let r : Q(Int) ← reconstructTerm p.getResult[1]![0]!
+    let k := p.getResult.getKind!
+    -- Premise shapes: `(rel (abs l) (abs r))` with rel ∈ {=, >}, or
+    -- `(and (= (abs l) (abs r)) (not (= (abs l) 0)))` for the GT-preserving case.
+    let (lt, rt) :=
+      if k == .AND then
+        (p.getResult[0]![0]![0]!, p.getResult[0]![1]![0]!)
+      else
+        (p.getResult[0]![0]!, p.getResult[1]![0]!)
+    let l : Q(Int) ← reconstructTerm lt
+    let r : Q(Int) ← reconstructTerm rt
     let lsl := q($ls * $l)
     let rsr := q($rs * $r)
-    let k := p.getResult.getKind!
     if ks == .EQUAL && k == .EQUAL then
       let hs : Q(«$ls».abs = «$rs».abs) := hs
       let h : Q(«$l».abs = «$r».abs) ← reconstructProof p
       return (.EQUAL, lsl, rsr, q(Int.mul_abs₁ $hs $h))
     else if ks == .GT && k == .AND then
       let hs : Q(«$ls».abs > «$rs».abs) := hs
-      let h : Q(«$l».abs = «$r».abs ∧ «$l».abs ≠ 0) ← reconstructProof p
+      let h : Q(«$l».abs = «$r».abs ∧ «$l» ≠ 0) ← reconstructProof p
       return (.GT, lsl, rsr, q(Int.mul_abs₂ $hs $h))
     else if ks == .GT && k == .GT then
       let hs : Q(«$ls».abs > «$rs».abs) := hs
