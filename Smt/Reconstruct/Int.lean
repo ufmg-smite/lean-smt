@@ -465,6 +465,19 @@ where
     if pf.getArguments[0]!.getKind! == .ABS then
       let x : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
       addThm q(«$x».abs = ite ($x < 0) (-$x) $x) q(@Int.abs_elim $x)
+    else if pf.getArguments[0]!.getKind! == .INTS_MODULUS_TOTAL then
+      let t : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
+      let s : Q(Int) ← reconstructTerm pf.getArguments[0]![1]!
+      addThm
+        q($t % $s = $t - $s * ($t / $s) ∧
+          ($s > 0 → $s * ($t / $s) ≤ $t ∧ $t < $s * ($t / $s + 1)) ∧
+          ($s < 0 → $s * ($t / $s) ≤ $t ∧ $t < $s * ($t / $s + -1)))
+        q(Int.mod_total_reduction $t $s)
+    else if pf.getArguments[0]!.getKind! == .INTS_MODULUS then
+      let t : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
+      let s : Q(Int) ← reconstructTerm pf.getArguments[0]![1]!
+      addThm q($t % $s = if $s = 0 then (fun (x : Int) => x % 0) $t else $t % $s)
+        q(Int.mod_reduction $t $s)
     else
       return none
   | .ARITH_POLY_NORM =>
