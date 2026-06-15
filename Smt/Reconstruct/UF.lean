@@ -46,7 +46,10 @@ def getFVarOrConstExpr! (n : String) : ReconstructM Expr := do
     let s := t.toString
     let endPos := (s.rawEndPos - t.getSort!.toString).decreaseBy 2
     let endPos := s.pos! (if endPos.dec.get? s == some '|' then endPos.dec else endPos)
-    let startPos := (endPos.revFind? (· != '_')).get!
+    let some sepPos := endPos.revFind? (· == '_') |
+      throwError "failed to parse uninterpreted sort value index: {s}"
+    let some startPos := sepPos.next? |
+      throwError "failed to parse uninterpreted sort value index: {s}"
     let i : Nat := (s.extract startPos endPos).toNat!
     if h : i < n then
       let i : Fin n := ⟨i, h⟩
