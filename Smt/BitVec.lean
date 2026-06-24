@@ -6,4 +6,5 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Smt.Reconstruct.BitVec
+import Smt.Reconstruct.BitVec.Rewrites
 import Smt.Translate.BitVec
