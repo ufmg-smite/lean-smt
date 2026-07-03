@@ -28,7 +28,12 @@ theorem sineApproxBelowPos {x : ℝ} (d : Nat) (hx : 0 ≤ x):
   p d x ≤ sin x := by
   intro p; simp only [tsub_le_iff_right, p]
   cases' lt_or_eq_of_le hx with hx hx
-  · have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange (n := d) hx (ContDiff.contDiffOn contDiff_sin) (DifferentiableOn_iteratedDerivWithin contDiff_sin hx)
+  · have h : DifferentiableOn ℝ (iteratedDerivWithin d sin (uIcc 0 x)) (uIoo 0 x) := by
+      rw [uIcc_of_le (le_of_lt hx), uIoo_of_lt hx]
+      exact DifferentiableOn_iteratedDerivWithin contDiff_sin hx
+    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange (n := d) (ne_of_lt hx) (ContDiff.contDiffOn contDiff_sin) h
+    rw [uIoo_of_lt hx] at hx'
+    rw [uIcc_of_le (le_of_lt hx)] at H
     have : taylorWithinEval sin d (Icc 0 x) 0 = taylorWithinEval sin d Set.univ 0 := by
       apply taylorWithinEval_eq
       · simp; exact le_of_lt hx
