@@ -1,12 +1,20 @@
-Test/Rat/linarith.lean:106:9: warning: unused variable `a`
+Test/Rat/linarith.lean:106:9: warning: Variable name `a` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:106:13: warning: unused variable `c`
+Test/Rat/linarith.lean:106:13: warning: Variable name `c` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:116:9: warning: unused variable `a`
+Test/Rat/linarith.lean:116:9: warning: Variable name `a` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Rat/linarith.lean:116:13: warning: unused variable `c`
+Test/Rat/linarith.lean:116:13: warning: Variable name `c` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

@@ -1,3 +1,5 @@
-Test/Unit/Datatype.lean:43:61: warning: unused variable `div2`
+Test/Unit/Datatype.lean:43:61: warning: Variable name `div2` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`

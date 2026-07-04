@@ -381,7 +381,8 @@ theorem denote_toPolynomial {e : RatExpr} : e.denote ictx rctx = e.toPolynomial.
   | divConst a c ih =>
     simp only [denote, toPolynomial, Polynomial.denote_divConst, ih]
   | cast a =>
-    simpa only [denote] using IntExpr.denote_toPolynomial
+    simp only [denote]
+    exact IntExpr.denote_toPolynomial
 
 theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : RatExpr} (h : e₁.toPolynomial = e₂.toPolynomial) : e₁.denote ictx rctx = e₂.denote ictx rctx := by
   rw [denote_toPolynomial, denote_toPolynomial, h]

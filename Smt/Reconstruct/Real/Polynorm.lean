@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
+import Lean.Meta.Native
 import Mathlib.Data.Rat.Cast.CharZero
 import Mathlib.Data.Real.Basic
 import Mathlib.Util.AtLocation
@@ -395,7 +396,8 @@ theorem denote_toPolynomial {e : RealExpr} : e.denote ictx rctx = e.toPolynomial
   | divConst a c ih =>
     simp only [denote, toPolynomial, Polynomial.denote_divConst, RealValExpr.eval_eq_denote, ih]
   | cast a =>
-    simpa only [denote] using IntExpr.denote_toPolynomial
+    simp only [denote]
+    exact IntExpr.denote_toPolynomial
 
 theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : RealExpr} (h : e₁.toPolynomial = e₂.toPolynomial) : e₁.denote ictx rctx = e₂.denote ictx rctx := by
   rw [denote_toPolynomial, denote_toPolynomial, h]

@@ -1,7 +1,11 @@
-Test/Unit/Embedding.lean:32:22: warning: unused variable `h`
+Test/Unit/Embedding.lean:32:22: warning: Variable name `h` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Unit/Embedding.lean:32:35: warning: unused variable `h2`
+Test/Unit/Embedding.lean:32:35: warning: Variable name `h2` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 Try this:
@@ -89,9 +93,13 @@ y : ℤ
 h : ↑y = x
 h' : f x y ≠ f ↑y ⌊x⌋
 ⊢ False
-Test/Unit/Embedding.lean:372:108: warning: unused variable `next`
+Test/Unit/Embedding.lean:372:108: warning: Variable name `next` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
-Test/Unit/Embedding.lean:373:3: warning: unused variable `st_leader`
+Test/Unit/Embedding.lean:373:3: warning: Variable name `st_leader` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
