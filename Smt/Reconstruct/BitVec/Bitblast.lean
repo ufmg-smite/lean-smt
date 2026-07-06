@@ -33,7 +33,7 @@ where
     | 0     => x.getLsbD (w - 1) == y.getLsbD (w - 1)
     | i + 1 => x.getLsbD ((w - 1) - (i + 1)) == y.getLsbD ((w - 1) - (i + 1)) && go i
 
-def eq_eq_beq (x : BitVec w) (y : BitVec w) : (x = y) = x.beq y :=
+theorem eq_eq_beq (x : BitVec w) (y : BitVec w) : (x = y) = x.beq y :=
   sorry
 
 /-- Carry function for bitwise addition. -/

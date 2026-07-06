@@ -143,7 +143,7 @@ theorem orImplies₃ : ∀ {p q : Prop}, p ∨ q → ¬ p → q := by
   | inl p => exact False.elim (np p)
   | inr q => exact q
 
-def impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
+theorem impliesElim : ∀ {p q : Prop}, (p → q) → ¬ p ∨ q :=
   by intros p q h
      exact match Classical.em p with
      | Or.inl pp =>  Or.inr (h pp)

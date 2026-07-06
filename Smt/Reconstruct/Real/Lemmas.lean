@@ -7,7 +7,7 @@ Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 
 import Mathlib.Algebra.Order.Archimedean.Real.Basic
 
-private def uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁ ∧ p₂) → p₃ := by
+private theorem uncurry {p₁ p₂ p₃ : Prop} : (p₁ → p₂ → p₃) → (p₁ ∧ p₂) → p₃ := by
   intros h₁ h₂
   have ⟨ht₁, ht₂⟩ := h₂
   exact h₁ ht₁ ht₂

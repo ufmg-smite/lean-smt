@@ -42,7 +42,7 @@ def absorb (mv : MVarId) (zero op : Expr) : MetaM Unit := do
   let op : Q($α → $α → $α) ← pure op
   let hα : Q(Absorb $op) ← Meta.synthInstance q(Absorb $op)
   let (l, is) ← (reify zero op l).run #[]
-  let ctx : Q(Absorb.Context) ← if h : 0 < is.size
+  let ctx : Q(Absorb.Context $α) ← if h : 0 < is.size
     then do let is : Q(RArray $α) ← (RArray.ofArray is h).toExpr q($α) id; pure q(«$is».get)
     else pure q(fun _ => «$hα».zero)
   let h : Q(«$l».containsZero) := .app q(@Eq.refl.{1} Bool) q(true)
@@ -56,7 +56,7 @@ def nativeAbsorb (mv : MVarId) (zero op : Expr) : MetaM Unit := do
   let op : Q($α → $α → $α) ← pure op
   let hα : Q(Absorb $op) ← Meta.synthInstance q(Absorb $op)
   let (l, is) ← (reify zero op l).run #[]
-  let ctx : Q(Absorb.Context) ← if h : 0 < is.size
+  let ctx : Q(Absorb.Context $α) ← if h : 0 < is.size
     then do let is : Q(RArray $α) ← (RArray.ofArray is h).toExpr q($α) id; pure q(«$is».get)
     else pure q(fun _ => «$hα».zero)
   let h ← nativeDecide q(«$l».containsZero)

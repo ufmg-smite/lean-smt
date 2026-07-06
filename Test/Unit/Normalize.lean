@@ -43,7 +43,7 @@ example : Int.sub x (Int.ofNat 1) = x - 1 := by
 example (x : Int) : Int.add x (Int.ofNat 1) = Int.add (Int.ofNat 1) x := by
   smt
 
-def t (p : Prop) : p ↔ p := by simp
+theorem t (p : Prop) : p ↔ p := by simp
 
 example (p q r : Prop) (ht : True) (hpqr : (p ↔ q) ∧ (q ↔ r)) (ht' : True) : p ↔ r := by
   smt_normalize [hpqr, ht, ht', t]
