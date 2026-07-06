@@ -8,7 +8,7 @@ Authors: Abdalrhman Mohamed
 import Smt.Reconstruct.Int.Core
 import Smt.Reconstruct.Real.Core
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import Mathlib.Data.Real.Archimedean
+import Mathlib.Algebra.Order.Archimedean.Real.Basic
 
 namespace Smt.Reconstruct.Real.Rewrite
 

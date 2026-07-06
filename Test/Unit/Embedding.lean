@@ -396,7 +396,7 @@ private theorem more_complex (node : Type) [node_dec_eq : DecidableEq node] (sen
     ∀ (a a_1 : node), st'_pending a a_1 = if sender = a ∧ n = a_1 then x else st_pending a a_1)
   (h : sender = n)
   (N M : node) : st'_leader N = true → st'_leader M = true → N = M := by
-  smt (config := { extraSolverOptions := [("finite-model-find", "true")] })
+  smt (extraSolverOptions := [("finite-model-find", "true")])
   [hinv_left, h, a_right_left, a_right_right_1_1_left_left, a_right_right_1_1_left_right,
     tot_le_refl, tot_le_trans, tot_le_antisymm, tot_le_total, hinv_right_left,
     hinv_right_right_right, btwn_btw_ring, btwn_btw_trans, btwn_btw_side, btwn_btw_total,

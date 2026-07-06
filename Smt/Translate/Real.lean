@@ -6,7 +6,7 @@ Authors: Abdalrhman Mohamed
 -/
 
 import Smt.Recognizers
-import Mathlib.Data.Real.Archimedean
+import Mathlib.Algebra.Order.Archimedean.Real.Basic
 
 import Smt.Translate
 
