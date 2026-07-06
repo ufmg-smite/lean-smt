@@ -19,12 +19,12 @@ def groupPrefixLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
 | _, 0, _, e => pure e
 | props, i_iter + 1, i,  e => do
   let rc ← groupPrefixLemmas' props i_iter i e
-  mkAppOptM ``congOrLeft #[none, none, props.get! (i - i_iter - 1), rc]
+  mkAppOptM ``congOrLeft #[none, none, props[(i - i_iter - 1)]!, rc]
 
 def groupPrefixLemmasCore : Name → List Expr → Nat → MetaM (List Expr)
 | nm, props, n =>
   let f := fun i: Nat => do
-    let a₁ := props.get! i
+    let a₁ := props[i]!
     let a₂ ← createOrChain $ List.take (n - i) (props.drop (i + 1))
     let a₃ ← createOrChain $ props.drop (n + 1)
     let appliedArgs :=
@@ -40,7 +40,7 @@ def groupMiddleLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
 | _, 0, _, e => pure e
 | sufProps, iter + 1, init, e => do
   let rc ← groupMiddleLemmas' sufProps iter init e
-  mkAppOptM ``congOrLeft #[none, none, sufProps.get! (init - iter - 1), rc]
+  mkAppOptM ``congOrLeft #[none, none, sufProps[(init - iter - 1)]!, rc]
 
 -- NOT a generalization of groupPrefixLemmas
 -- exclusively used for pullMiddle (step₂)
@@ -48,9 +48,9 @@ def groupMiddleLemmas : List Expr → Nat → MetaM (List Expr)
 | sufProps, groupSize =>
   let f := fun i: Nat => do
     let middleSize := groupSize + 1
-    let a₁ := sufProps.get! i
+    let a₁ := sufProps[i]!
     let a₂ ← createOrChain $ List.take (groupSize - i - 1) (sufProps.drop (i + 1))
-    let a₃ := sufProps.get! (middleSize - 1)
+    let a₃ := sufProps[(middleSize - 1)]!
     let appliedArgs :=
       mkApp (mkApp (mkApp (mkConst ``orAssocDir) a₁) a₂) a₃
     groupMiddleLemmas' sufProps i i appliedArgs
@@ -60,13 +60,13 @@ def ungroupMiddleLemmas' : List Expr → Nat → Nat → Expr → MetaM Expr
 | _, 0, _, e => pure e
 | props, iter + 1, init, e => do
   let rc ← ungroupMiddleLemmas' props iter init e
-  let r := props.get! (init - iter - 1)
+  let r := props[(init - iter - 1)]!
   mkAppOptM ``congOrLeft #[none, none, r, rc]
 
 def ungroupMiddleLemmas : List Expr → Nat → Nat → MetaM (List Expr)
 | props, groupStart, groupSize =>
   let f := fun i: Nat => do
-    let a₁ := props.get! i
+    let a₁ := props[i]!
     let a₂ ← createOrChain (subList (i + 1) (groupStart + groupSize - 1) props)
     let a₃ ← createOrChain $ props.drop (groupStart + groupSize)
     let appliedArgs :=

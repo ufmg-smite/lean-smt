@@ -138,11 +138,14 @@ theorem taylor_mean_remainder_lagrange₁ {f : ℝ → ℝ} {x x₀ : ℝ} (n : 
     ∃ x' ∈ Ioo x x₀, f x - taylorWithinEval f n (Icc x x₀) x₀ x =
       iteratedDerivWithin (n + 1) f (Icc x x₀) x' * (x - x₀) ^ (n + 1) / (n + 1)! := by
   have H1 : ContDiff ℝ (⊤ : ℕ∞) fun p => f (-p) := (show (f ∘ (fun x => -x)) = (fun p => f (-p)) by rfl) ▸ ContDiff.comp hf contDiff_neg
-  have H2 : DifferentiableOn ℝ (iteratedDerivWithin n (fun x => f (-x)) (Icc (-x₀) (-x))) (Ioo (-x₀) (-x)) := by
+  have H2 : DifferentiableOn ℝ (iteratedDerivWithin n (fun x => f (-x)) (uIcc (-x₀) (-x))) (uIoo (-x₀) (-x)) := by
+    rw [uIcc_of_le (le_of_lt (neg_lt_neg hx)), uIoo_of_lt (neg_lt_neg hx)]
     apply DifferentiableOn.mono _ Set.Ioo_subset_Icc_self
     apply ContDiffOn.differentiableOn_iteratedDerivWithin (n := n + 1) _ (by norm_cast; simp) (uniqueDiffOn_Icc (neg_lt_neg hx))
     apply ContDiff.contDiffOn ((contDiff_infty.mp H1) (n + 1))
-  have ⟨x' , hx', H⟩:= taylor_mean_remainder_lagrange (f := fun x => f (-x)) (n := n) (neg_lt_neg hx) (ContDiff.contDiffOn ((contDiff_infty.mp H1) n)) H2
+  have ⟨x' , hx', H⟩:= taylor_mean_remainder_lagrange (f := fun x => f (-x)) (n := n) (ne_of_lt (neg_lt_neg hx)) (ContDiff.contDiffOn ((contDiff_infty.mp H1) n)) H2
+  rw [uIoo_of_lt (neg_lt_neg hx)] at hx'
+  rw [uIcc_of_le (le_of_lt (neg_lt_neg hx))] at H
   have hx'' : -x' ∈ Ioo x x₀ := by
     simp at *
     apply And.intro

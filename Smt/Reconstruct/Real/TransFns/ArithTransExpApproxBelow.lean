@@ -26,11 +26,14 @@ theorem DifferentiableOn_iteratedDerivWithin {f : ℝ → ℝ} (hf : ContDiff �
 -- can definitely be shortened. same proof below
 theorem arithTransExpApproxBelow₁ (x : ℝ) (d n : ℕ) (_ : d = 2 * n + 1) (hx : 0 < x) :
     Real.exp x ≥ taylorWithinEval Real.exp d Set.univ 0 x := by
-    have h2 : DifferentiableOn ℝ (iteratedDerivWithin d rexp (Icc 0 x)) (Ioo 0 x) := by
+    have h2 : DifferentiableOn ℝ (iteratedDerivWithin d rexp (uIcc 0 x)) (uIoo 0 x) := by
+        rw [uIcc_of_le (le_of_lt hx), uIoo_of_lt hx]
         apply DifferentiableOn.mono _ Set.Ioo_subset_Icc_self
         apply ContDiffOn.differentiableOn_iteratedDerivWithin (n := d + 1) _ (by norm_cast; simp) (uniqueDiffOn_Icc hx)
         apply ContDiff.contDiffOn ((contDiff_infty.mp contDiff_exp) _)
-    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange hx (ContDiff.contDiffOn (s := Icc 0 x) (n := d) contDiff_exp) h2
+    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange (ne_of_lt hx) (ContDiff.contDiffOn (s := uIcc 0 x) (n := d) contDiff_exp) h2
+    rw [uIoo_of_lt hx] at hx'
+    rw [uIcc_of_le (le_of_lt hx)] at H
     rw [taylorWithinEval_eq _ (left_mem_Icc.mpr (le_of_lt hx)) (uniqueDiffOn_Icc hx) contDiff_exp] at H
     rw [ge_iff_le, ←sub_nonneg, H]
     rw [iteratedDerivWithin_eq_iteratedDeriv contDiff_exp (uniqueDiffOn_Icc hx) _ (Ioo_subset_Icc_self hx'), iteratedDeriv_exp]

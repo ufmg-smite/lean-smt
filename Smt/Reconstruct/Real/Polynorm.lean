@@ -521,7 +521,7 @@ def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
 open Mathlib.Meta.NormNum Mathlib.Tactic in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
   let simpCtx ← Meta.Simp.mkContext
-  let remainingGoal? ← (transformAtTarget (fun e ctx ↦ deriveSimp ctx (useSimp := true) e) "norm_num" (failIfUnchanged := false) mv).run simpCtx
+  let remainingGoal? ← (transformAtTarget (fun e ctx ↦ deriveSimp ctx (useSimp := true) e) "norm_num" (ifUnchanged := .silent) mv).run simpCtx
   match remainingGoal? with
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()
