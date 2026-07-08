@@ -50,6 +50,9 @@ Run tests.
       continue
     if file.components.contains "Examples" then
       continue
+    -- Test/Real imports Smt.Real, which does not build without mathlib
+    if file.components.contains "Real" then
+      continue
     if file.extension = some "lean" then
       tests := tests.push file
     else if file.extension = some "expected" then
