@@ -50,8 +50,10 @@ Run tests.
       continue
     if file.components.contains "Examples" then
       continue
-    -- Test/Real imports Smt.Real, which does not build without mathlib
-    if file.components.contains "Real" then
+    -- In the no_mathlib branch specifically, we also exclude all tests which require mathlib
+    let mathlibTests : Array FilePath :=
+      #["Test" / "Auto.lean", "Test" / "linarith.lean", "Test" / "Unit" / "Embedding.lean", "Test" / "Unit" / "Real.lean"]
+    if mathlibTests.contains file || file.components.contains "Real" then
       continue
     if file.extension = some "lean" then
       tests := tests.push file
