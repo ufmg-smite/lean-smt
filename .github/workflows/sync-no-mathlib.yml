@@ -1,0 +1,146 @@
+name: Sync no_mathlib
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Serialize runs so rapid pushes to main don't race each other
+# creating/merging sync PRs.
+concurrency:
+  group: sync-no-mathlib
+  cancel-in-progress: false
+
+jobs:
+  create-pr:
+    name: Create sync PR
+    runs-on: ubuntu-22.04
+    outputs:
+      has-changes: ${{ steps.merge.outputs.has-changes }}
+      sync-branch: ${{ steps.merge.outputs.sync-branch }}
+      pr-url: ${{ steps.pr.outputs.pr-url }}
+    steps:
+    - name: Checkout no_mathlib
+      uses: actions/checkout@v4
+      with:
+        ref: no_mathlib
+        fetch-depth: 0
+    - name: Merge main into sync branch
+      id: merge
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        SYNC_BRANCH="sync/no_mathlib-$(git rev-parse --short origin/main)"
+        echo "sync-branch=${SYNC_BRANCH}" >> "$GITHUB_OUTPUT"
+        echo "SYNC_BRANCH=${SYNC_BRANCH}" >> "$GITHUB_ENV"
+
+        if git merge-base --is-ancestor origin/main HEAD; then
+          echo "no_mathlib already contains all commits from main; nothing to sync."
+          echo "has-changes=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "has-changes=true" >> "$GITHUB_OUTPUT"
+
+        git switch -c "${SYNC_BRANCH}"
+        if ! git merge --no-edit origin/main; then
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [ "${conflicts}" = "lake-manifest.json" ]; then
+            # Expected: the manifest always differs between the branches.
+            # Keep the no_mathlib side; `lake update` regenerates it below.
+            git checkout --ours -- lake-manifest.json
+            git add lake-manifest.json
+            git commit --no-edit
+          else
+            echo "::error::Unexpected merge conflict(s) in: ${conflicts}. Merge main into no_mathlib manually."
+            exit 1
+          fi
+        fi
+    - name: Set up Lean
+      if: steps.merge.outputs.has-changes == 'true'
+      uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+    - name: Regenerate manifest
+      if: steps.merge.outputs.has-changes == 'true'
+      shell: bash
+      run: |
+        lake update
+        if ! git diff --quiet -- lake-manifest.json; then
+          git add lake-manifest.json
+          git commit -m "Update lake-manifest.json after merging main"
+        fi
+    - name: Push branch and open PR
+      if: steps.merge.outputs.has-changes == 'true'
+      id: pr
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git push --force origin "${SYNC_BRANCH}"
+        existing="$(gh pr list --head "${SYNC_BRANCH}" --base no_mathlib --state open --json url --jq '.[0].url')"
+        if [ -n "${existing}" ]; then
+          echo "Reusing existing PR: ${existing}"
+          echo "pr-url=${existing}" >> "$GITHUB_OUTPUT"
+        else
+          body="$(printf 'Automated sync of `no_mathlib` with `main` (%s).\n\n%s' \
+            "${{ github.sha }}" \
+            "This PR is merged automatically by the sync-no-mathlib workflow once build and tests pass on all platforms. If it is still open, validation failed and the branch needs manual attention.")"
+          url="$(gh pr create \
+            --base no_mathlib \
+            --head "${SYNC_BRANCH}" \
+            --title "Sync no_mathlib with main ($(git rev-parse --short origin/main))" \
+            --body "${body}")"
+          echo "pr-url=${url}" >> "$GITHUB_OUTPUT"
+        fi
+
+  validate:
+    name: Validate ${{ matrix.name }}
+    needs: create-pr
+    if: needs.create-pr.outputs.has-changes == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - name: Linux-aarch64
+          os: ubuntu-22.04-arm
+        - name: Linux-x86_64
+          os: ubuntu-22.04
+        - name: macOS-aarch64
+          os: macos-14
+        - name: macOS-x86_64
+          os: macos-15-intel
+        - name: Windows-x86_64
+          os: windows-latest
+    steps:
+    - name: Checkout sync branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.create-pr.outputs.sync-branch }}
+    - name: Set up Lean
+      uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+    - name: Build and test
+      run: |
+        lake update
+        lake build Smt Smt.Rat
+        lake script run test
+      shell: bash
+
+  merge:
+    name: Merge sync PR
+    needs: [create-pr, validate]
+    if: needs.create-pr.outputs.has-changes == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Merge PR into no_mathlib
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh pr merge "${{ needs.create-pr.outputs.pr-url }}" --merge --delete-branch
