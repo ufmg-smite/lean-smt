@@ -8,7 +8,7 @@ require auto from
 require cvc5 from
   git "https://github.com/abdoo8080/lean-cvc5.git" @ "b00dda7"
 
-require mathlib from git "https://github.com/leanprover-community/mathlib4.git"
+require quote4 from git "https://github.com/leanprover-community/quote4"
   @ "v4.32.0-rc1" -- Revision is on its own line to help main and no_mathlib branches stay in sync via CI
 
 package smt
@@ -49,6 +49,11 @@ Run tests.
     if file.components.contains "Reconstruction" then
       continue
     if file.components.contains "Examples" then
+      continue
+    -- In the no_mathlib branch specifically, we also exclude all tests which require mathlib
+    let mathlibTests : Array FilePath :=
+      #["Test" / "Auto.lean", "Test" / "linarith.lean", "Test" / "Unit" / "Embedding.lean", "Test" / "Unit" / "Real.lean"]
+    if mathlibTests.contains file || file.components.contains "Real" then
       continue
     if file.extension = some "lean" then
       tests := tests.push file
