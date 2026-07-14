@@ -62,6 +62,7 @@ where
       visitVertex u
     f v
 
+set_option linter.checkUnivs false in
 open Std.Format in
 protected def format [ToFormat α] [ToFormat β] : Format :=
   bracket "{" (joinSep (g.vertices.map formatVertex) ("," ++ line)) "}"

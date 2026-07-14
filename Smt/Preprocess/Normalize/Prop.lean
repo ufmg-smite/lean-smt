@@ -21,7 +21,7 @@ private theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y�
   congr
 
 open Lean in
-@[match_pattern, expose] private def mkApp12 (f a b c d e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈ : Expr) := mkApp8 (mkApp4 f a b c d) e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈
+@[match_pattern] private def mkApp12 (f a b c d e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈ : Expr) := mkApp8 (mkApp4 f a b c d) e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈
 
 namespace Smt.Preprocess.Normalize
 
