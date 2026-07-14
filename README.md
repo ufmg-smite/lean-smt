@@ -27,13 +27,8 @@ require smt from git "https://github.com/ufmg-smite/lean-smt.git" @ "main"
 ```
 
 Alternatively, `lean-smt` has an experimental `no_mathlib` branch which can
-be accessed by adding the following line to your dependencies:
-```lean
-require smt from git "https://github.com/ufmg-smite/lean-smt.git" @ "no_mathlib"
-```
-This version of `lean-smt` is intended to be identical to the main version, with
-the exception that it does not depend on mathlib (and therefore does not support
-Real Arithmetic reasoning).
+be accessed by replacing `main` with `no_mathlib` in your `lakefile.toml`
+or `lakefile.lean` file.
 
 ## Usage
 `lean-smt` comes with one main tactic, `smt`, that translates the current goal
