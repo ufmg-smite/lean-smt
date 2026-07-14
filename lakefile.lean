@@ -9,7 +9,10 @@ require cvc5 from
   git "https://github.com/abdoo8080/lean-cvc5.git" @ "a3ffc29"
 
 require mathlib from git "https://github.com/leanprover-community/mathlib4.git"
-  @ "v4.32.0" -- Revision is on its own line to help main and no_mathlib branches stay in sync via CI
+  -- The require line above differs between main and no_mathlib; the revision below is shared.
+  -- This comment must stay identical on both branches: it keeps the two edits non-adjacent so
+  -- git can merge version bumps from main into no_mathlib without conflict.
+  @ "v4.32.0"
 
 package smt
 
