@@ -22,6 +22,10 @@ theorem abs_of_nonpos (h : a ≤ 0) : a.abs = -a := by
   unfold Int.abs
   omega
 
+theorem abs_eq_zero {a : Int} : a.abs = 0 ↔ a = 0 := by
+  unfold Int.abs
+  omega
+
 theorem abs_of_nonneg {a : Int} (h : 0 ≤ a) : a.abs = a := by
   unfold Int.abs
   omega
