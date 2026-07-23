@@ -40,13 +40,6 @@ jobs:
         echo "sync-branch=${SYNC_BRANCH}" >> "$GITHUB_OUTPUT"
         echo "SYNC_BRANCH=${SYNC_BRANCH}" >> "$GITHUB_ENV"
 
-        if git merge-base --is-ancestor origin/main HEAD; then
-          echo "no_mathlib already contains all commits from main; nothing to sync."
-          echo "has-changes=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-        echo "has-changes=true" >> "$GITHUB_OUTPUT"
-
         git switch -c "${SYNC_BRANCH}"
         if ! git merge --no-edit origin/main; then
           conflicts="$(git diff --name-only --diff-filter=U)"
@@ -61,6 +54,13 @@ jobs:
             exit 1
           fi
         fi
+
+        if git diff --quiet origin/no_mathlib HEAD; then
+          echo "no_mathlib already matches main; nothing to sync."
+          echo "has-changes=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "has-changes=true" >> "$GITHUB_OUTPUT"
     - name: Set up Lean
       if: steps.merge.outputs.has-changes == 'true'
       uses: leanprover/lean-action@v1
@@ -143,4 +143,4 @@ jobs:
     - name: Merge PR into no_mathlib
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh pr merge "${{ needs.create-pr.outputs.pr-url }}" --merge --delete-branch
+      run: gh pr merge "${{ needs.create-pr.outputs.pr-url }}" --squash --delete-branch
