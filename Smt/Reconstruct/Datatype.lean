@@ -5,7 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan
 -/
 
-import Smt.Reconstruct
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+
+public meta section
 
 namespace Smt.Reconstruct.Datatype
 

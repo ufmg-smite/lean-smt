@@ -4,9 +4,15 @@ and their institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Leonardo de Moura, Wojciech Nawrocki
 -/
-import Lean.Meta.WHNF
+module
 
-import Smt.Tactic.WHNFConfigurableRef
+public import Lean.Meta.WHNF
+public meta import Lean.Meta.WHNF
+
+public import Smt.Tactic.WHNFConfigurableRef
+public meta import Smt.Tactic.WHNFConfigurableRef
+
+public meta section
 
 namespace Lean.Meta
 

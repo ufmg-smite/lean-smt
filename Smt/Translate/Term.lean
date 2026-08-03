@@ -5,8 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Smt.Data.Sexp
-import Smt.Dsl.Sexp
+module
+
+public import Smt.Data.Sexp
+public import Smt.Dsl.Sexp
+
+@[expose] public section
 
 namespace Smt
 

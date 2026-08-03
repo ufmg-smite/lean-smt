@@ -5,10 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Int.Core
-import Smt.Reconstruct.Real.Core
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import Mathlib.Algebra.Order.Archimedean.Real.Basic
+module
+
+public import Smt.Reconstruct.Int.Core
+public import Smt.Reconstruct.Real.Core
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+public import Mathlib.Algebra.Order.Archimedean.Real.Basic
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Real.Rewrite
 

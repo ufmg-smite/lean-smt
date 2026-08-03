@@ -10,13 +10,23 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule14ARITH_TRANS_PIE
 -/
 
-import Lean
-import Qq
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import Mathlib.Analysis.Real.Pi.Bounds
+module
 
-import Smt.Reconstruct.Util
-import Smt.Reconstruct.Real.Polynorm
+public import Lean
+public meta import Lean
+public import Qq
+public meta import Qq
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+public meta import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+public import Mathlib.Analysis.Real.Pi.Bounds
+public meta import Mathlib.Analysis.Real.Pi.Bounds
+
+public import Smt.Reconstruct.Util
+public meta import Smt.Reconstruct.Util
+public import Smt.Reconstruct.Real.Polynorm
+public meta import Smt.Reconstruct.Real.Polynorm
+
+@[expose] public section
 
 open Lean Qq
 open Elab Tactic Meta
@@ -24,6 +34,12 @@ open Elab Tactic Meta
 open Real
 
 namespace Smt.Reconstruct.Real.TransFns
+
+-- Used to build the proof terms emitted by `arithTransPi`, so it must stay non-`meta`.
+theorem ratCast_le {x y : ℚ} : x ≤ y → (x : ℝ) ≤ (y : ℝ) :=
+  Rat.cast_le.mpr
+
+public meta section
 
 def expr_pi_upper : Expr :=
   mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
@@ -34,9 +50,6 @@ def expr_pi_lower : Expr :=
   mkApp5 (Expr.const ``OfScientific.ofScientific [Level.zero])
     (mkConst ``Rat) (Lean.Expr.const `Rat.instOfScientific [])
     (.lit (.natVal 314159265358979323846)) (mkConst ``Bool.true) (.lit (.natVal 20))
-
-theorem ratCast_le {x y : ℚ} : x ≤ y → (x : ℝ) ≤ (y : ℝ) :=
-  Rat.cast_le.mpr
 
 def ratOfFloat : Expr → Expr
   | .app (.app (.app (.app (.app a _) _) d) e) f =>
@@ -137,5 +150,7 @@ def arithTransPiTac (mvar : MVarId) : MetaM Unit := do
     let answer ← mkAppM ``And.intro #[val₁, val₂]
     mvar.assign answer
   | _ => throwError "[arithTransPiTac] Unexpected pattern for input metavariable"
+
+end
 
 end Smt.Reconstruct.Real.TransFns

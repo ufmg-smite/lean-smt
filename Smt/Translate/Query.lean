@@ -5,13 +5,23 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
-import Lean
+module
 
-import Smt.Data.Graph
-import Smt.Translate.Commands
-import Smt.Translate
-import Smt.Tactic.EqnDef
-import Smt.Util
+public import Lean
+public meta import Lean
+
+public import Smt.Data.Graph
+public meta import Smt.Data.Graph
+public import Smt.Translate.Commands
+public meta import Smt.Translate.Commands
+public import Smt.Translate
+public meta import Smt.Translate
+public import Smt.Tactic.EqnDef
+public meta import Smt.Tactic.EqnDef
+public import Smt.Util
+public meta import Smt.Util
+
+public meta section
 
 namespace Smt.Translate.Query
 

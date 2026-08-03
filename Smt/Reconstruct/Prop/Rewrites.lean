@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Prop.Core
+module
+
+public import Smt.Reconstruct.Prop.Core
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Prop
 

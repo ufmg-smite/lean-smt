@@ -10,7 +10,11 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule33ARITH_TRANS_SINE_APPROX_BELOW_NEGE
 -/
 
-import Smt.Reconstruct.Real.TransFns.ArithTransSineApproxBelowPos
+module
+
+public import Smt.Reconstruct.Real.TransFns.ArithTransSineApproxBelowPos
+
+@[expose] public section
 
 open Set Real
 

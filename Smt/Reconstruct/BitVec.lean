@@ -5,10 +5,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Bool.Tactic
-import Smt.Reconstruct.BitVec.Bitblast
-import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct
+module
+
+public import Smt.Reconstruct.Bool.Tactic
+public meta import Smt.Reconstruct.Bool.Tactic
+public import Smt.Reconstruct.BitVec.Bitblast
+public meta import Smt.Reconstruct.BitVec.Bitblast
+public import Smt.Reconstruct.Prop.Core
+public meta import Smt.Reconstruct.Prop.Core
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+
+public meta section
 
 namespace Smt.Reconstruct.BitVec
 

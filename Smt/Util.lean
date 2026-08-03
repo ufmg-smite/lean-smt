@@ -5,7 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
+module
+
+public import Lean
+public meta import Lean
+
+public meta section
 
 /-- Returns `true` if `sub` is a substring of `s` and `false` otherwise. -/
 partial def String.isSubStrOf (sub : String) (s : String) : Bool :=

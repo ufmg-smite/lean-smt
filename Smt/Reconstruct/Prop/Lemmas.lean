@@ -5,10 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct.Util
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Prop.Core
+public meta import Smt.Reconstruct.Prop.Core
+public import Smt.Reconstruct.Util
+public meta import Smt.Reconstruct.Util
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Prop
 
@@ -397,6 +404,8 @@ theorem not_or_elim (hnps : ¬orN ps) (i : Nat) {hi : i < ps.length} : ¬ps[i] :
     | 0     => (deMorganSmall hnps).left
     | i + 1 => Eq.symm (List.getElem_cons_succ p₁ (p₂ :: ps) i hi) ▸ not_or_elim (deMorganSmall hnps).right i
 
+public meta section
+
 def andElimMeta (mvar : MVarId) (val : Expr) (i : Nat) (name : Name)
   : MetaM MVarId :=
     mvar.withContext do
@@ -715,5 +724,7 @@ macro_rules
 syntax "smtIte" (term)? (term)? (term)? (term)? : term
 macro_rules
 | `(smtIte $cond $t $e $type) => `(term| @ite $type $cond (propDecidable $cond) $t $e)
+
+end
 
 end Smt.Reconstruct.Prop

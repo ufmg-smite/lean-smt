@@ -5,15 +5,24 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
+
+public import Lean
+public meta import Lean
 
 -- we must import those to have visible instances of LinearOrder of
 -- Nat, Int and Real
-import Mathlib.Data.Nat.Order.Lemmas
-import Mathlib.Data.Int.Order.Lemmas
-import Mathlib.Data.Real.Basic
+public import Mathlib.Data.Nat.Order.Lemmas
+public meta import Mathlib.Data.Nat.Order.Lemmas
+public import Mathlib.Data.Int.Order.Lemmas
+public meta import Mathlib.Data.Int.Order.Lemmas
+public import Mathlib.Data.Real.Basic
+public meta import Mathlib.Data.Real.Basic
 
-import Smt.Reconstruct.Arith.Trichotomy.Lemmas
+public import Smt.Reconstruct.Arith.Trichotomy.Lemmas
+public meta import Smt.Reconstruct.Arith.Trichotomy.Lemmas
+
+public meta section
 
 namespace Smt.Reconstruct.Arith
 

@@ -5,6 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Translate.Nat
-import Smt.Preprocess.Embedding.Nat
-import Smt.Preprocess.Normalize.Nat
+module
+
+public import Smt.Translate.Nat
+public meta import Smt.Translate.Nat
+public import Smt.Preprocess.Embedding.Nat
+public meta import Smt.Preprocess.Embedding.Nat
+public import Smt.Preprocess.Normalize.Nat
+public meta import Smt.Preprocess.Normalize.Nat

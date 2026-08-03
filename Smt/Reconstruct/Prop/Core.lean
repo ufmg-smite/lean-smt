@@ -5,6 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+module
+
+@[expose] public section
+
 /- abbrev Implies (p q : Prop) := p → q -/
 
 inductive XOr (p q : Prop) : Prop where

@@ -5,10 +5,19 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Lean
-import Qq
+module
 
-import Smt.Recognizers
+public import Lean.Meta.Native
+public meta import Lean.Meta.Native
+public import Lean
+public meta import Lean
+public import Qq
+public meta import Qq
+
+public import Smt.Recognizers
+public meta import Smt.Recognizers
+
+@[expose] public section
 
 private theorem Int.neg_congr {x y : Int} (h : x = y) : -x = -y := by
   simp [h]
@@ -303,6 +312,8 @@ theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr} (h : e₁.toPolynomial
 
 end PolyNorm.Expr
 
+public meta section
+
 open Lean Qq
 
 abbrev PolyM := StateT (Array Q(Int)) MetaM
@@ -331,6 +342,9 @@ partial def reify (e : Q(Int)) : PolyM Q(PolyNorm.Expr) := do
     let v : Nat ← getIndex e
     return q(.var $v)
 
+-- `logPolynomial` below calls this module's own non-`meta` `PolyNorm` functions, which the
+-- phase-distinction check only allows within a single module under this option.
+set_option compiler.relaxedMetaCheck true in
 def polyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
@@ -348,6 +362,9 @@ where
     let ppCtx := (es.getD · q(0))
     logInfo m!"poly := {PolyNorm.Polynomial.toExpr p.toPolynomial ppCtx}"
 
+-- `logPolynomial` below calls this module's own non-`meta` `PolyNorm` functions, which the
+-- phase-distinction check only allows within a single module under this option.
+set_option compiler.relaxedMetaCheck true in
 def nativePolyNorm (mv : MVarId) : MetaM Unit := do
   let some (_, (l : Q(Int)), (r : Q(Int))) := (← mv.getType).eq?
     | throwError "[poly_norm] expected an equality, got {← mv.getType}"
@@ -395,7 +412,11 @@ open Lean.Elab Tactic in
     Int.nativePolyNorm mv
     replaceMainGoal []
 
-end Smt.Reconstruct.Int.Tactic
+end Tactic
+
+end
+
+end Smt.Reconstruct.Int
 
 example (x y z : Int) : 1 * (x + y) * z  = z * y + x * z := by
   poly_norm

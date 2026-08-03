@@ -5,11 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
+module
 
-import Smt.Data.Sexp
-import Smt.Translate.Term
-import Smt.Translate.Commands
+public import Lean
+
+public import Smt.Data.Sexp
+public import Smt.Translate.Term
+public import Smt.Translate.Commands
+
+-- Note: not `@[expose]`d because the solver interface is plain `IO` plumbing whose bodies nobody
+-- unfolds, and exposing them would forbid the `private` helpers below.
+public section
 
 namespace Smt.Translate
 

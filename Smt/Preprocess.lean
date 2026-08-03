@@ -5,9 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Smt.Preprocess.Embedding
-import Smt.Preprocess.Intros
-import Smt.Preprocess.Mono
-import Smt.Preprocess.Normalize
-import Smt.Preprocess.NegateGoal
-import Smt.Preprocess.PushHintsToCtx
+module
+
+public import Smt.Preprocess.Embedding
+public meta import Smt.Preprocess.Embedding
+public import Smt.Preprocess.Intros
+public meta import Smt.Preprocess.Intros
+public import Smt.Preprocess.Mono
+public meta import Smt.Preprocess.Mono
+public import Smt.Preprocess.Normalize
+public meta import Smt.Preprocess.Normalize
+public import Smt.Preprocess.NegateGoal
+public meta import Smt.Preprocess.NegateGoal
+public import Smt.Preprocess.PushHintsToCtx
+public meta import Smt.Preprocess.PushHintsToCtx

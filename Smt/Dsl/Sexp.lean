@@ -5,12 +5,19 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki, Abdalrhman Mohamed
 -/
 
-import Lean.PrettyPrinter.Formatter
-import Lean.PrettyPrinter.Parenthesizer
+module
 
-import Smt.Data.Sexp
+public import Lean.PrettyPrinter.Formatter
+public meta import Lean.PrettyPrinter.Formatter
+public import Lean.PrettyPrinter.Parenthesizer
+public meta import Lean.PrettyPrinter.Parenthesizer
 
-section
+public import Smt.Data.Sexp
+public meta import Smt.Data.Sexp
+
+@[expose] public section
+
+public meta section
 open Lean.Parser
 open Lean.PrettyPrinter
 
@@ -34,6 +41,8 @@ end
 instance : ToSexp String := ⟨Sexp.atom⟩
 
 instance [ToSexp α] : CoeOut α Sexp := ⟨ToSexp.toSexp⟩
+
+public meta section
 
 declare_syntax_cat sexp
 declare_syntax_cat slist
@@ -73,6 +82,8 @@ syntax "sexps!{" slist "}" : term
 macro_rules
   | `(sexps!{ }) => `(([] : List Sexp))
   | `(sexps!{ $ss:slist }) => `(slist!{$ss})
+
+end
 
 instance : Repr Sexp where
   reprPrec s _ := s!"sexp!\{{toString s}}"

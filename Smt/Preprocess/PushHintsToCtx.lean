@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Basic
-import Lean.Meta.Tactic.Assert
+module
+
+public import Smt.Preprocess.Basic
+public meta import Smt.Preprocess.Basic
+public import Lean.Meta.Tactic.Assert
+public meta import Lean.Meta.Tactic.Assert
+
+public meta section
 
 namespace Smt.Preprocess
 

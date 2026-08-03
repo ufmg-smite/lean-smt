@@ -10,7 +10,11 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule23ARITH_TRANS_SINE_BOUNDSE
 -/
 
-import Mathlib.Analysis.Complex.Trigonometric
+module
+
+public import Mathlib.Analysis.Complex.Trigonometric
+
+@[expose] public section
 
 open Real
 

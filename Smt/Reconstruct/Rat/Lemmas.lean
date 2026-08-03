@@ -5,8 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Int.Core
-import Smt.Reconstruct.Rat.Core
+module
+
+public import Smt.Reconstruct.Int.Core
+public import Smt.Reconstruct.Rat.Core
+
+@[expose] public section
 
 namespace Rat
 

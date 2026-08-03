@@ -10,8 +10,12 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule33ARITH_TRANS_SINE_APPROX_ABOVE_POSE
 -/
 
-import Smt.Reconstruct.Real.TransFns.ArithTransSineApproxBelowNeg
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import Smt.Reconstruct.Real.TransFns.ArithTransSineApproxBelowNeg
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 open Set Real
 

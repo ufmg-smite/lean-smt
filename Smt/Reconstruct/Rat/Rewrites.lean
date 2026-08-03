@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Smt.Reconstruct.Rat.Lemmas
+module
+
+public import Smt.Reconstruct.Rat.Lemmas
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Rat.Rewrite
 

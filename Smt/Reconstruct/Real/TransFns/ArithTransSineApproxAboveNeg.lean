@@ -10,12 +10,16 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule33ARITH_TRANS_SINE_APPROX_ABOVE_NEGE
 -/
 
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
+module
 
-import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxAbovePos
-import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxAboveNeg
-import Smt.Reconstruct.Real.TransFns.Utils
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
+
+public import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxAbovePos
+public import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxAboveNeg
+public import Smt.Reconstruct.Real.TransFns.Utils
+
+@[expose] public section
 
 open Set Real
 

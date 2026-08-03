@@ -10,9 +10,13 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule25ARITH_TRANS_EXP_SUPER_LINE
 -/
 
-import Mathlib.Analysis.Complex.Exponential
+module
 
-import Smt.Reconstruct.Prop
+public import Mathlib.Analysis.Complex.Exponential
+
+public import Smt.Reconstruct.Prop
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Real.TransFns
 

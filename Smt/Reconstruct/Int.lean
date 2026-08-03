@@ -5,12 +5,22 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.Builtin.Lemmas
-import Smt.Reconstruct.Int.Core
-import Smt.Reconstruct.Int.Lemmas
-import Smt.Reconstruct.Int.Polynorm
-import Smt.Reconstruct.Int.Rewrites
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Builtin.Lemmas
+public meta import Smt.Reconstruct.Builtin.Lemmas
+public import Smt.Reconstruct.Int.Core
+public meta import Smt.Reconstruct.Int.Core
+public import Smt.Reconstruct.Int.Lemmas
+public meta import Smt.Reconstruct.Int.Lemmas
+public import Smt.Reconstruct.Int.Polynorm
+public meta import Smt.Reconstruct.Int.Polynorm
+public import Smt.Reconstruct.Int.Rewrites
+public meta import Smt.Reconstruct.Int.Rewrites
+
+public meta section
 
 namespace Smt.Reconstruct.Int
 

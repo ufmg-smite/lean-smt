@@ -5,10 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Lean
+module
 
-import Smt.Attribute
-import Smt.Translate.Term
+public import Lean
+public meta import Lean
+
+public import Smt.Attribute
+public meta import Smt.Attribute
+public import Smt.Translate.Term
+public meta import Smt.Translate.Term
+
+public meta section
 
 /-- Return true iff `e` contains a free variable which satisfies `p`. -/
 @[inline] private def Lean.Expr.hasAnyFVar' [Monad m] (e : Expr) (p : FVarId → m Bool) : m Bool :=

@@ -5,10 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Aesop
-import Mathlib.Order.Defs.LinearOrder
+module
 
-import Smt.Reconstruct.Prop.Lemmas
+public import Aesop
+public import Mathlib.Order.Defs.LinearOrder
+
+public import Smt.Reconstruct.Prop.Lemmas
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Arith
 

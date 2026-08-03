@@ -5,9 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean.Meta.Tactic.Simp
-import Smt.Preprocess.Basic
-import Smt.Preprocess.Embedding.Attribute
+module
+
+public import Lean.Meta.Tactic.Simp
+public meta import Lean.Meta.Tactic.Simp
+public import Smt.Preprocess.Basic
+public meta import Smt.Preprocess.Basic
+public import Smt.Preprocess.Embedding.Attribute
+public meta import Smt.Preprocess.Embedding.Attribute
+
+public meta section
 
 private def Lean.Expr.contains (e : Expr) (p : Expr → Bool) : Bool :=
   (e.find? p).isSome

@@ -5,9 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.UF.Congruence
-import Smt.Reconstruct.UF.Rewrites
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.UF.Congruence
+public meta import Smt.Reconstruct.UF.Congruence
+public import Smt.Reconstruct.UF.Rewrites
+public meta import Smt.Reconstruct.UF.Rewrites
+
+public meta section
 
 namespace Smt.Reconstruct.UF
 

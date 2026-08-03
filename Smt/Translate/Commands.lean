@@ -5,9 +5,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas, Wojciech Nawrocki
 -/
 
-import Smt.Data.Sexp
-import Smt.Dsl.Sexp
-import Smt.Translate.Term
+module
+
+public import Smt.Data.Sexp
+public import Smt.Dsl.Sexp
+public import Smt.Translate.Term
+
+@[expose] public section
 
 namespace Smt.Translate
 

@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Smt.Translate
-import Smt.Util
+module
+
+public import Smt.Translate
+public meta import Smt.Translate
+public import Smt.Util
+public meta import Smt.Util
+
+public meta section
 
 namespace Smt.Translate.Datatype
 

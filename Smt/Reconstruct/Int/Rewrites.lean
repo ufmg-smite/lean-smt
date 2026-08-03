@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Int.Core
+module
+
+public import Smt.Reconstruct.Int.Core
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Int.Rewrite
 

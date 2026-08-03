@@ -5,13 +5,23 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki
 -/
 
-import Lean.Meta.Basic
-import Lean.Meta.Eqns
-import Lean.Meta.Tactic.Assert
-import Lean.Elab.Tactic.Basic
-import Lean.Elab.Term
+module
 
-import Smt.Tactic.WHNFSmt
+public import Lean.Meta.Basic
+public meta import Lean.Meta.Basic
+public import Lean.Meta.Eqns
+public meta import Lean.Meta.Eqns
+public import Lean.Meta.Tactic.Assert
+public meta import Lean.Meta.Tactic.Assert
+public import Lean.Elab.Tactic.Basic
+public meta import Lean.Elab.Tactic.Basic
+public import Lean.Elab.Term
+public meta import Lean.Elab.Term
+
+public import Smt.Tactic.WHNFSmt
+public meta import Smt.Tactic.WHNFSmt
+
+public meta section
 
 /-! Utilities for handling "equational definitions". An equational definition is an equation
 of the form `∀ x₁ ⋯ xₙ, c x₁ ⋯ xₙ = body[x₁,⋯,xₙ]` in the local context, where `c` is either

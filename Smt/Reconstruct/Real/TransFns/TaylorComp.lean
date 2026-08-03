@@ -9,9 +9,13 @@ Authors: Tomaz Mascarenhas
 Definition of a computable version of the taylor polynomials of `exp` and `sin` to be used in the reconstruction.
 -/
 
-import Mathlib.Analysis.InnerProductSpace.Basic
+module
 
-import Smt.Reconstruct.Real.TransFns.Utils
+public import Mathlib.Analysis.InnerProductSpace.Basic
+
+public import Smt.Reconstruct.Real.TransFns.Utils
+
+@[expose] public section
 
 open Set Real
 

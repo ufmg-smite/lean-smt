@@ -5,10 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import cvc5
-import Qq
+module
 
-import Smt.Attribute
+public import cvc5
+public meta import cvc5
+public import Qq
+public meta import Qq
+
+public import Smt.Attribute
+public meta import Smt.Attribute
+
+public meta section
 
 open Qq in
 def Lean.Meta.synthDecidableInstance (e : Q(Prop)) : MetaM Expr := do

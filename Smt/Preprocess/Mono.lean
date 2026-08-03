@@ -5,9 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Auto.Tactic
-import Smt.Preprocess.Basic
-import Smt.Preprocess.Normalize.Auto
+module
+
+public import Auto.Tactic
+public meta import Auto.Tactic
+public import Smt.Preprocess.Basic
+public meta import Smt.Preprocess.Basic
+public import Smt.Preprocess.Normalize.Auto
+public meta import Smt.Preprocess.Normalize.Auto
+
+public meta section
 
 namespace Auto
 

@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Attribute
+module
+
+public import Smt.Preprocess.Normalize.Attribute
+
+@[expose] public section
 
 attribute [smt_normalize ↓] Nat.zero_eq Nat.succ_eq_add_one
 

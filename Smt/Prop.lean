@@ -5,6 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Prop
-import Smt.Reconstruct.Prop
-import Smt.Translate.Prop
+module
+
+public import Smt.Preprocess.Normalize.Prop
+public meta import Smt.Preprocess.Normalize.Prop
+public import Smt.Reconstruct.Prop
+public meta import Smt.Reconstruct.Prop
+public import Smt.Translate.Prop
+public meta import Smt.Translate.Prop

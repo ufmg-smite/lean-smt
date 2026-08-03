@@ -5,6 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+module
+
+@[expose] public section
+
 namespace Smt.Reconstruct.UF
 
 -- https://github.com/cvc5/cvc5/blob/main/src/theory/uf/rewrites

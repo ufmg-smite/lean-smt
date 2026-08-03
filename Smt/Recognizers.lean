@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean.Meta.Basic
-import Lean.Util.Recognizers
+module
+
+public import Lean.Meta.Basic
+public meta import Lean.Meta.Basic
+public import Lean.Util.Recognizers
+public meta import Lean.Util.Recognizers
+
+public meta section
 
 namespace Lean.Expr
 

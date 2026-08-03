@@ -5,11 +5,19 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Prop.LiftOrNToImp
-import Smt.Reconstruct.Util
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Prop.Lemmas
+public meta import Smt.Reconstruct.Prop.Lemmas
+public import Smt.Reconstruct.Prop.LiftOrNToImp
+public meta import Smt.Reconstruct.Prop.LiftOrNToImp
+public import Smt.Reconstruct.Util
+public meta import Smt.Reconstruct.Util
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Prop
 
@@ -21,6 +29,9 @@ theorem orFalse : ∀ {A : Prop}, A ∨ False → A := by
   cases h with
   | inl ha => exact ha
   | inr ff => exact False.elim ff
+
+public meta section
+
 /-
   removeFalse: takes an or-chain ended in `False` and proves
   that it implies the same or-chain without the `False` in the end.
@@ -74,5 +85,7 @@ syntax (name := liftOrNToNeg) "liftOrNToNeg" term : tactic
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile.reconstruct] m!"[liftOrNToNeg] end time: {← IO.monoNanosNow}ns"
+
+end
 
 end Smt.Reconstruct.Prop

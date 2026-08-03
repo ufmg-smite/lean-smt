@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
+module
+
+public import Lean
+
+@[expose] public section
 
 namespace BitVec
 

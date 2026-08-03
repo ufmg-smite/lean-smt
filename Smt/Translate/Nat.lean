@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Wojciech Nawrocki
 -/
 
-import Smt.Recognizers
-import Smt.Translate
+module
+
+public import Smt.Recognizers
+public meta import Smt.Recognizers
+public import Smt.Translate
+public meta import Smt.Translate
+
+public meta section
 
 namespace Smt.Translate.Nat
 

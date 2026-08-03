@@ -5,10 +5,20 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Smt.Reconstruct.Rat.Core
-import Smt.Recognizers
-import Lean
-import Qq
+module
+
+public import Lean.Meta.Native
+public meta import Lean.Meta.Native
+public import Smt.Reconstruct.Rat.Core
+public meta import Smt.Reconstruct.Rat.Core
+public import Smt.Recognizers
+public meta import Smt.Recognizers
+public import Lean
+public meta import Lean
+public import Qq
+public meta import Qq
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Rat.PolyNorm
 
@@ -389,6 +399,8 @@ theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : RatExpr} (h : e₁.toPolynom
 
 end PolyNorm.RatExpr
 
+public meta section
+
 open Lean
 open Qq
 
@@ -443,6 +455,9 @@ partial def reifyInt (e : Q(Int)) : PolyM Q(PolyNorm.IntExpr) := do
     let v : Nat ← getIntIndex e
     return q(.var $v)
 
+-- `reifyRat` calls this module's own non-`meta` `PolyNorm.Monomial.toExpr.toExprCoeff`, which the
+-- phase-distinction check only allows within a single module under this option.
+set_option compiler.relaxedMetaCheck true in
 partial def reifyRat (e : Q(Rat)) : PolyM Q(PolyNorm.RatExpr) := do
   if let some n := e.natLitOf? q(Rat) then
     return q(.val (OfNat.ofNat $n))
@@ -521,7 +536,11 @@ open Lean.Elab Tactic in
     Rat.nativePolyNorm mv
     replaceMainGoal []
 
-end Smt.Reconstruct.Rat.Tactic
+end Tactic
+
+end
+
+end Smt.Reconstruct.Rat
 
 example (x y z : Rat) : 1 * (x + y) * z / 4 = 1 / (2 * 2) * (z * y + x * z) := by
   poly_norm

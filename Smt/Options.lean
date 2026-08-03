@@ -5,7 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
+
+public import Lean
+public meta import Lean
+
+public meta section
 
 namespace Smt
 

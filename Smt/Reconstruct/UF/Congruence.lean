@@ -5,13 +5,26 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
-import Qq
+module
 
-import Smt.Reconstruct.Prop.Core
+public import Lean
+public meta import Lean
+public import Qq
+public meta import Qq
 
-private theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
+public import Smt.Reconstruct.Prop.Core
+public meta import Smt.Reconstruct.Prop.Core
+
+public section
+
+namespace Smt.Reconstruct.UF
+
+theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
   congr
+
+end Smt.Reconstruct.UF
+
+public meta section
 
 namespace Smt.Reconstruct.UF
 

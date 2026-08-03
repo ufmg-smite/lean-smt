@@ -1,6 +1,13 @@
-import Lean
+module
+
+public import Lean
+public meta import Lean
+
+@[expose] public section
 
 theorem Eq.same_root (hac : a = c) (hbc : b = c) : a = b := hac ▸ hbc ▸ rfl
+
+public meta section
 
 namespace Lean.Meta.AC
 

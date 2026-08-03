@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki, Abdalrhman Mohamed, Henrik Böving
 -/
 
-import Std.Internal.Parsec.String
+module
+
+public import Std.Internal.Parsec.String
+
+@[expose] public section
 
 /-- The type of S-expressions. -/
 inductive Sexp where

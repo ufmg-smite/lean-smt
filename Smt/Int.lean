@@ -5,6 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Int
-import Smt.Reconstruct.Int
-import Smt.Translate.Int
+module
+
+public import Smt.Preprocess.Normalize.Int
+public meta import Smt.Preprocess.Normalize.Int
+public import Smt.Reconstruct.Int
+public meta import Smt.Reconstruct.Int
+public import Smt.Translate.Int
+public meta import Smt.Translate.Int

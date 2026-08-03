@@ -5,11 +5,19 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Prop.LiftOrNToImp
-import Smt.Reconstruct.Prop.Pull
-import Smt.Reconstruct.Util
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Prop.LiftOrNToImp
+public meta import Smt.Reconstruct.Prop.LiftOrNToImp
+public import Smt.Reconstruct.Prop.Pull
+public meta import Smt.Reconstruct.Prop.Pull
+public import Smt.Reconstruct.Util
+public meta import Smt.Reconstruct.Util
+
+@[expose] public section
 
 namespace Smt.Reconstruct.Prop
 
@@ -53,6 +61,8 @@ theorem flipped_resolution_thm₃ : ∀ {A B : Prop}, (¬ A ∨ B) → A → B :
 
 theorem resolution_thm₄ : ∀ {A : Prop}, A → ¬ A → False := λ a na => na a
 theorem flipped_resolution_thm₄ : ∀ {A : Prop}, ¬ A → A → False := flip resolution_thm₄
+
+public meta section
 
 def resolutionCoreMeta (val₁ val₂ pivot : Expr) (sufIdx₁' sufIdx₂' : Option Nat)
     (flipped : Bool) : MetaM Expr := do
@@ -164,5 +174,7 @@ def r₁ (mv : MVarId) (e₁ e₂ pivot : Expr) (i₁ i₂ : Option Nat) : MetaM
     replaceMainGoal [mvar']
     evalTactic (← `(tactic| exact $(mkIdent fname)))
     trace[smt.profile.reconstruct] m!"[resolution_2] end time: {← IO.monoNanosNow}ns"
+
+end
 
 end Smt.Reconstruct.Prop

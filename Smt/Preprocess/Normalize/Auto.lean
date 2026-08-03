@@ -5,8 +5,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Attribute
-import Auto.Lib.BoolExtra
+module
+
+public import Smt.Preprocess.Normalize.Attribute
+public import Auto.Lib.BoolExtra
+
+@[expose] public section
 
 namespace Auto.Bool
 

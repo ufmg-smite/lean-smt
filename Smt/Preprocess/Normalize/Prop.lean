@@ -5,7 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Attribute
+module
+
+public import Smt.Preprocess.Normalize.Attribute
+public meta import Smt.Preprocess.Normalize.Attribute
+
+-- Note: not `@[expose]`d; nothing here needs to unfold downstream, and exposing the `simproc`
+-- below would forbid it from using the `private` helpers in this module.
+public section
 
 @[smt_normalize ↓]
 theorem iff_eq_eq : (p ↔ q) = (p = q) := propext ⟨propext, (· ▸ ⟨(·), (·)⟩)⟩
@@ -17,8 +24,14 @@ theorem classical_ite_cond_congr [hc : Decidable c] {x y : α} :
   @ite α c (Classical.propDecidable c) x y = @ite α c hc x y := by
   congr
 
-private theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
+namespace Smt.Preprocess.Normalize
+
+theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
   congr
+
+end Smt.Preprocess.Normalize
+
+public meta section
 
 open Lean in
 @[match_pattern] private def mkApp12 (f a b c d e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈ : Expr) := mkApp8 (mkApp4 f a b c d) e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈

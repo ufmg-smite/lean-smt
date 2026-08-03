@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Mathlib.Algebra.Order.Archimedean.Real.Basic
-import Smt.Preprocess.Embedding.Attribute
+module
+
+public import Mathlib.Algebra.Order.Archimedean.Real.Basic
+public import Smt.Preprocess.Embedding.Attribute
+
+-- Note: not `@[expose]`d; nothing here needs to unfold downstream, and exposing the `simproc`
+-- below would forbid it from using the `private` helper in this module.
+public section
 
 @[embedding ↓]
 theorem Real.ratCast_zero : ↑(0 : Rat) = (0 : Real) :=
@@ -92,7 +98,7 @@ theorem Real.cast_intCast {n : Int} : (((n : Int) : Rat) : Real) = (n : Real) :=
   Rat.cast_intCast n
 
 open Classical in
-noncomputable def Real.toRat (x : Real) : Rat :=
+@[expose] noncomputable def Real.toRat (x : Real) : Rat :=
   if h : ∃ a b : Int, x = a / b then
     let a := Exists.choose h
     let b := Exists.choose (Exists.choose_spec h)
@@ -279,6 +285,8 @@ theorem forall_rat_out_as_real₅ {p : (α₁ → α₂ → α₃ → α₄ → 
     simp only [Real.cast_exists_num_den, implies_true, Real.toRat_eq, forall_const] at hf
     exact hf
 
+public meta section
+
 open Lean Meta Simp
 
 private def withNewLemmas (xs : Array Expr) (f : SimpM α) : SimpM α := do
@@ -318,5 +326,7 @@ def addRealIsFractionalLemma : Simproc := fun e => do
 
 simproc ↓ [embedding] add_real_is_fractional_lemma (_ → _) :=
   addRealIsFractionalLemma
+
+end
 
 end Smt.Preprocess.Embedding

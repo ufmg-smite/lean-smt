@@ -5,8 +5,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, George Pîrlea
 -/
 
-import Smt.Preprocess.Embedding.Attribute
-import Smt.Reconstruct.Prop.Core
+module
+
+public import Smt.Preprocess.Embedding.Attribute
+public meta import Smt.Preprocess.Embedding.Attribute
+public import Smt.Reconstruct.Prop.Core
+public meta import Smt.Reconstruct.Prop.Core
+
+-- Note: not `@[expose]`d; nothing here needs to unfold downstream, and exposing the `simproc`s
+-- below would forbid them from using the `private` helpers in this module.
+public section
 
 @[embedding ↓]
 theorem Bool.true_eq_true : (true = true) ↔ True :=
@@ -42,13 +50,15 @@ attribute [embedding ↓] cond_eq_ite
 theorem ite_eq_true [Decidable c] : (if c then t else e) = true ↔ if c then (t = true) else (e = true) := by
   simp only [Bool.ite_eq_true_distrib]
 
-private theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
+namespace Smt.Preprocess.Embedding
+
+theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
   congr
+
+public meta section
 
 open Lean in
 @[match_pattern] private def mkApp12 (f a b c d e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈ : Expr) := mkApp8 (mkApp4 f a b c d) e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈
-
-namespace Smt.Preprocess.Embedding
 
 open Lean Meta Simp in
 simproc ↓ [embedding] IteCongrSimproc (ite _ _ _) := fun e => do
@@ -80,6 +90,8 @@ simproc ↓ [embedding] boolEqSimproc (_ = _) := fun e => do
   let iffPrf := mkApp2 (mkConst ``Bool.eq_eq_true) x y
   let proof ← mkAppM ``propext #[iffPrf]
   return .continue (some { expr := newExpr, proof? := some proof })
+
+end
 
 open Classical
 

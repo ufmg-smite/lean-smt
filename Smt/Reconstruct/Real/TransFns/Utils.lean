@@ -5,14 +5,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan, Tomaz Mascarenhas
 -/
 
-import Mathlib.Analysis.Calculus.Taylor
-import Mathlib.Analysis.Convex.SpecificFunctions.Basic
-import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
-import Mathlib.Analysis.SpecialFunctions.ExpDeriv
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.Complex.Exponential
+module
 
-import Mathlib.Tactic
+public import Mathlib.Analysis.Calculus.Taylor
+public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
+public import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
+public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Analysis.Complex.Exponential
+
+public import Mathlib.Tactic
+
+@[expose] public section
 
 open scoped Nat
 

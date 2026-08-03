@@ -5,5 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Mathlib.Data.Real.Basic
-import Smt.Preprocess.Normalize.Attribute
+module
+
+public import Mathlib.Data.Real.Basic
+public meta import Mathlib.Data.Real.Basic
+public import Smt.Preprocess.Normalize.Attribute
+public meta import Smt.Preprocess.Normalize.Attribute

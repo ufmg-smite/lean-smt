@@ -5,11 +5,20 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.Builtin.AC
-import Smt.Reconstruct.Prop.Core
-import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Prop.Rewrites
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Builtin.AC
+public meta import Smt.Reconstruct.Builtin.AC
+public import Smt.Reconstruct.Prop.Core
+public meta import Smt.Reconstruct.Prop.Core
+public import Smt.Reconstruct.Prop.Lemmas
+public meta import Smt.Reconstruct.Prop.Lemmas
+public import Smt.Reconstruct.Prop.Rewrites
+public meta import Smt.Reconstruct.Prop.Rewrites
+
+public meta section
 
 namespace Smt.Reconstruct.Prop
 

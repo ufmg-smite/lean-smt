@@ -5,12 +5,20 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Harun Khan
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Prop.Rewrites
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Prop.Rewrites
+public meta import Smt.Reconstruct.Prop.Rewrites
+
+@[expose] public section
 
 theorem Eq.trans₂ {α} {a b c d : α} (h₁ : a = b) (h₂ : b = c) (h₃ : c = d) : a = d :=
   h₁ ▸ h₂ ▸ h₃
+
+public meta section
 
 namespace Smt.Reconstruct.Tactic
 

@@ -5,11 +5,19 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Prop.Lemmas
-import Smt.Reconstruct.Prop.LiftOrNToImp
-import Smt.Reconstruct.Util
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Prop.Lemmas
+public meta import Smt.Reconstruct.Prop.Lemmas
+public import Smt.Reconstruct.Prop.LiftOrNToImp
+public meta import Smt.Reconstruct.Prop.LiftOrNToImp
+public import Smt.Reconstruct.Util
+public meta import Smt.Reconstruct.Util
+
+public meta section
 
 namespace Smt.Reconstruct.Prop
 

@@ -8,5 +8,9 @@ Authors: Tomaz Gomes Mascarenhas
 -- implementation of:
 -- https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule16ARITH_TRICHOTOMYE
 
-import Smt.Reconstruct.Arith.Trichotomy.Lemmas
-import Smt.Reconstruct.Arith.Trichotomy.Tactic
+module
+
+public import Smt.Reconstruct.Arith.Trichotomy.Lemmas
+public meta import Smt.Reconstruct.Arith.Trichotomy.Lemmas
+public import Smt.Reconstruct.Arith.Trichotomy.Tactic
+public meta import Smt.Reconstruct.Arith.Trichotomy.Tactic

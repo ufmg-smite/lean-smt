@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tomaz Gomes Mascarenhas, Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Int.Core
+module
+
+public import Smt.Reconstruct.Int.Core
+
+@[expose] public section
 
 private theorem Int.mul_eq_zero_left {x y : Int} (hx : x ≠ 0) (hxy : x * y = 0) : y = 0 := by
   rewrite [Int.mul_eq_zero] at hxy

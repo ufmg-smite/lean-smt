@@ -5,15 +5,27 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
-import Lean.Meta.Tactic.TryThis
+module
 
-import Smt.Dsl.Sexp
-import Smt.Reconstruct
-import Smt.Reconstruct.Prop.Lemmas
-import Smt.Translate.Query
-import Smt.Preprocess
-import Smt.Util
+public import Lean
+public meta import Lean
+public import Lean.Meta.Tactic.TryThis
+public meta import Lean.Meta.Tactic.TryThis
+
+public import Smt.Dsl.Sexp
+public meta import Smt.Dsl.Sexp
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Prop.Lemmas
+public meta import Smt.Reconstruct.Prop.Lemmas
+public import Smt.Translate.Query
+public meta import Smt.Translate.Query
+public import Smt.Preprocess
+public meta import Smt.Preprocess
+public import Smt.Util
+public meta import Smt.Util
+
+public meta section
 
 namespace Smt
 

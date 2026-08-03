@@ -4,9 +4,16 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wojciech Nawrocki
 -/
-import Smt.Tactic.WHNFConfigurable
-import Lean.Elab.Term
-import Lean.Elab.Binders
+module
+
+public import Smt.Tactic.WHNFConfigurable
+public meta import Smt.Tactic.WHNFConfigurable
+public import Lean.Elab.Term
+public meta import Lean.Elab.Term
+public import Lean.Elab.Binders
+public meta import Lean.Elab.Binders
+
+public meta section
 
 namespace Smt
 

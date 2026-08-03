@@ -5,7 +5,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Normalize.Attribute
+module
+
+public import Smt.Preprocess.Normalize.Attribute
+
+@[expose] public section
 
 @[smt_normalize ↓]
 theorem Int.neg_def : Int.neg a = -a := rfl

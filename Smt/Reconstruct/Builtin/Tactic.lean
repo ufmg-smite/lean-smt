@@ -5,9 +5,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Qq
-import Smt.Reconstruct.Builtin.Absorb
-import Lean
+module
+
+public import Lean.Meta.Native
+public meta import Lean.Meta.Native
+public import Qq
+public meta import Qq
+public import Smt.Reconstruct.Builtin.Absorb
+public meta import Smt.Reconstruct.Builtin.Absorb
+public import Lean
+public meta import Lean
+
+public meta section
 
 namespace Smt.Reconstruct.Builtin
 

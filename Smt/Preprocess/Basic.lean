@@ -5,8 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean.Meta.Basic
-import Lean.Meta.InferType
+module
+
+public import Lean.Meta.Basic
+public meta import Lean.Meta.Basic
+public import Lean.Meta.InferType
+public meta import Lean.Meta.InferType
+
+public meta section
 
 namespace Smt.Preprocess
 

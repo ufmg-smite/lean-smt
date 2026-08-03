@@ -5,9 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Embedding.Attribute
+module
 
-import Lean
+public import Smt.Preprocess.Embedding.Attribute
+public meta import Smt.Preprocess.Embedding.Attribute
+
+public import Lean
+public meta import Lean
+
+-- Note: not `@[expose]`d; nothing here needs to unfold downstream, and exposing the `simproc`s
+-- below would forbid them from using the `private` helpers in this module.
+public section
 
 attribute [embedding ↓] Nat.zero_eq
 attribute [embedding ↓] Nat.succ_eq_add_one
@@ -230,6 +238,8 @@ theorem forall_nat_in_as_int₅ {p : (α₁ → α₂ → α₃ → α₄ → Na
     simp only [Int.toNat_natCast] at hf
     exact hf
 
+public meta section
+
 open Lean Meta Simp
 
 private def withNewLemmas (xs : Array Expr) (f : SimpM α) : SimpM α := do
@@ -293,5 +303,7 @@ simproc ↓ [embedding] add_int_gt_zero (_ → _) :=
 
 simproc ↓ [embedding] decide_int_gt_zero (_ ≥ (0 : Int)) :=
   Smt.Preprocess.Embedding.decideIntGtZero
+
+end
 
 end Smt.Preprocess.Embedding

@@ -5,5 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Translate.Datatype
-import Smt.Reconstruct.Datatype
+module
+
+public import Smt.Translate.Datatype
+public meta import Smt.Translate.Datatype
+public import Smt.Reconstruct.Datatype
+public meta import Smt.Reconstruct.Datatype

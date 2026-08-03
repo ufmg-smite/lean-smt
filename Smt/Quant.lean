@@ -5,4 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct.Quant
+module
+
+public import Smt.Reconstruct.Quant
+public meta import Smt.Reconstruct.Quant

@@ -5,10 +5,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Recognizers
-import Mathlib.Algebra.Order.Archimedean.Real.Basic
+module
 
-import Smt.Translate
+public import Smt.Recognizers
+public meta import Smt.Recognizers
+public import Mathlib.Algebra.Order.Archimedean.Real.Basic
+public meta import Mathlib.Algebra.Order.Archimedean.Real.Basic
+
+public import Smt.Translate
+public meta import Smt.Translate
+
+public meta section
 
 namespace Smt.Translate.Rat
 

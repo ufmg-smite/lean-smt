@@ -5,13 +5,24 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Tomaz Gomes Mascarenhas
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.Builtin.Lemmas
-import Smt.Reconstruct.Real.Lemmas
-import Smt.Reconstruct.Real.Polynorm
-import Smt.Reconstruct.Real.Rewrites
-import Smt.Reconstruct.Real.TransFns
-import Smt.Reconstruct.Rewrite
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Builtin.Lemmas
+public meta import Smt.Reconstruct.Builtin.Lemmas
+public import Smt.Reconstruct.Real.Lemmas
+public meta import Smt.Reconstruct.Real.Lemmas
+public import Smt.Reconstruct.Real.Polynorm
+public meta import Smt.Reconstruct.Real.Polynorm
+public import Smt.Reconstruct.Real.Rewrites
+public meta import Smt.Reconstruct.Real.Rewrites
+public import Smt.Reconstruct.Real.TransFns
+public meta import Smt.Reconstruct.Real.TransFns
+public import Smt.Reconstruct.Rewrite
+public meta import Smt.Reconstruct.Rewrite
+
+public meta section
 
 namespace Smt.Reconstruct.Real
 

@@ -5,6 +5,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Adrien Champion
 -/
 
+module
+
+@[expose] public section
+
 namespace Int
 
 protected def abs (x : Int) : Int :=

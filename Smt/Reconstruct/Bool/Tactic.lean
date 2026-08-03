@@ -5,9 +5,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Lean
+module
 
-import Smt.Reconstruct.Bool.Lemmas
+public import Lean
+public meta import Lean
+
+public import Smt.Reconstruct.Bool.Lemmas
+public meta import Smt.Reconstruct.Bool.Lemmas
+
+public meta section
 
 namespace Smt.Reconstruct.Bool
 

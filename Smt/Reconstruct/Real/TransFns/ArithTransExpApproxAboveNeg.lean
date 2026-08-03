@@ -10,13 +10,17 @@ Implementation of:
 https://cvc5.github.io/docs/cvc5-1.0.2/proofs/proof_rules.html#_CPPv4N4cvc58internal6PfRule32ARITH_TRANS_EXP_APPROX_ABOVE_NEGE
 -/
 
-import Mathlib.Analysis.Calculus.Taylor
-import Mathlib.Analysis.SpecialFunctions.ExpDeriv
-import Mathlib.Analysis.Convex.SpecificFunctions.Basic
-import Mathlib.Analysis.Complex.Exponential
+module
 
-import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxBelow
-import Smt.Reconstruct.Real.TransFns.TaylorComp
+public import Mathlib.Analysis.Calculus.Taylor
+public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
+public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
+public import Mathlib.Analysis.Complex.Exponential
+
+public import Smt.Reconstruct.Real.TransFns.ArithTransExpApproxBelow
+public import Smt.Reconstruct.Real.TransFns.TaylorComp
+
+@[expose] public section
 
 open Set Real
 

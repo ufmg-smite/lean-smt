@@ -5,11 +5,22 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.Builtin.AC
-import Smt.Reconstruct.Builtin.Lemmas
-import Smt.Reconstruct.Builtin.Rewrites
-import Smt.Reconstruct.Builtin.Tactic
+module
+
+public import Lean.Meta.Native
+public meta import Lean.Meta.Native
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Builtin.AC
+public meta import Smt.Reconstruct.Builtin.AC
+public import Smt.Reconstruct.Builtin.Lemmas
+public meta import Smt.Reconstruct.Builtin.Lemmas
+public import Smt.Reconstruct.Builtin.Rewrites
+public meta import Smt.Reconstruct.Builtin.Rewrites
+public import Smt.Reconstruct.Builtin.Tactic
+public meta import Smt.Reconstruct.Builtin.Tactic
+
+public meta section
 
 namespace Smt.Reconstruct.Builtin
 

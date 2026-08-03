@@ -5,4 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Preprocess.Embedding.Bool
+module
+
+public import Smt.Preprocess.Embedding.Bool
+public meta import Smt.Preprocess.Embedding.Bool

@@ -5,12 +5,22 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
-import Smt.Reconstruct
-import Smt.Reconstruct.Builtin.Lemmas
-import Smt.Reconstruct.Rat.Core
-import Smt.Reconstruct.Rat.Lemmas
-import Smt.Reconstruct.Rat.Polynorm
-import Smt.Reconstruct.Rat.Rewrites
+module
+
+public import Smt.Reconstruct
+public meta import Smt.Reconstruct
+public import Smt.Reconstruct.Builtin.Lemmas
+public meta import Smt.Reconstruct.Builtin.Lemmas
+public import Smt.Reconstruct.Rat.Core
+public meta import Smt.Reconstruct.Rat.Core
+public import Smt.Reconstruct.Rat.Lemmas
+public meta import Smt.Reconstruct.Rat.Lemmas
+public import Smt.Reconstruct.Rat.Polynorm
+public meta import Smt.Reconstruct.Rat.Polynorm
+public import Smt.Reconstruct.Rat.Rewrites
+public meta import Smt.Reconstruct.Rat.Rewrites
+
+public meta section
 
 namespace Smt.Reconstruct.Rat
 

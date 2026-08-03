@@ -4,4 +4,7 @@ institutional affiliations. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import Smt.Tactic.Smt
+module
+
+public import Smt.Tactic.Smt
+public meta import Smt.Tactic.Smt
