@@ -6,7 +6,7 @@ require auto from
   git "https://github.com/leanprover-community/lean-auto.git" @ "1175ff6"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "a3ffc29"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "4733baf"
 
 require mathlib from git "https://github.com/leanprover-community/mathlib4.git"
   -- The require line above differs between main and no_mathlib; the revision below is shared.

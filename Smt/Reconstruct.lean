@@ -17,11 +17,23 @@ public meta import Smt.Attribute
 
 public meta section
 
+open Lean in
+/--
+`classical t` runs `t` in a scope where `Classical.propDecidable` is a low priority
+local instance.
+-/
+private def Lean.Meta.withClassical [Monad m] [MonadEnv m] [MonadFinally m] [MonadLiftT MetaM m] (t : m α) :
+    m α := do
+  modifyEnv Meta.instanceExtension.pushScope
+  Meta.addInstance ``Classical.propDecidable .local 100
+  try
+    t
+  finally
+    modifyEnv Meta.instanceExtension.popScope
+
 open Qq in
 def Lean.Meta.synthDecidableInstance (e : Q(Prop)) : MetaM Expr := do
-  let oh : Option Q(Decidable $e) ← Meta.synthInstance? q(Decidable $e)
-  let h : Q(Decidable $e) := oh.getD q(Classical.propDecidable $e)
-  return h
+  Meta.withClassical (Meta.synthInstance q(Decidable $e))
 
 namespace Smt
 
@@ -43,6 +55,8 @@ structure Reconstruct.State where
   proofCache : Std.HashMap cvc5.Proof Expr := {}
   count : Nat := 0
   currAssums : Array Expr := #[]
+  /-- finite-fields polynomial context for each prime order. -/
+  ffCtx : Std.HashMap Nat (Array Expr) := {}
   skippedGoals : Array MVarId := #[]
 
 abbrev ReconstructM := ReaderT Reconstruct.Context (StateT Reconstruct.State MetaM)
@@ -57,6 +71,12 @@ namespace Reconstruct
 
 def useNative : ReconstructM Bool :=
   read >>= pure ∘ (·.native)
+
+def getFFCtx (n : Nat) : ReconstructM (Array Expr) :=
+  return (← get).ffCtx.getD n #[]
+
+def setFFCtx (n : Nat) (ctx : Array Expr) : ReconstructM Unit := do
+  modify fun state => { state with ffCtx := state.ffCtx.insert n ctx }
 
 private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (List (rcons × Name)) := do
   let env ← getEnv
@@ -238,7 +258,7 @@ partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
   let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
   let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
-  let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+  let (h, ⟨_, _, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
   if dfns.isEmpty then
     let h : Q(True → $p) ← pure h
     return (dfns, ps, p, q($h trivial), mvs.toList)
@@ -261,7 +281,7 @@ def traceSolve (r : Except Exception (Except Error cvc5Result)) : MetaM MessageD
   | _           => m!"{bombEmoji}"
 
 def defaultSolverOptions : List (String × String) := [
-  ("dag-thresh", "0"),
+  -- ("dag-thresh", "0"),
   ("simplification", "none"),
   ("enum-inst", "true"),
   ("enum-inst-interleave", "true"),
@@ -423,7 +443,7 @@ def solveAndReconstructProof (query : String)
       return .unsat none [] uc
     -- Reconstruct proof.
     let some pf := pf | throwError "failed to reconstruct proof for unsat result"
-    let (h, ⟨_, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
+    let (h, ⟨_, _, _, _, _, _, mvs⟩) ← (Reconstruct.reconstructProof pf).run ctx state
     return .unsat h mvs.toList uc
   | .ok (.sat model) =>
     -- Return potential counter-example.

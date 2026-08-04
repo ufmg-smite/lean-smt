@@ -38,7 +38,7 @@ theorem Bool.xor_eq_true {x y : Bool} : (x ^^ y : Bool) ↔ (XOr (x : Prop) (y :
 theorem Bool.eq_eq_true {x y : Bool} : (x = y) ↔ ((x : Prop) = (y : Prop)) := by
   simp
 
-@[embedding ↓ low]
+/-- See `boolNeSimproc` for why we don't add this to the simp set directly. -/
 theorem Bool.ne_eq_true {x y : Bool} : (x ≠ y) ↔ ((x : Prop) ≠ (y : Prop)) := by
   simp
 
@@ -50,6 +50,10 @@ attribute [embedding ↓] cond_eq_ite
 theorem ite_eq_true [Decidable c] : (if c then t else e) = true ↔ if c then (t = true) else (e = true) := by
   simp only [Bool.ite_eq_true_distrib]
 
+@[embedding ↓]
+theorem cond_eq_true : (bif c then t else e) = true ↔ bif c then (t = true) else (e = true) := by
+  simp only [Bool.cond_eq_true_distrib, Bool.cond_prop]
+
 namespace Smt.Preprocess.Embedding
 
 theorem ite_congr' {α} [Decidable c₁] [Decidable c₂] {x₁ x₂ y₁ y₂ : α} (h₁ : c₁ = c₂) (h₂ : x₁ = x₂) (h₃ : y₁ = y₂) : ite c₁ x₁ y₁ = ite c₂ x₂ y₂ := by
@@ -60,6 +64,20 @@ public meta section
 open Lean in
 @[match_pattern] private def mkApp12 (f a b c d e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈ : Expr) := mkApp8 (mkApp4 f a b c d) e₁ e₂ e₃ e₄ e₅ e₆ e₇ e₈
 
+open Lean in
+/--
+`classical t` runs `t` in a scope where `Classical.propDecidable` is a low priority
+local instance.
+-/
+private def _root_.Lean.Meta.withClassical [Monad m] [MonadEnv m] [MonadFinally m] [MonadLiftT MetaM m] (t : m α) :
+    m α := do
+  modifyEnv Meta.instanceExtension.pushScope
+  Meta.addInstance ``Classical.propDecidable .local 100
+  try
+    t
+  finally
+    modifyEnv Meta.instanceExtension.popScope
+
 open Lean Meta Simp in
 simproc ↓ [embedding] IteCongrSimproc (ite _ _ _) := fun e => do
   let mkApp5 (.const ``ite [u]) α c hc t e := e | return .continue
@@ -67,9 +85,8 @@ simproc ↓ [embedding] IteCongrSimproc (ite _ _ _) := fun e => do
   let ct ← simp t
   let ce ← simp e
   if cr.expr == c && ct.expr == t && ce.expr == e then return .continue
-  let chc' := .app (.const ``Classical.propDecidable []) cr.expr
   let hc' ← if cr.expr == c then pure hc
-            else Meta.synthInstance? (.app (.const ``Decidable []) cr.expr) >>= pure ∘ (Option.getD · chc')
+            else Meta.withClassical (Meta.synthInstance (.app (.const ``Decidable []) cr.expr))
   let expr := mkApp5 (.const ``ite [u]) α cr.expr hc' ct.expr ce.expr
   let proof := mkApp12 (.const ``ite_congr' [u]) c cr.expr α hc hc' t ct.expr e ce.expr (← cr.getProof) (← ct.getProof) (← ce.getProof)
   return .done { expr, proof? := some proof }
@@ -88,6 +105,23 @@ simproc ↓ [embedding] boolEqSimproc (_ = _) := fun e => do
   let yAsProp ← mkEq y (mkConst ``true)
   let newExpr ← mkEq xAsProp yAsProp
   let iffPrf := mkApp2 (mkConst ``Bool.eq_eq_true) x y
+  let proof ← mkAppM ``propext #[iffPrf]
+  return .continue (some { expr := newExpr, proof? := some proof })
+
+open Lean Meta Simp in
+/-- This is a `simproc` rather than a plain simp lemma so we can skip the
+`¬(b = true)` case. Without this guard, `Bool.ne_eq_true` would re-expand
+the `¬(b = true)` produced by `Bool.not_eq_true''` into
+`(b = true) ≠ (true = true)`, which then collapses to `(b = true) ≠ True`,
+leaving spurious `≠ True` artifacts in the output. -/
+simproc ↓ [embedding] boolNeSimproc (_ ≠ _) := fun e => do
+  let_expr Ne α x y := e | return .continue
+  if !(α.isConstOf ``Bool) then return .continue
+  -- (x : Prop) is `x = true` by the Bool → Prop coercion
+  let xAsProp ← mkEq x (mkConst ``true)
+  let yAsProp ← mkEq y (mkConst ``true)
+  let newExpr ← mkAppM ``Ne #[xAsProp, yAsProp]
+  let iffPrf := mkApp2 (mkConst ``Bool.ne_eq_true) x y
   let proof ← mkAppM ``propext #[iffPrf]
   return .continue (some { expr := newExpr, proof? := some proof })
 

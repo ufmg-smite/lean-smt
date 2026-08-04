@@ -1,0 +1,453 @@
+/-
+Copyright (c) 2021-2024 by the authors listed in the file AUTHORS and their
+institutional affiliations. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Abdalrhman Mohamed, Harun Khan
+-/
+
+import Lean
+import Qq
+import Mathlib.Data.ZMod.Basic
+import Mathlib.Data.Real.Basic
+
+import Smt.Recognizers
+
+namespace Smt.Reconstruct.ZMod
+
+abbrev Var := Nat
+
+def Context (n : Nat) := Var → ZMod n
+
+structure Monomial (n : Nat) where
+  coeff : ZMod n
+  vars : List (Var × Nat) -- variable index and multiplicity
+deriving Inhabited, Repr, DecidableEq
+
+namespace Monomial
+
+def neg (m : Monomial n) : Monomial n :=
+  { m with coeff := -m.coeff }
+
+def add (m₁ m₂ : Monomial n) (_ : m₁.vars = m₂.vars) : Monomial n :=
+  { coeff := m₁.coeff + m₂.coeff, vars := m₁.vars }
+
+-- Invariant: monomial variables remain sorted.
+def mul (m₁ m₂ : Monomial n) : Monomial n :=
+  let coeff := m₁.coeff * m₂.coeff
+  let vars := m₁.vars.foldr insert m₂.vars
+  { coeff, vars }
+where
+  insert : Var × Nat → List (Var × Nat) → List (Var × Nat) := fun (x, xn) ys =>
+    match ys with
+    | [] => [(x, xn)]
+    | (y, yn) :: ys =>
+      if x < y then (x, xn) :: (y, yn) :: ys
+      else if y = x then (x, xn + yn) :: ys
+      else (y, yn) :: insert (x, xn) ys
+
+def denote (ctx : Context n) (m : Monomial n) : ZMod n :=
+  m.coeff * m.vars.foldl (fun acc (v, vn) => acc * (ctx v) ^ vn) 1
+
+theorem denote_neg {m : Monomial n} : m.neg.denote ctx = -m.denote ctx := by
+  simp only [neg, denote, neg_mul_eq_neg_mul]
+
+section
+
+variable {op : α → α → α}
+
+-- Can be generalized to `List.foldl_assoc`.
+theorem foldl_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+  (z1 z2 : α) :
+  List.foldl (fun z a => op z (g a)) (op z1 z2) l =
+  op z1 (List.foldl (fun z a => op z (g a)) z2 l) := by
+  induction l generalizing z1 z2 with
+  | nil => rfl
+  | cons y ys ih =>
+    simp only [List.foldl_cons, ih, assoc]
+
+theorem foldr_assoc {g : β → α} (assoc : ∀ a b c, op (op a b) c = op a (op b c))
+  (z1 z2 : α) :
+  List.foldr (fun z a => op a (g z)) (op z1 z2) l =
+  op z1 (List.foldr (fun z a => op a (g z)) z2 l) := by
+  induction l generalizing z1 z2 with
+  | nil => rfl
+  | cons y ys ih =>
+    simp only [List.foldr_cons, ih, assoc]
+
+end
+
+theorem foldl_mul_factor {ctx : Context n} (l : List (Var × Nat)) (z : ZMod n) :
+  List.foldl (fun acc (v, k) => acc * (ctx v) ^ k) z l =
+  z * List.foldl (fun acc (v, k) => acc * (ctx v) ^ k) 1 l := by
+  conv_lhs => rw [show z = z * 1 from (mul_one z).symm]
+  exact foldl_assoc mul_assoc z 1
+
+-- Can be generalized.
+theorem foldl_mul_insert {ctx : Context n} :
+  List.foldl (fun z (a, k) => z * (ctx a) ^ k) 1 (mul.insert (y, yn) ys) =
+  (ctx y) ^ yn * List.foldl (fun z (a, k) => z * (ctx a) ^ k) 1 ys := by
+  induction ys with
+  | nil => simp [mul.insert]
+  | cons x ys ih =>
+    obtain ⟨x, xn⟩ := x
+    by_cases h : y < x
+    · simp [mul.insert, h, foldl_assoc mul_assoc ((ctx y) ^ yn) ((ctx x) ^ xn)]
+    · simp only [mul.insert, h, if_false]
+      by_cases heq : x = y
+      · rw [if_pos heq, heq]
+        simp only [List.foldl_cons, one_mul, pow_add]
+        rw [foldl_assoc mul_assoc ((ctx y) ^ yn) ((ctx y) ^ xn)]
+      · rw [if_neg heq]
+        simp only [List.foldl_cons, one_mul]
+        rw [foldl_mul_factor _ ((ctx x) ^ xn), ih,
+            foldl_mul_factor ys ((ctx x) ^ xn),
+            ← mul_assoc, mul_comm ((ctx x) ^ xn) ((ctx y) ^ yn), mul_assoc]
+
+theorem denote_add {ctx: Context o} {m n : Monomial o} (h : m.vars = n.vars) :
+  (m.add n h).denote ctx = m.denote ctx + n.denote ctx := by
+  simp only [add, denote, add_mul, h]
+
+theorem denote_mul{ctx: Context o}  {m₁ m₂ : Monomial o} : (m₁.mul m₂).denote ctx = m₁.denote ctx * m₂.denote ctx := by
+  simp only [denote, mul, mul_assoc]; congr 1
+  rw [← mul_assoc, mul_comm _ m₂.coeff, mul_assoc]; congr 1
+  induction m₁.vars with
+  | nil => simp
+  | cons y ys ih =>
+    obtain ⟨y, yn⟩ := y
+    rw [List.foldr_cons, foldl_mul_insert, ih, List.foldl_cons, one_mul,
+        foldl_mul_factor ys ((ctx y) ^ yn), mul_assoc]
+
+end Monomial
+
+abbrev Polynomial n := List (Monomial n)
+
+namespace Polynomial
+
+def neg (p : Polynomial n) : Polynomial n :=
+  p.map Monomial.neg
+
+scoped instance [LT α] [LT β] : LT (α × β) where
+  lt := fun (x₁, y₁) (x₂, y₂) => x₁ < x₂ ∨ (x₁ = x₂ ∧ y₁ < y₂)
+
+scoped instance [LT α] [LT β] [DecidableLT α] [DecidableEq α] [DecidableLT β]
+  : DecidableLT (α × β) := fun (x₁, y₁) (x₂, y₂) =>
+  show Decidable (x₁ < x₂ ∨ x₁ = x₂ ∧ y₁ < y₂) from
+  inferInstance
+
+-- NOTE: implementation merges monomials with same variables.
+-- Invariant: monomials remain sorted.
+def add (p q : Polynomial n) : Polynomial n :=
+  p.foldr insert q
+where
+  insert (m : Monomial n) : Polynomial n → Polynomial n
+    | [] => [m]
+    | n :: ns =>
+      if m.vars < n.vars then
+        m :: n :: ns
+      else if h : m.vars = n.vars then
+        let m' := m.add n h
+        if m'.coeff = 0 then ns else m' :: ns
+      else
+        n :: insert m ns
+
+def sub (p q : Polynomial n) : Polynomial n :=
+  p.add q.neg
+
+-- Invariant: monomials remain sorted.
+def mulMonomial (m : Monomial n) (p : Polynomial n) : Polynomial n :=
+  p.foldr (fun n acc => Polynomial.add [m.mul n] acc) []
+
+-- Invariant: monomials remain sorted.
+def mul (p q : Polynomial n) : Polynomial n :=
+  p.foldl (fun acc m => (q.mulMonomial m).add acc) []
+
+def pow (p : Polynomial n) (k : Nat) : Polynomial n :=
+  k.repeat p.mul [{ coeff := 1, vars := [] }]
+
+def denote (ctx : Context n) (p : Polynomial n) : ZMod n :=
+  p.foldl (fun acc m => acc + m.denote ctx) 0
+
+-- ⊢ List.foldl (fun z a => z + Monomial.denote ctx a) 0
+--     (if h : m.vars = n.vars then if (m.add n ⋯).coeff = 0 then p else m.add n ⋯ :: p else n :: add.insert m p) =
+--   Monomial.denote ctx m + (Monomial.denote ctx n + List.foldl (fun z a => z + Monomial.denote ctx a) 0 p)
+
+theorem foldl_add_insert (ctx : Context o) :
+  List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 (add.insert m p) =
+  (Monomial.denote ctx m) + List.foldl (fun z a => z + (Monomial.denote ctx a)) 0 p := by
+  induction p with
+  | nil => simp [add.insert]
+  | cons n p ih =>
+    simp only [add.insert]
+    split <;> rename_i hlt <;> simp only [List.foldl_cons, add_comm (0 : ZMod o), Monomial.foldl_assoc add_assoc ]
+    · split <;> rename_i heq
+      · split <;> rename_i hneq
+        · rw [←add_assoc, add_comm, ←Monomial.denote_add heq]
+          simp [Monomial.denote, hneq]
+        · simp [-add_zero, add_comm (0:ZMod o), Monomial.foldl_assoc add_assoc, Monomial.denote_add, add_assoc]
+      · simp only [List.foldl_cons, add_comm (0: ZMod o), ih, Monomial.foldl_assoc add_assoc]
+        rw [←add_assoc, add_comm (Monomial.denote ctx n), add_assoc]
+
+theorem denote_neg {p : Polynomial o} :
+ p.neg.denote ctx = -p.denote ctx := by
+  simp only [denote, neg]
+  induction p with
+  | nil => simp
+  | cons m p ih =>
+    simp only [List.foldl_cons, add_comm (0:ZMod o),
+     Monomial.foldl_assoc add_assoc,neg_add,
+     ←ih,
+     List.map,
+     Monomial.denote_neg]
+
+theorem denote_add {p q : Polynomial n} : (p.add q).denote ctx = p.denote ctx + q.denote ctx := by
+  simp only [denote, add]
+  induction p with
+  | nil => simp
+  | cons x ys ih =>
+    simp only [List.foldr_cons, List.foldl_cons, add_comm (0:ZMod n), Monomial.foldl_assoc add_assoc, add_assoc]
+    rw [← ih, foldl_add_insert]
+
+theorem denote_sub {p q : Polynomial n} : (p.sub q).denote ctx = p.denote ctx - q.denote ctx := by
+  simp only [sub, denote_neg, denote_add, sub_eq_add_neg]
+
+theorem denote_mulMonomial {p : Polynomial o} : (p.mulMonomial m).denote ctx = m.denote ctx * p.denote ctx := by
+  simp only [denote, mulMonomial, add]
+  induction p with
+  | nil => simp
+  | cons n p ih =>
+    simp only [List.foldl_cons, List.foldr_cons, add_comm (0 :ZMod o), Monomial.foldl_assoc add_assoc, mul_add, ←ih]
+    simp [foldl_add_insert, Monomial.denote_mul]
+
+theorem denote_cons {p : List (Monomial n)} {ctx : Context n} : denote ctx (m :: p) = m.denote ctx + denote ctx p := by
+  simp only [denote, List.foldl_cons, add_comm (0 :ZMod n), Monomial.foldl_assoc add_assoc]
+
+theorem denote_nil_add : denote ctx (p.add []) = denote ctx p := by
+  induction p with
+  | nil => simp [add]
+  | cons n p ih =>
+    simp [denote_add, denote_cons, show denote ctx [] = 0 by rfl]
+
+theorem denote_add_insert {g : Monomial o → Polynomial o} :
+  denote ctx (List.foldl (fun acc m => (g m).add acc) n p) = denote ctx n + denote ctx (List.foldl (fun acc m => (g m).add acc) [] p) := by
+  revert n
+  induction p with
+  | nil => simp [denote]
+  | cons k p ih =>
+    intro n
+    simp only [List.foldl_cons]
+    rw [ih, @ih ((g k).add []), ← add_assoc, denote_nil_add, denote_add, add_comm _ (denote ctx n)]
+
+theorem denote_foldl {g : Monomial o → Polynomial o} :
+  denote ctx (List.foldl (fun acc m => ((g m).add (acc))) [] p) = List.foldl (fun acc m => (g m).denote ctx + acc) (0 :ZMod o) p := by
+  induction p with
+  | nil => simp [denote]
+  | cons n p ih =>
+    simp only [List.foldl_cons, add_comm] at *
+    rw [add_comm (0:ZMod o), Monomial.foldl_assoc add_assoc, ←ih, denote_add_insert, denote_nil_add]
+
+theorem denote_mul {p q : Polynomial n} : (p.mul q).denote ctx = p.denote ctx * q.denote ctx := by
+  simp only [mul]
+  induction p with
+  | nil => simp [denote]
+  | cons n p ih =>
+    simp only [List.foldl_cons, denote_cons, add_mul, ← ih]
+    rw [denote_foldl, denote_add_insert, ←denote_mulMonomial, denote_nil_add, denote_foldl]
+
+theorem denote_pow {p : Polynomial n} {k : Nat} : (p.pow k).denote ctx = p.denote ctx ^ k := by
+  induction k with
+  | zero =>
+    simp [pow, Nat.repeat, denote, Monomial.denote]
+  | succ k ih =>
+    show (p.mul (p.pow k)).denote ctx = p.denote ctx ^ (k + 1)
+    rw [denote_mul, ih, pow_succ, mul_comm]
+
+end Polynomial
+
+inductive Expr (o : Nat) where
+  | val (v : ZMod o)
+  | var (v : Nat)
+  | neg (a : Expr o)
+  | add (a b : Expr o)
+  | sub (a b : Expr o)
+  | mul (a b : Expr o)
+  | pow (a : Expr o) (n : Nat)
+deriving DecidableEq, Inhabited, Repr
+
+namespace Expr
+
+-- o is the modulus (a Nat), not a ZMod o element.
+def toPolynomial {o : Nat} : Expr o → Polynomial o
+  | .val v => if v = 0 then [] else [{ coeff := v, vars := [] }]
+  | .var v => [{ coeff := (1 : ZMod o), vars := [(v, 1)] }]
+  | .neg a => Polynomial.neg (toPolynomial a)
+  | .add a b => Polynomial.add (toPolynomial a) (toPolynomial b)
+  | .sub a b => Polynomial.sub (toPolynomial a) (toPolynomial b)
+  | .mul a b => Polynomial.mul (toPolynomial a) (toPolynomial b)
+  | .pow a n => Polynomial.pow (toPolynomial a) n
+
+def eval (ctx : Context o) : Expr o → ZMod o
+  | .val v => v
+  | .var v => ctx v
+  | .neg a => -a.eval ctx
+  | .add a b => a.eval ctx + b.eval ctx
+  | .sub a b => a.eval ctx - b.eval ctx
+  | .mul a b => a.eval ctx * b.eval ctx
+  | .pow a n => a.eval ctx ^ n
+
+theorem eval_toPolynomial {e : Expr o} : eval ctx e  = (toPolynomial e).denote ctx := by
+  induction e with
+  | val v =>
+    simp only [eval, toPolynomial]
+    split <;> rename_i hv
+    · rewrite [hv];  rfl
+    · simp [Polynomial.denote, Monomial.denote]
+  | var v =>
+    simp [eval, toPolynomial, Polynomial.denote, Monomial.denote]
+  | neg a ih =>
+    simp only [eval, toPolynomial, Polynomial.denote_neg, ih]
+  | add a b ih₁ ih₂ =>
+    simp only [eval, toPolynomial, Polynomial.denote_add, ih₁, ih₂]
+  | sub a b ih₁ ih₂ =>
+    simp only [eval, toPolynomial, Polynomial.denote_sub, ih₁, ih₂]
+  | mul a b ih₁ ih₂ =>
+    simp only [eval, toPolynomial, Polynomial.denote_mul, ih₁, ih₂]
+  | pow a n ih =>
+    simp only [eval, toPolynomial, Polynomial.denote_pow, ih]
+
+theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : Expr o} (h : e₁.toPolynomial = e₂.toPolynomial)
+  : e₁.eval ctx = e₂.eval ctx := by
+  rw [eval_toPolynomial, eval_toPolynomial, h]
+
+end Expr
+
+open Lean Qq
+
+abbrev PolyM (n : Nat) := StateT (Array (Q(ZMod $n))) MetaM
+
+def getIndex (n : Nat) (e : Q(ZMod $n)) : PolyM n Nat := do
+  let is ← get
+  if let some i := is.findIdx? (· == e) then
+    return i
+  else
+    let size := is.size
+    set (is.push e)
+    return size
+
+partial def reify (n : Nat) (e : Q(ZMod $n)) : PolyM n (Q(Expr $n)) := do
+  if let some _ := e.natLitOf? q(ZMod $n) then
+    return q(.val $e)
+  else if let some e' := e.negOf? q(ZMod $n) then
+    return q(.neg $(← reify n e'))
+  else if let some (x, y) := e.hAddOf? q(ZMod $n) q(ZMod $n) then
+    return q(.add $(← reify n x) $(← reify n y))
+  else if let some (x, y) := e.hSubOf? q(ZMod $n) q(ZMod $n) then
+    return q(.sub $(← reify n x) $(← reify n y))
+  else if let some (x, y) := e.hMulOf? q(ZMod $n) q(ZMod $n) then
+    return q(.mul $(← reify n x) $(← reify n y))
+  else
+    let v : Nat ← getIndex n e
+    return q(.var $v)
+
+def polyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId) : MetaM Unit := do
+  let ctx : Q(Context $n) ← if h : 0 < is.size
+    then do let is : Q(RArray (ZMod $n)) ← (RArray.ofArray is h).toExpr q(ZMod $n) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
+
+  -- Certify the normal-form equation with `decide` rather than a bare
+  -- `Eq.refl` of `toPolynomial`. A raw `Eq.refl` asks the kernel to prove
+  -- the two `toPolynomial` computations definitionally equal, and the
+  -- kernel's uncached defeq interleaves the reduction of both unreduced
+  -- thunks — exponential on nested products of sums, which blows the stack
+  -- ("(kernel) deep recursion detected") on larger certificates. With
+  -- `of_decide_eq_true (Eq.refl true)` the kernel instead *evaluates*
+  -- `decide (l.toPolynomial = r.toPolynomial)` to `true`: each side is
+  -- reduced once, structurally, with GMP-fast `Nat` comparisons.
+  let hp : Q(«$l».toPolynomial (o := $n) = «$r».toPolynomial (o := $n)) :=
+    .app q(@of_decide_eq_true («$l».toPolynomial (o := $n) = «$r».toPolynomial (o := $n)) _) q(Eq.refl true)
+
+  let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx  $l $r $hp)
+  mv.assign he
+
+def nativePolyNorm (n:Nat) (l r : Q(Expr «$n»)) (is : Array Q(ZMod $n)) (mv : MVarId) : MetaM Unit := do
+  let ctx : Q(Context $n) ← if h : 0 < is.size
+    then do let is : Q(RArray (ZMod $n)) ← (RArray.ofArray is h).toExpr q(ZMod $n) id; pure q(«$is».get)
+    else pure q(fun _ => 0)
+  let hp ← nativeDecide q(«$l».toPolynomial = «$r».toPolynomial)
+  let he := q(@Expr.denote_eq_from_toPolynomial_eq (o := $n) $ctx $l $r $hp)
+  mv.assign he
+where
+  nativeDecide (p : Q(Prop)) : MetaM Q($p) := do
+    let hp : Q(Decidable $p) ← Meta.synthInstance q(Decidable $p)
+    match ← Meta.nativeEqTrue `Smt.polynorm q(decide $p) with
+    | .notTrue =>
+      throwError m!"[poly_norm] evaluated that the proposition
+        {indentExpr q(decide $p)}\n\
+        is false"
+    | .success hdp =>
+      -- get instance from `d`
+      return .app q(@of_decide_eq_true $p $hp) hdp
+
+namespace Tactic
+
+syntax (name := polyNorm) "poly_norm" : tactic
+
+open Lean.Elab Tactic in
+@[tactic polyNorm] def evalPolyNorm : Tactic := fun _ =>
+  withMainContext do
+    let mv ← getMainGoal
+    let goalTy ← mv.getType
+    let some (_, l, r) := goalTy.eq?
+      | throwError "[poly_norm] expected an equality, got {goalTy}"
+    let lTy ← Lean.Meta.inferType l
+    let (fn, args) := lTy.getAppFnArgs
+    logInfo m!"{fn}, {args}"
+    let nExpr ←
+      match fn, args with
+      |  ``ZMod, #[n] => pure n
+      | _, _ => throwError "[poly_norm] expected lhs type ZMod n, got {lTy}"
+    let nExpr ← Lean.Meta.whnf nExpr
+    let n ←
+      match nExpr with
+      | Expr.lit (Lean.Literal.natVal k) => pure k
+      | _ => throwError "[poly_norm] modulus is not a numeral; got {nExpr}"
+    let some (_, l, r) := (← mv.getType).eq?
+      | throwError "[poly_norm] expected an equality, got {← mv.getType}"
+    let (l, is) ← (reify n l).run #[]
+    let (r, is) ← (reify n r).run is
+    ZMod.polyNorm n l r is mv
+    replaceMainGoal []
+syntax (name := nativePolyNorm) "native_poly_norm" : tactic
+
+open Lean.Elab Tactic in
+@[tactic nativePolyNorm] def evalNativePolyNorm : Tactic := fun _ =>
+  withMainContext do
+    let mv ← getMainGoal
+    let goalTy ← mv.getType
+    let some (_, l, r) := goalTy.eq?
+      | throwError "[poly_norm] expected an equality, got {goalTy}"
+    let lTy ← Lean.Meta.inferType l
+    let (fn, args) := lTy.getAppFnArgs
+    logInfo m!"{fn}, {args}"
+    let nExpr ←
+      match fn, args with
+      |  ``ZMod, #[n] => pure n
+      | _, _ => throwError "[poly_norm] expected lhs type ZMod n, got {lTy}"
+    let nExpr ← Lean.Meta.whnf nExpr
+    let n ←
+      match nExpr with
+      | Expr.lit (Lean.Literal.natVal k) => pure k
+      | _ => throwError "[poly_norm] modulus is not a numeral; got {nExpr}"
+    let some (_, l, r) := (← mv.getType).eq?
+      | throwError "[poly_norm] expected an equality, got {← mv.getType}"
+    let (l, is) ← (reify n l).run #[]
+    let (r, is) ← (reify n r).run is
+    ZMod.nativePolyNorm n l r is mv
+    replaceMainGoal []
+
+end Smt.Reconstruct.ZMod.Tactic
+
+example (x y z : ZMod 3) : 1 * (x + y) * z  = z * y + x * z := by
+  poly_norm
+
+example (x y z : ZMod 6) : 1 * (x + y) * z  = z * y + x * z := by
+  native_poly_norm

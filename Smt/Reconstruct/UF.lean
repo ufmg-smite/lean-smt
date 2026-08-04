@@ -88,7 +88,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let h : Q(($s = $r) = False) ← reconstructProof pf.getChildren[0]!
     addThm q((($t = $s) = ($t = $r)) = (¬$t = $s ∧ ¬$t = $r)) q(@UF.eq_cond_deq $α $t $s $r $h)
   | .EQ_ITE_LIFT =>
-    let c : Q(Bool) ← reconstructTerm pf.getArguments[1]!
+    let c : Q(Prop) ← reconstructTerm pf.getArguments[1]!
     let hc : Q(Decidable $c) ← Meta.synthDecidableInstance q($c)
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[2]!.getSort!
     let t : Q($α) ← reconstructTerm pf.getArguments[2]!
@@ -105,6 +105,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
 @[smt_proof_reconstruct] def reconstructUFProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf
   | .REFL =>
+    if pf.getArguments[0]!.getKind! == .FINITE_FIELD_IDEAL then return none
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getArguments[0]!.getSort!
     let a : Q($α) ← reconstructTerm pf.getArguments[0]!
     addThm q($a = $a) q(Eq.refl $a)
@@ -135,7 +136,7 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm (← reconstructTerm pf.getResult) curr
   | .CONG =>
     let k := pf.getResult[0]!.getKind!
-    if k == .FORALL || k == .EXISTS || k == .WITNESS || k == .LAMBDA || k == .SET_COMPREHENSION then
+    if k == .FORALL || k == .EXISTS || k == .WITNESS || k == .LAMBDA || k == .SET_COMPREHENSION || k == .SET_MEMBER then
       return none
     let mut assums ← pf.getChildren.mapM reconstructProof
     addTac (← reconstructTerm pf.getResult) (smtCongr · assums)
