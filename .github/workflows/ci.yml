@@ -27,6 +27,8 @@ jobs:
       with:
         auto-config: false
         use-mathlib-cache: false
+    # TODO: Update this job to omit building Smt.Real when pushing or making a pull_request
+    # to the no_mathlib branch
     - name: Build and Test Lean-SMT
       run: |
         lake update
