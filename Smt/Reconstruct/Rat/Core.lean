@@ -66,6 +66,9 @@ protected theorem lt_iff_blt {x y : Rat} : x < y ↔ x.blt y := by
 protected theorem le_iff_blt {x y : Rat} : x ≤ y ↔ ¬ y.blt x := by
   simp [LE.le]
 
+protected theorem le_of_eq {a b : Rat} (hab : a = b) : a ≤ b :=
+  hab ▸ Rat.le_refl
+
 protected theorem le_antisymm' {a b : Rat} (hab : a ≤ b) (hba : b ≤ a) : a = b := by
   rw [Rat.le_iff_sub_nonneg] at hab hba
   rw [Rat.sub_eq_add_neg] at hba
