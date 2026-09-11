@@ -66,11 +66,12 @@ theorem sum_ub₉ (h₁ : a = b) (h₂ : c = d) : a + c = b + d := by
 theorem mul_abs₁ (h₁ : x₁.abs = y₁.abs) (h₂ : x₂.abs = y₂.abs) : (x₁ * x₂).abs = (y₁ * y₂).abs := by
   rw [Int.abs_mul x₁ x₂, Int.abs_mul y₁ y₂, h₁, h₂]
 
-theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂.abs ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
+theorem mul_abs₂ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs = y₂.abs ∧ x₂ ≠ 0) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
   rewrite [Int.abs_mul, Int.abs_mul]
   apply Int.mul_lt_mul h₁ (Int.le_of_eq h₂.left.symm) _ (Int.abs_nonneg x₁)
   rewrite [← h₂.left]
-  exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂) h₂.right.symm
+  exact Int.lt_of_le_of_ne (Int.abs_nonneg x₂)
+    (fun h => h₂.right (Int.abs_eq_zero.mp h.symm))
 
 theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (x₁ * x₂).abs > (y₁ * y₂).abs := by
   rw [Int.abs_mul, Int.abs_mul]
@@ -78,6 +79,37 @@ theorem mul_abs₃ (h₁ : x₁.abs > y₁.abs) (h₂ : x₂.abs > y₂.abs) : (
   cases Int.le_iff_eq_or_lt.mp (Int.abs_nonneg y₁) <;> rename_i h
   · rewrite [h]; exact h₁
   · exact Int.lt_trans h h₁
+
+/-- cvc5 `ARITH_REDUCTION` of `(mod_total t s)`: the defining property of Euclidean
+    div/mod, instantiated by cvc5 as an axiom over the purification skolem of `t / s`. -/
+theorem mod_total_reduction (t s : Int) :
+    t % s = t - s * (t / s) ∧
+      (s > 0 → s * (t / s) ≤ t ∧ t < s * (t / s + 1)) ∧
+      (s < 0 → s * (t / s) ≤ t ∧ t < s * (t / s + -1)) := by
+  have hdef : t % s = t - s * (t / s) := Int.emod_def t s
+  refine ⟨hdef, fun hs => ?_, fun hs => ?_⟩
+  · have h1 : 0 ≤ t % s := Int.emod_nonneg t (by omega)
+    have h2 : t % s < s := Int.emod_lt_of_pos t hs
+    rw [Int.mul_add, Int.mul_one]
+    rw [hdef] at h1 h2
+    generalize s * (t / s) = q at h1 h2 ⊢
+    omega
+  · have h1 : 0 ≤ t % s := Int.emod_nonneg t (by omega)
+    have h2 : t % s < -s := by
+      have h := Int.emod_lt_of_pos t (by omega : (0 : Int) < -s)
+      rwa [Int.emod_neg] at h
+    rw [Int.mul_add, show s * (-1 : Int) = -s by omega]
+    rw [hdef] at h1 h2
+    generalize s * (t / s) = q at h1 h2 ⊢
+    omega
+
+/-- cvc5 `ARITH_REDUCTION` of `(mod t s)`: `mod` unfolds to an `ite` over the
+    `mod_by_zero` skolem (reconstructed as `fun x => x % 0`) and `mod_total`. -/
+theorem mod_reduction (t s : Int) :
+    t % s = if s = 0 then (fun (x : Int) => x % 0) t else t % s := by
+  split
+  · next h => rw [h]
+  · rfl
 
 theorem int_tight_ub {i : Int} (h : i < c) : i ≤ c - 1 :=
   Int.le_sub_one_of_lt h
