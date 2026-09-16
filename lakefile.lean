@@ -6,7 +6,7 @@ require auto from
   git "https://github.com/tomaz1502/lean-auto.git" @ "4_28"
 
 require cvc5 from
-  git "https://github.com/ufmg-smite/lean-cvc5.git" @ "nl-univariate-4-28"
+  git "https://github.com/ufmg-smite/lean-cvc5.git" @ "fine-grained-nl-univ"
 
 require CompPoly from
   git "https://github.com/tomaz1502/CompPoly.git" @ "divByMonic"
