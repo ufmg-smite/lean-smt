@@ -9,39 +9,27 @@ import CompPoly
 
 open Lean Meta Qq CompPoly
 
-example (p : CPolynomial Rat) (a : Real) : IsRoot p 1 → (toPolyReal p).eval a > 0 → a ≠ 1 := by
-  intros h1 h2 h
-  simp_all [IsRoot]
-
 /-- Given `isRootPf : IsRoot P r` and `ineqPf : p(var) ~ 0` (or `¬ p(var) ~ 0`), where `p(var)`
 is the reconstruction of the cvc5 polynomial term of `P` at `var`, proves `¬ (var = r)`.
 
-Strategy (as in the example above): assume `var = r`, substitute it into the literal, identify
-the literal's polynomial side with `(toPolyReal P).eval r`, rewrite that to `0` using the root
-fact, and refute the resulting relation between `0` and `0` with `norm_num`. -/
+Strategy (as in the example above): lift the literal to `(toPolyReal P).eval var ~ 0`, assume
+`var = r` and substitute it, rewrite the evaluation to `0` using the root fact, and refute the
+resulting relation between `0` and `0` with `norm_num`. -/
 def ranEvalCore (var : Q(Real)) (root : RootVal) (isRootPf : Expr) (ineqPf : Expr) : Smt.ReconstructM Expr := do
   let r : Q(Real) ← root.toReal
   let isRootT ← instantiateMVars (← inferType isRootPf)
   let P : Q(CPolynomial Rat) := isRootT.getArg! 0
   -- `IsRoot P r` unfolds to `(toPolyReal P).eval r = 0`
   let isRootPf ← mkExpectedTypeHint isRootPf q((toPolyReal $P).eval $r = 0)
+  -- `p(var) ~ 0` ↦ `(toPolyReal P).eval var ~ 0`
+  let ineqPf ← liftConstraint P var ineqPf
 
   let goal : Q(Prop) := q(¬ ($var = $r))
   let goalMVar ← mkFreshExprMVar goal
   let (h, mvFalse) ← goalMVar.mvarId!.intro1P
   mvFalse.withContext do
-    -- `¬ (p ≥ 0)` ↦ `p < 0`, etc.; `¬ (p = 0)` is left as is
-    let ineqPf ← push_not ineqPf
-    -- substitute `var := r` in the literal
+    -- `eval var ~ 0` ↦ `eval r ~ 0` ↦ `0 ~ 0`
     let ineqPf ← rewriteWithEq ineqPf (.fvar h)
-    let t ← inferType ineqPf
-    let some (a, b) := relSides? t
-      | throwError "[ranEvalCore]: expected a relation, got {t}"
-    -- the side holding the polynomial (the other one is the literal `0`)
-    let e : Q(Real) := if ← isDefEq a q((0 : Real)) then b else a
-    -- `p(r) ~ 0` ↦ `(toPolyReal P).eval r ~ 0` ↦ `0 ~ 0`
-    let evalEq ← proveEvalEq P r e
-    let ineqPf ← rewriteWithEq ineqPf (← mkEqSymm evalEq)
     let ineqPf ← rewriteWithEq ineqPf isRootPf
     let t ← inferType ineqPf
     let mvNeg ← mkFreshExprMVar (mkNot t)

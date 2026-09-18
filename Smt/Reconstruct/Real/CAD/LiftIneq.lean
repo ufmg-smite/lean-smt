@@ -168,6 +168,10 @@ def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
 def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat × Expr) := do
   -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
   let ineq_pf ← push_not ineq_pf
+  -- Transform expressions of the form `a < b` in `a - b < 0`
+  let ineq_pf ← all_to_lhs ineq_pf
+  -- Runs `ring_nf` at `ineq_pf`, transforming it into a sum of monomials and joining monomials of same degree
+  let ineq_pf ← ring_normalize ineq_pf
   -- Gets the expression on the left-hand side of the normalized `ineq_pf`
   let ineq ← inferType ineq_pf
   let lhs: Q(Real) := get_lhs ineq

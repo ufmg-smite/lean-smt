@@ -61,7 +61,7 @@ partial def gen_toReal_lt_aa (aE bE : Expr) : Smt.ReconstructM Expr := do
   let pf ← mkAppM ``AlgebraicNumber.lt_toReal #[aE, bE, h]
   return pf
 
-partial def gen_toReal_lt (a b : RootVal) : Smt.ReconstructM Expr := do
+def gen_toReal_lt (a b : RootVal) : Smt.ReconstructM Expr := do
   match a, b with
   | .alg aE _, .alg bE _ => gen_toReal_lt_aa aE bE
   | .rat aE _, .rat bE _ => gen_toReal_lt_rr aE bE

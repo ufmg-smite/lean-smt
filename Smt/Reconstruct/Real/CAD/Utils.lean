@@ -497,26 +497,28 @@ def parseMonom (t : cvc5.Term) : Smt.ReconstructM (Rat × Nat) := do
     return (curr.getRationalValue!, deg)
   | _ => throwError "[parseMonom]: unexpected monomial {t}"
 
-def monomExpr (c : Rat) (e : Nat) : Q(CPolynomial Rat) :=
+def mkMonom (c : Rat) (e : Nat) : Q(CPolynomial Rat) × CPolynomial Rat :=
   if e == 0 then
-    q(CPolynomial.C $c)
+    (q(CPolynomial.C $c), CPolynomial.C c)
   else if e == 1 then
-    q((CPolynomial.C $c) * (CPolynomial.X : CPolynomial Rat))
+    (q((CPolynomial.C $c) * CPolynomial.X), CPolynomial.C c * CPolynomial.X)
   else
-    q((CPolynomial.C $c) * ((CPolynomial.X : CPolynomial Rat) ^ $e))
+    (q((CPolynomial.C $c) * CPolynomial.X ^ $e), (CPolynomial.C c * CPolynomial.X ^ e))
 
-def reconsMonom (t : cvc5.Term) : Smt.ReconstructM Q(CPolynomial Rat) := do
+def reconsMonom (t : cvc5.Term) : Smt.ReconstructM (Q(CPolynomial Rat) × CPolynomial Rat) := do
   let (c, e) ← parseMonom t
-  return monomExpr c e
+  return mkMonom c e
 
-def reconsPoly (t : cvc5.Term) : Smt.ReconstructM Q(CPolynomial Rat) := do
+def reconsPoly (t : cvc5.Term) : Smt.ReconstructM (Q(CPolynomial Rat) × CPolynomial Rat) := do
   match t.getKind with
   | .ADD =>
     let summands ← t.getChildren.mapM reconsMonom
-    if h : 0 < summands.size then
-      return summands.foldl (fun (acc s : Q(CPolynomial Rat)) => q($acc + $s)) summands[0] (start := 1)
-    else
-      return q((0 : CPolynomial Rat))
+    let mut acc_expr := summands[0]!.1
+    let mut acc_native := summands[0]!.2
+    for (m_expr, m_native) in summands[1 : ] do
+      acc_expr := q($acc_expr + $m_expr)
+      acc_native := acc_native + m_native
+    return (acc_expr, acc_native)
   | _ => reconsMonom t
 
 def SgnInv (p : CPolynomial Rat) (S : Set Real) : Prop :=

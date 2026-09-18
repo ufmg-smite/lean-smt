@@ -128,7 +128,7 @@ open Lean Qq AlgebraicNumber CompPoly
     let a: Q(AlgNum) ← Raw.lift r
     return a
   | .SGN_INV =>
-    let P : Q(CPolynomial Rat) ← reconsPoly t[0]!
+    let ⟨P, _⟩ ← reconsPoly t[0]!
     let S : Q(Set Real) ←
       if t[1]!.getKind != .COV_MINUS_INFINITY && t[2]!.getKind != .COV_PLUS_INFINITY then do
         let l : Q(Real) ← RootVal.toReal (← reconsRootVal t[1]!)
@@ -143,7 +143,7 @@ open Lean Qq AlgebraicNumber CompPoly
       else pure q(Set.univ)
     return q(SgnInv $P $S)
   | .IS_ROOT =>
-    let P : Q(CPolynomial Rat) ← reconsPoly t[0]!
+    let ⟨P, _⟩ ← reconsPoly t[0]!
     let rv : RootVal ← reconsRootVal t[1]!
     let r : Q(Real) ← RootVal.toReal rv
     return q(IsRoot $P $r)
@@ -565,7 +565,21 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
     let r : Q(Real) ← rv.toReal
     addThm q(¬ ($var = $r)) (← ranEvalCore var rv isRoot cond)
   | .SGN_INV_ELIM =>
-    -- TODO
+    let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
+    let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[1]!
+    let sample : RootVal ← reconsRootVal pf.getArguments[2]!
+    let lb : Option RootVal ← do
+      match pf.getArguments[3]!.getKind with
+      | .COV_MINUS_INFINITY => pure none
+      | _ => pure (some (← reconsRootVal pf.getArguments[3]!))
+    let ub : Option RootVal ← do
+      match pf.getArguments[4]!.getKind with
+      | .COV_PLUS_INFINITY => pure none
+      | _ => pure (some (← reconsRootVal pf.getArguments[4]!))
+
+    let p1 ← reconstructProof pf.getChildren[0]!
+    let p2 ← reconstructProof pf.getChildren[1]!
+    let pf ← sgnInvElimCore var p p_native sample lb ub p1 p2
     return none
   | .COVER =>
     -- TODO
