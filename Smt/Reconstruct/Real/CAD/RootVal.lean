@@ -2,6 +2,7 @@ import Lean
 import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.AlgNum
 import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
+import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.Parser
 
 open Lean Qq
 
@@ -48,3 +49,14 @@ instance : ToString RootVal where
     match rv with
     | .rat _ r => "Rat < " ++ toString r ++ " >"
     | .alg _ a => "Alg < " ++ toString a ++ " >"
+
+def reconsRootVal (t : cvc5.Term) : Smt.ReconstructM RootVal :=
+  if t.getKind == .CONST_RATIONAL then do
+    let v : Rat := t.getRationalValue!
+    pure (RootVal.rat q($v) v)
+  else do
+    let s := cvc5.Term.getRealAlgebraicNumberValue! t
+    let (rawE, raw) := getRawWithNative s
+    let aE : Q(AlgNum) ← Raw.lift rawE
+    pure (RootVal.alg aE raw)
+

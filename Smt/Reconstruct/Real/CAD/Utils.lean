@@ -1,10 +1,11 @@
 import Mathlib
 import Lean
+import Qq
 import CompPoly
 
 import Smt.Reconstruct
 
-open Lean Elab Tactic ToExpr Meta
+open Lean Qq Elab Tactic ToExpr Meta CompPoly
 
 open Qq in
 def mkDecideProof' (p : Q(Prop)) : Smt.ReconstructM Expr := do
@@ -470,3 +471,91 @@ open CompPoly in
 lemma toPolyReal_zero (p : CPolynomial Rat) : p ≠ 0 → toPolyReal p ≠ 0 := by
   intros h
   exact Polynomial.map_ne_zero (toPoly_ne0_of_poly_ne0 p h)
+
+def parseMonom (t : cvc5.Term) : Smt.ReconstructM (Rat × Nat) := do
+  match t.getKind with
+  | .CONST_RATIONAL => return (t.getRationalValue!, 0)
+  | .MULT =>
+    let mut curr := t
+    let mut deg := 0
+    let mut var : Option cvc5.Term := none
+    while curr.getKind == .MULT do
+      if curr.getNumChildren != 2 then
+        throwError "[parseMonom]: expected a binary product, got {curr}"
+      let x := curr[1]!
+      if x.getKind == .CONST_RATIONAL || x.getKind == .MULT then
+        throwError "[parseMonom]: expected a variable factor, got {x}"
+      match var with
+      | none => var := some x
+      | some v =>
+        if v != x then
+          throwError "[parseMonom]: polynomial is not univariate ({v} and {x})"
+      deg := deg + 1
+      curr := curr[0]!
+    if curr.getKind != .CONST_RATIONAL then
+      throwError "[parseMonom]: expected a rational coefficient, got {curr}"
+    return (curr.getRationalValue!, deg)
+  | _ => throwError "[parseMonom]: unexpected monomial {t}"
+
+def monomExpr (c : Rat) (e : Nat) : Q(CPolynomial Rat) :=
+  if e == 0 then
+    q(CPolynomial.C $c)
+  else if e == 1 then
+    q((CPolynomial.C $c) * (CPolynomial.X : CPolynomial Rat))
+  else
+    q((CPolynomial.C $c) * ((CPolynomial.X : CPolynomial Rat) ^ $e))
+
+def reconsMonom (t : cvc5.Term) : Smt.ReconstructM Q(CPolynomial Rat) := do
+  let (c, e) ← parseMonom t
+  return monomExpr c e
+
+def reconsPoly (t : cvc5.Term) : Smt.ReconstructM Q(CPolynomial Rat) := do
+  match t.getKind with
+  | .ADD =>
+    let summands ← t.getChildren.mapM reconsMonom
+    if h : 0 < summands.size then
+      return summands.foldl (fun (acc s : Q(CPolynomial Rat)) => q($acc + $s)) summands[0] (start := 1)
+    else
+      return q((0 : CPolynomial Rat))
+  | _ => reconsMonom t
+
+def SgnInv (p : CPolynomial Rat) (S : Set Real) : Prop :=
+  ∀ x ∈ S, ∀ y ∈ S, SignType.sign ((toPolyReal p).eval x) = SignType.sign ((toPolyReal p).eval y)
+
+def IsRoot (p : CPolynomial Rat) (r : Real) : Prop :=
+  (toPolyReal p).eval r = 0
+
+/-- Proves `(toPolyReal P).eval x = e`, where `e` is the real term obtained by reconstructing
+the cvc5 polynomial term of `P` at `x`. Same simp chain as the tail of `lift_ineq`. -/
+def proveEvalEq (P : Q(CPolynomial Rat)) (x : Q(Real)) (e : Q(Real)) : MetaM Expr := do
+  let goal : Q(Prop) := q((toPolyReal $P).eval $x = $e)
+  let mv ← mkFreshExprMVar goal
+  let mut g := mv.mvarId!
+  for lemmas in [
+    [ ``toPolyReal.eq_1, ``ratToRealHom.eq_1,
+      ``CPolynomial.toPoly_add, ``CPolynomial.toPoly_sub, ``CPolynomial.toPoly_mul,
+      ``CPolynomial.toPoly_neg, ``CPolynomial.toPoly_pow, ``CPolynomial.X_toPoly,
+      ``CPolynomial.C_toPoly ],
+    [ ``Polynomial.map_add, ``Polynomial.map_sub, ``Polynomial.map_mul, ``Polynomial.map_neg,
+      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C ],
+    [ ``Polynomial.eval_add, ``Polynomial.eval_sub, ``Polynomial.eval_mul, ``Polynomial.eval_neg,
+      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``eq_ratCast ]
+  ] do
+    let some g' ← simp_only g (lemmas.map mkConst) | return mv
+    g := g'
+  let some g' ← push_cast g | return mv
+  Mathlib.Tactic.AtomM.run .reducible (Mathlib.Tactic.Ring.proveEq g')
+  return mv
+
+/-- Splits a (possibly negated) relation `a ~ b`, with `~` one of `< ≤ > ≥ =`, into its sides. -/
+def relSides? (t : Expr) : Option (Expr × Expr) :=
+  let t := match t with
+    | .app (.const ``Not _) t' => t'
+    | _ => t
+  match t with
+  | .app (.app (.app (.app (.const ``LT.lt _) _) _) a) b => some (a, b)
+  | .app (.app (.app (.app (.const ``LE.le _) _) _) a) b => some (a, b)
+  | .app (.app (.app (.app (.const ``GT.gt _) _) _) a) b => some (a, b)
+  | .app (.app (.app (.app (.const ``GE.ge _) _) _) a) b => some (a, b)
+  | .app (.app (.app (.const ``Eq _) _) a) b => some (a, b)
+  | _ => none

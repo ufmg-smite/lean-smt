@@ -127,6 +127,26 @@ open Lean Qq AlgebraicNumber CompPoly
     let r : Q(AlgebraicNumber.Raw) := getRaw s
     let a: Q(AlgNum) ← Raw.lift r
     return a
+  | .SGN_INV =>
+    let P : Q(CPolynomial Rat) ← reconsPoly t[0]!
+    let S : Q(Set Real) ←
+      if t[1]!.getKind != .COV_MINUS_INFINITY && t[2]!.getKind != .COV_PLUS_INFINITY then do
+        let l : Q(Real) ← RootVal.toReal (← reconsRootVal t[1]!)
+        let r : Q(Real) ← RootVal.toReal (← reconsRootVal t[2]!)
+        pure q(Set.Ioo $l $r)
+      else if t[1]!.getKind != .COV_MINUS_INFINITY then
+        let l : Q(Real) ← RootVal.toReal (← reconsRootVal t[1]!)
+        pure q(Set.Ioi $l)
+      else if t[2]!.getKind != .COV_PLUS_INFINITY then
+        let r : Q(Real) ← RootVal.toReal (← reconsRootVal t[2]!)
+        pure q(Set.Iio $r)
+      else pure q(Set.univ)
+    return q(SgnInv $P $S)
+  | .IS_ROOT =>
+    let P : Q(CPolynomial Rat) ← reconsPoly t[0]!
+    let rv : RootVal ← reconsRootVal t[1]!
+    let r : Q(Real) ← RootVal.toReal rv
+    return q(IsRoot $P $r)
   | _ => return none
 where
   mkRealLit (n : Nat) : Q(Real) := match n with
@@ -141,8 +161,6 @@ where
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
-
-#check Except
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule! with
@@ -539,6 +557,22 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
   | .ARITH_POLY_NORM_REL =>
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
+  | .RAN_EVAL =>
+    let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
+    let rv ← reconsRootVal pf.getArguments[1]!
+    let isRoot ← reconstructProof pf.getChildren[0]!
+    let cond ← reconstructProof pf.getChildren[1]!
+    let r : Q(Real) ← rv.toReal
+    addThm q(¬ ($var = $r)) (← ranEvalCore var rv isRoot cond)
+  | .SGN_INV_ELIM =>
+    -- TODO
+    return none
+  | .COVER =>
+    -- TODO
+    return none
+  | .VALIDATE_INTERVALS =>
+    -- TODO
+    return none
   | .ARITH_COVERINGS_UNIV =>
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array RootVal := #[]

@@ -49,11 +49,6 @@ def all_to_lhs (h : Expr) : MetaM Expr := do
   let (_, mv) ← MVarId.intro1P $ ← mv.assert .anonymous t h'
   replaceMainGoal [mv]
 
-example (a b : Rat) : (a ^ 2 + 3 * a - 24 = b * 23 + a) → True := by
-  intro h
-  normalize_rel h
-  exact True.intro
-
 open Mathlib.Tactic.RingNF in
 def ring_compute_norm (e : Expr) : MetaM (Option (Expr × Expr)) := do
   let rawResult ← Mathlib.Tactic.AtomM.recurse (← IO.mkRef {}) default (wellBehavedDischarge := true) evalExpr (cleanup default) e

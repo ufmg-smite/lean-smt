@@ -28,7 +28,7 @@ lemma jump_poly_mult {p q p': Polynomial ℝ} {x: ℝ} (hp': p' ≠ 0) :
       rcases Classical.em (∃z, eval z p' = 0 ∧ z > x) with ⟨z, hz⟩ | hf
       · have roots_fin : {r: ℝ | eval r p' = 0 ∧ r > x}.Finite := by
           have := finite_setOf_isRoot hp'
-          unfold IsRoot at this; exact Finite.sep this fun a => a > x
+          unfold Polynomial.IsRoot at this; exact Finite.sep this fun a => a > x
         let roots_x : Finset ℝ := Finite.toFinset roots_fin
         have : roots_x.Nonempty := by
           unfold roots_x; simp; exact Set.nonempty_of_mem hz

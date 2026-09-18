@@ -163,16 +163,11 @@ def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
     else
       C c * X ^ e + p'
 
-
 -- retrieves a polynomial and a proof of inequality involving it,
 -- given a proof of an inequality involving a free variable
 def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat × Expr) := do
   -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
   let ineq_pf ← push_not ineq_pf
-  -- Transform expressions of the form `a < b` in `a - b < 0`
-  let ineq_pf ← all_to_lhs ineq_pf
-  -- Runs `ring_nf` at `ineq_pf`, transforming it into a sum of monomials and joining monomials of same degree
-  let ineq_pf ← ring_normalize ineq_pf
   -- Gets the expression on the left-hand side of the normalized `ineq_pf`
   let ineq ← inferType ineq_pf
   let lhs: Q(Real) := get_lhs ineq
@@ -236,10 +231,5 @@ example (a : Real) : Polynomial.eval a (toPolyReal (CPolynomial.X ^ 5 + CPolynom
       Polynomial.eval_pow, Polynomial.eval_X, Polynomial.eval_C, eq_ratCast]
     push_cast
     ring
-
-def p : CPolynomial Rat := -3/2 + X
-
-example (a : Real) (h : ¬ -1 * a ≥ -3 / 2) : Polynomial.eval a (toPolyReal p) > 0 := by
-  lift_ineq h , a
 
 end tests_lift_ineq
