@@ -20,18 +20,6 @@ open AlgebraicNumber
 --                                   inequality proofs  roots
 syntax (name := univ_cad) "univ_cad" term "," ("[" term,* "]")   ("[" term,* "]") : tactic
 
-def hoistExpr (baseName : Name) (e : Expr) : MetaM Expr := do
-  if e.isConst || e.isFVar then return e
-  let t ← inferType e
-  let auxName ← Lean.mkAuxDeclName baseName
-  let decl := Declaration.defnDecl {
-    name := auxName, levelParams := [], type := t, value := e
-    hints := .abbrev
-    safety := .safe
-  }
-  addAndCompile decl
-  return .const auxName []
-
 def parseUnivCad : Syntax → TacticM (Expr × List Expr × List Q(AlgNum))
   | `(tactic| univ_cad $x , [ $[$as],* ] [ $[$bs],* ] ) => do
     let as' ← as.toList.mapM (elabTerm · none)

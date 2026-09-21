@@ -56,7 +56,7 @@ def reconsRootVal (t : cvc5.Term) : Smt.ReconstructM RootVal :=
     pure (RootVal.rat q($v) v)
   else do
     let s := cvc5.Term.getRealAlgebraicNumberValue! t
-    let (rawE, raw) := getRawWithNative s
-    let aE : Q(AlgNum) ← Raw.lift rawE
-    pure (RootVal.alg aE raw)
+    let (_, raw) := getRawWithNative s
+    let e ← Smt.Reconstruct.reconstructTerm t
+    pure (RootVal.alg e.appArg! raw)
 

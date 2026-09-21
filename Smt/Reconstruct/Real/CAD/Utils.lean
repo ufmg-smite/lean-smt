@@ -7,6 +7,21 @@ import Smt.Reconstruct
 
 open Lean Qq Elab Tactic ToExpr Meta CompPoly
 
+/-- Turns `e` into an auxiliary definition and returns the constant. Large inline terms (e.g. an
+`AlgNum` with its well-definedness proofs) are expensive for `isDefEq` and instance synthesis to
+traverse; a constant is not. -/
+def hoistExpr (baseName : Name) (e : Expr) : MetaM Expr := do
+  if e.isConst || e.isFVar then return e
+  let t ← inferType e
+  let auxName ← Lean.mkAuxDeclName baseName
+  let decl := Declaration.defnDecl {
+    name := auxName, levelParams := [], type := t, value := e
+    hints := .abbrev
+    safety := .safe
+  }
+  addAndCompile decl
+  return .const auxName []
+
 open Qq in
 def mkDecideProof' (p : Q(Prop)) : Smt.ReconstructM Expr := do
   if (← Smt.Reconstruct.useNative) then

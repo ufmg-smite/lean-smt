@@ -8,6 +8,8 @@ set_option trace.smt.reconstruct.proof true
 -- v3: 1007ms
 lemma exemplo (a : Real) : ¬ -1 * a ≥ -3 / 2 → a = 15 / 2 + -5 * (a * a) → False := by
   smt
+  · admit
+  · admit
 
 #print axioms exemplo
 

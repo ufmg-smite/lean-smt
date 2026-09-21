@@ -126,7 +126,8 @@ open Lean Qq AlgebraicNumber CompPoly
     let s := cvc5.Term.getRealAlgebraicNumberValue! t
     let r : Q(AlgebraicNumber.Raw) := getRaw s
     let a: Q(AlgNum) ← Raw.lift r
-    return a
+    let a: Q(AlgNum) ← hoistExpr `_algNum a
+    return q(AlgNum.toReal $a)
   | .SGN_INV =>
     let ⟨P, _⟩ ← reconsPoly t[0]!
     let S : Q(Set Real) ←
@@ -579,8 +580,8 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
 
     let p1 ← reconstructProof pf.getChildren[0]!
     let p2 ← reconstructProof pf.getChildren[1]!
-    let pf ← sgnInvElimCore var p p_native sample lb ub p1 p2
-    return none
+    let pf' ← sgnInvElimCore var p p_native sample lb ub p1 p2
+    return pf'
   | .COVER =>
     -- TODO
     return none
