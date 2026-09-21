@@ -163,6 +163,20 @@ where
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
 
+/-- The coverings rules state their facts over `RootVal.toReal`, which renders a rational bound
+`q` as `ratToReal q`. The clauses they are resolved against come from the generic reconstructors,
+which render the same cvc5 constant as a real numeral. This restates `prf` with each rational
+bound among `bounds` in the numeral form. Algebraic bounds already agree, since both sides go
+through the cached term reconstructor. -/
+def restateRatBounds (prf : Expr) (bounds : List cvc5.Term) : ReconstructM Expr := do
+  let mut prf := prf
+  for b in bounds do
+    if b.getKind == .CONST_RATIONAL then
+      let v : Rat := b.getRationalValue!
+      let lit : Q(Real) ← reconstructTerm b
+      prf ← rewriteWithEq prf (← proveRatToRealEq q($v) lit)
+  return prf
+
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   match pf.getRewriteRule! with
   | .ARITH_POW_ELIM =>
@@ -564,7 +578,9 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
     let isRoot ← reconstructProof pf.getChildren[0]!
     let cond ← reconstructProof pf.getChildren[1]!
     let r : Q(Real) ← rv.toReal
-    addThm q(¬ ($var = $r)) (← ranEvalCore var rv isRoot cond)
+    let pf' ← ranEvalCore var rv isRoot cond
+    let pf' ← restateRatBounds pf' [pf.getArguments[1]!]
+    addThm q(¬ ($var = $r)) pf'
   | .SGN_INV_ELIM =>
     let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
     let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[1]!
@@ -577,11 +593,12 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
       match pf.getArguments[4]!.getKind with
       | .COV_PLUS_INFINITY => pure none
       | _ => pure (some (← reconsRootVal pf.getArguments[4]!))
-
     let p1 ← reconstructProof pf.getChildren[0]!
     let p2 ← reconstructProof pf.getChildren[1]!
     let pf' ← sgnInvElimCore var p p_native sample lb ub p1 p2
-    return pf'
+    let pf' ← restateRatBounds pf' [pf.getArguments[3]!, pf.getArguments[4]!]
+    let prop ← reconstructTerm pf.getResult
+    addThm prop pf'
   | .COVER =>
     -- TODO
     return none

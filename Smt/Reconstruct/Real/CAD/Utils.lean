@@ -576,3 +576,12 @@ def relSides? (t : Expr) : Option (Expr × Expr) :=
   | .app (.app (.app (.app (.const ``GE.ge _) _) _) a) b => some (a, b)
   | .app (.app (.app (.const ``Eq _) _) a) b => some (a, b)
   | _ => none
+
+/-- Proves `ratToReal q = lit`, where `lit` is a real numeral denoting the same rational (the way
+`reconstructTerm` renders a cvc5 rational constant). The two are not definitionally equal. -/
+def proveRatToRealEq (q : Q(Rat)) (lit : Q(Real)) : MetaM Expr := do
+  let mv ← mkFreshExprMVar q(ratToReal $q = $lit)
+  let some g ← simp_only mv.mvarId!
+    [mkConst ``ratToReal.eq_1, mkConst ``ratToRealHom.eq_1, mkConst ``eq_ratCast] | return mv
+  normNum g
+  return mv
