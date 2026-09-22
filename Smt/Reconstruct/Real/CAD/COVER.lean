@@ -247,6 +247,28 @@ def numOfRootVal : RootVal → Q(Num)
 | .alg e _ => let a: Q(AlgNum) := e; q(.alg $a)
 | .rat e _ => let q: Q(Rat) := e; q(.rat $q)
 
+open Qq in
+def reconsBound (t : cvc5.Term) : Smt.ReconstructM Q(Bound Num) :=
+  match t.getKind with
+  | .COV_MINUS_INFINITY => pure q(Bound.negInf)
+  | .COV_PLUS_INFINITY => pure q(Bound.posInf)
+  | _ => do
+    let t_rv ← reconsRootVal t
+    let t_num := Cover.numOfRootVal t_rv
+    pure q(Bound.fin $t_num)
+
+open Qq in
+def reconsPiece (lb ub : cvc5.Term) : Smt.ReconstructM Q(Piece Num) := do
+  if lb == ub then
+    if lb.getKind == .COV_MINUS_INFINITY || lb.getKind == .COV_PLUS_INFINITY then
+      throwError "Point interval at infinity"
+    let lb_num := Cover.numOfRootVal (← reconsRootVal lb)
+    pure q(Piece.pt $lb_num)
+  else
+    let lb_b ← reconsBound lb
+    let ub_b ← reconsBound ub
+    pure q(Piece.op $lb_b $ub_b)
+
 /-! ### Tests -/
 
 namespace tests

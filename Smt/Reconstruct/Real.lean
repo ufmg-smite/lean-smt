@@ -603,30 +603,24 @@ where
     for interval in pf.getArguments[1]! do
       let lb := interval[0]!
       let ub := interval[1]!
+      let piece ← Cover.reconsPiece lb ub
+      intervals := intervals.push piece
       if lb.getKind == .COV_MINUS_INFINITY && ub.getKind == .COV_PLUS_INFINITY then
-        intervals := intervals.push q(Cover.Piece.op Cover.Bound.negInf Cover.Bound.posInf)
         lits := lits.push q($var ∈ (Set.univ : Set Real))
       else if lb.getKind == .COV_MINUS_INFINITY then
         ratBoundTerms := ratBoundTerms.push ub
         let ub ← reconsRootVal ub
-        let ub_num := Cover.numOfRootVal ub
         let ub_real : Q(Real) ← ub.toReal
-        intervals := intervals.push q(Cover.Piece.op Cover.Bound.negInf (Cover.Bound.fin $ub_num))
         lits := lits.push q($var ∈ (Set.Iio $ub_real : Set Real))
       else if ub.getKind == .COV_PLUS_INFINITY then
         ratBoundTerms := ratBoundTerms.push lb
         let lb ← reconsRootVal lb
-        let lb_num := Cover.numOfRootVal lb
         let lb_real : Q(Real) ← lb.toReal
-        intervals := intervals.push q(Cover.Piece.op (Cover.Bound.fin $lb_num) Cover.Bound.posInf)
         lits := lits.push q($var ∈ (Set.Ioi $lb_real : Set Real))
       else
         ratBoundTerms := ratBoundTerms.push lb
         ratBoundTerms := ratBoundTerms.push ub
-        let lb_num := Cover.numOfRootVal (← reconsRootVal lb)
-        let ub_num := Cover.numOfRootVal (← reconsRootVal ub)
         if lb == ub then
-          intervals := intervals.push q(Cover.Piece.pt $lb_num)
           let lb ← reconsRootVal lb
           let lb_real : Q(Real) ← lb.toReal
           lits := lits.push q($var ∈ ({$lb_real} : Set Real))
@@ -635,7 +629,6 @@ where
           let ub ← reconsRootVal ub
           let lb_real : Q(Real) ← lb.toReal
           let ub_real : Q(Real) ← ub.toReal
-          intervals := intervals.push q(Cover.Piece.op (Cover.Bound.fin $lb_num) (Cover.Bound.fin $ub_num))
           lits := lits.push q($var ∈ Set.Ioo $lb_real $ub_real)
     let intervalsList: Q(List (Cover.Piece Cover.Num)) := listExpr intervals.toList q(Cover.Piece Cover.Num)
     let coversLine : Q(Prop) := q(Cover.sweep $intervalsList = true)
@@ -646,7 +639,29 @@ where
     let pf' ← restateRatBounds pf' ratBoundTerms.toList
     addThm (← Meta.inferType pf') pf'
   | .VALIDATE_INTERVALS =>
-    -- TODO
+    let intervals := pf.getArguments[0]!
+    let roots := pf.getArguments[1]!
+    let root_map := pf.getArguments[2]!
+    let mut p_intervals: Array (Q(CPolynomial Rat) × Q(Cover.Piece Cover.Num)) := #[]
+    -- TODO: if it is a point interval we should repeat the bound twice, like in COVER
+    for interval in intervals do
+      let ⟨p, _⟩ ← reconsPoly interval[0]!
+      let piece ←
+        -- TODO: Actually these two could also be indices to the list of all roots
+        if interval.getNumChildren == 3 then
+          Cover.reconsPiece interval[1]! interval[2]!
+        else
+          Cover.reconsPiece interval[1]! interval[1]!
+      p_intervals := p_intervals.push (p, piece)
+    let roots_native ← roots.getChildren.mapM reconsRootVal
+    let mut root_map_native : Array (Q(CPolynomial Rat) × Array Nat) := #[]
+    for p_roots in root_map do
+      let (p, _) ← reconsPoly p_roots[0]!
+      let mut is : Array Nat := #[]
+      for i in p_roots[1]! do
+        is := is.push i.getIntegerValue!.natAbs
+      root_map_native := root_map_native.push (p, is)
+    let pf' ← validateIntervalsCore p_intervals roots_native root_map_native
     return none
   | .ARITH_COVERINGS_UNIV =>
     let var ← reconstructTerm pf.getArguments[0]!

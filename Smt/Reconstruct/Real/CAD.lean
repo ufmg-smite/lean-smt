@@ -4,3 +4,4 @@ import Smt.Reconstruct.Real.CAD.AlgebraicNumbers.DeriveWellDefined
 import Smt.Reconstruct.Real.CAD.COVER
 import Smt.Reconstruct.Real.CAD.RAN_EVAL
 import Smt.Reconstruct.Real.CAD.SGN_INV_ELIM
+import Smt.Reconstruct.Real.CAD.VALIDATE_INTERVALS
