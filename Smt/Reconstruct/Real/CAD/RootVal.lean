@@ -59,4 +59,3 @@ def reconsRootVal (t : cvc5.Term) : Smt.ReconstructM RootVal :=
     let (_, raw) := getRawWithNative s
     let e ← Smt.Reconstruct.reconstructTerm t
     pure (RootVal.alg e.appArg! raw)
-

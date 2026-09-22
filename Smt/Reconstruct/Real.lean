@@ -491,10 +491,6 @@ where
     else if k == .GT && il == true && ir == false && sign == false then pure ``Real.gt_of_sub_eq_neg_int_left
     else throwError "[arith_poly_norm_rel]: invalid combination of kind, integer operands, and sign: {k}, {il}, {ir}, {sign}"
 
-def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
-  let r : Rat := t.getRationalValue!
-  return q($r)
-
 @[smt_proof_reconstruct] def reconstructRealProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .EVALUATE =>
     let (u, (α : Q(Sort u))) ← reconstructSortLevelAndSort pf.getResult[0]!.getSort
@@ -600,8 +596,55 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
     let prop ← reconstructTerm pf.getResult
     addThm prop pf'
   | .COVER =>
-    -- TODO
-    return none
+    let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
+    let mut intervals: Array Q(Cover.Piece Cover.Num) := #[]
+    let mut lits : Array Q(Prop) := #[]
+    let mut ratBoundTerms : Array cvc5.Term := #[]
+    for interval in pf.getArguments[1]! do
+      let lb := interval[0]!
+      let ub := interval[1]!
+      if lb.getKind == .COV_MINUS_INFINITY && ub.getKind == .COV_PLUS_INFINITY then
+        intervals := intervals.push q(Cover.Piece.op Cover.Bound.negInf Cover.Bound.posInf)
+        lits := lits.push q($var ∈ (Set.univ : Set Real))
+      else if lb.getKind == .COV_MINUS_INFINITY then
+        ratBoundTerms := ratBoundTerms.push ub
+        let ub ← reconsRootVal ub
+        let ub_num := Cover.numOfRootVal ub
+        let ub_real : Q(Real) ← ub.toReal
+        intervals := intervals.push q(Cover.Piece.op Cover.Bound.negInf (Cover.Bound.fin $ub_num))
+        lits := lits.push q($var ∈ (Set.Iio $ub_real : Set Real))
+      else if ub.getKind == .COV_PLUS_INFINITY then
+        ratBoundTerms := ratBoundTerms.push lb
+        let lb ← reconsRootVal lb
+        let lb_num := Cover.numOfRootVal lb
+        let lb_real : Q(Real) ← lb.toReal
+        intervals := intervals.push q(Cover.Piece.op (Cover.Bound.fin $lb_num) Cover.Bound.posInf)
+        lits := lits.push q($var ∈ (Set.Ioi $lb_real : Set Real))
+      else
+        ratBoundTerms := ratBoundTerms.push lb
+        ratBoundTerms := ratBoundTerms.push ub
+        let lb_num := Cover.numOfRootVal (← reconsRootVal lb)
+        let ub_num := Cover.numOfRootVal (← reconsRootVal ub)
+        if lb == ub then
+          intervals := intervals.push q(Cover.Piece.pt $lb_num)
+          let lb ← reconsRootVal lb
+          let lb_real : Q(Real) ← lb.toReal
+          lits := lits.push q($var ∈ ({$lb_real} : Set Real))
+        else
+          let lb ← reconsRootVal lb
+          let ub ← reconsRootVal ub
+          let lb_real : Q(Real) ← lb.toReal
+          let ub_real : Q(Real) ← ub.toReal
+          intervals := intervals.push q(Cover.Piece.op (Cover.Bound.fin $lb_num) (Cover.Bound.fin $ub_num))
+          lits := lits.push q($var ∈ Set.Ioo $lb_real $ub_real)
+    let intervalsList: Q(List (Cover.Piece Cover.Num)) := listExpr intervals.toList q(Cover.Piece Cover.Num)
+    let coversLine : Q(Prop) := q(Cover.sweep $intervalsList = true)
+    let coversLinePf ← mkDecideProof' coversLine
+    let concl := lits.foldr (init := lits.back!) (start := lits.size - 1) fun p acc => q($p ∨ $acc)
+    let pf' ← Meta.mkAppM ``Cover.cover_of_sweep #[intervalsList, coversLinePf, var]
+    let pf' ← Meta.mkExpectedTypeHint pf' concl
+    let pf' ← restateRatBounds pf' ratBoundTerms.toList
+    addThm (← Meta.inferType pf') pf'
   | .VALIDATE_INTERVALS =>
     -- TODO
     return none
@@ -613,7 +656,7 @@ def reconsRational (t : cvc5.Term) : MetaM Q(Rat) := do
       let rv ←
         if curr.getKind == .CONST_RATIONAL then do
           let v : Rat := curr.getRationalValue!
-          let e ← reconsRational curr
+          let e := q($v)
           pure (RootVal.rat e v)
         else do
           let s := cvc5.Term.getRealAlgebraicNumberValue! curr
