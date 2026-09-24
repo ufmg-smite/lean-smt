@@ -186,3 +186,19 @@ lemma seqVarSturmC_ab_equiv (p q : CPolynomial ℚ) (a b : ℚ) :
     seqVarSturmC_ab p q a b = seqVarSturmC_ab' p q a b := by
   unfold seqVarSturmC_ab' seqVarSturmC_ab
   rw [seqVarQ_ab_equiv, sturmSeqC_equiv]
+
+def seqVarAboveSturmC' (p q : CPolynomial ℚ) (a : ℚ) : ℤ :=
+  (seqVarQ' (seqEvalC a (sturmSeqC' p q)) : Int) - seqVarI' (seq_sgn_pos_inf'' (sturmSeqC' p q))
+
+def seqVarBelowSturmC' (p q : CPolynomial ℚ) (b : ℚ) : ℤ :=
+  (seqVarI' (seq_sgn_neg_inf'' (sturmSeqC' p q)) : Int) - seqVarQ' (seqEvalC b (sturmSeqC' p q))
+
+lemma seqVarAboveSturmC_equiv (p q : CPolynomial ℚ) (a : ℚ) :
+    seqVarAboveSturmC p q a = seqVarAboveSturmC' p q a := by
+  unfold seqVarAboveSturmC seqVarAboveSturmC' seqVarAboveC_a
+  rw [seqVarQ_eq, seqVarI_eq, sturmSeqC_equiv]
+
+lemma seqVarBelowSturmC_equiv (p q : CPolynomial ℚ) (b : ℚ) :
+    seqVarBelowSturmC p q b = seqVarBelowSturmC' p q b := by
+  unfold seqVarBelowSturmC seqVarBelowSturmC' seqVarBelowC_b
+  rw [seqVarQ_eq, seqVarI_eq, sturmSeqC_equiv]

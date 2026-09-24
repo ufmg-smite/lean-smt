@@ -459,3 +459,20 @@ theorem seqVarABEquivSturm (p q : CPolynomial ℚ) (a b : ℚ) :
   unfold seqVarSturmC_ab seqVarSturm_ab seqVarQ_ab seqVar_ab
   rw [toPolyReal_derivative, ← toPolyReal_mul, sturmSeq_toPolyReal,
       seqEval_cast, seqEval_cast, seqVarR_cast_list, seqVarR_cast_list]
+
+/-! Reflection of the computable half-line counts `seqVarAboveSturmC` / `seqVarBelowSturmC`
+(Sturm–Tarski form, as for `seqVarABEquivSturm`). -/
+
+theorem seqVarAboveEquivSturm (p q : CPolynomial ℚ) (a : ℚ) :
+    seqVarAboveSturmC p (p.derivative * q) a
+      = seqVarAboveSturm (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) a := by
+  unfold seqVarAboveSturmC seqVarAboveSturm seqVarAboveC_a seqVarAbove_a
+  rw [toPolyReal_derivative, ← toPolyReal_mul, sturmSeq_toPolyReal,
+      seqEval_cast, seqVarR_cast_list, seq_sgn_pos_inf_eq]
+
+theorem seqVarBelowEquivSturm (p q : CPolynomial ℚ) (b : ℚ) :
+    seqVarBelowSturmC p (p.derivative * q) b
+      = seqVarBelowSturm (toPolyReal p) ((toPolyReal p).derivative * (toPolyReal q)) b := by
+  unfold seqVarBelowSturmC seqVarBelowSturm seqVarBelowC_b seqVarBelow_b
+  rw [toPolyReal_derivative, ← toPolyReal_mul, sturmSeq_toPolyReal,
+      seqEval_cast, seqVarR_cast_list, seq_sgn_neg_inf_eq]

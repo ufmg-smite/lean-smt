@@ -8,10 +8,6 @@ open Qq Lean Elab Tactic ToExpr Meta
 open CompPoly
 open Theorem
 
-lemma der_toPoly_toReal (P : CPolynomial Rat) :
-    P.derivative.toPoly.map ratToRealHom = (P.toPoly.map ratToRealHom).derivative := by
-  rw [CPolynomial.derivative_toPoly, Polynomial.derivative_map]
-
 instance : ToString (CPolynomial.Raw Rat) where
   toString p := toString (p : Array Rat)
 
@@ -52,12 +48,8 @@ def P : CPolynomial ℚ := X ^ 4 + X ^ 3 - X - 1
 
 lemma P_roots : (toPolyReal P).roots.toFinset.card = 2 := by count_roots P
 
-#print axioms P_roots
-
 def Q : CPolynomial ℚ := X ^ 2 + 1
 
 lemma Q_roots : (toPolyReal Q).roots.toFinset.card = 0 := by count_roots Q
-
-#print axioms Q_roots
 
 end Tests

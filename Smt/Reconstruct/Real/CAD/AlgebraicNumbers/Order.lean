@@ -45,28 +45,57 @@ def gen_toReal_lt_rr (aE bE : Q(Rat)) : Smt.ReconstructM Expr := do
   let pf ← mkDecideProof' goal
   mkAppM ``ratToReal_lt #[aE, bE, pf]
 
-partial def gen_toReal_lt_ra (aE bE : Expr) : Smt.ReconstructM Expr := do
-  let goal ← mkAppM `LT.lt #[aE, ← mkAppM ``AlgNum.l #[bE]]
-  let h ← mkDecideProof' goal
-  mkAppM ``cmp_rat_alg_ra #[aE, bE, h]
+/-- Maximal number of refinements tried before giving up on a comparison. Each refinement halves
+the isolating interval, so this is never reached for a true strict comparison between numbers
+whose bounds are not roots (as cvc5's are); it only guards against a false or degenerate input. -/
+def maxRefinements : Nat := 256
 
-partial def gen_toReal_lt_ar (aE bE : Expr) : Smt.ReconstructM Expr := do
-  let goal ← mkAppM `LT.lt #[← mkAppM ``AlgNum.r #[aE], bE]
-  let h ← mkDecideProof' goal
-  mkAppM ``cmp_rat_alg_ar #[aE, bE, h]
+/-- `ratToReal a < b.toReal`, for `b` algebraic. The isolating bound `b.l` need not exceed `a`
+(cvc5 uses `b.l` itself as a window end), so a copy of `b` is refined until it does; the
+statement keeps the original `b`, the transfer is `cmp_rat_alg_refine_ra`. -/
+partial def gen_toReal_lt_ra (aE bE : Expr) (va : Rat) (vb : Raw) (fuel : Nat := maxRefinements) :
+    Smt.ReconstructM Expr := do
+  if va < vb.l then
+    let goal ← mkAppM `LT.lt #[aE, ← mkAppM ``AlgNum.l #[bE]]
+    let h ← mkDecideProof' goal
+    mkAppM ``cmp_rat_alg_ra #[aE, bE, h]
+  else
+    if fuel == 0 then throwError "[gen_toReal_lt]: cannot separate {aE} from {bE}"
+    let pf ← gen_toReal_lt_ra aE (mkApp (mkConst ``AlgNum.refine) bE) va vb.refine (fuel - 1)
+    mkAppM ``cmp_rat_alg_refine_ra #[aE, bE, pf]
 
-partial def gen_toReal_lt_aa (aE bE : Expr) : Smt.ReconstructM Expr := do
-  let goal ← mkAppM `LT.lt #[aE, bE]
-  let h ← mkDecideProof' goal
-  let pf ← mkAppM ``AlgebraicNumber.lt_toReal #[aE, bE, h]
-  return pf
+/-- `a.toReal < ratToReal b`, for `a` algebraic; see `gen_toReal_lt_ra`. -/
+partial def gen_toReal_lt_ar (aE bE : Expr) (va : Raw) (vb : Rat) (fuel : Nat := maxRefinements) :
+    Smt.ReconstructM Expr := do
+  if va.r < vb then
+    let goal ← mkAppM `LT.lt #[← mkAppM ``AlgNum.r #[aE], bE]
+    let h ← mkDecideProof' goal
+    mkAppM ``cmp_rat_alg_ar #[aE, bE, h]
+  else
+    if fuel == 0 then throwError "[gen_toReal_lt]: cannot separate {aE} from {bE}"
+    let pf ← gen_toReal_lt_ar (mkApp (mkConst ``AlgNum.refine) aE) bE va.refine vb (fuel - 1)
+    mkAppM ``cmp_rat_alg_refine_ar #[aE, bE, pf]
+
+/-- `a.toReal < b.toReal`, both algebraic; both copies are refined together until `a.r < b.l`,
+the transfer is `refine_lt_toReal`. -/
+partial def gen_toReal_lt_aa (aE bE : Expr) (va vb : Raw) (fuel : Nat := maxRefinements) :
+    Smt.ReconstructM Expr := do
+  if va.r < vb.l then
+    let goal ← mkAppM `LT.lt #[aE, bE]
+    let h ← mkDecideProof' goal
+    mkAppM ``AlgebraicNumber.lt_toReal #[aE, bE, h]
+  else
+    if fuel == 0 then throwError "[gen_toReal_lt]: cannot separate {aE} from {bE}"
+    let pf ← gen_toReal_lt_aa (mkApp (mkConst ``AlgNum.refine) aE) (mkApp (mkConst ``AlgNum.refine) bE)
+      va.refine vb.refine (fuel - 1)
+    mkAppM ``refine_lt_toReal #[aE, bE, pf]
 
 def gen_toReal_lt (a b : RootVal) : Smt.ReconstructM Expr := do
   match a, b with
-  | .alg aE _, .alg bE _ => gen_toReal_lt_aa aE bE
+  | .alg aE va, .alg bE vb => gen_toReal_lt_aa aE bE va vb
   | .rat aE _, .rat bE _ => gen_toReal_lt_rr aE bE
-  | .rat aE _, .alg bE _ => gen_toReal_lt_ra aE bE
-  | .alg aE _, .rat bE _ => gen_toReal_lt_ar aE bE
+  | .rat aE va, .alg bE vb => gen_toReal_lt_ra aE bE va vb
+  | .alg aE va, .rat bE vb => gen_toReal_lt_ar aE bE va vb
 
 def toListExpr (α : Q(Type*)) (es : List Q($α)) : Q(List $α) :=
   match es with

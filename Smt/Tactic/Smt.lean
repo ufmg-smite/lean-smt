@@ -247,6 +247,7 @@ def elabHints : TSyntax ``smtHints → TacticM (Std.HashMap Expr (TSyntax ``smtH
   | _ => throwUnsupportedSyntax
 
 def evalSmtCore (cfg : TSyntax ``Parser.Tactic.optConfig) (hs : TSyntax ``smtHints) := withMainContext do
+  let t1 ← IO.monoMsNow
   let cfg ← elabConfig cfg
   let mv ← Tactic.getMainGoal
   let (map, hs) ← elabHints hs
@@ -266,6 +267,8 @@ def evalSmtCore (cfg : TSyntax ``Parser.Tactic.optConfig) (hs : TSyntax ``smtHin
       Tactic.replaceMainGoal mvs
       let uc := uc.filterMap map.get?
       let uc := uc.toList.eraseDups.toArray
+      let t2 ← IO.monoMsNow
+      logInfo m!"smt took {t2 - t1}ms"
       return uc
     | .unknown r =>
       throwError "unable to prove goal. Try providing more hints. Reason: {r}"

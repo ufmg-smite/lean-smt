@@ -159,10 +159,5 @@ def r': Raw := ⟨p', -3/2, -5/4⟩
 
 def a : AlgNum := by lift_alg_num r
 def a' : AlgNum := by lift_alg_num r'
-#check a'
-#check a
-#eval a.l
-#eval a.p.eval 3
-#print axioms a
 
 end tests

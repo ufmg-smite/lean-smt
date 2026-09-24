@@ -638,31 +638,50 @@ where
     let pf' ← Meta.mkExpectedTypeHint pf' concl
     let pf' ← restateRatBounds pf' ratBoundTerms.toList
     addThm (← Meta.inferType pf') pf'
-  | .VALIDATE_INTERVALS =>
-    let intervals := pf.getArguments[0]!
-    let roots := pf.getArguments[1]!
-    let root_map := pf.getArguments[2]!
-    let mut p_intervals: Array (Q(CPolynomial Rat) × Q(Cover.Piece Cover.Num)) := #[]
-    -- TODO: if it is a point interval we should repeat the bound twice, like in COVER
-    for interval in intervals do
-      let ⟨p, _⟩ ← reconsPoly interval[0]!
-      let piece ←
-        -- TODO: Actually these two could also be indices to the list of all roots
-        if interval.getNumChildren == 3 then
-          Cover.reconsPiece interval[1]! interval[2]!
-        else
-          Cover.reconsPiece interval[1]! interval[1]!
-      p_intervals := p_intervals.push (p, piece)
-    let roots_native ← roots.getChildren.mapM reconsRootVal
-    let mut root_map_native : Array (Q(CPolynomial Rat) × Array Nat) := #[]
-    for p_roots in root_map do
-      let (p, _) ← reconsPoly p_roots[0]!
-      let mut is : Array Nat := #[]
-      for i in p_roots[1]! do
-        is := is.push i.getIntegerValue!.natAbs
-      root_map_native := root_map_native.push (p, is)
-    let pf' ← validateIntervalsCore p_intervals roots_native root_map_native
-    return none
+  | .SGN_INV_INTRO =>
+    -- args: (p, l, r, lo, hi); infinite ends of the piece and of the window are the markers
+    let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[0]!
+    let optRoot (t : cvc5.Term) : ReconstructM (Option RootVal) := do
+      match t.getKind with
+      | .COV_MINUS_INFINITY | .COV_PLUS_INFINITY => pure none
+      | _ => pure (some (← reconsRootVal t))
+    let l ← optRoot pf.getArguments[1]!
+    let r ← optRoot pf.getArguments[2]!
+    let lo ← optRoot pf.getArguments[3]!
+    let hi ← optRoot pf.getArguments[4]!
+    let prf ← sgn_inv_intro_core p p_native l r lo hi
+    addThm (← Meta.inferType prf) prf
+  | .IS_ROOT_INTRO =>
+    let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[0]!
+    let a ← reconsRootVal pf.getArguments[1]!
+    let pf' ← get_is_root_pf p p_native a
+    let ar: Q(Real) ← a.toReal
+    addThm q(IsRoot $p $ar) pf'
+  /- | .VALIDATE_INTERVALS => -/
+  /-   let intervals := pf.getArguments[0]! -/
+  /-   let roots := pf.getArguments[1]! -/
+  /-   let root_map := pf.getArguments[2]! -/
+  /-   let mut p_intervals: Array (Q(CPolynomial Rat) × Q(Cover.Piece Cover.Num)) := #[] -/
+  /-   -- TODO: if it is a point interval we should repeat the bound twice, like in COVER -/
+  /-   for interval in intervals do -/
+  /-     let ⟨p, _⟩ ← reconsPoly interval[0]! -/
+  /-     let piece ← -/
+  /-       -- TODO: Actually these two could also be indices to the list of all roots -/
+  /-       if interval.getNumChildren == 3 then -/
+  /-         Cover.reconsPiece interval[1]! interval[2]! -/
+  /-       else -/
+  /-         Cover.reconsPiece interval[1]! interval[1]! -/
+  /-     p_intervals := p_intervals.push (p, piece) -/
+  /-   let roots_native ← roots.getChildren.mapM reconsRootVal -/
+  /-   let mut root_map_native : Array (Q(CPolynomial Rat) × Array Nat) := #[] -/
+  /-   for p_roots in root_map do -/
+  /-     let (p, _) ← reconsPoly p_roots[0]! -/
+  /-     let mut is : Array Nat := #[] -/
+  /-     for i in p_roots[1]! do -/
+  /-       is := is.push i.getIntegerValue!.natAbs -/
+  /-     root_map_native := root_map_native.push (p, is) -/
+  /-   let pf' ← validateIntervalsCore p_intervals roots_native root_map_native -/
+  /-   return none -/
   | .ARITH_COVERINGS_UNIV =>
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array RootVal := #[]

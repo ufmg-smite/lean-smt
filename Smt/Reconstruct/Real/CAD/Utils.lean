@@ -585,3 +585,8 @@ def proveRatToRealEq (q : Q(Rat)) (lit : Q(Real)) : MetaM Expr := do
     [mkConst ``ratToReal.eq_1, mkConst ``ratToRealHom.eq_1, mkConst ``eq_ratCast] | return mv
   normNum g
   return mv
+
+lemma der_toPoly_toReal (P : CPolynomial Rat) :
+    P.derivative.toPoly.map ratToRealHom = (P.toPoly.map ratToRealHom).derivative := by
+  rw [CPolynomial.derivative_toPoly, Polynomial.derivative_map]
+
