@@ -597,46 +597,45 @@ where
     addThm prop pf'
   | .COVER =>
     let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
-    let mut intervals: Array Q(Cover.Piece Cover.Num) := #[]
-    let mut lits : Array Q(Prop) := #[]
-    let mut ratBoundTerms : Array cvc5.Term := #[]
+    let mut pieces : Array (Cover.Piece RootVal) := #[]
+    let mut boundTerms : Array cvc5.Term := #[]
     for interval in pf.getArguments[1]! do
       let lb := interval[0]!
       let ub := interval[1]!
-      let piece ← Cover.reconsPiece lb ub
-      intervals := intervals.push piece
-      if lb.getKind == .COV_MINUS_INFINITY && ub.getKind == .COV_PLUS_INFINITY then
+      pieces := pieces.push (← Cover.reconsPieceRV lb ub)
+      for t in [lb, ub] do
+        if t.getKind != .COV_MINUS_INFINITY && t.getKind != .COV_PLUS_INFINITY then
+          boundTerms := boundTerms.push t
+    -- cvc5's isolating intervals may touch other endpoints; the scan runs on refined copies
+    let rc ← Cover.refineCover pieces.toList
+    let mut lits : Array Q(Prop) := #[]
+    for p in pieces do
+      match p with
+      | .pt rv =>
+        let r : Q(Real) := rc.toReal rv
+        lits := lits.push q($var ∈ ({$r} : Set Real))
+      | .op .negInf .posInf =>
         lits := lits.push q($var ∈ (Set.univ : Set Real))
-      else if lb.getKind == .COV_MINUS_INFINITY then
-        ratBoundTerms := ratBoundTerms.push ub
-        let ub ← reconsRootVal ub
-        let ub_real : Q(Real) ← ub.toReal
-        lits := lits.push q($var ∈ (Set.Iio $ub_real : Set Real))
-      else if ub.getKind == .COV_PLUS_INFINITY then
-        ratBoundTerms := ratBoundTerms.push lb
-        let lb ← reconsRootVal lb
-        let lb_real : Q(Real) ← lb.toReal
-        lits := lits.push q($var ∈ (Set.Ioi $lb_real : Set Real))
-      else
-        ratBoundTerms := ratBoundTerms.push lb
-        ratBoundTerms := ratBoundTerms.push ub
-        if lb == ub then
-          let lb ← reconsRootVal lb
-          let lb_real : Q(Real) ← lb.toReal
-          lits := lits.push q($var ∈ ({$lb_real} : Set Real))
-        else
-          let lb ← reconsRootVal lb
-          let ub ← reconsRootVal ub
-          let lb_real : Q(Real) ← lb.toReal
-          let ub_real : Q(Real) ← ub.toReal
-          lits := lits.push q($var ∈ Set.Ioo $lb_real $ub_real)
-    let intervalsList: Q(List (Cover.Piece Cover.Num)) := listExpr intervals.toList q(Cover.Piece Cover.Num)
+      | .op .negInf (.fin rv) =>
+        let r : Q(Real) := rc.toReal rv
+        lits := lits.push q($var ∈ (Set.Iio $r : Set Real))
+      | .op (.fin rv) .posInf =>
+        let l : Q(Real) := rc.toReal rv
+        lits := lits.push q($var ∈ (Set.Ioi $l : Set Real))
+      | .op (.fin l) (.fin r) =>
+        let l : Q(Real) := rc.toReal l
+        let r : Q(Real) := rc.toReal r
+        lits := lits.push q($var ∈ Set.Ioo $l $r)
+      | _ => throwError "COVER: degenerate piece"
+    let intervalsList : Q(List (Cover.Piece Cover.Num)) := listExpr rc.pieces q(Cover.Piece Cover.Num)
     let coversLine : Q(Prop) := q(Cover.sweep $intervalsList = true)
     let coversLinePf ← mkDecideProof' coversLine
     let concl := lits.foldr (init := lits.back!) (start := lits.size - 1) fun p acc => q($p ∨ $acc)
     let pf' ← Meta.mkAppM ``Cover.cover_of_sweep #[intervalsList, coversLinePf, var]
     let pf' ← Meta.mkExpectedTypeHint pf' concl
-    let pf' ← restateRatBounds pf' ratBoundTerms.toList
+    -- back to cvc5's representations: the algebraic endpoints, then the rational ones
+    let pf' ← rc.eqs.foldlM (fun h eq => rewriteWithEq h eq) pf'
+    let pf' ← restateRatBounds pf' boundTerms.toList
     addThm (← Meta.inferType pf') pf'
   | .SGN_INV_INTRO =>
     -- args: (p, l, r, lo, hi); infinite ends of the piece and of the window are the markers

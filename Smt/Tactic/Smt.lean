@@ -46,6 +46,10 @@ structure Config where
   model : Bool := false
   /-- Just show the SMT query without invoking a solver. Useful for debugging. -/
   showQuery : Bool := false
+  /-- Whether to ask cvc5 for a single coarse `ARITH_COVERINGS_UNIV` step for univariate
+      nonlinear conflicts, instead of the fine-grained `COVER`, `SGN_INV_INTRO`, `IS_ROOT_INTRO`,
+      `SGN_INV_ELIM` and `RAN_EVAL` steps. -/
+  coarse : Bool := false
   /-- Options to pass to the solver, in addition to the default ones. -/
   extraSolverOptions : List (String × String) := []
 deriving Inhabited, Repr
@@ -91,7 +95,9 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     trace[smt] "goal: {goalType}"
     trace[smt] "\nquery:\n{Command.cmdsAsQuery (cmds ++ [.checkSat])}"
   -- 4. Run the solver.
-  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout (defaultSolverOptions ++ cfg.extraSolverOptions)
+  let solverOptions := defaultSolverOptions ++ cfg.extraSolverOptions
+    ++ [("nl-cov-univ-coarse-proof", toString cfg.coarse)]
+  let res ← solve (Command.cmdsAsQuery cmds) cfg.timeout solverOptions
   -- trace[smt] "\nresult: {res}"
   match res with
   | .error e =>

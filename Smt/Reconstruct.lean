@@ -259,7 +259,7 @@ def defaultSolverOptions : List (String × String) := [
   ("proof-granularity", "dsl-rewrite"),
   ("proof-chain-m-res", "false"),
   ("nl-cov-always", "true"),
-  ("nl-cov-univ-coarse-proof", "true")
+  ("nl-cov", "true")
   /- ("nl-cov-lift", "lazard"), -/
 ]
 
