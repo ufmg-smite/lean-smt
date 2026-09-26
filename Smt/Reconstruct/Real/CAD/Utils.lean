@@ -104,6 +104,26 @@ def rewriteMVar (mvarId : MVarId) (eqProof : Expr) : MetaM MVarId :=
     mvarId.assign (← mkEqMPR result.eqProof newMVar)
     return newMVar.mvarId!
 
+/-- `rewriteWithEq` by syntactic replacement: for `h2 : a = b`, every occurrence of `a` in the type
+of `h1` (compared structurally, no unfolding) is replaced by `b`. `rewriteWithEq` abstracts with
+`kabstract`, which tests each candidate subterm by `isDefEq`; on terms like
+`AlgNum.toReal (AlgNum.refine c)` a mismatched candidate makes `isDefEq` unfold the refinement and
+the hoisted numbers, i.e. evaluate polynomials over `ℚ` in Meta (48s on a cover with six algebraic
+endpoints). Use this when the occurrences are known to be syntactically equal to `a`. -/
+def rewriteWithEqStructural (h1 h2 : Expr) : MetaM Expr := do
+  let prop ← inferType h1
+  let eqType ← inferType h2
+  let some (α, a, b) := eqType.eq?
+    | throwError "rewriteWithEqStructural: h2 is not a proof of an equality, got {eqType}"
+  if (prop.find? (· == a)).isNone then
+    return h1
+  let u ← getLevel α
+  let motive ← withLocalDecl `x .default α fun x =>
+    mkLambdaFVars #[x] (prop.replace fun s => if s == a then some x else none)
+  let newProp := prop.replace fun s => if s == a then some b else none
+  let pf := mkAppN (mkConst ``Eq.subst [u]) #[α, motive, a, b, h2, h1]
+  mkExpectedTypeHint pf newProp
+
 /-- Given:
   - `h1 : P`  (a proof of some proposition)
   - `h2 : a = b`  (a proof of some equality)
