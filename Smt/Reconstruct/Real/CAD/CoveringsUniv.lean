@@ -28,6 +28,28 @@ def parseUnivCad : Syntax → TacticM (Expr × List Expr × List Q(AlgNum))
     return (x', as', bs')
   | _ => throwError "[parseUnivCad]: impossible"
 
+/-- A proof of `List.Sublist l₁ l₂` for explicit lists whose elements are compared syntactically:
+`l₁` must be obtained from `l₂` by dropping elements. Linear in the length of `l₂`. -/
+def mkSublistPf (α : Q(Type)) (l₁ l₂ : List Q($α)) : MetaM Expr :=
+  match l₁, l₂ with
+  | [], [] => pure q(List.Sublist.slnil (α := $α))
+  | [], b :: l₂ => do
+    let h ← mkSublistPf α [] l₂
+    let l₂e : Q(List $α) := toListExpr α l₂
+    let h : Q(List.Sublist [] $l₂e) := h
+    pure q(List.Sublist.cons $b $h)
+  | a :: l₁, b :: l₂ => do
+    let l₁e : Q(List $α) := toListExpr α l₁
+    let l₂e : Q(List $α) := toListExpr α l₂
+    if a == b then
+      let h : Q(List.Sublist $l₁e $l₂e) ← mkSublistPf α l₁ l₂
+      pure q(List.Sublist.cons₂ $a $h)
+    else
+      let l₁e' : Q(List $α) := toListExpr α (a :: l₁)
+      let h : Q(List.Sublist $l₁e' $l₂e) ← mkSublistPf α (a :: l₁) l₂
+      pure q(List.Sublist.cons $b $h)
+  | a :: _, [] => throwError "mkSublistPf: {a} is not an element of the larger list"
+
 def computeSortedRootSet (p : Q(CPolynomial Rat)) (p_ne_0 : Expr) (rs_real : Q(List Real)) (roots_card rs_sorted : Expr) (roots_pfs : List Expr) : MetaM Expr := do
   let p_polyReal_ne_0' ← mkAppM ``toPolyReal_zero #[p, p_ne_0]
   let p_ne_0 ← mkAppM ``toPoly_ne0_of_poly_ne0 #[p, p_ne_0]
@@ -53,6 +75,51 @@ def computeSortedRootSet (p : Q(CPolynomial Rat)) (p_ne_0 : Expr) (rs_real : Q(L
   let hyp3_pf := rs_sorted
   let hyp4_pf := q(Finset.sortedLT_sort (toPolyReal $p).roots.toFinset)
   mkAppM ``list_eq_of_sorted_of_length_of_mem #[rs_real, q((toPolyReal $p).roots.toFinset.sort (· ≤ ·)), hyp1_pf, hyp2_pf, hyp3_pf, hyp4_pf]
+
+/-! The contradiction closing one cell of the decomposition: the sign of a polynomial on the
+cell, established by the `sign_stops_*` lemmas (open cells) or by `getSignProof` (points),
+against the constraint on that polynomial. Which polynomial is violated is found natively
+(`sgnQ` of its value at the sample point, the relation of its constraint), so no search is
+needed on the Lean side. -/
+
+lemma contra_neg_ge {e : ℝ} (h : e < 0) (h' : e ≥ 0) : False := absurd h' (not_le.mpr h)
+lemma contra_neg_gt {e : ℝ} (h : e < 0) (h' : e > 0) : False := absurd h' (not_lt.mpr (le_of_lt h))
+lemma contra_neg_eq {e : ℝ} (h : e < 0) (h' : e = 0) : False := absurd h' (ne_of_lt h)
+lemma contra_pos_le {e : ℝ} (h : e > 0) (h' : e ≤ 0) : False := absurd h' (not_le.mpr h)
+lemma contra_pos_lt {e : ℝ} (h : e > 0) (h' : e < 0) : False := absurd h' (not_lt.mpr (le_of_lt h))
+lemma contra_pos_eq {e : ℝ} (h : e > 0) (h' : e = 0) : False := absurd h' (ne_of_gt h)
+lemma contra_zero_lt {e : ℝ} (h : e = 0) (h' : e < 0) : False := absurd (h ▸ h') (lt_irrefl 0)
+lemma contra_zero_gt {e : ℝ} (h : e = 0) (h' : e > 0) : False := absurd (h ▸ h') (lt_irrefl 0)
+
+/-- The relation of a constraint `cmp e 0`, as the head constant of its type. -/
+def constraintRel (ineq_pf : Expr) : MetaM Name := do
+  let t ← instantiateMVars (← inferType ineq_pf)
+  match t.getAppFn with
+  | .const n _ => pure n
+  | _ => throwError "constraintRel: unexpected constraint {t}"
+
+/-- The sign of `p` at a root value, computed natively (as `getSignProof` does). -/
+def nativeSign (p : CPolynomial Rat) : RootVal → Int
+  | .rat _ v => sgnC (p.eval v)
+  | .alg _ a => seqVarSturmC_ab' a.p (a.p.derivative * p) a.l a.r
+
+/-- The lemma refuting a constraint with relation `rel` on a polynomial whose sign is `s` on the
+cell, if they are incompatible. -/
+def contraLemma (s : Int) (rel : Name) : Option Name :=
+  if s < 0 then
+    if rel == ``GE.ge then some ``contra_neg_ge
+    else if rel == ``GT.gt then some ``contra_neg_gt
+    else if rel == ``Eq then some ``contra_neg_eq
+    else none
+  else if s > 0 then
+    if rel == ``LE.le then some ``contra_pos_le
+    else if rel == ``LT.lt then some ``contra_pos_lt
+    else if rel == ``Eq then some ``contra_pos_eq
+    else none
+  else
+    if rel == ``LT.lt then some ``contra_zero_lt
+    else if rel == ``GT.gt then some ``contra_zero_gt
+    else none
 
 lemma set_eq {x y : Real} : (x ∈ setOf (fun z => z = y)) -> x = y := by
   intro h
@@ -200,10 +267,12 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           else if !L.isAlgNum && R.isAlgNum then mkAppM ``alg_midpoint_ra #[L.expr, R.expr, lr_ord]
           else mkAppM ``alg_midpoint_rr #[L.expr, R.expr, lr_ord]
 
-        let mut grind_context : Array Expr := #[]
+        let mut closed := false
         for ⟨poly, poly_native, p_ne_0, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
+          -- the sign of `poly` on the cell: no root inside, so its sign at the midpoint
+          let s := sgnQ (CPolynomial.eval mid_native poly_native)
+          let some contra := contraLemma s (← constraintRel ineq_pf) | continue
           let p_polyReal_ne_0 ← mkAppM ``toPolyReal_zero #[poly, p_ne_0]
-
           let poly' ← mkAppM ``toPolyReal #[poly]
           let i:Q(Nat) := q(($idx - 2) / 2)
           let i_bound_prop : Q(Prop) := q($i < List.length $all_roots - 1)
@@ -211,31 +280,22 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
           normNum mv_i_bound.mvarId!
           let pf ← mkAppM ``no_roots_between_roots''
             #[poly', p_polyReal_ne_0, all_roots, roots, roots_pf, subset, all_roots_sorted, i, mv_i_bound]
-
-          let s := sgnQ (CPolynomial.eval mid_native poly_native)
-          if s < 0 then
-            let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $mid $poly < 0)
-            let eval_neg ← mkDecideProof' eval_neg_prop
-            let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-
-            let key ← mkAppM ``sign_stops_neg
-              #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
-            -- TODO: Could be just check if they are proving different signs and apply custom lemma
-            grind_context := grind_context.push key
-            grind_context := grind_context.push ineq_pf
-          else
-            let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $mid $poly > 0)
-            let eval_pos ← mkDecideProof' eval_pos_prop
-            let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-
-            let key ← mkAppM ``sign_stops_pos
-              #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
-            -- TODO: Could be just check if they are proving different signs and apply custom lemma
-            grind_context := grind_context.push key
-            grind_context := grind_context.push ineq_pf
-        let ok ← runGrind' mv' grind_context.toList
-        if !ok then
-          throwError "grind failed 2"
+          let key ← if s < 0 then do
+              let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $mid $poly < 0)
+              let eval_neg ← mkDecideProof' eval_neg_prop
+              let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
+              mkAppM ``sign_stops_neg
+                #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_neg_real, var, var_inter]
+            else do
+              let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $mid $poly > 0)
+              let eval_pos ← mkDecideProof' eval_pos_prop
+              let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
+              mkAppM ``sign_stops_pos
+                #[q(ratToReal $mid), poly', ← RootVal.toReal L, ← RootVal.toReal R, pf, mid_mem, eval_pos_real, var, var_inter]
+          mv'.assign (← mkAppM contra #[key, ineq_pf])
+          closed := true
+          break
+        unless closed do throwError "solveCase: no constraint is violated on cell {idx}"
       pure none
     else
       if idx == 0 then
@@ -254,31 +314,27 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             if R.isAlgNum then mkAppM ``alg_pre #[R.expr]
             else mkAppM ``alg_pre' #[R.expr]
 
-          let mut grind_context : Array Expr := #[]
+          let mut closed := false
           for ⟨poly, poly_native, p_ne_0, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
+            let s := sgnQ (CPolynomial.eval pre_native poly_native)
+            let some contra := contraLemma s (← constraintRel ineq_pf) | continue
             let p_polyReal_ne_0 ← mkAppM ``toPolyReal_zero #[poly, p_ne_0]
-
             let poly' ← mkAppM ``toPolyReal #[poly]
             let pf ← mkAppM ``no_roots_before_first'' #[poly', p_polyReal_ne_0, all_roots, roots, roots_pf, subset, all_roots_sorted]
-
-            let s := sgnQ (CPolynomial.eval pre_native poly_native)
-            if s < 0 then
-              let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pre $poly < 0)
-              let eval_neg ← mkDecideProof' eval_neg_prop
-              let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
-              grind_context := grind_context.push key
-              grind_context := grind_context.push ineq_pf
-            else
-              let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pre $poly > 0)
-              let eval_pos ← mkDecideProof' eval_pos_prop
-              let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
-              grind_context := grind_context.push key
-              grind_context := grind_context.push ineq_pf
-          let ok ← runGrind' mv' grind_context.toList
-          if !ok then
-            throwError "grind failed 3"
+            let key ← if s < 0 then do
+                let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pre $poly < 0)
+                let eval_neg ← mkDecideProof' eval_neg_prop
+                let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
+                mkAppM ``sign_stops_neg_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_neg_real, var, var_pre]
+              else do
+                let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pre $poly > 0)
+                let eval_pos ← mkDecideProof' eval_pos_prop
+                let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
+                mkAppM ``sign_stops_pos_pre #[q(ratToReal $pre), poly', ← RootVal.toReal R, pf, pre_mem, eval_pos_real, var, var_pre]
+            mv'.assign (← mkAppM contra #[key, ineq_pf])
+            closed := true
+            break
+          unless closed do throwError "solveCase: no constraint is violated before the first root"
         pure none
       else
         let (fv, mv') ← mv.intro1P
@@ -296,47 +352,43 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
             if L.isAlgNum then mkAppM ``alg_pos #[L.expr]
             else mkAppM ``alg_pos' #[L.expr]
 
-          let mut grind_context : Array Expr := #[]
+          let mut closed := false
           for ⟨poly, poly_native, p_ne_0, ineq_pf, roots, roots_pf, subset⟩ in polys_ineqs_roots_subsets do
+            let s := sgnQ (CPolynomial.eval pos_native poly_native)
+            let some contra := contraLemma s (← constraintRel ineq_pf) | continue
             let p_polyReal_ne_0 ← mkAppM ``toPolyReal_zero #[poly, p_ne_0]
-
             let poly' ← mkAppM ``toPolyReal #[poly]
             let pf ← mkAppM ``no_roots_after_last'' #[poly', p_polyReal_ne_0, all_roots, roots, roots_pf, subset, all_roots_sorted]
-
-            let s := sgnQ (CPolynomial.eval pos_native poly_native)
-            if s < 0 then
-              let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pos $poly < 0)
-              let eval_neg ← mkDecideProof' eval_neg_prop
-              let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
-              let key ← mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
-              grind_context := grind_context.push key
-              grind_context := grind_context.push ineq_pf
-            else
-              let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pos $poly > 0)
-              let eval_pos ← mkDecideProof' eval_pos_prop
-              let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
-              let key ← mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
-              grind_context := grind_context.push key
-              grind_context := grind_context.push ineq_pf
-          let ok ← runGrind' mv' grind_context.toList
-          if !ok then
-            throwError "grind failed 4"
+            let key ← if s < 0 then do
+                let eval_neg_prop : Q(Prop) := q(CPolynomial.eval $pos $poly < 0)
+                let eval_neg ← mkDecideProof' eval_neg_prop
+                let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
+                mkAppM ``sign_stops_neg_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_neg_real, var, var_pos]
+              else do
+                let eval_pos_prop : Q(Prop) := q(CPolynomial.eval $pos $poly > 0)
+                let eval_pos ← mkDecideProof' eval_pos_prop
+                let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
+                mkAppM ``sign_stops_pos_pos #[q(ratToReal $pos), poly', ← RootVal.toReal L, pf, pos_mem, eval_pos_real, var, var_pos]
+            mv'.assign (← mkAppM contra #[key, ineq_pf])
+            closed := true
+            break
+          unless closed do throwError "solveCase: no constraint is violated after the last root"
         pure none
   else
     let (fv, mv') ← mv.intro1P
     mv'.withContext do
       let var_val ← mkAppM ``set_eq #[.fvar fv]
       let r := all_roots_alg.getD ((idx - 1) / 2) default
-      let mut grind_context : Array Expr := #[]
+      let mut closed := false
       for ⟨poly, poly_native, _, ineq, _, _, _⟩ in polys_ineqs_roots_subsets do
+        let s := nativeSign poly_native r
+        let some contra := contraLemma s (← constraintRel ineq) | continue
         let ineq' ← rewriteWithEq ineq var_val
         let (poly_sign, _) ← getSignProof poly poly_native r
-        -- TODO: Could be just check if they are proving different signs and apply custom lemma
-        grind_context := grind_context.push poly_sign
-        grind_context := grind_context.push ineq'
-      let ok ← runGrind' mv' grind_context.toList
-      if !ok then
-        throwError "grind failed 5"
+        mv'.assign (← mkAppM contra #[poly_sign, ineq'])
+        closed := true
+        break
+      unless closed do throwError "solveCase: no constraint is violated at root {idx}"
     pure none
   let solve_case_pos ← IO.monoMsNow
   logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
@@ -375,9 +427,10 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.R
         root_pfs := root_pfs.push sign_pf
 
     let curr_roots_e := toListExpr q(Real) (← curr_roots.toList.mapM RootVal.toReal)
-    let curr_roots_sublist_prop : Q(Prop) := q(List.Sublist $curr_roots_e $rs_e)
-    let mv_sublist ← mkFreshExprMVar curr_roots_sublist_prop
-    normNum mv_sublist.mvarId!
+    -- `curr_roots` is a subsequence of `rs` made of the same expressions, so the proof is a
+    -- walk along both lists with the `Sublist` constructors. (`norm_num` on this goal took up
+    -- to 37s per inequality on lists of 13 algebraic roots.)
+    let mv_sublist ← mkSublistPf q(Real) (← curr_roots.toList.mapM RootVal.toReal) rs_real
     let pf_subset ← mkAppM ``List.Sublist.subset #[mv_sublist]
     let curr_roots_sorted ← mkAppM ``sublist_sorted #[rs_e, curr_roots_e, rs_sorted, mv_sublist]
 

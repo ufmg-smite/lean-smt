@@ -196,10 +196,10 @@ theorem in_component_prop {P : ℝ → Prop} (l : List ℝ) (sl : l.SortedLT) (h
 -- that `∃ p ∈ decomp roots, x ∈ p ∧ P x`, where `decomp roots` is the decomposition
 -- of the real line into intervals separated at the roots.
 def getDecompPf (x : Q(Real)) (roots: Q(List Real)) (roots_sorted_pf : Expr) : MetaM Expr := do
-  let roots_not_empty : Q(Prop) := q($roots ≠ [])
-  let roots_not_empty_pf ← Meta.mkFreshExprMVar roots_not_empty
-  let ok ← runGrind roots_not_empty_pf.mvarId!
-  if !ok then throwError "grind failed 8"
+  -- `roots` is an explicit non-empty list literal
+  let .app (.app (.app (.const ``List.cons _) _) hd) tl := roots
+    | throwError "getDecompPf: expected a non-empty list literal, got {roots}"
+  let roots_not_empty_pf ← Meta.mkAppM ``List.cons_ne_nil #[hd, tl]
   Meta.mkAppOptM ``in_component #[x, roots, roots_sorted_pf, roots_not_empty_pf]
 
 def collectDisjuncts (e: Expr) : List Expr :=

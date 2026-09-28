@@ -49,22 +49,6 @@ def normNum (mv : MVarId) : MetaM Unit := do
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()
 
-def runGrind (mv : MVarId) : MetaM Bool := do
-  let params ← Meta.Grind.mkDefaultParams {}
-  let r ← Meta.Grind.main mv params
-  return !r.hasFailed
-
--- runGrind with a set of extra hypothesis
-def runGrind' (mv : MVarId) (pfs : List Expr) : MetaM Bool := do
-  let mut mv := mv
-  for pf in pfs do
-    let t ← inferType pf
-    let (_, mv') ← MVarId.intro1P $ ← mv.assert .anonymous t pf
-    mv := mv'
-  let params ← Meta.Grind.mkDefaultParams {}
-  let r ← Meta.Grind.main mv params
-  return !r.hasFailed
-
 def simp' (mvarId : MVarId) (hs : List Expr) (to_erase: List Name := []) : MetaM (Option MVarId) := mvarId.withContext do
   let congrTheorems ← getSimpCongrTheorems
   let mut simpTheorems ← getSimpTheorems

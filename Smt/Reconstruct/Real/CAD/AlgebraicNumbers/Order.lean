@@ -141,28 +141,43 @@ where
       return (.alg e1 v1, .rat e2 v2)
     else
       separate_ar (mkApp (mkConst ``AlgNum.refine) e1) e2 v1.refine v2
-  separate_aa (e1 e2 : Expr) (v1 v2 : Raw) : MetaM (RootVal × RootVal) :=
+  separate_aa (e1 e2 : Expr) (v1 v2 : Raw) : MetaM (RootVal × RootVal) := do
     if v1.r < v2.l then
       return (.alg e1 v1, .alg e2 v2)
     else
       separate_aa (mkApp (mkConst ``AlgNum.refine) e1) (mkApp (mkConst ``AlgNum.refine) e2) v1.refine v2.refine
 
+/-- A proof of `List.SortedLT [a₁, …, aₙ]` from proofs of `a₁ < a₂`, …, `aₙ₋₁ < aₙ`, as returned
+by `getPfs`. The adjacent proofs form a `List.IsChain (· < ·)`, which is sortedness for a
+transitive relation (`List.IsChain.sortedLT`). The term is linear in `n`. (`grind`, used here
+before, fails from nine elements on: it goes through `Pairwise`, i.e. all `n(n-1)/2` pairs.) -/
+def mkSortedLTPf (as : List Q(Real)) (pfs : List Expr) : MetaM Expr := do
+  let l : Q(List Real) := toListExpr q(Real) as
+  let chain : Q(List.IsChain (fun x y : Real => x < y) $l) ← go as pfs
+  return q(List.IsChain.sortedLT $chain)
+where
+  go : List Q(Real) → List Expr → MetaM Expr
+    | [], [] => pure q(List.IsChain.nil (R := fun x y : Real => x < y))
+    | [a], [] => pure q(List.IsChain.singleton (R := fun x y : Real => x < y) $a)
+    | a :: b :: rest, pf :: pfs => do
+      let tl : Q(List Real) := toListExpr q(Real) rest
+      let h : Q(List.IsChain (fun x y : Real => x < y) ($b :: $tl)) ← go (b :: rest) pfs
+      let pf : Q($a < $b) := pf
+      pure q(List.IsChain.cons_cons $pf $h)
+    | as, pfs => throwError "mkSortedLTPf: {as.length} elements but {pfs.length} proofs"
+
 -- given a list of RootVal, refines the intervals of the algebraic numbers
 -- and produces a proof that the resulting list is sorted. Also returns the
 -- updated list.
 def genPfSortedLT (as : List RootVal) : Smt.ReconstructM (Expr × List RootVal) := do
+  let t1 ← IO.monoMsNow
   let as_refined ← separateIntervals as
   let pfs ← getPfs as_refined -- each pair is sorted
   let as_refined' : List Q(Real) ← as_refined.mapM RootVal.toReal
-  let as_refined'' := toListExpr q(Real) as_refined'
-  let goal ← mkAppM `List.SortedLT #[as_refined'']
-  let mv ← mkFreshExprMVar goal
-  let t1 ← IO.monoMsNow
-  let ok ← runGrind' mv.mvarId! pfs
-  if !ok then throwError "grind failed 9"
+  let pf ← mkSortedLTPf as_refined' pfs
   let t2 ← IO.monoMsNow
   logInfo m!"proving list is SortedLT took {t2 - t1}ms"
-  return (mv, as_refined)
+  return (pf, as_refined)
 
 syntax (name := cmp_alg_list) "cmp_alg_list" ("[" term,* "]") : tactic
 

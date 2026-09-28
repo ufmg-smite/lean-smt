@@ -671,31 +671,6 @@ where
     let t1 ← IO.monoMsNow
     logInfo m!"IS_ROOT_INTRO took {t1 - t0}ms"
     addThm q(IsRoot $p $ar) pf'
-  /- | .VALIDATE_INTERVALS => -/
-  /-   let intervals := pf.getArguments[0]! -/
-  /-   let roots := pf.getArguments[1]! -/
-  /-   let root_map := pf.getArguments[2]! -/
-  /-   let mut p_intervals: Array (Q(CPolynomial Rat) × Q(Cover.Piece Cover.Num)) := #[] -/
-  /-   -- TODO: if it is a point interval we should repeat the bound twice, like in COVER -/
-  /-   for interval in intervals do -/
-  /-     let ⟨p, _⟩ ← reconsPoly interval[0]! -/
-  /-     let piece ← -/
-  /-       -- TODO: Actually these two could also be indices to the list of all roots -/
-  /-       if interval.getNumChildren == 3 then -/
-  /-         Cover.reconsPiece interval[1]! interval[2]! -/
-  /-       else -/
-  /-         Cover.reconsPiece interval[1]! interval[1]! -/
-  /-     p_intervals := p_intervals.push (p, piece) -/
-  /-   let roots_native ← roots.getChildren.mapM reconsRootVal -/
-  /-   let mut root_map_native : Array (Q(CPolynomial Rat) × Array Nat) := #[] -/
-  /-   for p_roots in root_map do -/
-  /-     let (p, _) ← reconsPoly p_roots[0]! -/
-  /-     let mut is : Array Nat := #[] -/
-  /-     for i in p_roots[1]! do -/
-  /-       is := is.push i.getIntegerValue!.natAbs -/
-  /-     root_map_native := root_map_native.push (p, is) -/
-  /-   let pf' ← validateIntervalsCore p_intervals roots_native root_map_native -/
-  /-   return none -/
   | .ARITH_COVERINGS_UNIV =>
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array RootVal := #[]
