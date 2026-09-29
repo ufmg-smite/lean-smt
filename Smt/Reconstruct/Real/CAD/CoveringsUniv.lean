@@ -91,6 +91,32 @@ lemma contra_pos_eq {e : ℝ} (h : e > 0) (h' : e = 0) : False := absurd h' (ne_
 lemma contra_zero_lt {e : ℝ} (h : e = 0) (h' : e < 0) : False := absurd (h ▸ h') (lt_irrefl 0)
 lemma contra_zero_gt {e : ℝ} (h : e = 0) (h' : e > 0) : False := absurd (h ▸ h') (lt_irrefl 0)
 
+/-- A polynomial whose sorted root list is empty has no real root. -/
+lemma no_roots_of_sorted_empty (p : CPolynomial Rat) (hp : toPolyReal p ≠ 0)
+    (h : ([] : List Real) = (toPolyReal p).roots.toFinset.sort (· ≤ ·)) :
+    ∀ k : Real, ¬ (toPolyReal p).eval k = 0 := by
+  intro k hk
+  have hcard : (toPolyReal p).roots.toFinset.card = 0 := by
+    have := congrArg List.length h
+    simpa [Finset.length_sort] using this.symm
+  rw [Finset.card_eq_zero] at hcard
+  have hmem : k ∈ (toPolyReal p).roots.toFinset :=
+    Multiset.mem_toFinset.mpr ((Polynomial.mem_roots hp).mpr hk)
+  rw [hcard] at hmem
+  simp at hmem
+
+/-- With no real root, a negative value forces a negative sign on the whole line. -/
+lemma sign_stops_neg_line (x : ℝ) (p : Polynomial ℝ) (h_no_roots : ∀ k : ℝ, ¬ p.eval k = 0)
+    (hx : p.eval x < 0) (y : ℝ) : p.eval y < 0 :=
+  sign_stops_neg_pre x p (max x y + 1) (fun k _ => h_no_roots k)
+    (by linarith [le_max_left x y]) hx y (by linarith [le_max_right x y])
+
+/-- With no real root, a positive value forces a positive sign on the whole line. -/
+lemma sign_stops_pos_line (x : ℝ) (p : Polynomial ℝ) (h_no_roots : ∀ k : ℝ, ¬ p.eval k = 0)
+    (hx : p.eval x > 0) (y : ℝ) : p.eval y > 0 :=
+  sign_stops_pos_pre x p (max x y + 1) (fun k _ => h_no_roots k)
+    (by linarith [le_max_left x y]) hx y (by linarith [le_max_right x y])
+
 /-- The relation of a constraint `cmp e 0`, as the head constant of its type. -/
 def constraintRel (ineq_pf : Expr) : MetaM Name := do
   let t ← instantiateMVars (← inferType ineq_pf)
@@ -237,7 +263,7 @@ lemma sublist_sorted (l1 l2 : List Real) : l1.SortedLT → List.Sublist l2 l1 �
 
 -- Solves one of the intervals for univ_cad. Returns `some mv` if it is not supported yet
 def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Data) (all_roots_alg : List RootVal) (all_roots : Q(List Real)) (all_roots_sorted : Expr) (var : Q(Real)) : Smt.ReconstructM (Option MVarId) := do
-  let solve_case_pre ← IO.monoMsNow
+  /- let solve_case_pre ← IO.monoMsNow -/
   let result ← if idx % 2 = 0 then -- interval
     if idx != 0 ∧ idx < 2 * N then
       let (fv, mv') ← mv.intro1P
@@ -390,8 +416,8 @@ def solveCase (mv : MVarId) (idx N : Nat) (polys_ineqs_roots_subsets : Array Dat
         break
       unless closed do throwError "solveCase: no constraint is violated at root {idx}"
     pure none
-  let solve_case_pos ← IO.monoMsNow
-  logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms"
+  /- let solve_case_pos ← IO.monoMsNow -/
+  /- logInfo m!"current solve case: {solve_case_pos - solve_case_pre}ms" -/
   return result
 
 def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.ReconstructM (Expr × List MVarId) := do
@@ -401,12 +427,12 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.R
     | .rat _ v => return RootVal.rat e' v
     | .alg _ raw => return RootVal.alg e' raw
   let (rs_sorted, rs) ← genPfSortedLT rs
-  let sort_after ← IO.monoMsNow
+  /- let sort_after ← IO.monoMsNow -/
   let mut polys_ineqs_roots_subsets : Array Data := #[]
   let rs_real : List Q(Real) ← rs.mapM RootVal.toReal
   let rs_e := toListExpr q(Real) rs_real
   for ineq_pf in ineq_pfs do
-    let curr_ineq_pre ← IO.monoMsNow
+    /- let curr_ineq_pre ← IO.monoMsNow -/
     let (P_inline, P_native, ineq_pf_P) ← lift_ineq ineq_pf x
     let P : Q(CPolynomial Rat) ← hoistExpr `_univCadPoly P_inline
     -- Retype `ineq_pf_P` so its type mentions the hoisted `P` instead of the
@@ -438,14 +464,34 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.R
     let P_ne_0 ← mkDecideProof' P_ne_0_goal
     let roots_description ← computeSortedRootSet P P_ne_0 curr_roots_e P_roots_card curr_roots_sorted root_pfs.toList
     polys_ineqs_roots_subsets := polys_ineqs_roots_subsets.push (Data.mk P P_native P_ne_0 ineq_pf_P curr_roots_e roots_description pf_subset)
-    let curr_ineq_pos ← IO.monoMsNow
-    logInfo m!"reconstructing inequality: {curr_ineq_pos - curr_ineq_pre}ms"
+    /- let curr_ineq_pos ← IO.monoMsNow -/
+    /- logInfo m!"reconstructing inequality: {curr_ineq_pos - curr_ineq_pre}ms" -/
 
-  let all_ineq_pos ← IO.monoMsNow
-  logInfo m!"accumulated of reconstructing inequalities: {all_ineq_pos - sort_after}ms"
+  /- let all_ineq_pos ← IO.monoMsNow -/
+  /- logInfo m!"accumulated of reconstructing inequalities: {all_ineq_pos - sort_after}ms" -/
+  if rs.isEmpty then
+    -- No polynomial has a real root, so each has a constant sign on the whole line, and the
+    -- sign at 0 of some polynomial violates its constraint.
+    for ⟨poly, poly_native, p_ne_0, ineq_pf, _, roots_pf, _⟩ in polys_ineqs_roots_subsets do
+      let s := sgnQ (CPolynomial.eval 0 poly_native)
+      let some contra := contraLemma s (← constraintRel ineq_pf) | continue
+      let p_polyReal_ne_0 ← mkAppM ``toPolyReal_zero #[poly, p_ne_0]
+      let poly' ← mkAppM ``toPolyReal #[poly]
+      let no_roots ← mkAppM ``no_roots_of_sorted_empty #[poly, p_polyReal_ne_0, roots_pf]
+      let zero : Q(Rat) := q(0)
+      let key ← if s < 0 then do
+          let eval_neg ← mkDecideProof' q(CPolynomial.eval $zero $poly < 0)
+          let eval_neg_real ← mkAppM ``cast_eval_neg #[eval_neg]
+          mkAppM ``sign_stops_neg_line #[q(ratToReal $zero), poly', no_roots, eval_neg_real, x]
+        else do
+          let eval_pos ← mkDecideProof' q(CPolynomial.eval $zero $poly > 0)
+          let eval_pos_real ← mkAppM ``cast_eval_pos #[eval_pos]
+          mkAppM ``sign_stops_pos_line #[q(ratToReal $zero), poly', no_roots, eval_pos_real, x]
+      return (← mkAppM contra #[key, ineq_pf], [])
+    throwError "univCadCore: no real roots, but no constraint is violated"
   let decomp_pf ← getDecompPf x rs_e rs_sorted
   let decomp_after ← IO.monoMsNow
-  logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms"
+  /- logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms" -/
 
   let mv ← mkFreshExprMVar (mkConst ``False)
   let congrTheorems ← getSimpCongrTheorems
