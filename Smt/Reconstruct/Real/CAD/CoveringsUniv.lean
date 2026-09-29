@@ -50,27 +50,46 @@ def mkSublistPf (α : Q(Type)) (l₁ l₂ : List Q($α)) : MetaM Expr :=
       pure q(List.Sublist.cons $b $h)
   | a :: _, [] => throwError "mkSublistPf: {a} is not an element of the larger list"
 
+/-! The two hypotheses of `list_eq_of_sorted_of_length_of_mem` in `computeSortedRootSet`, built
+directly (they used to be proved by `simp` with the full simp set). -/
+
+/-- The listed roots are as many as the real roots: the length of the explicit list is computed
+(`rfl`), the number of real roots is the Sturm count. -/
+lemma sorted_roots_length {p : Polynomial ℝ} {l : List ℝ} {k : ℕ} (hl : l.length = k)
+    (hk : p.roots.toFinset.card = k) : l.length = (p.roots.toFinset.sort (· ≤ ·)).length := by
+  rw [Finset.length_sort, hl, hk]
+
+lemma mem_sorted_roots_nil (p : Polynomial ℝ) :
+    ∀ i ∈ ([] : List ℝ), i ∈ p.roots.toFinset.sort (· ≤ ·) := by
+  intro i hi
+  cases hi
+
+/-- Each listed root is a real root. -/
+lemma mem_sorted_roots_cons {p : Polynomial ℝ} (hp : p ≠ 0) {r : ℝ} {l : List ℝ}
+    (h : p.eval r = 0) (hl : ∀ i ∈ l, i ∈ p.roots.toFinset.sort (· ≤ ·)) :
+    ∀ i ∈ r :: l, i ∈ p.roots.toFinset.sort (· ≤ ·) := by
+  intro i hi
+  rcases List.mem_cons.mp hi with rfl | hi
+  · rw [Finset.mem_sort, Multiset.mem_toFinset, Polynomial.mem_roots hp]
+    exact h
+  · exact hl i hi
+
+/-- `rs_real = (toPolyReal p).roots.toFinset.sort (· ≤ ·)`: the listed roots (sorted, one proof
+of `eval r (toPolyReal p) = 0` per root in `roots_pfs`, in the same order) are exactly the real
+roots of `p`, whose number is `roots_card`. -/
 def computeSortedRootSet (p : Q(CPolynomial Rat)) (p_ne_0 : Expr) (rs_real : Q(List Real)) (roots_card rs_sorted : Expr) (roots_pfs : List Expr) : MetaM Expr := do
   let p_polyReal_ne_0' ← mkAppM ``toPolyReal_zero #[p, p_ne_0]
-  let p_ne_0 ← mkAppM ``toPoly_ne0_of_poly_ne0 #[p, p_ne_0]
 
-  let toPolyReal_rev ← mkAppM ``toPolyReal.eq_1 #[p]
+  -- the lengths: `rs_real.length = k` by computation, `k` real roots by the Sturm count
+  let k := roots_pfs.length
+  let kE : Q(Nat) := toExpr k
+  let hlen ← mkExpectedTypeHint (← mkEqRefl kE) q(List.length $rs_real = $kE)
+  let hyp1_pf ← mkAppM ``sorted_roots_length #[hlen, roots_card]
 
-  let hyp1 : Q(Prop) := q(List.length $rs_real = (toPolyReal $p).roots.toFinset.sort.length)
-  let mv1 ← mkFreshExprMVar hyp1
-  let hyp1_pf : Q($hyp1) := mv1
-  let mv1? ← simp' mv1.mvarId! []
-  match mv1? with
-  | none => pure ()
-  | some mv1' => let mv1' ← rewriteMVar mv1' roots_card; mv1'.refl
-
-  let hyp2 : Q(Prop) := q(∀ i ∈ $rs_real, i ∈ (toPolyReal $p).roots.toFinset.sort (· ≤ ·))
-  let mv2 ← mkFreshExprMVar hyp2
-  let hyp2_pf := mv2
-  let mv2? ← simp' mv2.mvarId! (p_ne_0 :: p_polyReal_ne_0' :: roots_pfs) []
-  match mv2? with
-  | none => pure ()
-  | some mv2' => mv2'.assign p_polyReal_ne_0'
+  -- the memberships: one step per listed root
+  let mut hyp2_pf ← mkAppM ``mem_sorted_roots_nil #[q(toPolyReal $p)]
+  for pf in roots_pfs.reverse do
+    hyp2_pf ← mkAppM ``mem_sorted_roots_cons #[p_polyReal_ne_0', pf, hyp2_pf]
 
   let hyp3_pf := rs_sorted
   let hyp4_pf := q(Finset.sortedLT_sort (toPolyReal $p).roots.toFinset)
@@ -162,6 +181,49 @@ lemma set_before {x y : Real} : (x ∈ setOf (fun w => w < y)) -> x < y := by
 lemma set_after {x y : Real} : (x ∈ setOf (fun w => y < w)) -> y < x := by
   intro h
   finiteness
+
+/-! The cells of the line at a list of roots `r₀, …, rₙ₋₁`, as an explicit right-nested
+disjunction, in the order the cases are indexed by `solveCase`:
+`x < r₀ ∨ x = r₀ ∨ (r₀ < x ∧ x < r₁) ∨ x = r₁ ∨ … ∨ x = rₙ₋₁ ∨ rₙ₋₁ < x`, each written as a
+membership in `setOf` as `set_before`, `set_eq`, `set_between`, `set_after` expect. Built by
+`mkCellCover`, one trichotomy per root; the proof is linear in the number of roots. (It used to be
+obtained by unfolding `decomp` with the full simp set, which exceeded the recursion limit from
+about 60 roots on.) -/
+
+lemma cell_after {x a : Real} (h : a < x) : x ∈ setOf (fun w => a < w) := by
+  simpa only [Set.mem_setOf_eq] using h
+
+lemma cells_first {x b : Real} {R : Prop} (k : b < x → R) :
+    x ∈ setOf (fun w => w < b) ∨ (x ∈ setOf (fun z => z = b) ∨ R) := by
+  simp only [Set.mem_setOf_eq]
+  rcases lt_trichotomy x b with h | h | h
+  · exact Or.inl h
+  · exact Or.inr (Or.inl h)
+  · exact Or.inr (Or.inr (k h))
+
+lemma cells_next {x a b : Real} {R : Prop} (ha : a < x) (k : b < x → R) :
+    x ∈ setOf (fun w => a < w ∧ w < b) ∨ (x ∈ setOf (fun z => z = b) ∨ R) := by
+  simp only [Set.mem_setOf_eq]
+  rcases lt_trichotomy x b with h | h | h
+  · exact Or.inl ⟨ha, h⟩
+  · exact Or.inr (Or.inl h)
+  · exact Or.inr (Or.inr (k h))
+
+/-- A proof that `x` lies in one of the cells of the line at `roots` (see above), for a non-empty
+list. Soundness does not depend on the order of the list; `solveCase` relies on it being sorted. -/
+def mkCellCover (x : Expr) : List Expr → MetaM Expr
+  | [] => throwError "mkCellCover: no roots"
+  | r :: rest => do
+    -- `k : r < x → R`, where R is the disjunction of the cells after `r`
+    let k ← after r rest
+    mkAppM ``cells_first #[k]
+where
+  after (a : Expr) : List Expr → MetaM Expr
+    | [] => pure (mkApp2 (mkConst ``cell_after) x a)
+    | b :: rest => do
+      let k' ← after b rest
+      withLocalDeclD `h (← mkAppM ``LT.lt #[a, x]) fun h => do
+        mkLambdaFVars #[h] (← mkAppM ``cells_next #[h, k'])
 
 structure Data where
   poly : Q(CPolynomial Rat)
@@ -489,17 +551,14 @@ def univCadCore (x : Q(Real)) (ineq_pfs : List Expr) (rs : List RootVal) : Smt.R
           mkAppM ``sign_stops_pos_line #[q(ratToReal $zero), poly', no_roots, eval_pos_real, x]
       return (← mkAppM contra #[key, ineq_pf], [])
     throwError "univCadCore: no real roots, but no constraint is violated"
-  let decomp_pf ← getDecompPf x rs_e rs_sorted
+  -- `x` lies in one of the cells of the line at the sorted roots, as an explicit disjunction
+  -- (see `mkCellCover`)
   let decomp_after ← IO.monoMsNow
-  /- logInfo m!"getting decoposition proof: {decomp_after - all_ineq_pos}ms" -/
-
-  let mv ← mkFreshExprMVar (mkConst ``False)
-  let congrTheorems ← getSimpCongrTheorems
-  let simpTheorems ← getSimpTheorems
-  let simpTheoremsArray : SimpTheoremsArray := #[simpTheorems]
-  let ctx ← Simp.mkContext (simpTheorems := simpTheoremsArray) (congrTheorems := congrTheorems)
-  let (some (decomp_pf', t'), _) ← simpStep mv.mvarId! decomp_pf (← inferType decomp_pf) ctx | throwError "impossible"
+  let decomp_pf' ← mkCellCover x rs_real
+  let t' ← instantiateMVars (← inferType decomp_pf')
   let disjuncts := collectDisjuncts t'
+  unless disjuncts.length == 2 * rs.length + 1 do
+    throwError "univCadCore: expected {2 * rs.length + 1} cells, got {disjuncts.length}"
   let disjunctsToFalse ← disjuncts.mapM (mkArrow · q(False))
   let disjunctsToFalseMvs ← disjunctsToFalse.mapM (fun e => Meta.mkFreshExprMVar e)
   let answer ← go disjunctsToFalseMvs decomp_pf'
