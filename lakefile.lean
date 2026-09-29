@@ -19,6 +19,9 @@ package smt
 @[default_target]
 lean_lib Smt
 
+/-- Checker for cvc5 proofs of SMT-LIB files; run through `scripts/check_smt2.sh`. -/
+lean_lib Checker
+
 lean_lib SmtTest where
   globs := #[Glob.submodules `Test]
 
