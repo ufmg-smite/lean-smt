@@ -43,9 +43,13 @@ def removeParentheses (s : String) : String :=
 open CPolynomial Qq Lean
 
 def getMonom (s: String) : Q(CPolynomial Rat) :=
-  let l := (removeParentheses (s.trimAscii.toString)).splitOn "*"
+  -- The exponent is read from the monomial without its enclosing parentheses: cvc5 prints a
+  -- monomial with a negative coefficient as `(-60*x^2)`, and reading it from the raw token gave
+  -- `"2)".toNat! = 0`, turning the monomial into a constant.
+  let s' := removeParentheses (s.trimAscii.toString)
+  let l := s'.splitOn "*"
   let coef : Rat := matchStrWithRat l[0]!
-  let exp : Nat := if  !(s.contains "^") then if (l.length = 1) then 0 else 1 else ((s.splitOn "^").getLast!.trimAscii).toNat!
+  let exp : Nat := if !(s'.contains "^") then if (l.length = 1) then 0 else 1 else ((s'.splitOn "^").getLast!.trimAscii).toNat!
   let c : Q(CPolynomial Rat) := q(CPolynomial.C $coef)
   if exp = 0 ∨ coef = 0 then c else
     let pp: Q(CPolynomial Rat) := if exp = 1 then q(@CPolynomial.X Rat _ _ _ _) else
@@ -72,9 +76,13 @@ def getRaw (s:String) : Q(AlgebraicNumber.Raw) :=
   q(@AlgebraicNumber.Raw.mk $p $l $r)
 
 def getMonomNative (s: String) : CPolynomial Rat :=
-  let l := (removeParentheses (s.trimAscii.toString)).splitOn "*"
+  -- The exponent is read from the monomial without its enclosing parentheses: cvc5 prints a
+  -- monomial with a negative coefficient as `(-60*x^2)`, and reading it from the raw token gave
+  -- `"2)".toNat! = 0`, turning the monomial into a constant.
+  let s' := removeParentheses (s.trimAscii.toString)
+  let l := s'.splitOn "*"
   let coef : Rat := matchStrWithRat l[0]!
-  let exp : Nat := if  !(s.contains "^") then if (l.length = 1) then 0 else 1 else ((s.splitOn "^").getLast!.trimAscii).toNat!
+  let exp : Nat := if !(s'.contains "^") then if (l.length = 1) then 0 else 1 else ((s'.splitOn "^").getLast!.trimAscii).toNat!
   let c := CPolynomial.C coef
   if exp = 0 ∨ coef = 0 then c else
     let pp: CPolynomial Rat := if exp = 1 then CPolynomial.X else
