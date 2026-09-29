@@ -569,7 +569,6 @@ where
     if (pf.getChildren[0]!.getResult[0]!)[0]!.getSort.isInteger then return none
     reconstructArithPolyNormRel pf
   | .RAN_EVAL =>
-    let t0 ← IO.monoMsNow
     let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
     let rv ← reconsRootVal pf.getArguments[1]!
     let isRoot ← reconstructProof pf.getChildren[0]!
@@ -577,11 +576,8 @@ where
     let r : Q(Real) ← rv.toReal
     let pf' ← ranEvalCore var rv isRoot cond
     let pf' ← restateRatBounds pf' [pf.getArguments[1]!]
-    let t1 ← IO.monoMsNow
-    logInfo m!"RAN_EVAL took {t1 - t0}ms"
     addThm q(¬ ($var = $r)) pf'
   | .SGN_INV_ELIM =>
-    let t0 ← IO.monoMsNow
     let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
     let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[1]!
     let sample : RootVal ← reconsRootVal pf.getArguments[2]!
@@ -598,11 +594,8 @@ where
     let pf' ← sgnInvElimCore var p p_native sample lb ub p1 p2
     let pf' ← restateRatBounds pf' [pf.getArguments[3]!, pf.getArguments[4]!]
     let prop ← reconstructTerm pf.getResult
-    let t1 ← IO.monoMsNow
-    logInfo m!"SGN_INV_ELIM took {t1 - t0}ms"
     addThm prop pf'
   | .COVER =>
-    let t0 ← IO.monoMsNow
     let var : Q(Real) ← reconstructTerm pf.getArguments[0]!
     let mut pieces : Array (Cover.Piece RootVal) := #[]
     let mut boundTerms : Array cvc5.Term := #[]
@@ -643,12 +636,9 @@ where
     -- back to cvc5's representations: the algebraic endpoints, then the rational ones
     let pf' ← rc.eqs.foldlM (fun h eq => rewriteWithEqStructural h eq) pf'
     let pf' ← restateRatBounds pf' boundTerms.toList
-    let t1 ← IO.monoMsNow
-    logInfo m!"COVER took {t1 - t0}ms"
     addThm (← Meta.inferType pf') pf'
   | .SGN_INV_INTRO =>
     -- args: (p, l, r, lo, hi); infinite ends of the piece and of the window are the markers
-    let t0 ← IO.monoMsNow
     let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[0]!
     let optRoot (t : cvc5.Term) : ReconstructM (Option RootVal) := do
       match t.getKind with
@@ -659,17 +649,12 @@ where
     let lo ← optRoot pf.getArguments[3]!
     let hi ← optRoot pf.getArguments[4]!
     let prf ← sgn_inv_intro_core p p_native l r lo hi
-    let t1 ← IO.monoMsNow
-    logInfo m!"SGN_INV_INTRO took {t1 - t0}ms"
     addThm (← Meta.inferType prf) prf
   | .IS_ROOT_INTRO =>
-    let t0 ← IO.monoMsNow
     let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[0]!
     let a ← reconsRootVal pf.getArguments[1]!
     let pf' ← get_is_root_pf p p_native a
     let ar: Q(Real) ← a.toReal
-    let t1 ← IO.monoMsNow
-    logInfo m!"IS_ROOT_INTRO took {t1 - t0}ms"
     addThm q(IsRoot $p $ar) pf'
   | .ARITH_COVERINGS_UNIV =>
     let var ← reconstructTerm pf.getArguments[0]!
@@ -691,10 +676,7 @@ where
     for i in List.range pf.getChildren.size do
       let ineq ← reconstructProof pf.getChildren[i]!
       ineqs := ineqs.push ineq
-    let prep_after ← IO.monoMsNow
     let (answer, []) ← univCadCore var ineqs.toList roots.toList | throwError "univCadCore failed"
-    let recons_after ← IO.monoMsNow
-    logInfo m!"reconstruction time: {recons_after - prep_after}ms"
     return answer
   | .ARITH_MULT_SIGN =>
     if (pf.getResult[1]!)[0]!.getSort.isInteger then return none

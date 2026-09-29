@@ -170,24 +170,9 @@ where
 -- and produces a proof that the resulting list is sorted. Also returns the
 -- updated list.
 def genPfSortedLT (as : List RootVal) : Smt.ReconstructM (Expr × List RootVal) := do
-  let t1 ← IO.monoMsNow
   let as_refined ← separateIntervals as
   let pfs ← getPfs as_refined -- each pair is sorted
   let as_refined' : List Q(Real) ← as_refined.mapM RootVal.toReal
   let pf ← mkSortedLTPf as_refined' pfs
-  let t2 ← IO.monoMsNow
-  logInfo m!"proving list is SortedLT took {t2 - t1}ms"
   return (pf, as_refined)
 
-syntax (name := cmp_alg_list) "cmp_alg_list" ("[" term,* "]") : tactic
-
-def parse_cmp_alg_list : Syntax → TacticM (List Expr)
-  | `(tactic| cmp_alg_list [ $[$as],* ] ) => as.toList.mapM (elabTerm · none)
-  | _ => throwError "[parse_cmp_alg_list]: impossible"
-
-@[tactic cmp_alg_list] def evalCmp_alg_list : Tactic := fun stx => withMainContext do
-  let as ← parse_cmp_alg_list stx
-  let rvs ← as.mapM (fun e => RootVal.ofExpr e)
-  let (e, rvs') ← ((genPfSortedLT rvs).run {}).run' {}
-  logInfo m!"refined root list: {rvs'}"
-  logInfo m!"got proof of: {← inferType e}"
