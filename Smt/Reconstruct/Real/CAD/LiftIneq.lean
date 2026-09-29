@@ -20,23 +20,19 @@ def get_lhs (ineq : Expr) : Expr :=
   | .app (.app (.app (.const ``Eq ..) _) lhs) _ => lhs
   | _ => panic! "[all_to_lhs]: impossible"
 
-partial def get_monoms (e : Q(Real)) : MetaM (List (Q(Real) × Bool)) := do
-  match e with
-  | ~q(@HAdd.hAdd Real Real Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, false) :: r
-  | ~q(@HSub.hSub Real Real Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, true) :: r
-  -- Not sure if these two are necessary
-  | ~q(@Add.add Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, false) :: r
-  | ~q(@Sub.sub Real _ $lhs $rhs) =>
-    let r ← get_monoms lhs
-    return (rhs, true) :: r
-  | _ =>
-    return [(e, false)]
+/-- The monomials of a sum, each with a flag telling whether it is subtracted. The sum tree is
+flattened on both sides: `ring_nf` can produce right-nested sums such as
+`-1 + (x * 6 - x ^ 2 * 12)`, and descending only into the left argument took the parenthesized
+group for a single monomial. -/
+partial def get_monoms (e : Q(Real)) : MetaM (List (Q(Real) × Bool)) := go e false
+where
+  go (e : Q(Real)) (neg : Bool) : MetaM (List (Q(Real) × Bool)) := do
+    match e with
+    | ~q(@HAdd.hAdd Real Real Real _ $lhs $rhs) => return (← go lhs neg) ++ (← go rhs neg)
+    | ~q(@HSub.hSub Real Real Real _ $lhs $rhs) => return (← go lhs neg) ++ (← go rhs (!neg))
+    | ~q(@Add.add Real _ $lhs $rhs) => return (← go lhs neg) ++ (← go rhs neg)
+    | ~q(@Sub.sub Real _ $lhs $rhs) => return (← go lhs neg) ++ (← go rhs (!neg))
+    | _ => return [(e, neg)]
 
 def natOfExpr (e: Q(Nat)) : MetaM Nat := do
   match e.rawNatLit? with
