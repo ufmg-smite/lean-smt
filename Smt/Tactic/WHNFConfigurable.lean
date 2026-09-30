@@ -158,7 +158,7 @@ private def toCtorWhenStructure (inductName : Name) (major : Expr) : ReductionM 
   unless (← useEtaStruct inductName) do
     return major
   let env ← getEnv
-  if !isStructureLike env inductName then
+  if isNonRecStructure env inductName then
     return major
   else if let some _ ← isConstructorApp? major then
     return major
@@ -404,7 +404,8 @@ def canUnfoldAtMatcher
   | TransparencyMode.all     => return true
   | TransparencyMode.default => return true
   | _ =>
-    if (← isReducible info.name) || isGlobalInstance (← getEnv) info.name then
+    let status ← getReducibilityStatus info.name
+    if status matches .reducible | .implicitReducible then
       return true
     else if hasMatchPatternAttribute (← getEnv) info.name then
       return true
@@ -436,7 +437,7 @@ private def whnfMatcher (e : Expr) : ReductionM Expr := do
     transparency := TransparencyMode.instances
   withTransparency transparency do
     let ctx ← readThe Meta.Context
-    withCanUnfoldPred (canUnfoldAtMatcher ctx.canUnfold?) (whnf e)
+    withCanUnfoldPred (canUnfoldAtMatcher ctx.customCanUnfoldPredicate?) (whnf e)
 
 def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
   trace[Smt.reduce.matcher] "{e}"
@@ -695,7 +696,7 @@ where
     | _ => failure
 
 def shouldUnfold (ci : ConstantInfo) : ReductionM Bool := do
-  let some canUnfold := (← readThe Meta.Context).canUnfold? | return true
+  let some canUnfold := (← readThe Meta.Context).customCanUnfoldPredicate? | return true
   let cfg ← getConfig (← readThe Meta.Context)
   canUnfold cfg ci
 

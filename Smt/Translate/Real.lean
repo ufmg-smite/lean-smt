@@ -5,9 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed
 -/
 
+import Mathlib.Basic.Real.Basic
 import Smt.Recognizers
-import Mathlib.Data.Real.Archimedean
-
 import Smt.Translate
 
 namespace Smt.Translate.Rat

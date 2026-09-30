@@ -28,7 +28,7 @@ namespace Smt.Reconstruct.Int.PolyNorm
 
 abbrev Var := Nat
 
-def Context := Var → Int
+abbrev Context := Var → Int
 
 structure Monomial where
   coeff : Int

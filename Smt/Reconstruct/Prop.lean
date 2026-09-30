@@ -355,7 +355,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
       let p : Q(Prop) ← reconstructTerm t
       return q($p :: $ps)
     let ps : Q(List Prop) ← (nary .AND pf.getChildren[0]!.getResult).foldrM f q([])
-    let i : Nat := pf.getArguments[0]!.getIntegerValue!.toNat
+    let i : Nat ← pure pf.getArguments[0]!.getIntegerValue!.toNat
     let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hps : Q(andN $ps) ← reconstructProof pf.getChildren[0]!
     addThm (← reconstructTerm pf.getResult) q(@Prop.and_elim _ $hps $i $hi)
@@ -374,7 +374,7 @@ def reconstructChainResolution (cs as : Array cvc5.Term) (ps : Array Expr) : Rec
       let p : Q(Prop) ← reconstructTerm t
       return q($p :: $ps)
     let ps : Q(List Prop) ← (nary .OR pf.getChildren[0]!.getResult[0]!).foldrM f q([])
-    let i : Nat := pf.getArguments[0]!.getIntegerValue!.toNat
+    let i : Nat ← pure pf.getArguments[0]!.getIntegerValue!.toNat
     let hi : Q($i < «$ps».length) := .app q(@of_decide_eq_true ($i < «$ps».length) _) q(Eq.refl true)
     let hnps : Q(¬orN $ps) ← reconstructProof pf.getChildren[0]!
     addThm (← reconstructTerm pf.getResult) q(@Prop.not_or_elim _ $hnps $i $hi)

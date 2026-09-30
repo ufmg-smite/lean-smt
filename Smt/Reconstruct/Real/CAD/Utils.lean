@@ -44,7 +44,7 @@ where
 def normNum (mv : MVarId) : MetaM Unit := do
   let simpTheorems : Meta.SimpTheorems ← Meta.getSimpTheorems
   let ctx ← Meta.Simp.mkContext (simpTheorems := #[simpTheorems])
-  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) e) "norm_num" (failIfUnchanged := false) mv).run ctx
+  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) (e := e)) "norm_num" (ifUnchanged := .silent) mv).run ctx
   match remainingGoal? with
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()
@@ -451,6 +451,33 @@ theorem sign_stops_neg_pos (x : ℝ) (p : Polynomial ℝ) (b : ℝ) (h_no_roots 
 
 open CompPoly
 
+namespace CompPoly.CPolynomial
+
+variable {R : Type*} [Field R] [BEq R] [LawfulBEq R] [DecidableEq R]
+
+/-- Remainder of `p` modulo `q`, matching Mathlib's `Polynomial.mod`.
+
+CompPoly's `CPolynomial.mod` computes `q.leadingCoeff⁻¹ • (p % q)` (see
+`CPolynomial.mod_toPoly_eq_smul_mod`) and returns `0` when `q = 0`. The scaling can flip signs,
+which breaks Sturm sequences, so we use this version instead. -/
+def modMathlib (p q : CPolynomial R) : CPolynomial R :=
+  if q = 0 then p else p.modByMonic (q.leadingCoeff⁻¹ • q)
+
+/-- `modMathlib` matches `Polynomial.mod` with respect to `toPoly`. -/
+theorem mod_toPoly (p q : CPolynomial R) :
+    (modMathlib p q).toPoly = p.toPoly % q.toPoly := by
+  unfold modMathlib
+  split <;> rename_i hq
+  · simp [hq, toPoly_zero]
+  · rw [modByMonic_toPoly_eq_modByMonic _ _ (leadingCoeff_inv_smul_monic _ hq), toPoly_smul,
+      Polynomial.mod_def, ← leadingCoeff_toPoly, Polynomial.smul_eq_C_mul, _root_.mul_comm]
+
+/-- Make `%` on `CPolynomial` agree with Mathlib's `%` (takes precedence over CompPoly's
+instance, which uses `CPolynomial.mod`). -/
+instance (priority := high) instModMathlib : Mod (CPolynomial R) := ⟨modMathlib⟩
+
+end CompPoly.CPolynomial
+
 theorem toPoly_ne0_of_poly_ne0 (g : CPolynomial ℚ) (h : g ≠ 0) : g.toPoly ≠ 0 := by
   intro abs
   have : g = 0 := by
@@ -471,11 +498,8 @@ theorem poly_eq0_of_toPoly_eq0 (g : CPolynomial ℚ) : g.toPoly = 0 → g = 0 :=
   contrapose
   apply toPoly_ne0_of_poly_ne0
 
-theorem toPoly_mod (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly := by
-  have aux := CPolynomial.mod_toPoly f g
-  have : (f.mod g) = f%g := CPolynomial.eq_iff_coeff.mpr (congrFun rfl)
-  rw[this] at aux
-  apply aux
+theorem toPoly_mod (f g : CPolynomial ℚ) : (f % g).toPoly = f.toPoly % g.toPoly :=
+  CPolynomial.mod_toPoly f g
 
 @[irreducible]
 noncomputable def ratToRealHom : RingHom Rat Real := Rat.castHom Real

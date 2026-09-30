@@ -3,16 +3,16 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/tomaz1502/lean-auto.git" @ "4_28"
+  git "https://github.com/leanprover-community/lean-auto.git" @ "v4.34.0"
 
 require cvc5 from
-  git "https://github.com/ufmg-smite/lean-cvc5.git" @ "fine-grained-nl-univ"
+  git "https://github.com/ufmg-smite/lean-cvc5.git" @ "nl_4_34"
 
 require CompPoly from
-  git "https://github.com/tomaz1502/CompPoly.git" @ "divByMonic"
+  git "https://github.com/Verified-zkEVM/CompPoly.git" @ "v4.34.0"
 
 require mathlib from
-  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.28.0"
+  git "https://github.com/leanprover-community/mathlib4.git" @ "v4.34.0"
 
 package smt
 

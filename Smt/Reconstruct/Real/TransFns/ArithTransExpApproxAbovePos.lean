@@ -33,7 +33,10 @@ theorem expApproxAbovePos {x : Real}  (h1 : x^(d+1) < Nat.factorial (d+1)):
       rw [div_lt_one (by norm_cast; exact factorial_pos (d+1))]
       apply lt_of_le_of_lt (pow_le_pow_left₀ (le_of_lt hx2) hx1 _) h1
     apply tsub_nonpos.mp; norm_cast at *
-    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange (n := d) hx2 (ContDiff.contDiffOn (s := Icc 0 x1) contDiff_exp) (DifferentiableOn_iteratedDerivWithin (contDiff_exp) hx2)
+    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange (n := d) hx2.ne (ContDiff.contDiffOn contDiff_exp)
+      (by rw [uIcc_of_lt hx2, uIoo_of_lt hx2]; exact DifferentiableOn_iteratedDerivWithin (contDiff_exp) hx2)
+    rw [uIoo_of_lt hx2] at hx'
+    rw [uIcc_of_lt hx2] at H
     rw [taylorWithinEval_eq _ (left_mem_Icc.mpr (le_of_lt hx2)) (uniqueDiffOn_Icc hx2) contDiff_exp] at H
     dsimp [p]; rw [sub_div' (hc := ne_of_gt h2), mul_sub, mul_one, sub_right_comm, H]
     rw [div_le_iff₀ h2, zero_mul, tsub_nonpos]

@@ -370,7 +370,7 @@ lemma bound_sgn_pos_inf (p : Polynomial ℝ) (hp : p ≠ 0) : ∃ ub : ℝ, ∀ 
   have : p.degree = ((Polynomial.X : Polynomial ℝ) ^ p.natDegree).degree := by
     simp_all only [ne_eq, degree_pow, degree_X, nsmul_eq_mul, mul_one]
     exact degree_eq_natDegree hp
-  have := Polynomial.div_tendsto_leadingCoeff_div_of_degree_eq p (Polynomial.X ^ p.natDegree) this
+  have := Polynomial.div_tendsto_atTop_leadingCoeff_div_of_degree_eq p (Polynomial.X ^ p.natDegree) this
   simp only [eval_pow, eval_X, monic_X_pow, Monic.leadingCoeff, div_one] at this
   have h_sign :
       Filter.Tendsto (fun x => p.eval x / x ^ p.natDegree * p.leadingCoeff) Filter.atTop (nhds (p.leadingCoeff ^ 2)) := by

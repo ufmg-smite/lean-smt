@@ -377,8 +377,8 @@ where
       return ha
 
 def reconstructArithPolyNormRel (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  let cx : Int := pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
-  let cy : Int := pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
+  let cx : Int ← pure pf.getChildren[0]!.getResult[0]![0]!.getIntegerValue!
+  let cy : Int ← pure pf.getChildren[0]!.getResult[1]![0]!.getIntegerValue!
   let x₁ : Q(Int) ← reconstructTerm pf.getResult[0]![0]!
   let x₂ : Q(Int) ← reconstructTerm pf.getResult[0]![1]!
   let y₁ : Q(Int) ← reconstructTerm pf.getResult[1]![0]!

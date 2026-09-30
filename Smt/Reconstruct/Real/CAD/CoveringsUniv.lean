@@ -166,44 +166,44 @@ def contraLemma (s : Int) (rel : Name) : Option Name :=
     else if rel == ``GT.gt then some ``contra_zero_gt
     else none
 
-lemma set_eq {x y : Real} : (x ∈ setOf (fun z => z = y)) -> x = y := by
+lemma set_eq {x y : Real} : (x ∈ Set.ofPred (fun z => z = y)) -> x = y := by
   intro h
   finiteness
 
-lemma set_between {x y z : Real} : (x ∈ setOf (fun w => y < w ∧ w < z)) -> x ∈ Set.Ioo y z := by
+lemma set_between {x y z : Real} : (x ∈ Set.ofPred (fun w => y < w ∧ w < z)) -> x ∈ Set.Ioo y z := by
   intro h
   finiteness
 
-lemma set_before {x y : Real} : (x ∈ setOf (fun w => w < y)) -> x < y := by
+lemma set_before {x y : Real} : (x ∈ Set.ofPred (fun w => w < y)) -> x < y := by
   intro h
   finiteness
 
-lemma set_after {x y : Real} : (x ∈ setOf (fun w => y < w)) -> y < x := by
+lemma set_after {x y : Real} : (x ∈ Set.ofPred (fun w => y < w)) -> y < x := by
   intro h
   finiteness
 
 /-! The cells of the line at a list of roots `r₀, …, rₙ₋₁`, as an explicit right-nested
 disjunction, in the order the cases are indexed by `solveCase`:
 `x < r₀ ∨ x = r₀ ∨ (r₀ < x ∧ x < r₁) ∨ x = r₁ ∨ … ∨ x = rₙ₋₁ ∨ rₙ₋₁ < x`, each written as a
-membership in `setOf` as `set_before`, `set_eq`, `set_between`, `set_after` expect. Built by
+membership in `Set.ofPred` as `set_before`, `set_eq`, `set_between`, `set_after` expect. Built by
 `mkCellCover`, one trichotomy per root; the proof is linear in the number of roots. (It used to be
 obtained by unfolding `decomp` with the full simp set, which exceeded the recursion limit from
 about 60 roots on.) -/
 
-lemma cell_after {x a : Real} (h : a < x) : x ∈ setOf (fun w => a < w) := by
-  simpa only [Set.mem_setOf_eq] using h
+lemma cell_after {x a : Real} (h : a < x) : x ∈ Set.ofPred (fun w => a < w) := by
+  finiteness
 
 lemma cells_first {x b : Real} {R : Prop} (k : b < x → R) :
-    x ∈ setOf (fun w => w < b) ∨ (x ∈ setOf (fun z => z = b) ∨ R) := by
-  simp only [Set.mem_setOf_eq]
+    x ∈ Set.ofPred (fun w => w < b) ∨ (x ∈ Set.ofPred (fun z => z = b) ∨ R) := by
+  simp only [Set.mem_ofPred_eq]
   rcases lt_trichotomy x b with h | h | h
   · exact Or.inl h
   · exact Or.inr (Or.inl h)
   · exact Or.inr (Or.inr (k h))
 
 lemma cells_next {x a b : Real} {R : Prop} (ha : a < x) (k : b < x → R) :
-    x ∈ setOf (fun w => a < w ∧ w < b) ∨ (x ∈ setOf (fun z => z = b) ∨ R) := by
-  simp only [Set.mem_setOf_eq]
+    x ∈ Set.ofPred (fun w => a < w ∧ w < b) ∨ (x ∈ Set.ofPred (fun z => z = b) ∨ R) := by
+  simp only [Set.mem_ofPred_eq]
   rcases lt_trichotomy x b with h | h | h
   · exact Or.inl ⟨ha, h⟩
   · exact Or.inr (Or.inl h)

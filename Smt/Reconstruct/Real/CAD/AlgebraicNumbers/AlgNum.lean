@@ -105,8 +105,7 @@ lemma toSeq_in_refineN (a : AlgNum) (n i : ℕ) (hni : n ≤ i) :
   exact toSeq_bound _ k
 
 theorem toSeq_cauchy : ∀ a: AlgNum, IsCauSeq abs (toSeq a) := by
-  intros a
-  intro ε hε
+  intros a ε hε
   have hlr := a.lr
   have hwidth_nn : 0 ≤ a.r - a.l := by linarith
   obtain ⟨N, hN⟩ : ∃ N : ℕ, (a.r - a.l) / 2 ^ N < ε := by
@@ -169,7 +168,7 @@ theorem refine_toReal : ∀ a : AlgNum, a.toReal = a.refine.toReal := by
       · exact le_trans (AlgNum.refine_bounds_l (AlgNum.refine^[N] a)) hbR_own.1
       · exact le_trans hbR_own.2 (AlgNum.refine_bounds_r (AlgNum.refine^[N] a))
     have hwidthN : (AlgNum.refine^[N] a).r - (AlgNum.refine^[N] a).l = (a.r - a.l) / 2 ^ N := refineN_width a N
-    simp only [CauSeq.sub_apply]
+    change |toSeq a j - toSeq a.refine j| < ε
     rw [abs_lt]
     constructor <;> nlinarith [hbA.1, hbA.2, hbR.1, hbR.2]
   )

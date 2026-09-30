@@ -107,7 +107,7 @@ def toListExpr' (es : List (Q(Rat) × Nat)) : Q(List (Rat × Nat)) :=
     let hd := q(($r, $n))
     q($hd :: $tl')
 
-def CPolynomial.mk_rat (p : Raw Rat) (pf : p.trim = p) : CPolynomial Rat := ⟨p, pf⟩
+def CPolynomial.mk_rat (p : Raw Rat) (pf : p.trim = p) : CPolynomial Rat := Subtype.mk p (Raw.Trim.isCanonical_iff_trim_eq.mpr pf)
 
 def get_comparison (ineq : Q(Prop)) : Expr :=
   match ineq with

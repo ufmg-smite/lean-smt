@@ -30,13 +30,13 @@ def decomp' (l : List ℝ) (sl : l.SortedLT) (first : Bool) : List (Set ℝ) :=
   match l with
   | [] => []
   | [x] =>
-    if first then (fun y => y < x) :: (fun y => y = x) :: (fun y => y > x) :: []
-    else (fun y => y = x) :: (fun y => y > x) :: []
+    if first then {y | y < x} :: {y | y = x} :: {y | y > x} :: []
+    else {y | y = x} :: {y | y > x} :: []
   | x :: y :: t =>
     if first then
-      (fun z => z < x) :: (fun z => z = x) :: (fun z => z > x ∧ z < y) :: decomp' (y :: t) (by grind) false
+      {z | z < x} :: {z | z = x} :: {z | z > x ∧ z < y} :: decomp' (y :: t) (by grind) false
     else
-      (fun z => z = x) :: (fun z => z > x ∧ z < y) :: decomp' (y :: t) (by grind) false
+      {z | z = x} :: {z | z > x ∧ z < y} :: decomp' (y :: t) (by grind) false
 
 @[simp]
 def decomp (l : List ℝ) (sl : l.SortedLT) : List (Set ℝ) := decomp' l sl true
@@ -48,118 +48,59 @@ def decomp'_merge (l : List ℝ) (sl : l.SortedLT) : Set ℝ := (decomp' l sl fa
 def decomp_merge (l : List ℝ) (sl : l.SortedLT) : Set ℝ := (decomp l sl).foldr (fun s acc => s ∪ acc) ∅
 
 lemma decomp'_covers (hd : ℝ) (tl : List ℝ) (sl : (hd :: tl).SortedLT) :
-    decomp'_merge (hd :: tl) sl = fun x => x ≥ hd := by
-  cases tl
-  next =>
-    simp only [decomp'_merge, decomp', Bool.false_eq_true, ↓reduceIte, gt_iff_lt, List.foldr_cons,
-      List.foldr_nil, Set.union_empty, ge_iff_le]
+    decomp'_merge (hd :: tl) sl = {x | x ≥ hd} := by
+  cases tl with
+  | nil =>
     ext z
+    simp only [decomp'_merge, decomp', Bool.false_eq_true, ↓reduceIte, List.foldr_cons,
+      List.foldr_nil, Set.union_empty, Set.mem_union, Set.mem_ofPred_eq]
     constructor
+    · rintro (h | h) <;> linarith
     · intro h
-      simp at h
-      cases h
-      next h =>
-        have : z = hd := Real.ext_cauchy (congrArg Real.cauchy h)
-        rw [this]
-        have : hd ≤ hd := Std.IsPreorder.le_refl hd
-        exact Set.mem_of_subset_of_mem (fun ⦃a⦄ a_1 => a_1) this
-      next h =>
-        have : hd < z := gt_iff_lt.mp h
-        bound
-    · intro h
-      simp only [Set.mem_union]
-      have : hd < z ∨ hd = z := Decidable.lt_or_eq_of_le h
-      cases this
-      next =>
-        right
-        tauto
-      next =>
-        left
-        tauto
-  next hd' tl' =>
-    simp only [decomp'_merge, decomp', Bool.false_eq_true, ↓reduceIte, gt_iff_lt, List.foldr_cons,
-      ge_iff_le]
+      rcases h.lt_or_eq with h | h
+      · exact Or.inr h
+      · exact Or.inl h.symm
+  | cons hd' tl' =>
+    have ih := decomp'_covers hd' tl' (by grind)
+    have hlt : hd < hd' := by grind
+    simp only [decomp'_merge] at ih
     ext z
+    simp only [decomp'_merge, decomp', Bool.false_eq_true, ↓reduceIte, List.foldr_cons,
+      Set.mem_union, Set.mem_ofPred_eq, ih]
     constructor
-    · intro H
-      simp only [Set.mem_union] at H
-      cases H
-      next H1 =>
-        have : z = hd := Real.ext_cauchy (congrArg Real.cauchy H1)
-        rw [this]
-        have : hd ≤ hd := Std.IsPreorder.le_refl hd
-        exact Set.mem_of_subset_of_mem (fun ⦃a⦄ a_1 => a_1) this
-      next H1 =>
-        cases H1
-        next H2 =>
-          have : hd < z := gt_iff_lt.mp H2.1
-          bound
-        next H2 =>
-          have := decomp'_covers hd' tl' (by grind)
-          have := (Eq.to_iff (congrFun this z)).mp H2
-          have foo : hd < hd' := by grind
-          suffices hd ≤ z by finiteness
-          linarith
-    · intro H
-      simp only [Set.mem_union]
-      have : hd ≤ z := by finiteness
-      have : hd < z ∨ hd = z := Decidable.lt_or_eq_of_le H
-      cases this
-      next H1 =>
-        right
-        cases lt_trichotomy z hd'
-        next H2 =>
-          left
-          trivial
-        next H2 =>
-          right
-          have := decomp'_covers hd' tl' (by grind)
-          have := (Eq.to_iff (congrFun this z)).mpr (by grind)
-          apply this
-      next H1 =>
-        left
-        exact Set.mem_of_subset_of_mem (fun ⦃a⦄ a_1 => a_1) (Eq.symm H1)
+    · rintro (h | ⟨h, _⟩ | h) <;> linarith
+    · intro h
+      rcases h.lt_or_eq with h | h
+      · rcases lt_or_ge z hd' with h' | h'
+        · exact Or.inr (Or.inl ⟨h, h'⟩)
+        · exact Or.inr (Or.inr h')
+      · exact Or.inl h.symm
 
 lemma decomp_covers (l : List ℝ) (sl : l.SortedLT) (hl : l ≠ []) :
     decomp_merge l sl = (Set.univ : Set ℝ) :=
   match l with
-  | [] => Set.eq_univ_of_univ_subset fun ⦃a⦄ a_1 => hl rfl
+  | [] => absurd rfl hl
   | [x] => by
-    simp
     ext z
-    constructor
-    · exact fun a => Set.mem_univ z
-    · intro _
-      simp
-      cases lt_trichotomy z x
-      next h =>
-        left
-        finiteness
-      next h =>
-        right
-        finiteness
+    simp only [decomp_merge, decomp, decomp', ↓reduceIte, List.foldr_cons, List.foldr_nil,
+      Set.union_empty, Set.mem_union, Set.mem_ofPred_eq, Set.mem_univ, iff_true]
+    rcases lt_trichotomy z x with h | h | h
+    · exact Or.inl h
+    · exact Or.inr (Or.inl h)
+    · exact Or.inr (Or.inr h)
   | x :: y :: t => by
-    simp
+    have hcov := decomp'_covers y t (by grind)
+    have hxy : x < y := by grind
+    simp only [decomp'_merge] at hcov
     ext z
-    constructor
-    · exact fun a => Set.mem_univ z
-    · intro _
-      simp
-      cases lt_trichotomy z x
-      next h => tauto
-      next h =>
-        right
-        cases h
-        next h1 => exact Or.symm (Or.inr h1)
-        next h1 =>
-          right
-          cases lt_trichotomy z y
-          next h2 => tauto
-          next h2 =>
-            right
-            have := decomp'_covers y t (by grind)
-            have := (Eq.to_iff (congrFun this z)).mpr (by grind)
-            apply this
+    simp only [decomp_merge, decomp, decomp', ↓reduceIte, List.foldr_cons, Set.mem_union,
+      Set.mem_ofPred_eq, Set.mem_univ, iff_true, hcov]
+    rcases lt_trichotomy z x with h | h | h
+    · exact Or.inl h
+    · exact Or.inr (Or.inl h)
+    · rcases lt_or_ge z y with h' | h'
+      · exact Or.inr (Or.inr (Or.inl ⟨h, h'⟩))
+      · exact Or.inr (Or.inr (Or.inr h'))
 
 lemma not_in_fold_sets (x : ℝ) (l : List (Set ℝ)) :
     (∀ p ∈ l, x ∉ p) → x ∉ l.foldr (fun s acc => s ∪ acc) ∅ := by

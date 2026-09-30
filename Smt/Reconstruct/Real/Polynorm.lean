@@ -5,9 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Abdalrhman Mohamed, Harun Khan
 -/
 
-import Mathlib.Data.Rat.Cast.CharZero
-import Mathlib.Data.Real.Basic
-import Mathlib.Util.AtLocation
+import Mathlib
 import Smt.Recognizers
 
 namespace Smt.Reconstruct.Real.PolyNorm
@@ -29,7 +27,7 @@ instance (v₁ v₂ : Var) : Decidable (v₁ ≤ v₂) :=
 instance (v₁ v₂ : Var) : Decidable (v₁ < v₂) :=
   if h : v₁.type < v₂.type ∨ (v₁.type = v₂.type ∧ v₁.val < v₂.val) then isTrue h else isFalse h
 
-def Context := Var → Real
+abbrev Context := Var → Real
 
 def IntContext := Nat → Int
 def RealContext := Nat → Real
@@ -395,7 +393,7 @@ theorem denote_toPolynomial {e : RealExpr} : e.denote ictx rctx = e.toPolynomial
   | divConst a c ih =>
     simp only [denote, toPolynomial, Polynomial.denote_divConst, RealValExpr.eval_eq_denote, ih]
   | cast a =>
-    simpa only [denote] using IntExpr.denote_toPolynomial
+    simpa only [denote, toPolynomial] using IntExpr.denote_toPolynomial
 
 theorem denote_eq_from_toPolynomial_eq {e₁ e₂ : RealExpr} (h : e₁.toPolynomial = e₂.toPolynomial) : e₁.denote ictx rctx = e₂.denote ictx rctx := by
   rw [denote_toPolynomial, denote_toPolynomial, h]
@@ -525,7 +523,7 @@ def traceArithNormNum (r : Except Exception Unit) : MetaM MessageData :=
 open Mathlib.Meta.NormNum Mathlib.Tactic in
 def normNum (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum traceArithNormNum do
   let simpCtx ← Meta.Simp.mkContext
-  let remainingGoal? ← (transformAtTarget (fun e ctx ↦ deriveSimp ctx (useSimp := true) e) "norm_num" (failIfUnchanged := false) mv).run simpCtx
+  let remainingGoal? ← (transformAtTarget (fun e ctx ↦ deriveSimp ctx (useSimp := true) (e := e)) "norm_num" (ifUnchanged := .silent) mv).run simpCtx
   match remainingGoal? with
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()

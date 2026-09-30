@@ -30,7 +30,10 @@ theorem arithTransExpApproxBelow₁ (x : ℝ) (d n : ℕ) (_ : d = 2 * n + 1) (h
         apply DifferentiableOn.mono _ Set.Ioo_subset_Icc_self
         apply ContDiffOn.differentiableOn_iteratedDerivWithin (n := d + 1) _ (by norm_cast; simp) (uniqueDiffOn_Icc hx)
         apply ContDiff.contDiffOn ((contDiff_infty.mp contDiff_exp) _)
-    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange hx (ContDiff.contDiffOn (s := Icc 0 x) (n := d) contDiff_exp) h2
+    have ⟨x', hx', H⟩ := taylor_mean_remainder_lagrange hx.ne (ContDiff.contDiffOn (n := d) contDiff_exp)
+      (by rw [uIcc_of_lt hx, uIoo_of_lt hx]; exact h2)
+    rw [uIoo_of_lt hx] at hx'
+    rw [uIcc_of_lt hx] at H
     rw [taylorWithinEval_eq _ (left_mem_Icc.mpr (le_of_lt hx)) (uniqueDiffOn_Icc hx) contDiff_exp] at H
     rw [ge_iff_le, ←sub_nonneg, H]
     rw [iteratedDerivWithin_eq_iteratedDeriv contDiff_exp (uniqueDiffOn_Icc hx) _ (Ioo_subset_Icc_self hx'), iteratedDeriv_exp]
