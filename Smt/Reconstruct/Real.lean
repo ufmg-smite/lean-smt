@@ -292,6 +292,8 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     addThm q(Real.cot $t = Real.cos $t / Real.sin $t) q(Rewrite.arith_cotangent_elim $t)
   | _ => return none
 
+theorem le_of_eq_real {a b : Real} (hab : a = b) : a ≤ b := by rw [hab]
+
 def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
     let l : Q(Real) ← reconstructTerm p.getResult[0]!
@@ -342,7 +344,11 @@ def reconstructSumUB (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let rs : Q(Real) ← reconstructTerm pf.getChildren[0]!.getResult[1]!
   let hs ← reconstructProof pf.getChildren[0]!
   let (ks, ls, rs, hs) ← pf.getChildren[1:].foldlM f (k, ls, rs, hs)
-  addThm (if ks == .LT then q($ls < $rs) else q($ls ≤ $rs)) hs
+  if ks == .EQUAL then
+    let hs : Q($ls = $rs) := hs
+    addThm q($ls ≤ $rs) q(le_of_eq_real $hs)
+  else
+    addThm (if ks == .LT then q($ls < $rs) else q($ls ≤ $rs)) hs
 
 def reconstructMulAbsComparison (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
   let f := fun (ks, ls, rs, hs) p => do
