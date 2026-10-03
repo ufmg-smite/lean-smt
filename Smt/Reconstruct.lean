@@ -260,7 +260,6 @@ def defaultSolverOptions : List (String × String) := [
   ("proof-chain-m-res", "false"),
   ("nl-cov-always", "true"),
   ("nl-cov", "true")
-  /- ("nl-cov-lift", "lazard"), -/
 ]
 
 def runQuery (solver : cvc5.Solver) (query : String) : cvc5.Env (Array cvc5.Sort × Array cvc5.Term) := do

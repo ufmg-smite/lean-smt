@@ -248,28 +248,6 @@ def numOfRootVal : RootVal → Q(Num)
 | .rat e _ => let q: Q(Rat) := e; q(.rat $q)
 
 open Qq in
-def reconsBound (t : cvc5.Term) : Smt.ReconstructM Q(Bound Num) :=
-  match t.getKind with
-  | .COV_MINUS_INFINITY => pure q(Bound.negInf)
-  | .COV_PLUS_INFINITY => pure q(Bound.posInf)
-  | _ => do
-    let t_rv ← reconsRootVal t
-    let t_num := Cover.numOfRootVal t_rv
-    pure q(Bound.fin $t_num)
-
-open Qq in
-def reconsPiece (lb ub : cvc5.Term) : Smt.ReconstructM Q(Piece Num) := do
-  if lb == ub then
-    if lb.getKind == .COV_MINUS_INFINITY || lb.getKind == .COV_PLUS_INFINITY then
-      throwError "Point interval at infinity"
-    let lb_num := Cover.numOfRootVal (← reconsRootVal lb)
-    pure q(Piece.pt $lb_num)
-  else
-    let lb_b ← reconsBound lb
-    let ub_b ← reconsBound ub
-    pure q(Piece.op $lb_b $ub_b)
-
-open Qq in
 /-- A piece with cvc5's endpoints as reconstructed root values. -/
 def reconsPieceRV (lb ub : cvc5.Term) : Smt.ReconstructM (Piece RootVal) := do
   let bound (t : cvc5.Term) : Smt.ReconstructM (Bound RootVal) :=
@@ -284,103 +262,43 @@ def reconsPieceRV (lb ub : cvc5.Term) : Smt.ReconstructM (Piece RootVal) := do
   else
     pure (.op (← bound lb) (← bound ub))
 
-/-! ### Refining the endpoints before the scan
-
-The tests of `Endpoint Num` compare an algebraic number through its isolating interval, and cvc5's
-intervals may touch another endpoint of the cover (for `ex2`, the number isolated in `(3/4, 1)`
-next to the rational `1`), in which case the test cannot decide. The scan is therefore run on
-copies refined until every isolating interval is strictly separated from every rational endpoint
-and from every other algebraic endpoint; all occurrences of an endpoint are refined identically,
-so equality of representations is preserved. The conclusion is then restated in terms of cvc5's
-representations with `refine_toReal`. -/
-
-open Lean
-
-/-- The pieces to scan, and for each distinct algebraic endpoint its original expression, the
-refined expression, and the proof of `AlgNum.toReal refined = AlgNum.toReal original` when it was
-refined. -/
-structure RefinedCover where
-  pieces : List Expr
-  algs : Array (Expr × Expr × Option Expr)
-
-def RefinedCover.algExpr (rc : RefinedCover) (e : Expr) : Expr :=
-  match rc.algs.find? (·.1 == e) with
-  | some (_, e', _) => e'
-  | none => e
-
-/-- The equations restating refined endpoints as the original ones. -/
-def RefinedCover.eqs (rc : RefinedCover) : List Expr := rc.algs.toList.filterMap (·.2.2)
-
 open Qq in
-/-- The real value of an endpoint, with the refined representation. -/
-def RefinedCover.toReal (rc : RefinedCover) : RootVal → Q(Real)
+/-- The real value of an endpoint. -/
+def realOfRootVal : RootVal → Q(Real)
   | .rat e _ => let q : Q(Rat) := e; q(ratToReal $q)
-  | .alg e _ => let a : Q(AlgNum) := rc.algExpr e; q(AlgNum.toReal $a)
+  | .alg e _ => let a : Q(AlgNum) := e; q(AlgNum.toReal $a)
 
 open Qq in
-def RefinedCover.num (rc : RefinedCover) : RootVal → Q(Num)
-  | .rat e _ => let q : Q(Rat) := e; q(Num.rat $q)
-  | .alg e _ => let a : Q(AlgNum) := rc.algExpr e; q(Num.alg $a)
-
-open Qq in
-def RefinedCover.bound (rc : RefinedCover) : Bound RootVal → Q(Bound Num)
+def Bound.toNumExpr : Bound RootVal → Q(Bound Num)
   | .negInf => q(Bound.negInf)
   | .posInf => q(Bound.posInf)
-  | .fin rv => let n := rc.num rv; q(Bound.fin $n)
+  | .fin rv => let n := numOfRootVal rv; q(Bound.fin $n)
 
 open Qq in
-def RefinedCover.piece (rc : RefinedCover) : Piece RootVal → Q(Piece Num)
-  | .pt rv => let n := rc.num rv; q(Piece.pt $n)
-  | .op l r => let lb := rc.bound l; let rb := rc.bound r; q(Piece.op $lb $rb)
+/-- The piece to scan. -/
+def Piece.toNumExpr : Piece RootVal → Q(Piece Num)
+  | .pt rv => let n := numOfRootVal rv; q(Piece.pt $n)
+  | .op l r => let lb := l.toNumExpr; let rb := r.toNumExpr; q(Piece.op $lb $rb)
 
 /-- The endpoints of a piece. -/
 def Piece.rootVals : Piece RootVal → List RootVal
   | .pt rv => [rv]
   | .op l r => (match l with | .fin rv => [rv] | _ => []) ++ (match r with | .fin rv => [rv] | _ => [])
 
-open Lean Meta in
-/-- See the section header. Fails when two representations denote the same number, since they
-never separate. -/
-def refineCover (L : List (Piece RootVal)) (fuel : Nat := maxRefinements) :
-    Smt.ReconstructM RefinedCover := do
-  let mut rats : Array Rat := #[]
-  let mut algs : Array (Expr × Raw) := #[]
-  for p in L do
-    for rv in p.rootVals do
-      match rv with
-      | .rat _ q => rats := rats.push q
-      | .alg e raw => if !algs.any (·.1 == e) then algs := algs.push (e, raw)
-  -- refine natively until separated
-  let mut cur : Array Raw := algs.map (·.2)
-  let mut ks : Array Nat := algs.map fun _ => 0
-  let mut round := 0
-  repeat
-    let indexed := cur.toList.zipIdx
-    let rats' := rats
-    let separated (a : Raw) (i : Nat) : Bool :=
-      rats'.all (fun q => q < a.l || a.r < q)
-        && indexed.all (fun (b, j) => j == i || b.r < a.l || a.r < b.l)
-    let todo := (indexed.filter fun (a, i) => !separated a i).map (·.2)
-    if todo.isEmpty then break
-    if round ≥ fuel then
-      throwError "COVER: cannot separate the algebraic endpoints {algs.map (·.1)}"
-    for i in todo do
-      cur := cur.modify i Raw.refine
-      ks := ks.modify i (· + 1)
-    round := round + 1
-  -- the refined expressions and the equations back to the originals
-  let mut out : Array (Expr × Expr × Option Expr) := #[]
-  for ((e, _), k) in algs.zip ks do
-    let mut e' := e
-    let mut eq? : Option Expr := none
-    for _ in [0:k] do
-      -- `refine_toReal e' : e'.toReal = e'.refine.toReal`
-      let step ← mkEqSymm (mkApp (mkConst ``refine_toReal) e')
-      eq? := some (← match eq? with | none => pure step | some eq => mkEqTrans step eq)
-      e' := mkApp (mkConst ``AlgNum.refine) e'
-    out := out.push (e, e', eq?)
-  let rc : RefinedCover := { pieces := [], algs := out }
-  pure { rc with pieces := L.map rc.piece }
+/-- Two endpoints that the tests of `Endpoint Num` cannot compare: an algebraic number whose
+isolating interval is not strictly separated from a rational endpoint, or from the isolating
+interval of another algebraic endpoint. Equal representations compare by `beq`. cvc5 separates the
+endpoints of its covers (`normalizeEndpoints` in its proof generator), so this reports a cover the
+scan would reject. -/
+def overlap? (L : List (Piece RootVal)) : Option (RootVal × RootVal) :=
+  let rvs := L.flatMap Piece.rootVals
+  let lo : RootVal → Rat := fun | .rat _ q => q | .alg _ a => a.l
+  let hi : RootVal → Rat := fun | .rat _ q => q | .alg _ a => a.r
+  rvs.findSome? fun x => rvs.findSome? fun y =>
+    match x, y with
+    | .rat .., .rat .. => none
+    | .alg e _, .alg e' _ => if e == e' || hi x < lo y || hi y < lo x then none else some (x, y)
+    | _, _ => if hi x < lo y || hi y < lo x then none else some (x, y)
 
 /-! ### Tests -/
 

@@ -122,6 +122,9 @@ open Lean Qq AlgebraicNumber CompPoly
     let x : Q(Real) ← reconstructTerm t[0]!
     return q(Real.cot $x)
   | .PI => return q(Real.pi)
+  | .REAL_ALGEBRAIC_NUMBER_WITNESS =>
+    -- the number; its child is the Sturm sequence of the defining polynomial
+    reconstructTerm (cvc5.Term.getRealAlgebraicNumberWitnessNumber! t)
   | .REAL_ALGEBRAIC_NUMBER =>
     let s := cvc5.Term.getRealAlgebraicNumberValue! t
     let r : Q(AlgebraicNumber.Raw) := getRaw s
@@ -612,35 +615,36 @@ where
       for t in [lb, ub] do
         if t.getKind != .COV_MINUS_INFINITY && t.getKind != .COV_PLUS_INFINITY then
           boundTerms := boundTerms.push t
-    -- cvc5's isolating intervals may touch other endpoints; the scan runs on refined copies
-    let rc ← Cover.refineCover pieces.toList
+    -- the tests of the scan compare algebraic numbers through their isolating intervals
+    if let some (a, b) := Cover.overlap? pieces.toList then
+      throwError "COVER: the endpoints {a} and {b} are not separated"
     let mut lits : Array Q(Prop) := #[]
     for p in pieces do
       match p with
       | .pt rv =>
-        let r : Q(Real) := rc.toReal rv
+        let r : Q(Real) := Cover.realOfRootVal rv
         lits := lits.push q($var ∈ ({$r} : Set Real))
       | .op .negInf .posInf =>
         lits := lits.push q($var ∈ (Set.univ : Set Real))
       | .op .negInf (.fin rv) =>
-        let r : Q(Real) := rc.toReal rv
+        let r : Q(Real) := Cover.realOfRootVal rv
         lits := lits.push q($var ∈ (Set.Iio $r : Set Real))
       | .op (.fin rv) .posInf =>
-        let l : Q(Real) := rc.toReal rv
+        let l : Q(Real) := Cover.realOfRootVal rv
         lits := lits.push q($var ∈ (Set.Ioi $l : Set Real))
       | .op (.fin l) (.fin r) =>
-        let l : Q(Real) := rc.toReal l
-        let r : Q(Real) := rc.toReal r
+        let l : Q(Real) := Cover.realOfRootVal l
+        let r : Q(Real) := Cover.realOfRootVal r
         lits := lits.push q($var ∈ Set.Ioo $l $r)
       | _ => throwError "COVER: degenerate piece"
-    let intervalsList : Q(List (Cover.Piece Cover.Num)) := listExpr rc.pieces q(Cover.Piece Cover.Num)
+    let intervalsList : Q(List (Cover.Piece Cover.Num)) :=
+      listExpr (pieces.toList.map Cover.Piece.toNumExpr) q(Cover.Piece Cover.Num)
     let coversLine : Q(Prop) := q(Cover.sweep $intervalsList = true)
     let coversLinePf ← mkDecideProof' coversLine
     let concl := lits.foldr (init := lits.back!) (start := lits.size - 1) fun p acc => q($p ∨ $acc)
     let pf' ← Meta.mkAppM ``Cover.cover_of_sweep #[intervalsList, coversLinePf, var]
     let pf' ← Meta.mkExpectedTypeHint pf' concl
-    -- back to cvc5's representations: the algebraic endpoints, then the rational ones
-    let pf' ← rc.eqs.foldlM (fun h eq => rewriteWithEqStructural h eq) pf'
+    -- the rational endpoints as cvc5 states them
     let pf' ← restateRatBounds pf' boundTerms.toList
     addThm (← Meta.inferType pf') pf'
   | .SGN_INV_INTRO =>
@@ -666,7 +670,7 @@ where
     let var ← reconstructTerm pf.getArguments[0]!
     let mut roots : Array RootVal := #[]
     for i in List.range' 1 (pf.getArguments.size - 1) do
-      let curr := (pf.getArguments[i]!)[1]!
+      let curr := ranOfWitness (pf.getArguments[i]!)[1]!
       let rv ←
         if curr.getKind == .CONST_RATIONAL then do
           let v : Rat := curr.getRationalValue!

@@ -50,11 +50,17 @@ instance : ToString RootVal where
     | .rat _ r => "Rat < " ++ toString r ++ " >"
     | .alg _ a => "Alg < " ++ toString a ++ " >"
 
+/-- The real algebraic number of `t`: cvc5 states irrational numbers in the univariate coverings
+proofs as witnesses, i.e., the number together with the Sturm sequence of its defining polynomial. -/
+def ranOfWitness (t : cvc5.Term) : cvc5.Term :=
+  if t.getKind == .REAL_ALGEBRAIC_NUMBER_WITNESS then t.getRealAlgebraicNumberWitnessNumber! else t
+
 def reconsRootVal (t : cvc5.Term) : Smt.ReconstructM RootVal :=
   if t.getKind == .CONST_RATIONAL then do
     let v : Rat := t.getRationalValue!
     pure (RootVal.rat q($v) v)
   else do
+    let t := ranOfWitness t
     let s := cvc5.Term.getRealAlgebraicNumberValue! t
     let (_, raw) := getRawWithNative s
     let e ← Smt.Reconstruct.reconstructTerm t
