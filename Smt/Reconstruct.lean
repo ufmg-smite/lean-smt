@@ -23,6 +23,9 @@ structure Reconstruct.Context where
   /-- Whether to enable native components for proof reconstruction. Speeds up normalization and
       reduction proof steps. However, it adds the Lean compiler to the trusted code base. -/
   native : Bool := false
+  /-- Whether to check the Sturm sequences shipped by cvc5 (with the algebraic numbers of the
+      univariate coverings proofs) instead of computing them during proof checking. -/
+  sturmCert : Bool := true
 
 structure Reconstruct.State where
   sortCache : Std.HashMap cvc5.Sort Expr := {}
@@ -44,6 +47,9 @@ namespace Reconstruct
 
 def useNative : ReconstructM Bool :=
   read >>= pure ∘ (·.native)
+
+def useSturmCert : ReconstructM Bool :=
+  read >>= pure ∘ (·.sturmCert)
 
 private unsafe def getReconstructorsUnsafe (n : Name) (rcons : Type) : MetaM (List (rcons × Name)) := do
   let env ← getEnv
@@ -222,6 +228,7 @@ open Qq in
 partial def reconstructProof (pf : cvc5.Proof) (ctx : Reconstruct.Context) :
   MetaM (List Expr × List Expr × Expr × Expr × List MVarId) :=
   withTraceNode `smt.reconstruct.proof traceReconstructProof do
+  logInfo m!"smt version 1"
   let (dfns, state) ← (pf.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx {}
   let (ps, state) ← (pf.getChildren[0]!.getArguments.toList.mapM Reconstruct.reconstructTerm).run ctx state
   let ((p : Q(Prop)), state) ← (Reconstruct.reconstructTerm (pf.getResult)).run ctx state
@@ -320,7 +327,7 @@ open Lean.Elab Tactic in
       | .ok (.sat _) => throwError "expected unsat result"
       | .ok (.unknown r) => logInfo (repr r)
       | .ok (.unsat pf _) =>
-        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), {}, false⟩
+        let (_, _, p, hp, mvs) ← reconstructProof pf ⟨(← getUserNames), {}, false, true⟩
         let mv ← Tactic.getMainGoal
         let mv ← mv.assert (Name.num `s 0) p hp
         let (_, mv) ← mv.intro1

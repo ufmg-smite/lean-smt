@@ -27,7 +27,12 @@ def coeffsAndExps (p : CPolynomial Rat) : List (Rat × Nat) :=
     let c := p.coeff i
     if c == 0 then none else some (c, i)
 
-def get_is_root_pf (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal) : Smt.ReconstructM Expr := do
+/-- Proves `IsRoot p a`: by evaluation at a rational; at an algebraic number by divisibility when
+its defining polynomial divides `p`, otherwise by Sturm–Tarski (`getSignProof`, with the sequence
+shipped by cvc5 when `sturmTarski?` gives it). -/
+def get_is_root_pf (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal)
+    (sturmTarski? : Option (List (CPolynomial ℚ × CPolynomial ℚ)) := none) :
+    Smt.ReconstructM Expr := do
   match a with
   | .rat e q =>
     let e : Q(Rat) := e
@@ -43,7 +48,7 @@ def get_is_root_pf (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : Ro
       let qE : Q(CPolynomial Rat) := gen_poly (coeffsAndExps qn)
       let h ← mkDecideProof' q($p = «$aE».p * $qE)
       return ← mkAppM ``isRoot_of_eq_mul #[p, aE, qE, h]
-    let (pf, sign) ← getSignProof p p_native a
+    let (pf, sign) ← getSignProof p p_native a sturmTarski?
     unless sign == 0 do
       throwError "[proveIsRoot]: {e} is not a root of {p} (sign {sign})"
     mkExpectedTypeHint pf q(IsRoot $p (AlgNum.toReal $aE))

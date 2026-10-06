@@ -2,6 +2,7 @@ import Lean
 
 import Smt.Reconstruct
 import Smt.Reconstruct.Real.CAD.Sturm.Decidable
+import Smt.Reconstruct.Real.CAD.Sturm.Certificate
 import Smt.Reconstruct.Real.CAD.Utils
 
 open Qq Lean Elab Tactic ToExpr Meta
@@ -18,12 +19,20 @@ lemma cast_int_eq {a b : Nat} : (a : Int) = (b : Int) → a = b := by
   intro h
   exact Int.ofNat_inj.mp h
 
-def gen_root_counting_proof (p : Q(CPolynomial ℚ)) (p_native : CPolynomial Rat) : Smt.ReconstructM Expr := do
+/-- Proves `(toPolyReal p).roots.toFinset.card = n`. With `cert? = some (h, S)`, where
+`h : SturmCert.certOk p p.derivative … = true` certifies the sequence `S`, the sign variations are
+counted on `S` instead of a Sturm sequence computed in the kernel. -/
+def gen_root_counting_proof (p : Q(CPolynomial ℚ)) (p_native : CPolynomial Rat)
+    (cert? : Option (Expr × Expr) := none) : Smt.ReconstructM Expr := do
   let p_der : Q(CPolynomial ℚ) ← mkAppM ``CPolynomial.derivative #[p]
   let p_native_der := p_native.derivative
   let seqVar_native : Int := seqVarLineSturmC' p_native p_native_der
-  let cpoly_seq : Q(Prop) := q(seqVarLineSturmC' $p $p_der = $seqVar_native)
-  let cpoly_seq_pf ← mkDecideProof' cpoly_seq
+  let n : Q(ℤ) := q($seqVar_native)
+  let cpoly_seq_pf ← match cert? with
+    | none => mkDecideProof' q(seqVarLineSturmC' $p $p_der = $n)
+    | some (hcert, seq) => do
+      let hcount ← mkDecideProof' (← mkEq (← mkAppM ``seqVarLineC' #[seq]) n)
+      mkEqTrans (← mkAppM ``SturmCert.seqVarLineSturmC'_eq_of_certOk #[hcert]) hcount
   let cpoly_poly ← mkAppM ``seqVarLineEquivSturm' #[p, p_der]
   let poly_roots_pf ← mkAppM ``Eq.trans #[cpoly_poly, cpoly_seq_pf]
   let poly_roots_pf' ← rewriteWithEq poly_roots_pf (← mkAppM ``der_toPoly_toReal #[p])

@@ -123,8 +123,18 @@ open Lean Qq AlgebraicNumber CompPoly
     return q(Real.cot $x)
   | .PI => return q(Real.pi)
   | .REAL_ALGEBRAIC_NUMBER_WITNESS =>
-    -- the number; its child is the Sturm sequence of the defining polynomial
-    reconstructTerm (cvc5.Term.getRealAlgebraicNumberWitnessNumber! t)
+    -- the number, with the Sturm sequence of its defining polynomial: the root count in its
+    -- isolating interval is checked on the shipped sequence instead of a computed one
+    -- (with `sturmCert` off, the sequence is ignored and computed as for a bare number)
+    let s := cvc5.Term.getRealAlgebraicNumberValue! (cvc5.Term.getRealAlgebraicNumberWitnessNumber! t)
+    let (r, raw) := getRawWithNative s
+    let a : Q(AlgNum) ← if (← useSturmCert) then do
+        match sturmSeqOfTerms (cvc5.Term.getRealAlgebraicNumberWitnessSturmSequence! t) with
+        | .ok seq => Raw.liftCert r raw seq
+        | .error err => throwError "[REAL_ALGEBRAIC_NUMBER_WITNESS]: {err}"
+      else Raw.lift r
+    let a : Q(AlgNum) ← hoistExpr `_algNum a
+    return q(AlgNum.toReal $a)
   | .REAL_ALGEBRAIC_NUMBER =>
     let s := cvc5.Term.getRealAlgebraicNumberValue! t
     let r : Q(AlgebraicNumber.Raw) := getRaw s
@@ -165,6 +175,18 @@ where
     for i in [1:t.getNumChildren] do
       curr := mkApp2 op curr (← reconstructTerm t[i]!)
     return curr
+
+/-- The Sturm (or Sturm–Tarski) sequence shipped by cvc5 as argument `i` of `pf`, as
+`(quotient, polynomial)` pairs; `none` when `sturmCert` is off or the argument is empty (cvc5 ships
+none for a rational or infinite end). -/
+def shippedSturm (pf : cvc5.Proof) (i : Nat) :
+    ReconstructM (Option (List (CPolynomial ℚ × CPolynomial ℚ))) := do
+  if !(← useSturmCert) || pf.getArguments.size ≤ i then return none
+  let t := pf.getArguments[i]!
+  if t.getNumChildren == 0 then return none
+  match sturmSeqOfTerms t.getChildren with
+  | .ok seq => return some seq
+  | .error err => throwError "[shippedSturm]: argument {i} of {pf.getRule}: {err}"
 
 /-- The coverings rules state their facts over `RootVal.toReal`, which renders a rational bound
 `q` as `ratToReal q`. The clauses they are resolved against come from the generic reconstructors,
@@ -658,12 +680,14 @@ where
     let r ← optRoot pf.getArguments[2]!
     let lo ← optRoot pf.getArguments[3]!
     let hi ← optRoot pf.getArguments[4]!
-    let prf ← sgn_inv_intro_core p p_native l r lo hi
+    -- the Sturm sequence of `p` and the Sturm–Tarski sequences of the ends shipped by cvc5
+    let prf ← sgn_inv_intro_core p p_native l r lo hi (← shippedSturm pf 5) (← shippedSturm pf 6)
+      (← shippedSturm pf 7)
     addThm (← Meta.inferType prf) prf
   | .IS_ROOT_INTRO =>
     let ⟨p, p_native⟩ ← reconsPoly pf.getArguments[0]!
     let a ← reconsRootVal pf.getArguments[1]!
-    let pf' ← get_is_root_pf p p_native a
+    let pf' ← get_is_root_pf p p_native a (← shippedSturm pf 2)
     let ar: Q(Real) ← a.toReal
     addThm q(IsRoot $p $ar) pf'
   | .ARITH_COVERINGS_UNIV =>

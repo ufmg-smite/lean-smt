@@ -121,24 +121,21 @@ def get_comparison (ineq : Q(Prop)) : Expr :=
 @[simp, grind =]
 private def zero_rat : Rat := 0
 
+/-- The polynomial with the given monomials, built with `CPolynomial.monomial` (see `mkMonom`). -/
 def gen_poly (coeffs_and_exps : List (Rat × Nat)) : Q(CPolynomial Rat) :=
   match coeffs_and_exps with
   | [] => q(C 0)
   | [(c, e)] =>
     if e == 0 then
       q(CPolynomial.C $c)
-    else if e == 1 then
-      q((CPolynomial.C $c) * (X : CPolynomial Rat))
     else
-      q((CPolynomial.C $c) * ((X : CPolynomial Rat) ^ $e))
+      q(CPolynomial.monomial $e $c)
   | (c, e) :: tl =>
     let p' : Q(CPolynomial Rat) := gen_poly tl
     if e == 0 then
       q(CPolynomial.C $c + $p')
-    else if e == 1 then
-      q((CPolynomial.C $c) * (X : CPolynomial Rat) + $p')
     else
-      q((CPolynomial.C $c) * ((X : CPolynomial Rat) ^ $e) + $p')
+      q(CPolynomial.monomial $e $c + $p')
 
 def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
   match coeffs_and_exps with
@@ -146,18 +143,14 @@ def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
   | [(c, e)] =>
     if e == 0 then
       C c
-    else if e == 1 then
-      C c * X
     else
-      C c * X ^ e
+      CPolynomial.monomial e c
   | (c, e) :: tl =>
     let p' : CPolynomial Rat := gen_poly' tl
     if e == 0 then
       C c + p'
-    else if e == 1 then
-      C c * X + p'
     else
-      C c * X ^ e + p'
+      CPolynomial.monomial e c + p'
 
 -- retrieves a polynomial and a proof of inequality involving it,
 -- given a proof of an inequality involving a free variable
@@ -185,15 +178,16 @@ def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat 
     ``toPolyReal.eq_1, ``ratToRealHom.eq_1,
     ``CPolynomial.toPoly_add, ``CPolynomial.toPoly_sub, ``CPolynomial.toPoly_mul,
     ``CPolynomial.toPoly_neg, ``CPolynomial.toPoly_pow, ``CPolynomial.X_toPoly,
-    ``CPolynomial.C_toPoly,
+    ``CPolynomial.C_toPoly, ``CPolynomial.monomial_toPoly,
   ]) | throwError "unreachable"
   let some g2 ← simp_only g1 (List.map mkConst [
       ``Polynomial.map_add, ``Polynomial.map_sub, ``Polynomial.map_mul, ``Polynomial.map_neg,
-      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C,
+      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C, ``Polynomial.map_monomial,
   ]) | throwError "unreachable"
   let some g3 ← simp_only g2 (List.map mkConst [
       ``Polynomial.eval_add, ``Polynomial.eval_sub, ``Polynomial.eval_mul, ``Polynomial.eval_neg,
-      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``eq_ratCast
+      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``Polynomial.eval_monomial,
+      ``eq_ratCast
   ]) | throwError "unreachable"
   let some g4 ← push_cast g3 | throwError "unreachable"
   Mathlib.Tactic.AtomM.run .reducible (Mathlib.Tactic.Ring.proveEq g4)

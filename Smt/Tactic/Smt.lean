@@ -50,6 +50,9 @@ structure Config where
       nonlinear conflicts, instead of the fine-grained `COVER`, `SGN_INV_INTRO`, `IS_ROOT_INTRO`,
       `SGN_INV_ELIM` and `RAN_EVAL` steps. -/
   coarse : Bool := false
+  /-- Whether to check the Sturm sequences shipped by cvc5 with the algebraic numbers of univariate
+      coverings proofs instead of computing them during proof checking. -/
+  sturmCert : Bool := true
   /-- Options to pass to the solver, in addition to the default ones. -/
   extraSolverOptions : List (String × String) := []
 deriving Inhabited, Repr
@@ -110,7 +113,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     return .unknown r.toString
   | .ok (.unsat pf uc) =>
     -- 5.c Reconstruct unsat core proofs.
-    let ctx := { userNames := fvNames₂, native := cfg.native }
+    let ctx := { userNames := fvNames₂, native := cfg.native, sturmCert := cfg.sturmCert }
     let (uc, _) ← (uc.mapM Reconstruct.reconstructTerm).run ctx {}
     trace[smt] "unsat core: {uc}"
     let ts₁ ← hs₁.mapM Meta.inferType
@@ -137,7 +140,7 @@ def smt (cfg : Config) (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.with
     let (uss, es) := model.iss.unzip
     let cs := es.map Array.size
     let sortCard := Std.HashMap.insertMany ∅ (uss.zip cs)
-    let ctx := { userNames := fvNames₂, sortCard := sortCard, native := cfg.native }
+    let ctx := { userNames := fvNames₂, sortCard := sortCard, native := cfg.native, sturmCert := cfg.sturmCert }
     let (uss', _) ← (uss.mapM Reconstruct.reconstructSort).run ctx {}
     let uss' := uss'.map fun us => (map[us]?.getD #[us])[0]?.getD us
     let cs' := cs.map (fun n => .app (.const ``Fin []) (toExpr n))

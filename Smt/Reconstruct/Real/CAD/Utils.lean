@@ -496,13 +496,13 @@ def parseMonom (t : cvc5.Term) : Smt.ReconstructM (Rat × Nat) := do
     return (curr.getRationalValue!, deg)
   | _ => throwError "[parseMonom]: unexpected monomial {t}"
 
+/-- The monomial `c * X ^ e`. Built with `CPolynomial.monomial`, which the kernel evaluates directly,
+instead of `C c * X ^ e`, which it would compute by `e` polynomial multiplications in every `decide`. -/
 def mkMonom (c : Rat) (e : Nat) : Q(CPolynomial Rat) × CPolynomial Rat :=
   if e == 0 then
     (q(CPolynomial.C $c), CPolynomial.C c)
-  else if e == 1 then
-    (q((CPolynomial.C $c) * CPolynomial.X), CPolynomial.C c * CPolynomial.X)
   else
-    (q((CPolynomial.C $c) * CPolynomial.X ^ $e), (CPolynomial.C c * CPolynomial.X ^ e))
+    (q(CPolynomial.monomial $e $c), CPolynomial.monomial e c)
 
 def reconsMonom (t : cvc5.Term) : Smt.ReconstructM (Q(CPolynomial Rat) × CPolynomial Rat) := do
   let (c, e) ← parseMonom t
@@ -536,11 +536,12 @@ def proveEvalEq (P : Q(CPolynomial Rat)) (x : Q(Real)) (e : Q(Real)) : MetaM Exp
     [ ``toPolyReal.eq_1, ``ratToRealHom.eq_1,
       ``CPolynomial.toPoly_add, ``CPolynomial.toPoly_sub, ``CPolynomial.toPoly_mul,
       ``CPolynomial.toPoly_neg, ``CPolynomial.toPoly_pow, ``CPolynomial.X_toPoly,
-      ``CPolynomial.C_toPoly ],
+      ``CPolynomial.C_toPoly, ``CPolynomial.monomial_toPoly ],
     [ ``Polynomial.map_add, ``Polynomial.map_sub, ``Polynomial.map_mul, ``Polynomial.map_neg,
-      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C ],
+      ``Polynomial.map_pow, ``Polynomial.map_X, ``Polynomial.map_C, ``Polynomial.map_monomial ],
     [ ``Polynomial.eval_add, ``Polynomial.eval_sub, ``Polynomial.eval_mul, ``Polynomial.eval_neg,
-      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``eq_ratCast ]
+      ``Polynomial.eval_pow, ``Polynomial.eval_X, ``Polynomial.eval_C, ``Polynomial.eval_monomial,
+      ``eq_ratCast ]
   ] do
     let some g' ← simp_only g (lemmas.map mkConst) | return mv
     g := g'

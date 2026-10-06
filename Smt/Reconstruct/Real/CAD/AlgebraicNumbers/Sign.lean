@@ -190,7 +190,12 @@ lemma eval_pos (a : Rat) (p : CPolynomial Rat) (h_eval : p.eval a > 0) : (toPoly
   unfold ratToRealHom at this ⊢
   finiteness
 
-def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal) : Smt.ReconstructM (Expr × Int) := do
+/-- Proves the sign of `p` at `a`: by evaluation at a rational, by Sturm–Tarski at an algebraic
+number, counting on the sequence of `(a.p, a.p' * p)` shipped by cvc5 when `sturmTarski?` gives it
+(checked with `SturmCert.certOk`), otherwise on one computed during proof checking. -/
+def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : RootVal)
+    (sturmTarski? : Option (List (CPolynomial ℚ × CPolynomial ℚ)) := none) :
+    Smt.ReconstructM (Expr × Int) := do
   match a with
   | .rat ea va =>
     let ea : Q(Rat) := ea
@@ -215,9 +220,20 @@ def getSignProof (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (a : Root
     let h2 : Q(Prop) := q(«$ea».p.eval «$ea».r ≠ 0)
     let p2 : Q($h2) ← mkDecideProof' h2
     let sign_sturm_pf := q(sgn_eval_alg_sturm_seq $p $ea $p1 $p2)
-    let sign : Int := seqVarSturmC_ab' va.p (va.p.derivative * p_native) va.l va.r
-    let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$ea».p («$ea».p.derivative * $p) «$ea».l «$ea».r = $sign)
-    let sign_reflection ← mkDecideProof' sign_eq
+    let gE : Q(CPolynomial Rat) := q(«$ea».p.derivative * $p)
+    let (sign, sign_reflection) ← match sturmTarski? with
+      | none => do
+        let sign : Int := seqVarSturmC_ab' va.p (va.p.derivative * p_native) va.l va.r
+        let sign_eq : Q(Prop) := q(seqVarSturmC_ab' «$ea».p $gE «$ea».l «$ea».r = $sign)
+        pure (sign, ← mkDecideProof' sign_eq)
+      | some seq => do
+        let c ← mkSturmCertFor q(«$ea».p) gE va.p (va.p.derivative * p_native) seq
+        let sign : Int := seqVarQ_ab' c.data.seq va.l va.r
+        let lE : Q(Rat) := q(«$ea».l)
+        let rE : Q(Rat) := q(«$ea».r)
+        let hcount ← decideCount (← mkAppM ``seqVarQ_ab' #[c.seq, lE, rE]) sign sign
+        let h ← mkAppM ``SturmCert.seqVarSturmC_ab'_eq_of_certOk #[c.proof, lE, rE]
+        pure (sign, ← mkEqTrans h hcount)
     let sign_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) = $sign) ← mkAppM ``Eq.trans #[sign_sturm_pf, sign_reflection]
     if sign = -1 then
       let sign_neg_pf : Q(sgn ((toPolyReal $p).eval «$ea».toReal) < 0) ← mkAppM ``minus_one #[q(sgn ((toPolyReal $p).eval «$ea».toReal)), sign_pf]

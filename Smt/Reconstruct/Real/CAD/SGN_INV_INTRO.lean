@@ -182,17 +182,29 @@ def windowBound : Option RootVal → Smt.ReconstructM RootVal
   | some b => pure b
   | none => throwError "[sgn_inv_intro]: missing rational window bound next to a finite endpoint"
 
+/-- The value of a rational window bound. -/
+def ratValue : RootVal → Smt.ReconstructM ℚ
+  | .rat _ v => pure v
+  | .alg e _ => throwError "[sgn_inv_intro]: expected a rational window bound, got {e}"
+
 /-- Reconstructs `SGN_INV_INTRO(p, l, r, lo, hi)`: proves `SgnInv p S` for the open piece `(l, r)`
 (`none` for an infinite end), from the rational window `(lo, hi)` around it in which the only
-roots of `p` are the finite ends. -/
-def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l r : Option RootVal) (lo hi : Option RootVal) : Smt.ReconstructM Expr := do
+roots of `p` are the finite ends. The roots are counted with Sturm's theorem, on the Sturm sequence
+of `p` shipped by cvc5 when `sturm?` gives it (checked with `SturmCert.certOk`), otherwise on one
+computed during proof checking; likewise for the Sturm–Tarski sequences of the algebraic ends, which
+may be needed to show that they are roots of `p` (`get_is_root_pf`). -/
+def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l r : Option RootVal)
+    (lo hi : Option RootVal) (sturm? : Option (List (CPolynomial ℚ × CPolynomial ℚ)) := none)
+    (sturmTarskiL? sturmTarskiR? : Option (List (CPolynomial ℚ × CPolynomial ℚ)) := none) :
+    Smt.ReconstructM Expr := do
+  let cert? ← sturm?.mapM (mkSturmCert p p_native)
   match l, r with
   | none, none =>
     -- whole line: `p ≠ 0` and no real roots at all
     let p_real : Q(Polynomial ℝ) := q(toPolyReal $p)
     let pf_p_ne_0 ← mkDecideProof' q($p ≠ 0)
     let pf_p_ne_0 ← mkAppM ``toPolyReal_zero #[p, pf_p_ne_0]
-    let pf_count ← gen_root_counting_proof p p_native
+    let pf_count ← gen_root_counting_proof p p_native (cert?.map fun c => (c.proof, c.seq))
     let no_roots ← mkAppM ``no_roots_line #[p_real, pf_p_ne_0, pf_count]
     let S : Q(Set Real) := q(Set.univ)
     let hS : Q(Set.OrdConnected $S) := q(Set.ordConnected_univ)
@@ -205,13 +217,18 @@ def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l 
     let pf_p_lo_ne_0 ← mkDecideProof' q(CPolynomial.eval $lo $p ≠ 0)
     let pf_p_lo_ne_0 ← mkAppM ``eval_ne_zero #[lo, p, pf_p_lo_ne_0]
     let p_der : Q(CPolynomial Rat) ← mkAppM ``CPolynomial.derivative #[p]
-    let pf_var_eq_1 ← mkDecideProof' q(seqVarAboveSturmC' $p $p_der $lo = 1)
+    let pf_var_eq_1 ← match cert? with
+      | none => mkDecideProof' q(seqVarAboveSturmC' $p $p_der $lo = 1)
+      | some c => do
+        let hcount ← decideCount (← mkAppM ``SturmCert.seqVarAboveC_a' #[c.seq, lo])
+          (SturmCert.seqVarAboveC_a' c.data.seq (← ratValue lo_rv)) 1
+        mkEqTrans (← mkAppM ``SturmCert.seqVarAboveSturmC'_eq_of_certOk #[c.proof, lo]) hcount
     let pf_var_eq_var ← mkAppM ``seqVarAboveEquivSturm' #[p, lo]
     let pf_var_eq_1' ← mkAppM ``Eq.trans #[pf_var_eq_var, pf_var_eq_1]
     let sturm_p ← mkAppM ``Theorem.sturm_above #[q(ratToReal $lo), p_real, pf_p_lo_ne_0]
     let pf_one_root ← mkAppM ``Eq.trans #[sturm_p, pf_var_eq_1']
     let lR : Q(Real) ← l.toReal
-    let p_root_l ← mkExpectedTypeHint (← get_is_root_pf p p_native l) q(Polynomial.eval $lR $p_real = 0)
+    let p_root_l ← mkExpectedTypeHint (← get_is_root_pf p p_native l sturmTarskiL?) q(Polynomial.eval $lR $p_real = 0)
     let pf_lo_lt_l ← gen_toReal_lt lo_rv l
     let no_roots ← mkAppM ``no_roots_above #[p_real, pf_lo_lt_l, p_root_l, pf_one_root]
     let S : Q(Set Real) := q(Set.Ioi $lR)
@@ -225,13 +242,18 @@ def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l 
     let pf_p_hi_ne_0 ← mkDecideProof' q(CPolynomial.eval $hi $p ≠ 0)
     let pf_p_hi_ne_0 ← mkAppM ``eval_ne_zero #[hi, p, pf_p_hi_ne_0]
     let p_der : Q(CPolynomial Rat) ← mkAppM ``CPolynomial.derivative #[p]
-    let pf_var_eq_1 ← mkDecideProof' q(seqVarBelowSturmC' $p $p_der $hi = 1)
+    let pf_var_eq_1 ← match cert? with
+      | none => mkDecideProof' q(seqVarBelowSturmC' $p $p_der $hi = 1)
+      | some c => do
+        let hcount ← decideCount (← mkAppM ``SturmCert.seqVarBelowC_b' #[c.seq, hi])
+          (SturmCert.seqVarBelowC_b' c.data.seq (← ratValue hi_rv)) 1
+        mkEqTrans (← mkAppM ``SturmCert.seqVarBelowSturmC'_eq_of_certOk #[c.proof, hi]) hcount
     let pf_var_eq_var ← mkAppM ``seqVarBelowEquivSturm' #[p, hi]
     let pf_var_eq_1' ← mkAppM ``Eq.trans #[pf_var_eq_var, pf_var_eq_1]
     let sturm_p ← mkAppM ``Theorem.sturm_below #[q(ratToReal $hi), p_real, pf_p_hi_ne_0]
     let pf_one_root ← mkAppM ``Eq.trans #[sturm_p, pf_var_eq_1']
     let rR : Q(Real) ← r.toReal
-    let p_root_r ← mkExpectedTypeHint (← get_is_root_pf p p_native r) q(Polynomial.eval $rR $p_real = 0)
+    let p_root_r ← mkExpectedTypeHint (← get_is_root_pf p p_native r sturmTarskiR?) q(Polynomial.eval $rR $p_real = 0)
     let pf_r_lt_hi ← gen_toReal_lt r hi_rv
     let no_roots ← mkAppM ``no_roots_below #[p_real, pf_r_lt_hi, p_root_r, pf_one_root]
     let S : Q(Set Real) := q(Set.Iio $rR)
@@ -252,7 +274,12 @@ def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l 
     let pf_lo_lt_hi ← mkDecideProof' q($lo < $hi)
     let pf_lo_lt_hi : Q(ratToReal $lo < ratToReal $hi) ← mkAppM ``ratToReal_lt #[lo, hi, pf_lo_lt_hi]
     let p_der : Q(CPolynomial Rat) ← mkAppM ``CPolynomial.derivative #[p]
-    let pf_var_eq_2 ← mkDecideProof' q(seqVarSturmC_ab' $p $p_der $lo $hi = 2)
+    let pf_var_eq_2 ← match cert? with
+      | none => mkDecideProof' q(seqVarSturmC_ab' $p $p_der $lo $hi = 2)
+      | some c => do
+        let hcount ← decideCount (← mkAppM ``seqVarQ_ab' #[c.seq, lo, hi])
+          (seqVarQ_ab' c.data.seq (← ratValue lo_rv) (← ratValue hi_rv)) 2
+        mkEqTrans (← mkAppM ``SturmCert.seqVarSturmC_ab'_eq_of_certOk #[c.proof, lo, hi]) hcount
     let pf_var_eq_var ← mkAppM ``seqVarABEquivSturm' #[p, lo, hi]
     let pf_var_eq_2' ← mkAppM ``Eq.trans #[pf_var_eq_var, pf_var_eq_2]
     let sturm_p ←
@@ -261,8 +288,8 @@ def sgn_inv_intro_core (p : Q(CPolynomial Rat)) (p_native : CPolynomial Rat) (l 
     -- endpoint facts: `l` and `r` are roots of `p`
     let lR : Q(Real) ← l.toReal
     let rR : Q(Real) ← r.toReal
-    let p_root_l ← mkExpectedTypeHint (← get_is_root_pf p p_native l) q(Polynomial.eval $lR $p_real = 0)
-    let p_root_r ← mkExpectedTypeHint (← get_is_root_pf p p_native r) q(Polynomial.eval $rR $p_real = 0)
+    let p_root_l ← mkExpectedTypeHint (← get_is_root_pf p p_native l sturmTarskiL?) q(Polynomial.eval $lR $p_real = 0)
+    let p_root_r ← mkExpectedTypeHint (← get_is_root_pf p p_native r sturmTarskiR?) q(Polynomial.eval $rR $p_real = 0)
     -- order facts: lo < l < r < hi
     let pf_lo_lt_l ← gen_toReal_lt lo_rv l
     let pf_l_lt_r ← gen_toReal_lt l r

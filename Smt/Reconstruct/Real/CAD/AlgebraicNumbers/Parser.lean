@@ -51,12 +51,8 @@ def getMonom (s: String) : Q(CPolynomial Rat) :=
   let coef : Rat := matchStrWithRat l[0]!
   let exp : Nat := if !(s'.contains "^") then if (l.length = 1) then 0 else 1 else ((s'.splitOn "^").getLast!.trimAscii).toNat!
   let c : Q(CPolynomial Rat) := q(CPolynomial.C $coef)
-  if exp = 0 ∨ coef = 0 then c else
-    let pp: Q(CPolynomial Rat) := if exp = 1 then q(@CPolynomial.X Rat _ _ _ _) else
-      mkApp2 q(@HPow.hPow (CPolynomial Rat) (ℕ) (CPolynomial Rat) _) q(@CPolynomial.X Rat _ _ _ _) q($exp)
-    if coef = 1 then pp else
-      let c : Q(CPolynomial Rat) := q(CPolynomial.C $coef)
-      mkApp2 q(@HMul.hMul (CPolynomial Rat) (CPolynomial Rat) (CPolynomial Rat) _) c pp
+  -- `monomial` rather than `C c * X ^ k`: the kernel evaluates it directly (see `mkMonom`)
+  if exp = 0 ∨ coef = 0 then c else q(CPolynomial.monomial $exp $coef)
 
 def getPoly  (p: String): Q(CPolynomial Rat) := Id.run do
   let k : List String := p.splitOn "+"
@@ -84,12 +80,7 @@ def getMonomNative (s: String) : CPolynomial Rat :=
   let coef : Rat := matchStrWithRat l[0]!
   let exp : Nat := if !(s'.contains "^") then if (l.length = 1) then 0 else 1 else ((s'.splitOn "^").getLast!.trimAscii).toNat!
   let c := CPolynomial.C coef
-  if exp = 0 ∨ coef = 0 then c else
-    let pp: CPolynomial Rat := if exp = 1 then CPolynomial.X else
-      CPolynomial.X ^ exp
-    if coef = 1 then pp else
-      let c := CPolynomial.C coef
-      c * pp
+  if exp = 0 ∨ coef = 0 then c else CPolynomial.monomial exp coef
 
 def getPolyNative (p: String): CPolynomial Rat := Id.run do
   let k : List String := p.splitOn "+"

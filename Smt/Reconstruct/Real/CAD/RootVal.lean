@@ -60,8 +60,9 @@ def reconsRootVal (t : cvc5.Term) : Smt.ReconstructM RootVal :=
     let v : Rat := t.getRationalValue!
     pure (RootVal.rat q($v) v)
   else do
-    let t := ranOfWitness t
-    let s := cvc5.Term.getRealAlgebraicNumberValue! t
+    let s := cvc5.Term.getRealAlgebraicNumberValue! (ranOfWitness t)
     let (_, raw) := getRawWithNative s
+    -- a witness is lifted with its Sturm sequence; every occurrence of the number must take the same
+    -- path, as endpoints are compared by their expressions
     let e ← Smt.Reconstruct.reconstructTerm t
     pure (RootVal.alg e.appArg! raw)
