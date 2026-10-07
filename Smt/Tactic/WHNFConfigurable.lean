@@ -442,7 +442,7 @@ private def whnfMatcher (e : Expr) : ReductionM Expr := do
     transparency := TransparencyMode.instances
   withTransparency transparency do
     let ctx ← readThe Meta.Context
-    withCanUnfoldPred (canUnfoldAtMatcher ctx.canUnfold?) (whnf e)
+    withCanUnfoldPred (canUnfoldAtMatcher ctx.customCanUnfoldPredicate?) (whnf e)
 
 def reduceMatcher? (e : Expr) : ReductionM ReduceMatcherResult := do
   trace[Smt.reduce.matcher] "{e}"
@@ -701,7 +701,7 @@ where
     | _ => failure
 
 def shouldUnfold (ci : ConstantInfo) : ReductionM Bool := do
-  let some canUnfold := (← readThe Meta.Context).canUnfold? | return true
+  let some canUnfold := (← readThe Meta.Context).customCanUnfoldPredicate? | return true
   let cfg ← getConfig (← readThe Meta.Context)
   canUnfold cfg ci
 
