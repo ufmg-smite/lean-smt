@@ -36,7 +36,7 @@ theorem Int.ofNat_toNat' {x : Int} : x.toNat = if x ≥ 0 then x else 0 := by
 
 @[embedding ↓]
 theorem Int.ite_eq_of_ge_zero {x : Int} (h : x ≥ 0) : (if x ≥ 0 then x else 0) = x :=
-  if_pos h
+  ite_eq_left h
 
 @[embedding ↓]
 theorem Int.ofNat_sub' {x y : Nat} : (x - y : Nat) = (if x ≥ y then x - y else 0 : Int) := by
