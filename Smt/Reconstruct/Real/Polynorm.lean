@@ -11,8 +11,8 @@ public import Lean.Meta.Native
 public meta import Lean.Meta.Native
 public import Mathlib.Data.Rat.Cast.CharZero
 public meta import Mathlib.Data.Rat.Cast.CharZero
-public import Mathlib.Data.Real.Basic
-public meta import Mathlib.Data.Real.Basic
+public import Mathlib.Basic.Real.Basic
+public meta import Mathlib.Basic.Real.Basic
 public import Mathlib.Util.AtLocation
 public meta import Mathlib.Util.AtLocation
 public import Smt.Recognizers

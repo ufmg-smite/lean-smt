@@ -7,7 +7,7 @@ Authors: Abdalrhman Mohamed
 
 module
 
-public import Mathlib.Data.Real.Basic
+public import Mathlib.Basic.Real.Basic
 
 @[expose] public section
 

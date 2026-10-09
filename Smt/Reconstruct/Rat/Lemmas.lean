@@ -229,8 +229,8 @@ theorem trichotomy₆ (h₁ : a ≥ b) (h₂ : a ≠ b) : a > b := by
 theorem abs_elim {x : Rat} : x.abs = if x < 0 then -x else x := by
   unfold Rat.abs
   by_cases h : x < 0
-  · rw [if_pos h, if_neg (Rat.not_le.mpr h)]
-  · rw [if_neg h, if_pos (Rat.not_lt.mp h)]
+  · rw [ite_eq_left h, ite_eq_right (Rat.not_le.mpr h)]
+  · rw [ite_eq_right h, ite_eq_left (Rat.not_lt.mp h)]
 
 theorem abs_eq {a b : Rat} (hb : 0 ≤ b) : a.abs = b ↔ a = b ∨ a = -b := by
   rewrite [abs_elim]
