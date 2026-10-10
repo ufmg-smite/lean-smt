@@ -357,8 +357,8 @@ theorem cnfXorNeg2 : (XOr p q) ∨ p ∨ ¬q :=
 
 theorem iteIntro {α : Type u} {c : Prop} {t e : α} : ite c ((ite c t e) = t) ((ite c t e) = e) := by
   match Classical.em c with
-  | Or.inl hc  => rw [if_pos hc, if_pos hc]
-  | Or.inr hnc => rw [if_neg hnc, if_neg hnc]
+  | Or.inl hc  => rw [ite_eq_left hc, ite_eq_left hc]
+  | Or.inr hnc => rw [ite_eq_right hnc, ite_eq_right hnc]
 
 theorem congrIte [Decidable c₁] [Decidable c₂] {t₁ t₂ e₁ e₂ : α} :
     c₁ = c₂ → t₁ = t₂ → e₁ = e₂ → ite c₁ t₁ e₁ = ite c₂ t₂ e₂ := by

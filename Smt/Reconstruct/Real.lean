@@ -834,7 +834,7 @@ normNumFactorial (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.no
   let simpTheorems : Meta.SimpTheorems ← Meta.getSimpTheorems
   let simpTheorems ← simpTheorems.addDeclToUnfold `Nat.factorial
   let ctx ← Meta.Simp.mkContext (simpTheorems := #[simpTheorems])
-  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) e) "norm_num" (ifUnchanged := .silent) mv).run ctx
+  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) (e := e)) "norm_num" (ifUnchanged := .silent) mv).run ctx
   match remainingGoal? with
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()
@@ -842,7 +842,7 @@ normNumAbs (mv : MVarId) : MetaM Unit := withTraceNode `smt.reconstruct.normNum 
   let simpTheorems : Meta.SimpTheorems ← Meta.getSimpTheorems
   let simpTheorems ← simpTheorems.addDeclToUnfold `abs
   let ctx ← Meta.Simp.mkContext (simpTheorems := #[simpTheorems])
-  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) e) "norm_num" (ifUnchanged := .silent) mv).run ctx
+  let remainingGoal? ← (Mathlib.Tactic.transformAtTarget (fun e ctx ↦ Mathlib.Meta.NormNum.deriveSimp ctx (useSimp := true) (e := e)) "norm_num" (ifUnchanged := .silent) mv).run ctx
   match remainingGoal? with
   | .some _ => throwError "[norm_num]: could not prove {← mv.getType}"
   | .none => pure ()

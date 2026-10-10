@@ -27,8 +27,8 @@ theorem eq_cond_deq (h : (s = r) = False) : ((t = s) = (t = r)) = (¬t = s ∧ �
     (fun hnsr => propext ⟨(absurd · hnsr.left), (absurd · hnsr.right)⟩)
 
 theorem eq_ite_lift : (ite c t s = r) = (ite c (t = r) (s = r)) := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ rfl)
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ rfl)
 
 theorem distinct_binary_elim : (t ≠ s) = ¬(t = s) := rfl
 

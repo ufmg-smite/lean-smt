@@ -7,7 +7,7 @@ Authors: Abdalrhman Mohamed
 
 module
 
-public import Mathlib.Data.Real.Basic
-public meta import Mathlib.Data.Real.Basic
+public import Mathlib.Basic.Real.Basic
+public meta import Mathlib.Basic.Real.Basic
 public import Smt.Preprocess.Normalize.Attribute
 public meta import Smt.Preprocess.Normalize.Attribute

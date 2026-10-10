@@ -15,7 +15,7 @@ def cvc5.target := s!"{os}-{arch}-static"
 
 def query : SolverM Sexp := do
   setLogic "QF_UF"
-  assert (.symbolT "false")
+  Smt.Translate.Solver.assert (.symbolT "false")
   _ ← checkSat
   getProof
 

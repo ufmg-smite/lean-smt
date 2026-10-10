@@ -18,10 +18,10 @@ def query : SolverM Result := do
   setLogic "LIA"
   declareConst "x" (symbolT "Int")
   declareConst "y" (symbolT "Int")
-  assert (mkApp2 (symbolT "<") (symbolT "x") (symbolT "y"))
+  Smt.Translate.Solver.assert (mkApp2 (symbolT "<") (symbolT "x") (symbolT "y"))
   let mut res ← checkSat
   if res = .sat then
-    assert (mkApp2 (symbolT ">")
+    Smt.Translate.Solver.assert (mkApp2 (symbolT ">")
                     ((mkApp2 (symbolT "+") (symbolT "x") (literalT "1")))
                     (symbolT "y"))
     res ← checkSat

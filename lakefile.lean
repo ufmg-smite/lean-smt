@@ -3,16 +3,16 @@ import Lake
 open Lake DSL
 
 require auto from
-  git "https://github.com/leanprover-community/lean-auto.git" @ "eb9c694"
+  git "https://github.com/leanprover-community/lean-auto.git" @ "v4.34.0"
 
 require cvc5 from
-  git "https://github.com/abdoo8080/lean-cvc5.git" @ "7e33659"
+  git "https://github.com/abdoo8080/lean-cvc5.git" @ "41e4779"
 
 require quote4 from git "https://github.com/leanprover-community/quote4"
   -- The require line above differs between main and no_mathlib; the revision below is shared.
   -- This comment must stay identical on both branches: it keeps the two edits non-adjacent so
   -- git can merge version bumps from main into no_mathlib without conflict.
-  @ "v4.33.0"
+  @ "v4.34.0"
 
 package smt
 
