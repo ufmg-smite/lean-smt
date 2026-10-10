@@ -101,7 +101,7 @@ theorem arithTransSineShift₀ : ∀ x , ∃ s y , shift_prop x s y := fun x =>
     · constructor
       · unfold s'; simp
       · constructor
-        · simp only [sub_add_cancel, if_true_right, and_imp]
+        · simp only [sub_add_cancel, ite_true_right, and_imp]
           intros h3 h4
           linarith
         · rw [mul_comm, sin_sub_int_mul_two_pi x s']
@@ -125,7 +125,7 @@ theorem arithTransSineShift₀ : ∀ x , ∃ s y , shift_prop x s y := fun x =>
     · constructor
       · simp
       · constructor
-        · simp only [sub_add_cancel, if_true_right, and_imp]
+        · simp only [sub_add_cancel, ite_true_right, and_imp]
           intros h3 h4
           linarith
         · rw [mul_comm, sin_sub_int_mul_two_pi x s]

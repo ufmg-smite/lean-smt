@@ -118,44 +118,44 @@ theorem bool_not_eq_elim2 : (¬x = y) = (x = ¬y) :=
 
 theorem ite_neg_branch [h : Decidable c] : x = ¬y → ite c x y = (c = x) :=
   fun hxny => hxny ▸ h.byCases
-    (fun hc => if_pos hc ▸ propext ⟨(propext ⟨const _ ·, const _ hc⟩), (· ▸ hc)⟩)
-    (fun hnc => if_neg hnc ▸ propext
+    (fun hc => ite_eq_left hc ▸ propext ⟨(propext ⟨const _ ·, const _ hc⟩), (· ▸ hc)⟩)
+    (fun hnc => ite_eq_right hnc ▸ propext
       ⟨fun hy => propext ⟨fun hc => False.elim (hnc hc), fun hny => False.elim (hny hy)⟩,
        fun hcny => bool_double_not_elim (t := y) ▸ hcny ▸ hnc⟩)
 
 theorem ite_then_true [h : Decidable c] : ite c True x = orN [c, x] := h.byCases
-  (fun hc => if_pos hc ▸ propext ⟨const _ (Or.inl hc), const _ trivial⟩)
-  (fun hnc => if_neg hnc ▸ propext ⟨Or.inr, (·.elim (absurd · hnc) id)⟩)
+  (fun hc => ite_eq_left hc ▸ propext ⟨const _ (Or.inl hc), const _ trivial⟩)
+  (fun hnc => ite_eq_right hnc ▸ propext ⟨Or.inr, (·.elim (absurd · hnc) id)⟩)
 theorem ite_else_false [h : Decidable c] : ite c x False = andN [c, x] := h.byCases
-  (fun hc => if_pos hc ▸ propext ⟨And.intro hc, And.right⟩)
-  (fun hnc => if_neg hnc ▸ propext ⟨False.elim, (absurd ·.left hnc)⟩)
+  (fun hc => ite_eq_left hc ▸ propext ⟨And.intro hc, And.right⟩)
+  (fun hnc => ite_eq_right hnc ▸ propext ⟨False.elim, (absurd ·.left hnc)⟩)
 theorem ite_then_false [h : Decidable c] : ite c False x = andN [¬c, x] := h.byCases
-  (fun hc => if_pos hc ▸ propext ⟨False.elim, (absurd hc ·.left)⟩)
-  (fun hnc => if_neg hnc ▸ propext ⟨And.intro hnc, And.right⟩)
+  (fun hc => ite_eq_left hc ▸ propext ⟨False.elim, (absurd hc ·.left)⟩)
+  (fun hnc => ite_eq_right hnc ▸ propext ⟨And.intro hnc, And.right⟩)
 theorem ite_else_true [h : Decidable c] : ite c x True = orN [¬c, x] := h.byCases
-  (fun hc => if_pos hc ▸ propext ⟨Or.inr, (·.elim (absurd hc) id)⟩)
-  (fun hnc => if_neg hnc ▸ propext ⟨const _ (Or.inl hnc), const _ trivial⟩)
+  (fun hc => ite_eq_left hc ▸ propext ⟨Or.inr, (·.elim (absurd hc) id)⟩)
+  (fun hnc => ite_eq_right hnc ▸ propext ⟨const _ (Or.inl hnc), const _ trivial⟩)
 
 theorem ite_then_lookahead_self [h : Decidable c] : ite c c x = ite c True x := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ eq_true hc)
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ eq_true hc)
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ rfl)
 theorem ite_else_lookahead_self [h : Decidable c] : ite c x c = ite c x False := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_false hnc)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ rfl)
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ eq_false hnc)
 
 theorem ite_then_lookahead_not_self [h : Decidable c] : ite c (¬c) x = ite c False x := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ eq_false (not_not_intro hc))
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ eq_false (not_not_intro hc))
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ rfl)
 theorem ite_else_lookahead_not_self [h : Decidable c] : ite c x (¬c) = ite c x True := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ eq_true hnc)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ rfl)
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ eq_true hnc)
 
 theorem ite_expand [h : Decidable c] : ite c x y = andN [orN [¬c, x], orN [c, y]] := h.byCases
-  (fun hc => if_pos hc ▸ propext ⟨(⟨Or.inr ·, Or.inl hc⟩), (·.left.resolve_left (not_not_intro hc))⟩)
-  (fun hnc => if_neg hnc ▸ propext ⟨(⟨Or.inl hnc, Or.inr ·⟩), (·.right.resolve_left hnc)⟩)
+  (fun hc => ite_eq_left hc ▸ propext ⟨(⟨Or.inr ·, Or.inl hc⟩), (·.left.resolve_left (not_not_intro hc))⟩)
+  (fun hnc => ite_eq_right hnc ▸ propext ⟨(⟨Or.inl hnc, Or.inr ·⟩), (·.right.resolve_left hnc)⟩)
 
 theorem bool_not_ite_elim [h : Decidable c] : (¬ite c x y) = ite c (¬x) (¬y) := h.byCases
-  (fun hc => if_pos hc ▸ if_pos hc ▸ rfl)
-  (fun hnc => if_neg hnc ▸ if_neg hnc ▸ rfl)
+  (fun hc => ite_eq_left hc ▸ ite_eq_left hc ▸ rfl)
+  (fun hnc => ite_eq_right hnc ▸ ite_eq_right hnc ▸ rfl)
 
 end Smt.Reconstruct.Prop
