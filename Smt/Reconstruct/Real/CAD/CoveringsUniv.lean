@@ -109,6 +109,7 @@ lemma contra_pos_lt {e : ℝ} (h : e > 0) (h' : e < 0) : False := absurd h' (not
 lemma contra_pos_eq {e : ℝ} (h : e > 0) (h' : e = 0) : False := absurd h' (ne_of_gt h)
 lemma contra_zero_lt {e : ℝ} (h : e = 0) (h' : e < 0) : False := absurd (h ▸ h') (lt_irrefl 0)
 lemma contra_zero_gt {e : ℝ} (h : e = 0) (h' : e > 0) : False := absurd (h ▸ h') (lt_irrefl 0)
+lemma contra_zero_ne {e : ℝ} (h : e = 0) (h' : e ≠ 0) : False := h' h
 
 /-- A polynomial whose sorted root list is empty has no real root. -/
 lemma no_roots_of_sorted_empty (p : CPolynomial Rat) (hp : toPolyReal p ≠ 0)
@@ -164,6 +165,7 @@ def contraLemma (s : Int) (rel : Name) : Option Name :=
   else
     if rel == ``LT.lt then some ``contra_zero_lt
     else if rel == ``GT.gt then some ``contra_zero_gt
+    else if rel == ``Ne || rel == ``Not then some ``contra_zero_ne
     else none
 
 lemma set_eq {x y : Real} : (x ∈ setOf (fun z => z = y)) -> x = y := by

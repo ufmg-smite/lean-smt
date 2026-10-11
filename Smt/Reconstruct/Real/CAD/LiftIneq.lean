@@ -18,7 +18,8 @@ def get_lhs (ineq : Expr) : Expr :=
   | .app (.app (.app (.app (.const `GT.gt ..) _) _) lhs) _ => lhs
   | .app (.app (.app (.app (.const `GE.ge ..) _) _) lhs) _ => lhs
   | .app (.app (.app (.const ``Eq ..) _) lhs) _ => lhs
-  | _ => panic! "[all_to_lhs]: impossible"
+  | .app (.app (.app (.const ``Ne ..) _) lhs) _ => lhs
+  | _ => panic! s!"[get_lhs]: impossible: {ineq}"
 
 /-- The monomials of a sum, each with a flag telling whether it is subtracted. The sum tree is
 flattened on both sides: `ring_nf` can produce right-nested sums such as
@@ -116,6 +117,7 @@ def get_comparison (ineq : Q(Prop)) : Expr :=
   | .app (.app (.app (.app (.const `GT.gt l) i1) i2) _) _ => .app (.app (.const `GT.gt l) i1) i2
   | .app (.app (.app (.app (.const `GE.ge l) i1) i2) _) _ => .app (.app (.const `GE.ge l) i1) i2
   | .app (.app (.app (.const ``Eq l) i) _) _ => .app (.const ``Eq l) i
+  | .app (.app (.app (.const ``Ne l) i) _) _ => .app (.const ``Ne l) i
   | _ => panic! "[get_comparison]: impossible"
 
 @[simp, grind =]
@@ -157,6 +159,13 @@ def gen_poly' (coeffs_and_exps : List (Rat × Nat)) : CPolynomial Rat :=
 def lift_ineq (ineq_pf : Expr) (var : Q(Real)) : MetaM (Expr × CPolynomial Rat × Expr) := do
   -- Transform expressions of the form `¬ (a ≤ b)` in `a > b`
   let ineq_pf ← push_not ineq_pf
+
+  -- Special case for ¬ (a = b)
+  let ineq_pf ← match ← instantiateMVars (← inferType ineq_pf) with
+    | .app (.const ``Not _) (.app (.app (.app (.const ``Eq us) α) a) b) =>
+      mkExpectedTypeHint ineq_pf (mkApp3 (.const ``Ne us) α a b)
+    | _ => pure ineq_pf
+
   -- Transform expressions of the form `a < b` in `a - b < 0`
   let ineq_pf ← all_to_lhs ineq_pf
   -- Runs `ring_nf` at `ineq_pf`, transforming it into a sum of monomials and joining monomials of same degree

@@ -20,7 +20,7 @@ def push_not (h : Expr) : MetaM Expr := do
     | .app (.app (.app (.app (.const `LE.le ..) _) _) _) _ => mkAppM `not_le_mp #[h]
     | .app (.app (.app (.app (.const `GT.gt ..) _) _) _) _ => mkAppM `not_lt_mp #[h]
     | .app (.app (.app (.app (.const `GE.ge ..) _) _) _) _ => mkAppM `not_le_mp #[h]
-    | .app (.app (.app (.const ``Eq ..) _) _) _ => return h -- hmm
+    | .app (.app (.app (.const ``Eq ..) _) _) _ => return h
     | _ =>
       throwError "[simple_push_neg]: impossible"
   | _ => return h
@@ -39,7 +39,8 @@ def all_to_lhs (h : Expr) : MetaM Expr := do
   | .app (.app (.app (.app (.const `GT.gt ..) _) _) _) _ => mkAppM ``sub_pos_mpr #[h]
   | .app (.app (.app (.app (.const `GE.ge ..) _) _) _) _ => mkAppM ``sub_nonpos_of_le #[h]
   | .app (.app (.app (.const ``Eq ..) _) _) _ => mkAppM ``sub_eq_zero_of_eq #[h]
-  | _ => throwError "[all_to_lhs]: impossible"
+  | .app (.app (.app (.const ``Ne ..) _) _) _ => mkAppM ``sub_ne_zero_of_ne #[h]
+  | _ => throwError s!"[all_to_lhs]: impossible {t}"
 
 @[tactic normalize_rel] def evalNormalizeRel : Tactic := fun stx => withMainContext do
   let h ← elabTerm stx[1] none
