@@ -92,7 +92,7 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
     return some (.mkApp2 (.symbolT "bvmul") (← applyTranslators! x) (← applyTranslators! y))
   | mkApp3 (.const ``BitVec.smtUDiv []) _ x y =>
     return some (.mkApp2 (.symbolT "bvudiv") (← applyTranslators! x) (← applyTranslators! y))
-  | mkApp6 (.const ``HMod.hMod []) α β _ _ x y =>
+  | mkApp6 (.const ``HMod.hMod [0, 0, 0]) α β _ _ x y =>
     let some _ ← reduceBitVecWidth? α | return none
     let some _ ← reduceBitVecWidth? β | return none
     return some (.mkApp2 (.symbolT "bvurem") (← applyTranslators! x) (← applyTranslators! y))
