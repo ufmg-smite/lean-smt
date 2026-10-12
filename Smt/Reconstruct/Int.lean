@@ -462,34 +462,54 @@ def reconstructDivModReduction (pf : cvc5.Proof) : ReconstructM (Option Expr) :=
     if !pf.getResult[0]!.getSort!.isInteger then return none
     let x : Q(Int) ← reconstructTerm pf.getResult[0]!
     let c : Q(Int) ← reconstructTerm pf.getResult[1]!
-    let k₁ := pf.getChildren[0]!.getResult.getKind!
-    let k₂ := pf.getChildren[1]!.getResult.getKind!
-    if k₁ == .LEQ && k₂ == .NOT then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
+    -- A premise is `x ≥ c`, `x ≤ c` or `x ≠ c`, where `x ≥ c` and `x ≤ c` may also be written
+    -- `¬(x < c)` and `¬(x > c)`.
+    let rel (t : cvc5.Term) : Option Ordering := match t.getKind! with
+      | .GEQ => some .gt
+      | .LEQ => some .lt
+      | .NOT => match t[0]!.getKind! with
+        | .LT => some .gt
+        | .EQUAL => some .eq
+        | .GT => some .lt
+        | _ => none
+      | _ => none
+    let geq (p : cvc5.Proof) : ReconstructM Q($x ≥ $c) := do
+      if p.getResult.getKind! == .GEQ then reconstructProof p else
+      let h : Q(¬$x < $c) ← reconstructProof p
+      return q(Int.not_lt.mp $h)
+    let leq (p : cvc5.Proof) : ReconstructM Q($x ≤ $c) := do
+      if p.getResult.getKind! == .LEQ then reconstructProof p else
+      let h : Q(¬$x > $c) ← reconstructProof p
+      return q(Int.not_lt.mp $h)
+    let neq (p : cvc5.Proof) : ReconstructM Q($x ≠ $c) := reconstructProof p
+    let p₁ := pf.getChildren[0]!
+    let p₂ := pf.getChildren[1]!
+    match rel p₁.getResult, rel p₂.getResult with
+    | some .lt, some .eq =>
+      let h₁ ← leq p₁
+      let h₂ ← neq p₂
       addThm q($x < $c) q(Int.trichotomy₁ $h₁ $h₂)
-    else if k₁ == .LEQ && k₂ == .GEQ then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
+    | some .lt, some .gt =>
+      let h₁ ← leq p₁
+      let h₂ ← geq p₂
       addThm q($x = $c) q(Int.trichotomy₂ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .LEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
+    | some .eq, some .lt =>
+      let h₁ ← neq p₁
+      let h₂ ← leq p₂
       addThm q($x < $c) q(Int.trichotomy₃ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .GEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
+    | some .eq, some .gt =>
+      let h₁ ← neq p₁
+      let h₂ ← geq p₂
       addThm q($x > $c) q(Int.trichotomy₄ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .LEQ then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
+    | some .gt, some .lt =>
+      let h₁ ← geq p₁
+      let h₂ ← leq p₂
       addThm q($x = $c) q(Int.trichotomy₅ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .NOT then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
+    | some .gt, some .eq =>
+      let h₁ ← geq p₁
+      let h₂ ← neq p₂
       addThm q($x > $c) q(Int.trichotomy₆ $h₁ $h₂)
-    else
-      return none
+    | _, _ => return none
   | .ARITH_REDUCTION =>
     if !pf.getArguments[0]!.getSort!.isInteger then return none
     match pf.getArguments[0]!.getKind! with
