@@ -84,13 +84,13 @@ where
     return a
   | .BITVECTOR_AND =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@AndOp.and (BitVec $w) _) t
+    leftAssocOp q(@HAnd.hAnd (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_OR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@OrOp.or (BitVec $w) _) t
+    leftAssocOp q(@HOr.hOr (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_XOR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@XorOp.xor (BitVec $w) _) t
+    leftAssocOp q(@HXor.hXor (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_NOT =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
