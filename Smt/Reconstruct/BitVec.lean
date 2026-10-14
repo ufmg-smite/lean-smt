@@ -11,6 +11,8 @@ public import Smt.Reconstruct.Bool.Tactic
 public meta import Smt.Reconstruct.Bool.Tactic
 public import Smt.Reconstruct.BitVec.Bitblast
 public meta import Smt.Reconstruct.BitVec.Bitblast
+public import Smt.Reconstruct.BitVec.Rewrites
+public meta import Smt.Reconstruct.BitVec.Rewrites
 public import Smt.Reconstruct.Prop.Core
 public meta import Smt.Reconstruct.Prop.Core
 public import Smt.Reconstruct
@@ -66,6 +68,29 @@ where
       currInst := mkApp4 inst (← reconstructTerm ct) curr (← synthDecidableInst ct) currInst
       curr := mkApp2 op (← reconstructTerm ct) curr
     return currInst
+
+/-- The value of a closed integer term built from literals, `@bvsize`, `+`, `-`, `*` and
+`int.pow2`, as they occur in the instantiated bit-vector RARE rules. -/
+partial def evalInt? (t : cvc5.Term) : Option Int := do
+  match t.getKind! with
+  | .CONST_INTEGER => return t.getIntegerValue!
+  | .INTERNAL_KIND =>
+    if t.toString.startsWith "(@bvsize " && t.getNumChildren == 1 then
+      return t[0]!.getSort!.getBitVectorSize!.toNat
+    none
+  | .ADD => t.getChildren.foldlM (fun a c => return a + (← evalInt? c)) 0
+  | .MULT => t.getChildren.foldlM (fun a c => return a * (← evalInt? c)) 1
+  | .SUB => return (← evalInt? t[0]!) - (← evalInt? t[1]!)
+  | .NEG => return -(← evalInt? t[0]!)
+  | .POW2 =>
+    let n ← evalInt? t[0]!
+    return if n < 0 then 0 else 2 ^ n.toNat
+  | _ => none
+
+/-- `evalInt?` for terms whose value must be a natural number. -/
+def evalNat? (t : cvc5.Term) : Option Nat := do
+  let n ← evalInt? t
+  if n < 0 then none else return n.toNat
 
 @[smt_term_reconstruct] def reconstructBitVec : TermReconstructor := fun t => do match t.getKind! with
   | .CONST_BITVECTOR =>
@@ -232,6 +257,30 @@ where
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
     let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
     return q(«$x».getLsbD $i = true)
+  | .INTERNAL_KIND =>
+    -- The instantiated RARE rules contain cvc5's internal operators `@bv` (a bit-vector literal
+    -- given by its value and width), `@bvsize` (the width of a bit-vector) and `extract` with
+    -- integer-term indices. Widths are fixed, so their integer arguments are constants.
+    let s := t.toString
+    if s.startsWith "(@bvsize " && t.getNumChildren == 1 then
+      let w : Q(Nat) := mkRawNatLit t[0]!.getSort!.getBitVectorSize!.toNat
+      return q(OfNat.ofNat $w : Int)
+    else if s.startsWith "(@bv " && t.getNumChildren == 2 then
+      let some v := evalNat? t[0]! | return none
+      let some w := evalNat? t[1]! | return none
+      return q(BitVec.ofNat $w $v)
+    else if s.startsWith "(extract " && t.getNumChildren == 3 then
+      let w : Nat := t[2]!.getSort!.getBitVectorSize!.toNat
+      let some i := evalNat? t[0]! | return none
+      let some j := evalNat? t[1]! | return none
+      let x : Q(BitVec $w) ← reconstructTerm t[2]!
+      return q(«$x».extractLsb $i $j)
+    else
+      return none
+  | .POW2 =>
+    let some n := evalNat? t | return none
+    let n : Q(Nat) := mkRawNatLit n
+    return q(OfNat.ofNat $n : Int)
   | _ => return none
 where
   leftAssocOp (op : Expr) (t : cvc5.Term) : ReconstructM Expr := do
@@ -241,8 +290,26 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match pf.getRewriteRule with
+  match pf.getRewriteRule! with
+  | .BV_XOR_DUPLICATE =>
+    let ⟨w, x⟩ ← operand
+    addThm q($x ^^^ $x = BitVec.ofNat $w 0) q(@Rewrite.xor_duplicate $w $x)
+  | .BV_ULT_ZERO_1 =>
+    let ⟨w, x⟩ ← operand
+    addThm q((BitVec.ofNat $w 0 < $x) = ¬($x = BitVec.ofNat $w 0)) q(@Rewrite.ult_zero_1 $w $x)
+  | .BV_ULT_ZERO_2 =>
+    let ⟨w, x⟩ ← operand
+    addThm q(($x < BitVec.ofNat $w 0) = False) q(@Rewrite.ult_zero_2 $w $x)
+  | .BV_UDIV_ONE =>
+    let ⟨w, x⟩ ← operand
+    addThm q(BitVec.smtUDiv $x (BitVec.ofNat $w 1) = $x) q(@Rewrite.udiv_one $w $x)
   | _ => return none
+where
+  /-- The bit-vector variable `x` of a rule, and its width. -/
+  operand : ReconstructM ((w : Nat) × Q(BitVec $w)) := do
+    let w : Nat := pf.getArguments[1]!.getSort!.getBitVectorSize!.toNat
+    let x : Q(BitVec $w) ← reconstructTerm pf.getArguments[1]!
+    return ⟨w, x⟩
 
 @[smt_proof_reconstruct] def reconstructBitVecProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE => reconstructRewrite pf
