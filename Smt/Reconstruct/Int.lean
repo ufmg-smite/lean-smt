@@ -414,6 +414,29 @@ where
     else if k == .GT && sign == false then pure ``Int.gt_of_sub_eq_neg
     else throwError "[arith_poly_norm_rel]: invalid combination of kind and sign: {k}, {sign}"
 
+/-- `ARITH_REDUCTION` for `div_total t d` and `mod_total t d`. cvc5 names the quotient by a
+purification skolem, which reconstructs as `t / d`, and states `t / d = t / d ∧ B` or
+`t % d = t - d * (t / d) ∧ B`, where `B` bounds the quotient: for a constant `d`,
+`d * (t / d) ≤ t ∧ t < d * (t / d + s)` with `s` the sign of `d`, otherwise the conjunction of
+both cases, each under its sign condition. -/
+def reconstructDivModReduction (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  let a := pf.getArguments[0]!
+  let t : Q(Int) ← reconstructTerm a[0]!
+  let d : Q(Int) ← reconstructTerm a[1]!
+  let eq : Expr :=
+    if a.getKind! == .INTS_DIVISION_TOTAL then q(Eq.refl ($t / $d)) else q(Int.emod_def $t $d)
+  let bounds : Expr :=
+    if a[1]!.getKind! == .CONST_INTEGER then
+      if a[1]!.getIntegerValue! > 0 then
+        let h : Q($d > 0) := .app q(@of_decide_eq_true ($d > 0) _) q(Eq.refl true)
+        q(@div_bounds_pos $t $d $h)
+      else
+        let h : Q($d < 0) := .app q(@of_decide_eq_true ($d < 0) _) q(Eq.refl true)
+        q(@div_bounds_neg $t $d $h)
+    else
+      q(@div_bounds $t $d)
+  addThm (← reconstructTerm pf.getResult) (← Meta.mkAppM ``And.intro #[eq, bounds])
+
 @[smt_proof_reconstruct] def reconstructIntProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
@@ -469,11 +492,23 @@ where
       return none
   | .ARITH_REDUCTION =>
     if !pf.getArguments[0]!.getSort!.isInteger then return none
-    if pf.getArguments[0]!.getKind! == .ABS then
+    match pf.getArguments[0]!.getKind! with
+    | .ABS =>
       let x : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
       addThm q(«$x».abs = ite ($x < 0) (-$x) $x) q(@Int.abs_elim $x)
-    else
-      return none
+    | .INTS_DIVISION_TOTAL | .INTS_MODULUS_TOTAL => reconstructDivModReduction pf
+    | k@.INTS_DIVISION | k@.INTS_MODULUS =>
+      -- `t ⊙ d = ite (d = 0) (by_zero t) (t ⊙_total d)`, or `t ⊙ c = t ⊙_total c` for a
+      -- nonzero constant `c`; the partial and total operators reconstruct alike.
+      let t : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
+      let d : Q(Int) ← reconstructTerm pf.getArguments[0]![1]!
+      let h : Expr :=
+        if pf.getResult[1]!.getKind! != .ITE then
+          if k == .INTS_DIVISION then q(Eq.refl ($t / $d)) else q(Eq.refl ($t % $d))
+        else
+          if k == .INTS_DIVISION then q(@div_elim $t $d) else q(@mod_elim $t $d)
+      addThm (← reconstructTerm pf.getResult) h
+    | _ => return none
   | .ARITH_POLY_NORM =>
     if !pf.getResult[0]!.getSort!.isInteger then return none
     let a : Q(Int) ← reconstructTerm pf.getResult[0]!
