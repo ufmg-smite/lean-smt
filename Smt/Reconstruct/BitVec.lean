@@ -241,7 +241,11 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match pf.getRewriteRule with
+  match pf.getRewriteRule! with
+  | .BV_NOT_IDEMP =>
+    let w : Nat ← pure pf.getArguments[1]!.getSort!.getBitVectorSize!.toNat
+    let x : Q(BitVec $w) ← reconstructTerm pf.getArguments[1]!
+    addThm q(~~~(~~~$x) = $x) q(@BitVec.not_not $w $x)
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructBitVecProof : ProofReconstructor := fun pf => do match pf.getRule with
