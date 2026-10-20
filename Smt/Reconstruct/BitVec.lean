@@ -136,18 +136,18 @@ where
   | .BITVECTOR_SHL =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q($x <<< $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q($x <<< $y)
   | .BITVECTOR_LSHR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q($x >>> $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q($x >>> $y)
   | .BITVECTOR_ASHR =>
-    let w : Nat := t.getSort!.getBitVectorSize!.toNat
+    let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q(BitVec.sshiftRight $x $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q(BitVec.sshiftRight' $x $y)
   | .BITVECTOR_ULT =>
     let w : Nat ← pure t[0]!.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
