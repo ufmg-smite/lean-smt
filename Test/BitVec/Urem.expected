@@ -1,0 +1,9 @@
+goal: x % y = x % y
+
+query:
+(set-logic ALL)
+(declare-const x (_ BitVec 8))
+(declare-const y (_ BitVec 8))
+(assert (not (= (bvurem x y) (bvurem x y))))
+(check-sat)
+Test/BitVec/Urem.lean:6:8: warning: declaration uses `sorry`
