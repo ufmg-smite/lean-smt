@@ -12,7 +12,6 @@ Powers are written as products: the `smt` tactic currently fails on `x ^ n` over
 
 set_option profiler true
 
-set_option maxHeartbeats 4000000 in
 lemma li_example_7 (x : Real) :
     x < -1 ∨ 0 > x ∨
     (41613 * x) / 2 + 26169 * (x * x) + (64405 * (x * x * x)) / 4 + 4983 * (x * x * x * x) +
