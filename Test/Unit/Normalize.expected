@@ -4,12 +4,12 @@ Map: []
 Map: []
 Before: [h]
 After: [h]
-Map: [(h, [_fvar.3054])]
-Map: [(_fvar.3073, [h])]
+Map: [(h, [_fvar.2944])]
+Map: [(_fvar.2963, [h])]
 Before: [hpqr, ht, ht', t]
 After: [hpqr, ht, ht', a✝]
-Map: [(hpqr, [_fvar.3548]), (ht', [_fvar.3549]), (a✝, [_fvar.3553]), (ht, [_fvar.3547])]
-Map: [(_fvar.3647, [hpqr]), (_fvar.3648, [ht']), (_fvar.3645, [_fvar.3553]), (_fvar.3646, [ht])]
+Map: [(ht', [_fvar.3439]), (hpqr, [_fvar.3438]), (a✝, [t]), (ht, [_fvar.3437])]
+Map: [(_fvar.3538, [ht']), (_fvar.3537, [hpqr]), (_fvar.3535, [t]), (_fvar.3536, [ht])]
 Test/Unit/Normalize.lean:54:22: warning: Variable name `h` is not explicitly referenced.
 
 Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
@@ -22,8 +22,15 @@ Hint: The binding can be removed (if unused) or named `_` (if used implicitly). 
   [apply] _h2
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Test/Unit/Normalize.lean:206:2: error: cannot translate #0
+Test/Unit/Normalize.lean:210:2: error: cannot translate #0
 Test/Unit/Normalize.lean:212:0: warning: declaration uses `sorry`
 Test/Unit/Normalize.lean:216:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:221:2: error: cannot translate #0
+Test/Unit/Normalize.lean:224:2: error: cannot translate #0
+Test/Unit/Normalize.lean:227:2: error: cannot translate #0
 Test/Unit/Normalize.lean:229:0: warning: declaration uses `sorry`
 Test/Unit/Normalize.lean:233:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:238:2: error: cannot translate #0
 Test/Unit/Normalize.lean:240:0: warning: declaration uses `sorry`
+Test/Unit/Normalize.lean:245:2: error: cannot translate #0

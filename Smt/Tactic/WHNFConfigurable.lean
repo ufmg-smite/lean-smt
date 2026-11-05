@@ -858,18 +858,6 @@ def reduceRecMatcher? (e : Expr) : ReductionM (Option Expr) := do
           return none
       | _ => return none
 
-def reduceNative? (e : Expr) : MetaM (Option Expr) :=
-  match e with
-  | Expr.app (Expr.const fName _) (Expr.const argName _) =>
-    if fName == ``Lean.reduceBool then do
-      return toExpr (← reduceBoolNative argName)
-    else if fName == ``Lean.reduceNat then do
-      return toExpr (← reduceNatNative argName)
-    else
-      return none
-  | _ =>
-    return none
-
 @[inline] def withNatValue {α} (a : Expr) (k : Nat → ReductionM (Option α)) : ReductionM (Option α) := do
   let a ← whnf a
   match a with
@@ -956,12 +944,9 @@ partial def whnfImp (e : Expr) : ReductionM Expr :=
       match (← reduceNat? e') with
       | some v => cache useCache e v
       | none   =>
-        match (← reduceNative? e') with
-        | some v => cache useCache e v
-        | none   =>
-          match (← unfoldDefinition? e') with
-          | some e => whnfImp e
-          | none   => cache useCache e e'
+        match (← unfoldDefinition? e') with
+        | some e => whnfImp e
+        | none   => cache useCache e e'
     return e'
 
 /-- If `e` is a projection function that satisfies `p`, then reduce it -/
