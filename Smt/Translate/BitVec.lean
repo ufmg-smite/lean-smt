@@ -97,7 +97,7 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
     return some (.mkApp2 (.symbolT "bvmul") (← applyTranslators! x) (← applyTranslators! y))
   | mkApp3 (.const ``BitVec.smtUDiv []) _ x y =>
     return some (.mkApp2 (.symbolT "bvudiv") (← applyTranslators! x) (← applyTranslators! y))
-  | mkApp6 (.const ``HMod.hMod []) α β _ _ x y =>
+  | mkApp6 (.const ``HMod.hMod [0, 0, 0]) α β _ _ x y =>
     let some _ ← reduceBitVecWidth? α | return none
     let some _ ← reduceBitVecWidth? β | return none
     return some (.mkApp2 (.symbolT "bvurem") (← applyTranslators! x) (← applyTranslators! y))
@@ -127,10 +127,12 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
     return mkLit w 0
   | mkApp3 (.const ``BitVec.rotateLeft []) w x n =>
     _ ← reduceWidth w e
+    let n ← reduceLit n e
     return some (.appT (.mkApp2 (.symbolT "_") (.symbolT "rotate_left") (.literalT (toString n)))
                        (← applyTranslators! x))
   | mkApp3 (.const ``BitVec.rotateRight []) w x n =>
     _ ← reduceWidth w e
+    let n ← reduceLit n e
     return some (.appT (.mkApp2 (.symbolT "_") (.symbolT "rotate_right") (.literalT (toString n)))
                        (← applyTranslators! x))
   | mkApp6 (.const ``HAppend.hAppend [0, 0, 0]) α β _ _ x y =>
@@ -142,7 +144,41 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
     let i ← reduceLit i e
     return some (.appT (.mkApp2 (.symbolT "_") (.symbolT "repeat") (.literalT (toString i)))
                        (← applyTranslators! x))
+  | mkApp4 (.const ``BitVec.extractLsb []) w hi lo x =>
+    let w ← reduceWidth w e
+    let hi ← reduceLit hi e
+    let lo ← reduceLit lo e
+    -- SMT-LIB's `extract` requires `lo ≤ hi < w`
+    if lo > hi || hi ≥ w then return none
+    return some (.appT (.mkApp3 (.symbolT "_") (.symbolT "extract") (.literalT (toString hi))
+                         (.literalT (toString lo))) (← applyTranslators! x))
+  -- The operators below are defined in `Smt.Reconstruct.BitVec.Core`.
+  | mkApp3 (.const `BitVec.smtComp []) w x y =>
+    _ ← reduceWidth w e
+    return some (.mkApp2 (.symbolT "bvcomp") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp3 (.const `BitVec.smtNand []) w x y =>
+    _ ← reduceWidth w e
+    return some (.mkApp2 (.symbolT "bvnand") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp3 (.const `BitVec.smtNor []) w x y =>
+    _ ← reduceWidth w e
+    return some (.mkApp2 (.symbolT "bvnor") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp3 (.const `BitVec.smtXnor []) w x y =>
+    _ ← reduceWidth w e
+    return some (.mkApp2 (.symbolT "bvxnor") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp2 (.const `BitVec.smtRedor []) w x =>
+    _ ← reduceWidth w e
+    return some (.appT (.symbolT "bvredor") (← applyTranslators! x))
+  | mkApp2 (.const `BitVec.smtRedand []) w x =>
+    _ ← reduceWidth w e
+    return some (.appT (.symbolT "bvredand") (← applyTranslators! x))
   | _                  => return none
+
+/-- The binary overflow predicates on bit-vectors and their SMT-LIB names. -/
+private def overflowOps : List (Name × String) := [
+  (``BitVec.uaddOverflow, "bvuaddo"), (``BitVec.saddOverflow, "bvsaddo"),
+  (``BitVec.umulOverflow, "bvumulo"), (``BitVec.smulOverflow, "bvsmulo"),
+  (``BitVec.usubOverflow, "bvusubo"), (``BitVec.ssubOverflow, "bvssubo"),
+  (``BitVec.sdivOverflow, "bvsdivo")]
 
 @[smt_translate] def translateProp : Translator := fun e => do match e with
   | mkApp4 (.const ``LT.lt [0]) α _ x y =>
@@ -163,6 +199,13 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
   | mkApp3 (.const ``Eq [1]) _ (mkApp3 (.const ``BitVec.sle []) w x y) (.const ``true []) =>
     _ ← reduceWidth w e
     return some (.mkApp2 (.symbolT "bvsle") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp3 (.const ``Eq [1]) _ (mkApp3 (.const f []) w x y) (.const ``true []) =>
+    let some op := overflowOps.lookup f | return none
+    _ ← reduceWidth w e
+    return some (.mkApp2 (.symbolT op) (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp3 (.const ``Eq [1]) _ (mkApp2 (.const ``BitVec.negOverflow []) w x) (.const ``true []) =>
+    _ ← reduceWidth w e
+    return some (.appT (.symbolT "bvnego") (← applyTranslators! x))
   | _                        => return none
 
 end Smt.Translate.BitVec
