@@ -414,6 +414,29 @@ where
     else if k == .GT && sign == false then pure ``Int.gt_of_sub_eq_neg
     else throwError "[arith_poly_norm_rel]: invalid combination of kind and sign: {k}, {sign}"
 
+/-- `ARITH_REDUCTION` for `div_total t d` and `mod_total t d`. cvc5 names the quotient by a
+purification skolem, which reconstructs as `t / d`, and states `t / d = t / d ∧ B` or
+`t % d = t - d * (t / d) ∧ B`, where `B` bounds the quotient: for a constant `d`,
+`d * (t / d) ≤ t ∧ t < d * (t / d + s)` with `s` the sign of `d`, otherwise the conjunction of
+both cases, each under its sign condition. -/
+def reconstructDivModReduction (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
+  let a := pf.getArguments[0]!
+  let t : Q(Int) ← reconstructTerm a[0]!
+  let d : Q(Int) ← reconstructTerm a[1]!
+  let eq : Expr :=
+    if a.getKind! == .INTS_DIVISION_TOTAL then q(Eq.refl ($t / $d)) else q(Int.emod_def $t $d)
+  let bounds : Expr :=
+    if a[1]!.getKind! == .CONST_INTEGER then
+      if a[1]!.getIntegerValue! > 0 then
+        let h : Q($d > 0) := .app q(@of_decide_eq_true ($d > 0) _) q(Eq.refl true)
+        q(@div_bounds_pos $t $d $h)
+      else
+        let h : Q($d < 0) := .app q(@of_decide_eq_true ($d < 0) _) q(Eq.refl true)
+        q(@div_bounds_neg $t $d $h)
+    else
+      q(@div_bounds $t $d)
+  addThm (← reconstructTerm pf.getResult) (← Meta.mkAppM ``And.intro #[eq, bounds])
+
 @[smt_proof_reconstruct] def reconstructIntProof : ProofReconstructor := fun pf => do match pf.getRule with
   | .DSL_REWRITE
   | .THEORY_REWRITE => reconstructRewrite pf
@@ -439,41 +462,73 @@ where
     if !pf.getResult[0]!.getSort!.isInteger then return none
     let x : Q(Int) ← reconstructTerm pf.getResult[0]!
     let c : Q(Int) ← reconstructTerm pf.getResult[1]!
-    let k₁ := pf.getChildren[0]!.getResult.getKind!
-    let k₂ := pf.getChildren[1]!.getResult.getKind!
-    if k₁ == .LEQ && k₂ == .NOT then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
+    -- A premise is `x ≥ c`, `x ≤ c` or `x ≠ c`, where `x ≥ c` and `x ≤ c` may also be written
+    -- `¬(x < c)` and `¬(x > c)`.
+    let rel (t : cvc5.Term) : Option Ordering := match t.getKind! with
+      | .GEQ => some .gt
+      | .LEQ => some .lt
+      | .NOT => match t[0]!.getKind! with
+        | .LT => some .gt
+        | .EQUAL => some .eq
+        | .GT => some .lt
+        | _ => none
+      | _ => none
+    let geq (p : cvc5.Proof) : ReconstructM Q($x ≥ $c) := do
+      if p.getResult.getKind! == .GEQ then reconstructProof p else
+      let h : Q(¬$x < $c) ← reconstructProof p
+      return q(Int.not_lt.mp $h)
+    let leq (p : cvc5.Proof) : ReconstructM Q($x ≤ $c) := do
+      if p.getResult.getKind! == .LEQ then reconstructProof p else
+      let h : Q(¬$x > $c) ← reconstructProof p
+      return q(Int.not_lt.mp $h)
+    let neq (p : cvc5.Proof) : ReconstructM Q($x ≠ $c) := reconstructProof p
+    let p₁ := pf.getChildren[0]!
+    let p₂ := pf.getChildren[1]!
+    match rel p₁.getResult, rel p₂.getResult with
+    | some .lt, some .eq =>
+      let h₁ ← leq p₁
+      let h₂ ← neq p₂
       addThm q($x < $c) q(Int.trichotomy₁ $h₁ $h₂)
-    else if k₁ == .LEQ && k₂ == .GEQ then
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
+    | some .lt, some .gt =>
+      let h₁ ← leq p₁
+      let h₂ ← geq p₂
       addThm q($x = $c) q(Int.trichotomy₂ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .LEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
+    | some .eq, some .lt =>
+      let h₁ ← neq p₁
+      let h₂ ← leq p₂
       addThm q($x < $c) q(Int.trichotomy₃ $h₁ $h₂)
-    else if k₁ == .NOT && k₂ == .GEQ then
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
+    | some .eq, some .gt =>
+      let h₁ ← neq p₁
+      let h₂ ← geq p₂
       addThm q($x > $c) q(Int.trichotomy₄ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .LEQ then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
+    | some .gt, some .lt =>
+      let h₁ ← geq p₁
+      let h₂ ← leq p₂
       addThm q($x = $c) q(Int.trichotomy₅ $h₁ $h₂)
-    else if k₁ == .GEQ && k₂ == .NOT then
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
+    | some .gt, some .eq =>
+      let h₁ ← geq p₁
+      let h₂ ← neq p₂
       addThm q($x > $c) q(Int.trichotomy₆ $h₁ $h₂)
-    else
-      return none
+    | _, _ => return none
   | .ARITH_REDUCTION =>
     if !pf.getArguments[0]!.getSort!.isInteger then return none
-    if pf.getArguments[0]!.getKind! == .ABS then
+    match pf.getArguments[0]!.getKind! with
+    | .ABS =>
       let x : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
       addThm q(«$x».abs = ite ($x < 0) (-$x) $x) q(@Int.abs_elim $x)
-    else
-      return none
+    | .INTS_DIVISION_TOTAL | .INTS_MODULUS_TOTAL => reconstructDivModReduction pf
+    | k@.INTS_DIVISION | k@.INTS_MODULUS =>
+      -- `t ⊙ d = ite (d = 0) (by_zero t) (t ⊙_total d)`, or `t ⊙ c = t ⊙_total c` for a
+      -- nonzero constant `c`; the partial and total operators reconstruct alike.
+      let t : Q(Int) ← reconstructTerm pf.getArguments[0]![0]!
+      let d : Q(Int) ← reconstructTerm pf.getArguments[0]![1]!
+      let h : Expr :=
+        if pf.getResult[1]!.getKind! != .ITE then
+          if k == .INTS_DIVISION then q(Eq.refl ($t / $d)) else q(Eq.refl ($t % $d))
+        else
+          if k == .INTS_DIVISION then q(@div_elim $t $d) else q(@mod_elim $t $d)
+      addThm (← reconstructTerm pf.getResult) h
+    | _ => return none
   | .ARITH_POLY_NORM =>
     if !pf.getResult[0]!.getSort!.isInteger then return none
     let a : Q(Int) ← reconstructTerm pf.getResult[0]!
