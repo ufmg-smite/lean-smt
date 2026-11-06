@@ -84,13 +84,13 @@ where
     return a
   | .BITVECTOR_AND =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@AndOp.and (BitVec $w) _) t
+    leftAssocOp q(@HAnd.hAnd (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_OR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@OrOp.or (BitVec $w) _) t
+    leftAssocOp q(@HOr.hOr (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_XOR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
-    leftAssocOp q(@XorOp.xor (BitVec $w) _) t
+    leftAssocOp q(@HXor.hXor (BitVec $w) (BitVec $w) (BitVec $w) _) t
   | .BITVECTOR_NOT =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
@@ -136,18 +136,18 @@ where
   | .BITVECTOR_SHL =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q($x <<< $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q($x <<< $y)
   | .BITVECTOR_LSHR =>
     let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q($x >>> $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q($x >>> $y)
   | .BITVECTOR_ASHR =>
-    let w : Nat := t.getSort!.getBitVectorSize!.toNat
+    let w : Nat ← pure t.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
-    let i : Nat := t.getOp![0]!.getIntegerValue!.toNat
-    return q(BitVec.sshiftRight $x $i)
+    let y : Q(BitVec $w) ← reconstructTerm t[1]!
+    return q(BitVec.sshiftRight' $x $y)
   | .BITVECTOR_ULT =>
     let w : Nat ← pure t[0]!.getSort!.getBitVectorSize!.toNat
     let x : Q(BitVec $w) ← reconstructTerm t[0]!
@@ -241,7 +241,11 @@ where
     return curr
 
 def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
-  match pf.getRewriteRule with
+  match pf.getRewriteRule! with
+  | .BV_NOT_IDEMP =>
+    let w : Nat ← pure pf.getArguments[1]!.getSort!.getBitVectorSize!.toNat
+    let x : Q(BitVec $w) ← reconstructTerm pf.getArguments[1]!
+    addThm q(~~~(~~~$x) = $x) q(@BitVec.not_not $w $x)
   | _ => return none
 
 @[smt_proof_reconstruct] def reconstructBitVecProof : ProofReconstructor := fun pf => do match pf.getRule with

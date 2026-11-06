@@ -56,6 +56,11 @@ private def reduceBitVecWidth? (e : Expr) : MetaM (Option Nat) := do
     let some _ ← reduceBitVecWidth? α | return none
     let some _ ← reduceBitVecWidth? β | return none
     return some (.mkApp2 (.symbolT "bvlshr") (← applyTranslators! x) (← applyTranslators! y))
+  | mkApp4 (.const ``BitVec.sshiftRight' []) n m x y =>
+    let n ← reduceWidth n e
+    let m ← reduceWidth m e
+    if n != m then return none
+    return some (.mkApp2 (.symbolT "bvashr") (← applyTranslators! x) (← applyTranslators! y))
   | mkApp3 (.const ``BitVec.zeroExtend []) w v x =>
     let w ← reduceWidth w x
     let v ← reduceWidth v e

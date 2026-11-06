@@ -9,6 +9,7 @@ module
 
 public import Mathlib.Analysis.Calculus.Taylor
 public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
+public import Mathlib.Analysis.Convex.Deriv
 public import Mathlib.Analysis.Convex.SpecificFunctions.Deriv
 public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
