@@ -26,14 +26,17 @@ example (x : BitVec 8) : x.rotateRight 3 = x.extractLsb 2 0 ++ x.extractLsb 7 3 
 -- bv-zero-extend-eliminate
 example (x : BitVec 8) : x.zeroExtend 12 = 0#4 ++ x := by smt
 
+-- bv-and-simplify-1
+example (x : BitVec 8) : ~~~x &&& x = 0#8 := by smt
+
 -- bv-and-simplify-2
-example (x y : BitVec 8) : (y &&& x) &&& ~~~x = 0#8 := by smt
+example (x : BitVec 8) : x &&& ~~~x = 0#8 := by smt
 
 -- bv-or-simplify-2
-example (x y : BitVec 8) : (y ||| ~~~x) ||| x = 255#8 := by smt
+example (x : BitVec 8) : x ||| ~~~x = 255#8 := by smt
 
--- bv-xor-simplify-1
-example (x y z : BitVec 8) : y ^^^ x ^^^ z ^^^ x = y ^^^ z := by smt
+-- bv-xor-duplicate
+example (x : BitVec 8) : x ^^^ x = 0#8 := by smt
 
 -- bv-ugt-eliminate
 example (x y : BitVec 8) : (x > y) = (y < x) := by smt
