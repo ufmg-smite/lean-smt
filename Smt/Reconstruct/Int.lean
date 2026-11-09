@@ -72,6 +72,9 @@ open Qq
     if !t.getSort!.isInteger then return none
     let x : Q(Int) ← reconstructTerm t[0]!
     return q(«$x».abs)
+  | .POW2 =>
+    let x : Q(Int) ← reconstructTerm t[0]!
+    return q((if $x < 0 then 0 else 2 ^ «$x».toNat : Int))
   | .LEQ =>
     if !t[0]!.getSort!.isInteger then return none
     let x : Q(Int) ← reconstructTerm t[0]!
