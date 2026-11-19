@@ -159,7 +159,11 @@ partial def applyTranslators? : Translator := withCache fun e => do
       | lam .. => throwError "cannot translate {e}, SMT-LIB does not support lambdas"
       | forallE n t b bi => withScopedName n b fun n => do
         let tmB ← Meta.withLocalDecl n bi t (translateBody b)
-        if !b.hasLooseBVars /- not a dependent arrow -/ then
+        -- A non-dependent `∀` is an arrow only if it is a type (`α → β`). A proposition
+        -- `∀ _ : α, p` over a non-`Prop` domain is a quantified formula whose body happens not to
+        -- mention the variable, so it is translated as one.
+        if !b.hasLooseBVars /- not a dependent arrow -/ &&
+            !((← Meta.isProp e) && !(← Meta.isProp t)) then
           return arrowT (← applyTranslators! t) tmB
         else
           return forallT n.toString (← applyTranslators! t) tmB
