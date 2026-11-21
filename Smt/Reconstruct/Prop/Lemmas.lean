@@ -564,7 +564,7 @@ theorem notAnd : ∀ (l : List Prop), ¬ andN l → orN (notN l) := by
                     have IH := notAnd (p₂::ps) hnAndTail
                     exact Or.inr (orN_cons_append ▸ IH)
 
-syntax "flipNotAnd " term ("[" term,* "]")? : term
+scoped syntax "flipNotAnd " term ("[" term,* "]")? : term
 macro_rules
 | `(flipNotAnd $premiss:term [ $[$x:term],* ]) => `(notAnd [ $[$x],* ] $premiss)
 
@@ -717,7 +717,7 @@ theorem implies_of_not_and : ¬(andN (ps ++ [¬q])) → impliesN ps q := by
 theorem implies_false_of_not_and : ¬(andN ps) → impliesN ps False := by
   simp_all [implies_of_not_and]
 
-syntax "flipCongrArg " term ("[" term "]")? : term
+scoped syntax "flipCongrArg " term ("[" term "]")? : term
 macro_rules
 | `(flipCongrArg $premiss:term [$arg:term]) => `(congrArg $arg $premiss)
 
