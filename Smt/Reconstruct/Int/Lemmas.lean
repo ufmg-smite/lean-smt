@@ -253,4 +253,37 @@ theorem mul_neg_ge (h : c < 0 ∧ a ≥ b) : c * a ≤ c * b :=
 theorem mul_neg_eq (h : c < 0 ∧ a = b) : c * a = c * b := by
   rw [h.2]
 
+/-! The bounds on the quotient `t / d` that `ARITH_REDUCTION` states for `div_total t d` and
+`mod_total t d` (see `OperatorElim::eliminateOperators` in cvc5). -/
+
+theorem div_bounds_pos {t d : Int} (h : d > 0) : d * (t / d) ≤ t ∧ t < d * (t / d + 1) := by
+  have h₁ := Int.mul_ediv_add_emod t d
+  have h₂ := Int.emod_nonneg t (Int.ne_of_gt h)
+  have h₃ := Int.emod_lt_of_pos t h
+  rw [Int.mul_add, Int.mul_one]
+  omega
+
+theorem div_bounds_neg {t d : Int} (h : d < 0) : d * (t / d) ≤ t ∧ t < d * (t / d + -1) := by
+  have h₁ := Int.mul_ediv_add_emod t d
+  have h₂ := Int.emod_nonneg t (Int.ne_of_lt h)
+  have h₃ := Int.emod_lt_of_pos t (Int.neg_pos_of_neg h)
+  rw [Int.emod_neg] at h₃
+  rw [Int.mul_add, Int.mul_neg, Int.mul_one]
+  omega
+
+theorem div_bounds {t d : Int} :
+    (d > 0 → d * (t / d) ≤ t ∧ t < d * (t / d + 1)) ∧
+    (d < 0 → d * (t / d) ≤ t ∧ t < d * (t / d + -1)) :=
+  ⟨div_bounds_pos, div_bounds_neg⟩
+
+/-! `ARITH_REDUCTION` for the partial `div` and `mod`: the case `d = 0` is the skolem
+`int_div_by_zero` (resp. `mod_by_zero`), which reconstructs as `fun x => x / 0`
+(resp. `fun x => x % 0`). -/
+
+theorem div_elim {t d : Int} : t / d = if d = 0 then (fun x => x / 0) t else t / d := by
+  split <;> simp_all
+
+theorem mod_elim {t d : Int} : t % d = if d = 0 then (fun x => x % 0) t else t % d := by
+  split <;> simp_all
+
 end Smt.Reconstruct.Int
