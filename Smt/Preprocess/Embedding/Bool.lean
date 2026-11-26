@@ -175,6 +175,17 @@ theorem forall_bool_in_as_prop₅ {p : (α₁ → α₂ → α₃ → α₄ → 
     exact hf
 
 @[embedding ↓]
+theorem forall_bool_in_as_prop₆ {p : (α₁ → α₂ → α₃ → α₄ → α₅ → Bool → α₆) → Prop} :
+    (∀ f : α₁ → α₂ → α₃ → α₄ → α₅ → Bool → α₆, p f) ↔ (∀ f : α₁ → α₂ → α₃ → α₄ → α₅ → Prop → α₆, p fun a₁ a₂ a₃ a₄ a₅ b => f a₁ a₂ a₃ a₄ a₅ b) := by
+  constructor
+  · intro h f
+    apply h
+  · intro h f
+    have hf := h fun a₁ a₂ a₃ a₄ a₅ x => f a₁ a₂ a₃ a₄ a₅ x
+    simp only [@Bool.decide_eq_true] at hf
+    exact hf
+
+@[embedding ↓]
 theorem forall_bool_out_as_prop₁ {p : (α₁ → Bool) → Prop} :
     (∀ f : α₁ → Bool, p f) ↔ (∀ f : α₁ → Prop, p (fun a₁ => f a₁)) := by
   constructor
@@ -226,6 +237,17 @@ theorem forall_bool_out_as_prop₅ {p : (α₁ → α₂ → α₃ → α₄ →
     apply h
   · intro h f
     have hf := h (fun a₁ a₂ a₃ a₄ a₅ => f a₁ a₂ a₃ a₄ a₅)
+    simp only [@Bool.decide_eq_true] at hf
+    exact hf
+
+@[embedding ↓]
+theorem forall_bool_out_as_prop₆ {p : (α₁ → α₂ → α₃ → α₄ → α₅ → α₆ → Bool) → Prop} :
+    (∀ f : α₁ → α₂ → α₃ → α₄ → α₅ → α₆ → Bool, p f) ↔ (∀ f : α₁ → α₂ → α₃ → α₄ → α₅ → α₆ → Prop, p (fun a₁ a₂ a₃ a₄ a₅ a₆ => f a₁ a₂ a₃ a₄ a₅ a₆)) := by
+  constructor
+  · intro h f
+    apply h
+  · intro h f
+    have hf := h (fun a₁ a₂ a₃ a₄ a₅ a₆ => f a₁ a₂ a₃ a₄ a₅ a₆)
     simp only [@Bool.decide_eq_true] at hf
     exact hf
 
