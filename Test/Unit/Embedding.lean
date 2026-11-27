@@ -401,3 +401,11 @@ private theorem more_complex (node : Type) [node_dec_eq : DecidableEq node] (sen
     tot_le_refl, tot_le_trans, tot_le_antisymm, tot_le_total, hinv_right_left,
     hinv_right_right_right, btwn_btw_ring, btwn_btw_trans, btwn_btw_side, btwn_btw_total,
     a_left, hinv_right_right_left]
+
+example [DecidableEq α] (pt : α) (hpt : ∀ x : α, x = pt) (x : α) (n : Nat) :
+    (if pt = x then n else 0) ≥ 0 := by
+  smt [pt, hpt]
+
+example [DecidableEq α] (pt : α) (hpt : ∀ x : α, x = pt) (x : α) (n : Nat) :
+    (if pt = x then n else 0) ≥ 0 := by
+  smt [hpt, pt]

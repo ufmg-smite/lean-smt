@@ -59,7 +59,7 @@ def embedding (mv : MVarId) (hs : Array Expr) : MetaM Result := mv.withContext d
     | some idx => map.insert h (.fvar fvs₂[idx]!)
     | none => map.insert h h
   -- Revert free vars in `hs` and `mv`.
-  let fvs := fvs ++ hs₁.map Expr.fvarId! ++ fvs₂
+  let fvs ← Meta.sortFVarIds (fvs ++ hs₁.map Expr.fvarId! ++ fvs₂)
   let (fvs, mv) ← mv.revert fvs true
   -- Simplify the goal using the embedding theorems.
   let congrTheorems ← Meta.getSimpCongrTheorems
