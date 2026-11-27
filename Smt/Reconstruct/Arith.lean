@@ -272,31 +272,55 @@ def reconstructRewrite (pf : cvc5.Proof) : ReconstructM (Option Expr) := do
     let ⟨α, _⟩ := getTypeAndInst pf.getResult[0]!.getSort!
     let x : Q($α) ← reconstructTerm pf.getResult[0]!
     let c : Q($α) ← reconstructTerm pf.getResult[1]!
-    match pf.getChildren[0]!.getResult.getKind!, pf.getChildren[1]!.getResult.getKind! with
-    | .GEQ, .NOT =>
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Arith.trichotomy₁ (not_lt_of_ge $h₁) $h₂)
-    | .NOT, .GEQ =>
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x > $c) q(Arith.trichotomy₂ $h₁ (not_lt_of_ge $h₂))
-    | .GEQ, .LEQ =>
-      let h₁ : Q($x ≥ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Arith.trichotomy₃ (not_lt_of_ge $h₁) (Arith.not_gt_of_le $h₂))
-    | .LEQ, .GEQ =>
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≥ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x = $c) q(Arith.trichotomy₄ (Arith.not_gt_of_le $h₁) (not_lt_of_ge $h₂))
-    | .NOT, .LEQ =>
-      let h₁ : Q($x ≠ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≤ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Arith.trichotomy₅ $h₁ (Arith.not_gt_of_le $h₂))
-    | .LEQ, .NOT =>
-      let h₁ : Q($x ≤ $c) ← reconstructProof pf.getChildren[0]!
-      let h₂ : Q($x ≠ $c) ← reconstructProof pf.getChildren[1]!
-      addThm q($x < $c) q(Arith.trichotomy₆ (Arith.not_gt_of_le $h₁) $h₂)
+    -- Each premise is the negation of one of `x < c`, `x = c` and `x > c`, written either as
+    -- `x ≥ c`/`x ≤ c` or literally as `¬(x < c)`/`¬(x > c)`/`¬(x = c)`.
+    let rel (t : cvc5.Term) : Option Ordering := match t.getKind! with
+      | .GEQ => some .gt
+      | .LEQ => some .lt
+      | .NOT => match t[0]!.getKind! with
+        | .LT => some .gt
+        | .EQUAL => some .eq
+        | .GT => some .lt
+        | _ => none
+      | _ => none
+    let notLt (p : cvc5.Proof) : ReconstructM Q(¬ $x < $c) := do
+      if p.getResult.getKind! == .GEQ then
+        let h : Q($x ≥ $c) ← reconstructProof p
+        return q(not_lt_of_ge $h)
+      reconstructProof p
+    let notGt (p : cvc5.Proof) : ReconstructM Q(¬ $x > $c) := do
+      if p.getResult.getKind! == .LEQ then
+        let h : Q($x ≤ $c) ← reconstructProof p
+        return q(Arith.not_gt_of_le $h)
+      reconstructProof p
+    let notEq (p : cvc5.Proof) : ReconstructM Q(¬ $x = $c) := reconstructProof p
+    let p₁ := pf.getChildren[0]!
+    let p₂ := pf.getChildren[1]!
+    match rel p₁.getResult, rel p₂.getResult with
+    | some .gt, some .eq =>
+      let h₁ ← notLt p₁
+      let h₂ ← notEq p₂
+      addThm q($x > $c) q(Arith.trichotomy₁ $h₁ $h₂)
+    | some .eq, some .gt =>
+      let h₁ ← notEq p₁
+      let h₂ ← notLt p₂
+      addThm q($x > $c) q(Arith.trichotomy₂ $h₁ $h₂)
+    | some .gt, some .lt =>
+      let h₁ ← notLt p₁
+      let h₂ ← notGt p₂
+      addThm q($x = $c) q(Arith.trichotomy₃ $h₁ $h₂)
+    | some .lt, some .gt =>
+      let h₁ ← notGt p₁
+      let h₂ ← notLt p₂
+      addThm q($x = $c) q(Arith.trichotomy₄ $h₁ $h₂)
+    | some .eq, some .lt =>
+      let h₁ ← notEq p₁
+      let h₂ ← notGt p₂
+      addThm q($x < $c) q(Arith.trichotomy₅ $h₁ $h₂)
+    | some .lt, some .eq =>
+      let h₁ ← notGt p₁
+      let h₂ ← notEq p₂
+      addThm q($x < $c) q(Arith.trichotomy₆ $h₁ $h₂)
     | _, _ => return none
   | .ARITH_POLY_NORM =>
     let k := pf.getResult[0]!.getSort!.getKind!
